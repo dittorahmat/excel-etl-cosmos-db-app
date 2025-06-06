@@ -1,33 +1,54 @@
-import { Button } from "@/components/ui/button"
-import { useState } from 'react'
+import { AuthWrapper, useAuth } from "./auth/AuthProvider";
+import { LoginButton } from "./components/auth/LoginButton";
+import { Context7Example } from "./components/Context7Example";
 
-function App() {
-  const [count, setCount] = useState(0)
+// Main App Content
+const AppContent = () => {
+  const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
-      <div className="text-center space-y-6 max-w-2xl">
-        <h1 className="text-4xl font-bold">Welcome to shadcn/ui</h1>
-        <p className="text-muted-foreground">
-          Beautifully designed components built with Radix UI and Tailwind CSS.
-        </p>
-        
-        <div className="flex flex-wrap justify-center gap-4 pt-4">
-          <Button onClick={() => setCount(count + 1)}>
-            Count is {count}
-          </Button>
-          <Button variant="outline">Secondary</Button>
-          <Button variant="destructive">Destructive</Button>
-          <Button variant="ghost">Ghost</Button>
-          <Button variant="link">Link</Button>
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b">
+        <div className="container flex h-16 items-center justify-between px-4">
+          <h1 className="text-xl font-semibold">Excel to Cosmos DB</h1>
+          <LoginButton />
         </div>
-        
-        <p className="text-sm text-muted-foreground pt-8">
-          shadcn/ui is now installed and ready to use. Start editing App.tsx to see changes.
-        </p>
-      </div>
+      </header>
+      
+      <main className="flex-1 p-8">
+        <div className="container mx-auto space-y-8">
+          {isAuthenticated ? (
+            <>
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold">Welcome to Your Dashboard</h2>
+                <p>You are now authenticated and can start using the application.</p>
+                <p>Your access token has been stored in localStorage.</p>
+              </div>
+              
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">Context7 Integration</h2>
+                <Context7Example />
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-bold mb-4">Please sign in to continue</h2>
+              <p className="text-muted-foreground">
+                Sign in with your Microsoft account to access the dashboard and Context7 features.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
-  )
-}
+  );
+};
 
-export default App
+// App wrapped with AuthProvider
+const App = () => (
+  <AuthWrapper>
+    <AppContent />
+  </AuthWrapper>
+);
+
+export default App;
