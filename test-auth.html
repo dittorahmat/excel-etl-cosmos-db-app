@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Azure AD Test</title>
+    <script src="https://alcdn.msauth.net/browser/2.24.0/js/msal-browser.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #content { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Azure AD Authentication Test</h1>
+    <button id="loginButton">Login with Azure AD</button>
+    <div id="content">
+        <div id="status">Click the login button to begin.</div>
+        <div id="error" class="error"></div>
+        <div id="userInfo"></div>
+        <div id="tokenInfo"></div>
+    </div>
+
+    <script type="module">
+        // MSAL configuration
+        const msalConfig = {
+            auth: {
+                clientId: '1a6232b5-e392-4b8d-9a30-23fb8642d9c0', // Your client ID
+                authority: 'https://login.microsoftonline.com/004263f2-caf5-4ca1-8024-41ebc448d7c4', // Your tenant ID
+                redirectUri: 'http://localhost:3000/test-auth.html', // Must match the redirect URI in Azure AD
+                knownAuthorities: ['login.microsoftonline.com']
+            },
+            cache: {
+                cacheLocation: 'sessionStorage',
+                storeAuthStateInCookie: false
+            },
+            system: {
+                loggerOptions: {
+                    loggerCallback: (level, message, containsPii) => {
+                        if (containsPii) { return; }
+                        console.log(message);
+                        updateStatus(message, 'info');
+                    },
+                    logLevel: msal.LogLevel.Verbose
+                }
+            }
+        };
+
+        // Initialize MSAL
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        
+        // Login request with more scopes and additional parameters
+        const loginRequest = {
+            scopes: ['User.Read', 'openid', 'profile', 'email'],
+            prompt: 'select_account',
+            response_type: 'id_token token',
+            nonce: window.crypto.getRandomValues(new Uint32Array(1))[0].toString()
+        };
+        
+        // Update status function
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        // Show error function
+        function showError(error) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = error.message || JSON.stringify(error);
+            console.error('Error:', error);
+            updateStatus('Authentication failed', 'error');
+        }
+
+        // Handle redirect response
+        updateStatus('Checking for authentication response...');
+        msalInstance.handleRedirectPromise()
+            .then(handleResponse)
+            .catch(error => {
+                showError(error);
+                if (error.errorMessage && error.errorMessage.indexOf('AADB2C90091') > -1) {
+                    // User cancelled the login
+                    updateStatus('Login was cancelled by user.');
+                } else if (error.errorMessage && error.errorMessage.indexOf('AADB2C90118') > -1) {
+                    // Password reset required
+                    updateStatus('Password reset required. Please try again.');
+                }
+            });
+
+        // Handle login button click
+        document.getElementById('loginButton').addEventListener('click', async () => {
+            updateStatus('Initiating login...');
+            try {
+                await msalInstance.loginRedirect(loginRequest);
+            } catch (error) {
+                showError(error);
+            }
+        });
+
+        // Handle authentication response
+        async function handleResponse(response) {
+            try {
+                if (response) {
+                    updateStatus('Authentication successful!', 'success');
+                    document.getElementById('loginButton').style.display = 'none';
+                    
+                    // Display user info
+                    const userInfoDiv = document.getElementById('userInfo');
+                    userInfoDiv.innerHTML = `
+                        <h3>User Information</h3>
+                        <pre>${JSON.stringify(response.account, null, 2)}</pre>
+                    `;
+                    
+                    // Display token info
+                    const tokenInfoDiv = document.getElementById('tokenInfo');
+                    tokenInfoDiv.innerHTML = `
+                        <h3>Access Token</h3>
+                        <p>${response.accessToken.substring(0, 50)}...</p>
+                        <h4>Token Details:</h4>
+                        <pre>${JSON.stringify({
+                            expiresOn: response.expiresOn,
+                            scopes: response.scopes,
+                            tokenType: response.tokenType
+                        }, null, 2)}</pre>
+                        <h4>ID Token Claims:</h4>
+                        <pre>${JSON.stringify(parseJwt(response.idToken), null, 2)}</pre>
+                    `;
+                    
+                    console.log('Authentication successful!', response);
+                } else {
+                    updateStatus('Not authenticated. Click the login button to begin.');
+                }
+            } catch (error) {
+                showError(error);
+            }
+        }
+        
+        // Helper function to parse JWT token
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(atob(base64));
+            } catch (e) {
+                return { error: 'Failed to parse token' };
+            }
+        }
+    </script>
+</body>
+</html>
