@@ -1,103 +1,123 @@
-# Excel to Cosmos DB ETL Application
+# Excel to Cosmos DB Dashboard
 
-A secure, full-stack application for uploading Excel files, processing them, and storing the data in Azure Cosmos DB with a queryable API. Features robust authentication, API key management, and comprehensive monitoring.
+A modern React dashboard application for uploading Excel files, visualizing data, and managing Azure Cosmos DB integration. Features Azure AD authentication, real-time data visualization, and a responsive UI built with Shadcn UI components.
 
 ## Features
 
-- **Excel File Processing**: Upload and process Excel files with dynamic schema detection
-- **Data Querying**: Advanced querying with filtering, sorting, and pagination
-- **Dual Authentication**:
-  - Azure AD OAuth 2.0 for user authentication
-  - API key authentication for server-to-server communication
-- **API Key Management**:
-  - Generate, revoke, and manage API keys
-  - Usage tracking and rate limiting
-  - IP-based access restrictions
-- **Security**:
-  - Rate limiting to prevent abuse
-  - Comprehensive request logging
-  - Secure key storage with hashing
-- **Monitoring**:
-  - Request/response logging
-  - API key usage analytics
-  - Error tracking and alerting
-- **Scalable Architecture**: Built on Azure serverless components
+- **Modern React Dashboard**: Built with Vite, TypeScript, and React 18
+- **Secure Authentication**: Azure AD OAuth 2.0 integration with MSAL
+- **Excel File Processing**: Upload and preview Excel files with dynamic schema detection
+- **Data Visualization**: Interactive charts and tables for data analysis
+- **Responsive Design**: Works on desktop and tablet devices
 - **Type Safety**: Full TypeScript support throughout the codebase
+- **Testing**: Comprehensive test suite with Vitest and React Testing Library
 
-## Authentication
+## 🚀 Getting Started
 
-The API supports two authentication methods:
+### Prerequisites
 
-1. **Azure AD Authentication** (Recommended for web applications)
-   - Uses OAuth 2.0 with Azure AD
-   - Requires a valid Azure AD access token
-   - Token should be sent in the `Authorization` header: `Bearer <token>`
+- Node.js 18+
+- npm or yarn
+- Azure AD App Registration
+- Azure Cosmos DB account
 
-2. **API Key Authentication** (For server-to-server communication)
-   - Uses API keys for authentication
-   - Keys can be passed in the `X-API-Key` header or `api_key` query parameter
-   - Each key is associated with a specific user and can be revoked
+### Environment Variables
 
-### Managing API Keys
+Create a `.env` file in the root directory with the following variables:
 
-#### POST /api/keys
-Create a new API key.
+```env
+# Azure AD Configuration
+VITE_AZURE_AD_CLIENT_ID=your-client-id
+VITE_AZURE_AD_TENANT_ID=your-tenant-id
+VITE_AZURE_AD_REDIRECT_URI=http://localhost:3000
+VITE_API_SCOPE=api://your-api-scope
 
-**Authentication**: Azure AD token required (Bearer token)
-
-**Request Body**:
-```json
-{
-  "name": "My API Key",
-  "expiresAt": "2025-12-31T23:59:59.999Z",
-  "allowedIps": ["192.168.1.1", "203.0.113.42"],
-  "rateLimit": 1000,
-  "description": "For internal reporting service"
-}
+# Backend API URL
+VITE_API_URL=http://localhost:7071
 ```
 
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "key": "generated-api-key-here",
-    "id": "key_12345",
-    "name": "My API Key",
-    "description": "For internal reporting service",
-    "createdAt": "2025-06-15T12:00:00.000Z",
-    "expiresAt": "2025-12-31T23:59:59.999Z",
-    "allowedIps": ["192.168.1.1", "203.0.113.42"],
-    "rateLimit": 1000,
-    "isActive": true
-  }
-}
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/excel-cosmos-dashboard.git
+   cd excel-cosmos-dashboard
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 🔧 Development
+
+### Available Scripts
+
+- `dev` - Start development server
+- `build` - Build for production
+- `preview` - Preview production build
+- `test` - Run tests
+- `test:watch` - Run tests in watch mode
+- `test:coverage` - Generate test coverage report
+- `lint` - Run ESLint
+- `format` - Format code with Prettier
+
+### Tech Stack
+
+- [React 18](https://reactjs.org/) - UI Library
+- [TypeScript](https://www.typescriptlang.org/) - Type checking
+- [Vite](https://vitejs.dev/) - Build tool
+- [Shadcn UI](https://ui.shadcn.com/) - UI Components
+- [MSAL React](https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/lib/msal-react) - Azure AD Authentication
+- [Vitest](https://vitest.dev/) - Testing framework
+- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) - Component testing
+
+## 📦 Deployment
+
+### Building for Production
+
+```bash
+npm run build
+# or
+yarn build
 ```
 
-> ⚠️ **Important**: The API key is only shown once upon creation. Make sure to store it securely.
+This will create a `dist` directory with the production build.
 
-#### GET /api/keys/usage/:keyId
-Get usage statistics for an API key.
+### Azure Static Web Apps
 
-**Authentication**: Azure AD token required
+This project is configured for deployment to Azure Static Web Apps. To deploy:
 
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "keyId": "key_12345",
-    "totalRequests": 423,
-    "lastUsedAt": "2025-06-15T14:30:00.000Z",
-    "usageByEndpoint": [
-      {
-        "endpoint": "/api/data",
-        "count": 400,
-        "lastUsed": "2025-06-15T14:30:00.000Z"
-      },
-      {
-        "endpoint": "/api/upload",
-        "count": 23,
+1. Push your code to a GitHub repository
+2. Create a new Static Web App in the Azure Portal
+3. Connect to your GitHub repository
+4. Configure the build settings:
+   - App location: `/`
+   - Output location: `dist`
+   - App build command: `npm run build`
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
         "lastUsed": "2025-06-14T09:15:00.000Z"
       }
     ],

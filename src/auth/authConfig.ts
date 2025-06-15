@@ -1,9 +1,17 @@
+// Helper to safely get origin in both browser and test environments
+const getOrigin = () => {
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+  return 'http://localhost:3000'; // Default for test environment
+};
+
 export const msalConfig = {
   auth: {
-    clientId: '1a6232b5-e392-4b8d-9a30-23fb8642d9c0', // Your client ID
-    authority: 'https://login.microsoftonline.com/004263f2-caf5-4ca1-8024-41ebc448d7c4', // Your tenant ID
-    redirectUri: window.location.origin,
-    postLogoutRedirectUri: window.location.origin,
+    clientId: process.env.VITE_AZURE_AD_CLIENT_ID || '1a6232b5-e392-4b8d-9a30-23fb8642d9c0',
+    authority: `https://login.microsoftonline.com/${process.env.VITE_AZURE_AD_TENANT_ID || '004263f2-caf5-4ca1-8024-41ebc448d7c4'}`,
+    redirectUri: process.env.VITE_AZURE_AD_REDIRECT_URI || getOrigin(),
+    postLogoutRedirectUri: process.env.VITE_AZURE_AD_REDIRECT_URI || getOrigin(),
     navigateToLoginRequestUrl: true,
   },
   cache: {

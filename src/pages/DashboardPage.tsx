@@ -1,323 +1,204 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../utils/api';
-import {
-  Box,
-  Grid,
-  Typography,
-  Card,
-  CardContent,
-  CardHeader,
-  Avatar,
-  CircularProgress,
-  Button,
-  Paper,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  ListItemAvatar,
-} from '@mui/material';
-import {
-  CloudUpload as UploadIcon,
-  Storage as StorageIcon,
-  History as HistoryIcon,
-  Description as FileIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-} from '@mui/icons-material';
-import { format } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, Upload as UploadIcon, Database as DatabaseIcon, BarChart2 as ChartIcon } from 'lucide-react';
+import { FileListTable } from '@/components/FileListTable';
+import { QueryBuilder } from '@/components/QueryBuilder';
+import { DataChart } from '@/components/DataChart';
+
+interface QueryResult {
+  items: any[];
+  hasMore: boolean;
+  requestCharge?: number;
+}
 
 export const DashboardPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalFiles: 0,
-    totalRecords: 0,
-    lastUpload: null as Date | null,
-  });
-  const [recentActivity, setRecentActivity] = useState<Array<{
-    id: string;
-    action: string;
-    timestamp: Date;
-    status: 'success' | 'warning' | 'error';
-    details: string;
-  }>>([]);
+  const [activeTab, setActiveTab] = useState('files');
+  const [queryResult, setQueryResult] = useState<QueryResult>({ items: [], hasMore: false });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Handle query execution from QueryBuilder
+  const handleExecuteQuery = useCallback(async (query: any) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.post('/api/query', query);
+      if (!response.ok) {
+        throw new Error('Failed to execute query');
+      }
+      
+      const result = await response.json();
+      setQueryResult(result);
+      setActiveTab('results');
+    } catch (err) {
+      console.error('Error executing query:', err);
+      setError(err instanceof Error ? err.message : 'Failed to execute query');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Handle data export
+  const handleExportData = useCallback(async (format: 'csv' | 'json') => {
+    try {
+      const response = await api.get(`/api/export?format=${format}`);
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `data-export-${new Date().toISOString()}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (err) {
+      console.error('Error exporting data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to export data');
+    }
+  }, []);
+
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
-      return;
     }
-
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        // In a real app, you would fetch this data from your API
-        // const statsResponse = await api.get('/api/dashboard/stats');
-        // const activityResponse = await api.get('/api/dashboard/activity');
-        
-        // Mock data for demonstration
-        setTimeout(() => {
-          setStats({
-            totalFiles: 24,
-            totalRecords: 1245,
-            lastUpload: new Date('2025-06-10T14:30:00'),
-          });
-          
-          setRecentActivity([
-            {
-              id: '1',
-              action: 'File Upload',
-              timestamp: new Date('2025-06-10T14:30:00'),
-              status: 'success',
-              details: 'products.xlsx (24 records)'
-            },
-            {
-              id: '2',
-              action: 'Data Validation',
-              timestamp: new Date('2025-06-09T11:15:00'),
-              status: 'warning',
-              details: '3 validation warnings in customers.xlsx'
-            },
-            {
-              id: '3',
-              action: 'Error',
-              timestamp: new Date('2025-06-08T09:45:00'),
-              status: 'error',
-              details: 'Failed to process inventory.xlsx'
-            },
-            {
-              id: '4',
-              action: 'File Upload',
-              timestamp: new Date('2025-06-07T16:20:00'),
-              status: 'success',
-              details: 'suppliers.csv (18 records)'
-            },
-            {
-              id: '5',
-              action: 'Data Update',
-              timestamp: new Date('2025-06-06T10:05:00'),
-              status: 'success',
-              details: 'Updated pricing for 42 products'
-            },
-          ]);
-          
-          setLoading(false);
-        }, 800);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
   }, [isAuthenticated, navigate]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success':
-        return <CheckCircleIcon color="success" />;
-      case 'warning':
-        return <WarningIcon color="warning" />;
-      case 'error':
-        return <ErrorIcon color="error" />;
-      default:
-        return null;
-    }
-  };
-
-  if (loading) {
+  if (!isAuthenticated) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
-
-
   return (
-    <Box>
-      <Box mb={4}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Welcome back, {user?.name?.split(' ')[0] || 'User'}!
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
-          Here's what's happening with your data today.
-        </Typography>
-      </Box>
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Data Explorer</h1>
+        <Button onClick={() => navigate('/upload')}>
+          <UploadIcon className="h-4 w-4 mr-2" />
+          Upload File
+        </Button>
+      </div>
 
-      <Grid container spacing={3}>
-        {/* Stats Cards */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ height: '100%', border: '1px solid #e0e0e0' }}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsTrigger value="files">
+            <DatabaseIcon className="h-4 w-4 mr-2" />
+            Files
+          </TabsTrigger>
+          <TabsTrigger value="query">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+              <path d="m12 20 7-19-7 4-7-4 7 19Z" />
+              <path d="M12 20v-8" />
+            </svg>
+            Query
+          </TabsTrigger>
+          <TabsTrigger value="results" disabled={!queryResult.items.length}>
+            <ChartIcon className="h-4 w-4 mr-2" />
+            Results
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="files" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Uploaded Files</CardTitle>
+            </CardHeader>
             <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                  <FileIcon />
-                </Avatar>
-                <Typography variant="h6" component="div">
-                  Total Files
-                </Typography>
-              </Box>
-              <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
-                {stats.totalFiles}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Files uploaded to the system
-              </Typography>
+              <FileListTable />
             </CardContent>
           </Card>
-        </Grid>
+        </TabsContent>
 
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ height: '100%', border: '1px solid #e0e0e0' }}>
+        <TabsContent value="query" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Query Builder</CardTitle>
+            </CardHeader>
             <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Avatar sx={{ bgcolor: 'success.main', mr: 2 }}>
-                  <StorageIcon />
-                </Avatar>
-                <Typography variant="h6" component="div">
-                  Total Records
-                </Typography>
-              </Box>
-              <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
-                {stats.totalRecords.toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Records processed in total
-              </Typography>
+              <QueryBuilder 
+                onQueryChange={() => {}} 
+                onExecute={handleExecuteQuery} 
+                loading={loading} 
+              />
             </CardContent>
           </Card>
-        </Grid>
+        </TabsContent>
 
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ height: '100%', border: '1px solid #e0e0e0' }}>
+        <TabsContent value="results" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Query Results</CardTitle>
+              <div className="space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleExportData('csv')}
+                  disabled={!queryResult.items.length}
+                >
+                  Export CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleExportData('json')}
+                  disabled={!queryResult.items.length}
+                >
+                  Export JSON
+                </Button>
+              </div>
+            </CardHeader>
             <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Avatar sx={{ bgcolor: 'info.main', mr: 2 }}>
-                  <UploadIcon />
-                </Avatar>
-                <Typography variant="h6" component="div">
-                  Last Upload
-                </Typography>
-              </Box>
-              {stats.lastUpload ? (
-                <>
-                  <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    {format(new Date(stats.lastUpload), 'MMM d, yyyy')}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {format(new Date(stats.lastUpload), 'h:mm a')}
-                  </Typography>
-                </>
+              {error ? (
+                <div className="p-4 bg-red-50 text-red-700 rounded-md">
+                  {error}
+                </div>
+              ) : loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Loading results...</span>
+                </div>
+              ) : queryResult.items.length > 0 ? (
+                <DataChart 
+                  data={queryResult.items} 
+                  loading={loading} 
+                  onExport={handleExportData} 
+                />
               ) : (
-                <Typography variant="body1" color="textSecondary">
-                  No uploads yet
-                </Typography>
+                <div className="text-center py-8 text-muted-foreground">
+                  No results to display. Run a query to see results.
+                </div>
               )}
             </CardContent>
           </Card>
-        </Grid>
+        </TabsContent>
+      </Tabs>
 
-        {/* Recent Activity */}
-        <Grid item xs={12} md={8}>
-          <Card elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
-            <CardHeader
-              title="Recent Activity"
-              action={
-                <Button
-                  color="primary"
-                  size="small"
-                  onClick={() => navigate('/history')}
-                  endIcon={<HistoryIcon />}
-                >
-                  View All
-                </Button>
-              }
-            />
-            <Divider />
-            <List sx={{ p: 0 }}>
-              {recentActivity.map((activity) => (
-                <div key={activity.id}>
-                  <ListItem>
-                    <ListItemIcon>
-                      {getStatusIcon(activity.status)}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Typography variant="subtitle1" component="span">
-                            {activity.action}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {format(activity.timestamp, 'MMM d, h:mm a')}
-                          </Typography>
-                        </Box>
-                      }
-                      secondary={activity.details}
-                      secondaryTypographyProps={{ color: 'textSecondary' }}
-                    />
-                  </ListItem>
-                  <Divider component="li" />
-                </div>
-              ))}
-            </List>
-          </Card>
-        </Grid>
-
-        {/* Quick Actions */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
-            <CardHeader title="Quick Actions" />
-            <Divider />
-            <CardContent>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    startIcon={<UploadIcon />}
-                    onClick={() => navigate('/upload')}
-                    sx={{ justifyContent: 'flex-start', py: 1.5, mb: 1 }}
-                  >
-                    Upload New File
-                  </Button>
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<StorageIcon />}
-                    onClick={() => navigate('/data')}
-                    sx={{ justifyContent: 'flex-start', py: 1.5, mb: 1 }}
-                  >
-                    View All Data
-                  </Button>
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<HistoryIcon />}
-                    onClick={() => navigate('/history')}
-                    sx={{ justifyContent: 'flex-start', py: 1.5 }}
-                  >
-                    View History
-                  </Button>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+      {error && (
+        <div className="fixed bottom-4 right-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md shadow-lg">
+          {error}
+          <button 
+            onClick={() => setError(null)} 
+            className="ml-4 text-red-700 hover:text-red-900"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 
