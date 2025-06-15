@@ -4,11 +4,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
-import { initializeAzureServices } from './config/azure.js';
+import { AzureCosmosDB, initializeAzureServices } from './config/azure.js';
 import uploadRoute from './routes/upload.route.js';
-import errorHandler from './middleware/errorHandler.js';
+import dataRoute from './routes/data.route.js';
+import { createApiKeyRouter } from './routes/apiKey.route.js';
 import { validateToken } from './middleware/auth.js';
+import { requireAuth, requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
+import { logger, LogContext } from './utils/logger.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -23,7 +26,7 @@ const PORT = process.env.PORT || 3000;
 /**
  * Create and configure the Express application
  */
-function createApp(): Express {
+function createApp(azureServices: AzureCosmosDB): Express {
   const app = express();
   
   // Middleware
@@ -41,8 +44,13 @@ function createApp(): Express {
   app.use(authLogger);
   
   // Request logging
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log(`[Request] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    logger.http(`Incoming request: ${req.method} ${req.originalUrl}`, {
+      method: req.method,
+      url: req.originalUrl,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
     next();
   });
   
@@ -51,165 +59,211 @@ function createApp(): Express {
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development'
-    });
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Public routes
+  // Public endpoint example
   app.get('/api/public', (_req: Request, res: Response) => {
     res.json({ message: 'This is a public endpoint' });
   });
+  
+  // Rate limit configuration for API routes
+  const apiRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // limit each IP to 1000 requests per windowMs
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    keyGenerator: (req) => {
+      // Use API key if available, otherwise use IP
+      return req.headers['x-api-key'] as string || req.ip;
+    },
+    handler: (req, res) => {
+      logger.warn(`Rate limit exceeded for ${req.ip}`, {
+        method: req.method,
+        path: req.path,
+        key: req.headers['x-api-key'] ? 'api-key' : 'ip'
+      });
+      res.status(429).json({
+        success: false,
+        error: 'Too many requests, please try again later.'
+      });
+    }
+  });
 
-  // Protected API routes with authentication
-  app.use('/api/upload', validateToken, uploadRoute);
+  // Apply rate limiting to all API routes
+  app.use('/api', apiRateLimit);
+
+  // Authentication middleware
+  const authMiddleware = requireAuthOrApiKey(azureServices);
+
+  // Apply authentication middleware to protected routes
+  app.use('/api/keys', authMiddleware);
+  app.use('/api/upload', authMiddleware);
+  app.use('/api/data', authMiddleware);
+  
+  // Routes
+  app.use('/api/keys', createApiKeyRouter(azureServices));
+  app.use('/api/upload', uploadRoute);
+  app.use('/api/data', dataRoute);
 
   // Example of a protected route with role-based access
   app.get('/api/protected', validateToken, (req: Request, res: Response) => {
     res.json({
       message: 'This is a protected endpoint',
-      user: req.user
+      user: req.user,
     });
   });
 
-  // Serve static files in production
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../../dist')));
-    
-    // Handle SPA routing
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.join(__dirname, '../../dist/index.html'));
+  // Error handling middleware
+  const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+    const logContext: LogContext = {
+      requestId: req.id,
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: 500,
+      ip: req.ip,
+      userId: (req as AuthenticatedRequest).user?.oid || 'anonymous',
+      error: err.message,
+      stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
+    };
+
+    logger.error('Unhandled error', logContext);
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      requestId: req.id
     });
-  }
+  };
+
+  app.use(errorHandler);
 
   // 404 handler
-  app.use((req: Request, res: Response) => {
+  app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
       error: 'Not Found',
-      message: `Cannot ${req.method} ${req.path}`
+      message: 'The requested resource was not found.',
     });
   });
 
-  // Error handling middleware (must be last)
-  app.use(errorHandler);
-
   return app;
-};
-
-/**
- * Start the Express server
- */
-async function startServer(port: string | number = process.env.PORT || 3000): Promise<Server> {
-  const app = createApp();
-  
-  try {
-    // Initialize Azure services
-    await initializeAzureServices();
-    
-    // Start the server
-    const server = app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-    
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (err: Error) => {
-      console.error('Unhandled Rejection:', err);
-      if (server) {
-        server.close(() => process.exit(1));
-      } else {
-        process.exit(1);
-      }
-    });
-    
-    // Handle SIGTERM for graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM received. Shutting down gracefully');
-      if (server) {
-        server.close(() => {
-          console.log('Process terminated');
-        });
-      }
-    });
-    
-    return server;
-    
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
 }
 
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
-// Create app instance
-const app = createApp();
+// App and server instances
+let app: Express;
 let server: Server | null = null;
 
-// Handle process termination
-const shutdown = async (signal: string) => {
-  console.log(`${signal} received: shutting down server...`);
-  
-  if (server) {
-    server.close((err) => {
-      if (err) {
-        console.error('Error during server shutdown:', err);
-        process.exit(1);
-      }
-      console.log('Server has been shut down');
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
-};
-
-// Setup signal handlers
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-// Initialize and start the server
-const start = async () => {
+/**
+ * Start the Express server
+ */
+async function startServer(port: number | string = PORT): Promise<Server> {
   try {
     // Initialize Azure services
-    await initializeAzureServices();
+    const cosmosDb = new AzureCosmosDB();
+    const blobStorage = new AzureBlobStorage();
+
+    // Initialize repositories
+    const dataRepository = new DataRepository(cosmosDb);
+    const uploadRepository = new UploadRepository({ cosmosDb, blobStorage });
+    const apiKeyRepository = new ApiKeyRepository(cosmosDb);
+    const apiKeyUsageRepository = new ApiKeyUsageRepository(cosmosDb);
+
+    // Create Express app with initialized services
+    app = createApp(cosmosDb);
     
-    // Start the server
-    server = app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    // Start the HTTP server
+    return new Promise((resolve, reject) => {
+      const httpServer = app.listen(port, () => {
+        console.log(`🚀 Server ready at http://localhost:${port}`);
+        resolve(httpServer);
+      });
+
+      httpServer.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.syscall !== 'listen') {
+          reject(error);
+          return;
+        }
+
+        // Handle specific listen errors with friendly messages
+        switch (error.code) {
+          case 'EACCES':
+            console.error(`Port ${port} requires elevated privileges`);
+            process.exit(1);
+            break;
+          case 'EADDRINUSE':
+            console.error(`Port ${port} is already in use`);
+            process.exit(1);
+            break;
+          default:
+            reject(error);
+        }
+      });
     });
-    
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason: unknown) => {
-      console.error('Unhandled Rejection at:', reason);
-      if (server) {
-        server.close(() => process.exit(1));
-      } else {
-        process.exit(1);
-      }
-    });
-    
-    return server;
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gracefully shut down the server
+ */
+async function shutdown(signal: string): Promise<void> {
+  console.log(`\n${new Date().toISOString()} Received ${signal}. Shutting down gracefully...`);
+  
+  try {
+    if (server) {
+      await new Promise<void>((resolve, reject) => {
+        server?.close((err) => {
+          if (err) {
+            console.error('Error closing server:', err);
+            reject(err);
+          } else {
+            console.log('HTTP server closed');
+            resolve();
+          }
+        });
+      });
+    }
+    
+    console.log('Shutdown complete');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
     process.exit(1);
   }
-};
+}
+
+// Setup signal handlers for graceful shutdown
+process.on('SIGTERM', () => shutdown('SIGTERM').catch(console.error));
+process.on('SIGINT', () => shutdown('SIGINT').catch(console.error));
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Consider logging to an external service here
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Consider logging to an external service here
+  process.exit(1);
+});
 
 // Start the server if this file is run directly
 if (isMainModule) {
-  start().catch(console.error);
+  startServer()
+    .then((srv) => {
+      server = srv;
+    })
+    .catch((error) => {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    });
 }
 
-// Export the app and start function
-export { createApp, start };
-
-export default {
-  createApp,
-  start,
-};
+export { app, startServer, shutdown };

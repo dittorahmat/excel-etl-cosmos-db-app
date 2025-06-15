@@ -1,7 +1,40 @@
 import { ContainerClient } from '@azure/storage-blob';
 import { Container } from '@azure/cosmos';
+import { vi } from 'vitest';
+import { Request, Response, NextFunction } from 'express';
+import { randomBytes, createHash, timingSafeEqual } from 'crypto';
 
-export const mockFile: Express.Multer.File = {
+// Mock crypto functions
+vi.mock('crypto', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    randomBytes: vi.fn().mockImplementation((size) => {
+      return Buffer.alloc(size, 'a'); // Return a buffer of 'a's for testing
+    }),
+    createHash: vi.fn().mockImplementation(() => ({
+      update: vi.fn().mockReturnThis(),
+      digest: vi.fn().mockReturnValue('mocked-hash-value'),
+    })),
+    timingSafeEqual: vi.fn().mockImplementation((a, b) => {
+      return a.length === b.length && a.every((val: number, i: number) => val === b[i]);
+    }),
+  };
+});
+
+export interface MockFile extends Express.Multer.File {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+  stream?: any;
+  destination?: string;
+  filename?: string;
+  path?: string;
+  [key: string]: any;
+}
+
+export const mockFile: MockFile = {
   fieldname: 'file',
   originalname: 'test.xlsx',
   encoding: '7bit',
@@ -11,41 +44,57 @@ export const mockFile: Express.Multer.File = {
   destination: '',
   filename: 'test.xlsx',
   path: '',
-} as Express.Multer.File;
+  stream: null,
+};
 
 export const mockContainerClient = {
-  createIfNotExists: jest.fn().mockResolvedValue({}),
-  getBlockBlobClient: jest.fn().mockReturnValue({
-    upload: jest.fn().mockResolvedValue({}),
-    deleteIfExists: jest.fn().mockResolvedValue({}),
+  createIfNotExists: vi.fn().mockResolvedValue({}),
+  getBlockBlobClient: vi.fn().mockReturnValue({
+    upload: vi.fn().mockResolvedValue({}),
+    deleteIfExists: vi.fn().mockResolvedValue({}),
     url: 'https://test.blob.core.windows.net/container/test.xlsx',
   }),
 } as unknown as ContainerClient;
 
 export const mockCosmosContainer = {
   items: {
-    create: jest.fn().mockResolvedValue({ resource: { id: 'test-id' } }),
+    create: vi.fn().mockResolvedValue({ resource: { id: 'test-id' } }),
+    query: vi.fn().mockReturnThis(),
+    fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
   },
 } as unknown as Container;
 
-export const mockRequest = (body: any = {}, file?: Express.Multer.File) => {
-  const req: any = {
+export interface MockRequest extends Partial<Request> {
+  file?: Express.Multer.File;
+  user?: { oid: string; name?: string; email?: string };
+}
+
+export const mockRequest = (body: any = {}, file?: Express.Multer.File): MockRequest => {
+  const req: Partial<Request> = {
     body,
     file,
     headers: {},
     params: {},
     query: {},
-    get: jest.fn(),
+    get: vi.fn() as any, // Type assertion to handle the overloaded get method
+    user: { oid: 'test-user-id' },
   };
-  return req as Express.Request;
+  return req as MockRequest;
 };
 
-export const mockResponse = () => {
-  const res: any = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  res.send = jest.fn().mockReturnValue(res);
-  return res as unknown as Express.Response;
+export interface MockResponse extends Partial<Response> {
+  status: (code: number) => MockResponse;
+  json: (body: any) => MockResponse;
+  send: (body: any) => MockResponse;
+  [key: string]: any;
+}
+
+export const mockResponse = (): MockResponse => {
+  const res: Partial<MockResponse> = {};
+  res.status = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
+  res.send = vi.fn().mockReturnValue(res);
+  return res as MockResponse;
 };
 
-export const mockNext = jest.fn() as jest.MockedFunction<Express.NextFunction>;
+export const mockNext = vi.fn<Parameters<NextFunction>, ReturnType<NextFunction>>();

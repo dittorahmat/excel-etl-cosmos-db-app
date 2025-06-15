@@ -40,29 +40,87 @@ export type CosmosRecord = Record<string, unknown> & {
   id: string;
 };
 
+/**
+ * Interface for interacting with Azure Cosmos DB
+ * Provides a type-safe wrapper around the Cosmos DB client
+ */
 export interface AzureCosmosDB {
+  /** The underlying CosmosClient instance */
   cosmosClient: CosmosClient;
+  
+  /** The Cosmos DB database instance */
   database: any;
-  container: any;
   
-  // Upsert a record with automatic ID generation if not provided
-  upsertRecord: <T extends CosmosRecord>(record: T) => Promise<T>;
+  /**
+   * Gets a reference to a Cosmos DB container
+   * @template T - The type of records stored in the container
+   * @param {string} containerName - The name of the container
+   * @param {string} partitionKey - The partition key path (e.g., '/id' or '/userId')
+   * @returns {Promise<Container>} A promise that resolves to the container reference
+   */
+  container: <T extends CosmosRecord>(
+    containerName: string, 
+    partitionKey: string
+  ) => Promise<Container>;
   
-  // Get a record by ID
-  getRecord: <T extends CosmosRecord>(id: string) => Promise<T | undefined>;
+  /**
+   * Upserts a record into the specified container
+   * @template T - The type of the record
+   * @param {T} record - The record to upsert
+   * @param {string} [containerName] - Optional container name (defaults to the one from config)
+   * @returns {Promise<T>} A promise that resolves to the upserted record with generated ID
+   */
+  upsertRecord: <T extends CosmosRecord>(
+    record: T, 
+    containerName?: string
+  ) => Promise<T>;
   
-  // Query records with a SQL-like query
-  queryRecords: <T extends CosmosRecord>(
+  /**
+   * Queries records from the specified container
+   * @template T - The type of records to return
+   * @param {string} query - The SQL query string
+   * @param {{ name: string; value: any }[]} [parameters] - Optional query parameters
+   * @param {string} [containerName] - Optional container name (defaults to the one from config)
+   * @returns {Promise<T[]>} A promise that resolves to an array of matching records
+   */
+  query: <T extends CosmosRecord>(
     query: string, 
-    parameters?: any[]
+    parameters?: { name: string; value: any }[],
+    containerName?: string
   ) => Promise<T[]>;
+  
+  /**
+   * Gets a record by its ID and partition key
+   * @template T - The expected return type
+   * @param {string} id - The ID of the record to retrieve
+   * @param {string} partitionKey - The partition key value
+   * @param {string} [containerName] - Optional container name (defaults to the one from config)
+   * @returns {Promise<T | undefined>} A promise that resolves to the found record or undefined
+   */
+  getById: <T extends CosmosRecord>(
+    id: string, 
+    partitionKey: string, 
+    containerName?: string
+  ) => Promise<T | undefined>;
+  
+  /**
+   * Deletes a record by its ID and partition key
+   * @param {string} id - The ID of the record to delete
+   * @param {string} partitionKey - The partition key value
+   * @param {string} [containerName] - Optional container name (defaults to the one from config)
+   * @returns {Promise<void>} A promise that resolves when the record is deleted
+   */
+  deleteRecord: (
+    id: string, 
+    partitionKey: string, 
+    containerName?: string
+  ) => Promise<void>;
 }
 
-// Service instances
-let blobStorageInstance: AzureBlobStorage | null = null;
 let cosmosDbInstance: AzureCosmosDB | null = null;
 
 // Azure Blob Storage clients
+let blobStorageInstance: AzureBlobStorage | null = null;
 let blobServiceClient: BlobServiceClient | any;
 let containerClient: ContainerClient | any;
 let containerName: string;
@@ -78,41 +136,28 @@ const mockCosmosData = new Map<string, any>();
 const initializeMockCosmosDB = () => {
   console.log('Initializing mock Cosmos DB client');
   
+  const mockContainer = {
+    items: {
+      query: () => ({
+        fetchAll: async () => ({
+          resources: [],
+          hasMoreResults: false
+        })
+      }),
+      upsert: async (item: any) => ({
+        resource: { ...item, id: item.id || uuidv4() }
+      })
+    },
+    item: (id: string) => ({
+      read: async () => ({
+        resource: { id }
+      })
+    })
+  };
+
   return {
     database: (id: string) => ({
-      container: (containerId: string) => ({
-        items: {
-          query: async (querySpec: any) => {
-            // Mock query implementation
-            return { resources: Array.from(mockCosmosData.values()) };
-          },
-          create: async (data: any) => {
-            const id = data.id || uuidv4();
-            const item = { ...data, id };
-            mockCosmosData.set(id, item);
-            return { resource: item };
-          },
-          upsert: async (data: any) => {
-            const id = data.id || uuidv4();
-            const item = { ...data, id };
-            mockCosmosData.set(id, item);
-            return { resource: item };
-          },
-          item: (id: string) => ({
-            read: async () => ({
-              resource: mockCosmosData.get(id) || null
-            }),
-            replace: async (data: any) => {
-              mockCosmosData.set(id, data);
-              return { resource: data };
-            },
-            delete: async () => {
-              mockCosmosData.delete(id);
-              return { statusCode: 204 };
-            }
-          })
-        }
-      })
+      container: (containerId: string) => mockContainer
     })
   };
 };
@@ -281,21 +326,53 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
     // Create a mock implementation that matches the AzureCosmosDB interface
     const mockDb: Record<string, CosmosRecord> = {};
     
-    const mockItems = {
-      upsert: async <T extends CosmosRecord>(record: T) => {
-        const id = record.id || 'test-id';
-        mockDb[id] = { ...record, id };
-        return { resource: mockDb[id] };
-      },
-      query: () => ({
-        fetchAll: async () => ({
-          resources: Object.values(mockDb)
+    const mockContainer = {
+      items: {
+        upsert: async <T extends CosmosRecord>(record: T) => {
+          const id = record.id || 'test-id';
+          mockDb[id] = { ...record, id };
+          return { resource: mockDb[id] };
+        },
+        query: () => ({
+          fetchAll: async () => ({
+            resources: Object.values(mockDb)
+          })
         })
-      }),
-      read: async () => ({
-        resource: { id: 'test-id', name: 'test-record' }
+      },
+      item: (id: string) => ({
+        read: async () => ({
+          resource: mockDb[id]
+        }),
+        delete: async () => {
+          delete mockDb[id];
+          return { statusCode: 204 };
+        }
       })
     };
+
+    const mockCosmosDb: AzureCosmosDB = {
+      cosmosClient: {} as CosmosClient,
+      database: {},
+      container: async () => mockContainer as unknown as Container,
+      upsertRecord: async <T extends CosmosRecord>(record: T) => {
+        const id = record.id || 'test-id';
+        mockDb[id] = { ...record, id };
+        return mockDb[id] as T;
+      },
+      query: async <T extends CosmosRecord>() => {
+        return Object.values(mockDb) as T[];
+      },
+      getById: async <T extends CosmosRecord>(id: string) => {
+        return mockDb[id] as T | undefined;
+      },
+      deleteRecord: async (id: string) => {
+        delete mockDb[id];
+      }
+    };
+
+    cosmosDbInstance = mockCosmosDb;
+    return mockCosmosDb;
+  }
 
     const mockContainer = {
       items: mockItems,
@@ -310,21 +387,43 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
     // Create the mock AzureCosmosDB instance
     const mockCosmosDb: AzureCosmosDB = {
       cosmosClient: {} as unknown as CosmosClient,
-      database: {
-        container: () => mockContainer,
-      } as unknown as any,
-      container: mockContainer,
+      database: {} as any, // Not used in mock implementation
+      
+      // Container method implementation
+      async container<T extends CosmosRecord>(
+        containerName: string,
+        partitionKey: string
+      ): Promise<Container> {
+        return mockContainer;
+      },
       
       // Implement the required methods with proper typing
-      async upsertRecord<T extends CosmosRecord>(record: T): Promise<T> {
+      async upsertRecord<T extends CosmosRecord>(
+        record: T,
+        containerName: string = 'default'
+      ): Promise<T> {
         const { resource } = await mockItems.upsert<T>(record);
         return resource as T;
       },
       
-      async getRecord<T extends CosmosRecord>(id: string): Promise<T | undefined> {
+      async query<T extends CosmosRecord>(
+        query: string,
+        parameters: { name: string; value: any }[] = [],
+        containerName: string = 'default'
+      ): Promise<T[]> {
+        // For mock implementation, we'll just return all items
+        const queryResult = await mockItems.query('SELECT * FROM c').fetchAll();
+        return queryResult.resources as T[];
+      },
+      
+      async getById<T extends CosmosRecord>(
+        id: string,
+        partitionKey: string,
+        containerName: string = 'default'
+      ): Promise<T | undefined> {
         try {
-          const { resource } = await mockContainer.item(id, id).read<CosmosRecord>();
-          return resource as T;
+          const { resource } = await mockContainer.item(id, partitionKey).read<T>();
+          return resource;
         } catch (error) {
           if ((error as { code?: number })?.code === 404) {
             return undefined;
@@ -333,9 +432,18 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
         }
       },
       
-      async queryRecords<T extends CosmosRecord>(query: string, parameters: any[] = []): Promise<T[]> {
-        const queryResult = await mockItems.query().fetchAll();
-        return queryResult.resources as T[];
+      async deleteRecord(
+        id: string,
+        partitionKey: string,
+        containerName: string = 'default'
+      ): Promise<void> {
+        try {
+          await mockContainer.item(id, partitionKey).delete();
+        } catch (error) {
+          if ((error as { code?: number })?.code !== 404) {
+            throw error;
+          }
+        }
       }
     };
 
@@ -376,9 +484,33 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
     }
 
     // Define the database operation methods
-    const dbMethods = {
+    const dbMethods: Omit<AzureCosmosDB, 'cosmosClient' | 'database'> = {
+      // Get a container with proper typing
+      container: async <T extends CosmosRecord>(
+        containerName: string,
+        partitionKey: string
+      ): Promise<Container> => {
+        if (containerName !== AZURE_CONFIG.cosmos.containerName) {
+          const containerResponse = await database.containers.createIfNotExists({
+            id: containerName,
+            partitionKey: {
+              paths: [partitionKey]
+            }
+          });
+          return containerResponse.container;
+        }
+        return container;
+      },
+      
       // Upsert a record with automatic ID generation if not provided
-      async upsertRecord<T extends CosmosRecord>(record: T): Promise<T> {
+      async upsertRecord<T extends CosmosRecord>(
+        record: T,
+        containerName: string = AZURE_CONFIG.cosmos.containerName
+      ): Promise<T> {
+        const targetContainer = containerName === AZURE_CONFIG.cosmos.containerName 
+          ? container 
+          : database.container(containerName);
+          
         // Ensure the record has an ID
         const recordWithId: T = {
           ...record,
@@ -390,7 +522,7 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
         };
         
         // Upsert the record
-        const { resource } = await container.items.upsert(recordWithId);
+        const { resource } = await targetContainer.items.upsert<T>(recordWithId);
         
         if (!resource) {
           throw new Error('Failed to upsert record');
@@ -401,11 +533,40 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
         return result as T;
       },
 
+      // Query records with a SQL-like query
+      async query<T extends CosmosRecord>(
+        query: string, 
+        parameters: { name: string; value: any }[] = [],
+        containerName: string = AZURE_CONFIG.cosmos.containerName
+      ): Promise<T[]> {
+        const targetContainer = containerName === AZURE_CONFIG.cosmos.containerName 
+          ? container 
+          : database.container(containerName);
+          
+        // Execute the query and handle the response
+        const response = await targetContainer.items.query<CosmosRecord>({
+          query,
+          parameters
+        }).fetchAll();
+        
+        // Strip Cosmos DB internal fields before returning
+        return response.resources.map(({ _self, _etag, _ts, _rid, _attachments, ...rest }) => rest as T);
+      },
+      
       // Get a record by ID
-      async getRecord<T extends CosmosRecord>(id: string): Promise<T | undefined> {
+      async getById<T extends CosmosRecord>(
+        id: string,
+        partitionKey: string,
+        containerName: string = AZURE_CONFIG.cosmos.containerName
+      ): Promise<T | undefined> {
+        const targetContainer = containerName === AZURE_CONFIG.cosmos.containerName 
+          ? container 
+          : database.container(containerName);
+          
         try {
-          const { resource } = await container.item(id, id).read<CosmosRecord>();
+          const { resource } = await targetContainer.item(id, partitionKey).read<T>();
           if (!resource) return undefined;
+          
           // Strip Cosmos DB internal fields before returning
           const { _self, _etag, _ts, _rid, _attachments, ...result } = resource;
           return result as T;
@@ -416,30 +577,39 @@ export const initializeCosmosDB = async (): Promise<AzureCosmosDB> => {
           throw error;
         }
       },
-
-      // Query records with a SQL-like query
-      async queryRecords<T extends CosmosRecord>(query: string, parameters: any[] = []): Promise<T[]> {
-        // Execute the query and handle the response
-        const response = await container.items.query<CosmosRecord>({
-          query,
-          parameters: parameters.map((value, index) => ({
-            name: `@param${index}`,
-            value
-          }))
-        }).fetchAll();
-        
-        // Strip Cosmos DB internal fields before returning
-        return response.resources.map(({ _self, _etag, _ts, _rid, _attachments, ...rest }) => rest as T);
+      
+      // Delete a record by ID
+      async deleteRecord(
+        id: string,
+        partitionKey: string,
+        containerName: string = AZURE_CONFIG.cosmos.containerName
+      ): Promise<void> {
+        const targetContainer = containerName === AZURE_CONFIG.cosmos.containerName 
+          ? container 
+          : database.container(containerName);
+          
+        try {
+          await targetContainer.item(id, partitionKey).delete();
+        } catch (error: unknown) {
+          if ((error as { code?: number })?.code !== 404) {
+            throw error;
+          }
+        }
       }
     };
 
-    // Return the complete AzureCosmosDB instance
-    return {
+    // Create the AzureCosmosDB instance with proper typing
+    const cosmosDb: AzureCosmosDB = {
       cosmosClient: client,
       database,
-      container,
-      ...dbMethods
+      container: dbMethods.container,
+      upsertRecord: dbMethods.upsertRecord,
+      query: dbMethods.query,
+      getById: dbMethods.getById,
+      deleteRecord: dbMethods.deleteRecord
     };
+    
+    return cosmosDb;
   };
 
   try {
@@ -499,29 +669,52 @@ export const initializeAzureServices = async (): Promise<{
       cosmosContainer = cosmosClient.database?.(databaseId)?.container?.(containerId);
       console.log('Using mock Cosmos DB');
       
-      // Create mock Cosmos DB instance
+      // Create mock Cosmos DB instance that matches the AzureCosmosDB interface
+      const mockItems = new Map<string, any>();
+      
       cosmosDb = {
-        cosmosClient: cosmosClient || {},
-        database: cosmosClient?.database?.(databaseId) || {},
-        container: cosmosContainer || {},
+        cosmosClient: {} as CosmosClient,
+        database: {},
         
-        upsertRecord: async <T extends CosmosRecord>(record: T): Promise<T> => {
+        container: async <T extends CosmosRecord>(
+          containerName: string,
+          partitionKey: string
+        ): Promise<Container> => {
+          return {} as Container;
+        },
+        
+        upsertRecord: async <T extends CosmosRecord>(
+          record: T,
+          containerName?: string
+        ): Promise<T> => {
           const id = record.id || uuidv4();
           const item = { ...record, id };
-          mockCosmosData.set(id, item);
+          mockItems.set(id, item);
           return item;
         },
         
-        getRecord: async <T extends CosmosRecord>(id: string): Promise<T | undefined> => {
-          return mockCosmosData.get(id) as T | undefined;
+        query: async <T extends CosmosRecord>(
+          query: string,
+          parameters: { name: string; value: any }[] = [],
+          containerName?: string
+        ): Promise<T[]> => {
+          return Array.from(mockItems.values()) as T[];
         },
         
-        queryRecords: async <T extends CosmosRecord>(
-          query: string, 
-          parameters: any[] = []
-        ): Promise<T[]> => {
-          // Simple mock implementation - in a real app, you'd parse the query
-          return Array.from(mockCosmosData.values()) as T[];
+        getById: async <T extends CosmosRecord>(
+          id: string,
+          partitionKey: string,
+          containerName?: string
+        ): Promise<T | undefined> => {
+          return mockItems.get(id) as T | undefined;
+        },
+        
+        deleteRecord: async (
+          id: string,
+          partitionKey: string,
+          containerName?: string
+        ): Promise<void> => {
+          mockItems.delete(id);
         }
       };
     } else {

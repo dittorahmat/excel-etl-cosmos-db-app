@@ -4,11 +4,18 @@ import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
 import { initializeAzureServices, type CosmosRecord } from '../config/azure.js';
 import type { ExcelRecord, UploadResponse } from '../types/models.js';
+import { authenticateToken } from '../middleware/auth.js';
 
+// Extend Express Request type to include our custom properties
 declare global {
   namespace Express {
     interface Request {
       file?: Express.Multer.File;
+      user?: {
+        oid: string;      // Azure AD user's object ID
+        name?: string;    // User's display name
+        email?: string;   // User's email
+      };
     }
   }
 }
@@ -25,44 +32,106 @@ const fileFilter = (
   cb: FileFilterCallback
 ) => {
   const allowedMimeTypes = [
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'application/vnd.ms-excel', // .xls
+    'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
     'text/csv',
+    'application/csv',
+    'text/x-csv',
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only Excel and CSV files are allowed.'));
+    const error = new Error(
+      'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.'
+    );
+    error.name = 'FileTypeError';
+    cb(error);
   }
 };
 
 // Configure multer upload
+const MAX_FILE_SIZE_MB = 10;
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: parseInt(process.env.FILE_SIZE_LIMIT || '10485760'), // 10MB default
+    fileSize: MAX_FILE_SIZE_MB * 1024 * 1024, // 10MB default
+    files: 1, // Limit to single file upload
   },
 });
 
-// Process Excel file and upload to Cosmos DB
+/**
+ * Process Excel file and upload to Cosmos DB
+ * @param fileBuffer - The file buffer containing Excel data
+ * @param fileName - Original file name
+ * @param containerName - Azure Blob Storage container name
+ * @param userId - Azure AD user ID (oid) who uploaded the file
+ * @returns Object containing processing results
+ */
 const processExcelFile = async (
   fileBuffer: Buffer,
   fileName: string,
-  containerName: string
-): Promise<{ success: boolean; count: number; error?: string; data?: any[] }> => {
+  containerName: string,
+  userId: string
+): Promise<{ 
+  success: boolean; 
+  count: number; 
+  error?: string; 
+  data?: any[];
+  headers?: string[];
+  rowCount?: number;
+  columnCount?: number;
+}> => {
   try {
-    // Parse the Excel file
-    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    // Parse the Excel file with error handling for invalid formats
+    let workbook;
+    try {
+      workbook = XLSX.read(fileBuffer, { 
+        type: 'buffer',
+        cellDates: true, // Parse dates properly
+        dateNF: 'yyyy-mm-dd', // Format dates consistently
+      });
+    } catch (error) {
+      console.error('Error parsing Excel file:', error);
+      return { 
+        success: false, 
+        count: 0, 
+        error: 'Failed to parse Excel file. The file may be corrupted or in an unsupported format.' 
+      };
+    }
+
+    // Get the first worksheet
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     
-    // Convert to JSON
-    const data = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+    // Get headers from the first row
+    const headers: string[] = [];
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    
+    // Extract column headers (first row)
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = { c: C, r: range.s.r };
+      const cellRef = XLSX.utils.encode_cell(cellAddress);
+      const cell = worksheet[cellRef];
+      headers[C] = cell ? String(cell.v).trim() : `Column_${C + 1}`;
+    }
+    
+    // Convert to JSON with headers
+    const data = XLSX.utils.sheet_to_json(worksheet, { 
+      raw: true,
+      dateNF: 'yyyy-mm-dd', // Consistent date formatting
+      defval: '', // Default empty string for empty cells
+      blankrows: false, // Skip empty rows
+    });
     
     if (!data || data.length === 0) {
-      return { success: false, count: 0, error: 'No data found in the Excel file' };
+      return { 
+        success: false, 
+        count: 0, 
+        error: 'No data found in the Excel file. The file may be empty or contain only headers.' 
+      };
     }
     
     // Get Azure services
@@ -72,13 +141,39 @@ const processExcelFile = async (
     const results = [];
     for (const record of data as Record<string, any>[]) {
       try {
-        // Add metadata to the record
+        // Add metadata and ensure all fields are properly typed
         const recordWithMetadata: CosmosRecord & Record<string, any> = {
-          ...record,
+          // Preserve all original data
+          ...Object.entries(record).reduce((acc, [key, value]) => {
+            // Convert any nested objects/arrays to strings to avoid Cosmos DB issues
+            if (value !== null && typeof value === 'object') {
+              acc[key] = JSON.stringify(value);
+            } else if (value instanceof Date) {
+              acc[key] = value.toISOString();
+            } else {
+              acc[key] = value;
+            }
+            return acc;
+          }, {} as Record<string, any>),
+          
+          // Add system metadata
           id: uuidv4(),
+          _partitionKey: userId, // Use user ID as partition key for better distribution
+          userId,
           fileName,
           containerName,
-          uploadedAt: new Date().toISOString(),
+          uploadDate: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+          documentType: 'excelRecord', // For easier querying
+          
+          // Add metadata for easier querying
+          metadata: {
+            fileName,
+            uploadDate: new Date().toISOString(),
+            rowCount: data.length,
+            columnCount: headers.length,
+            headers,
+          }
         };
         
         // Upload to Cosmos DB
@@ -105,9 +200,44 @@ const processExcelFile = async (
   }
 };
 
-// Upload file endpoint
+/**
+ * @swagger
+ * /api/upload:
+ *   post:
+ *     summary: Upload an Excel file for processing
+ *     description: Uploads an Excel file, parses its contents, and stores both the raw file and parsed data.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: The Excel file to upload (.xlsx, .xls, .csv)
+ *     responses:
+ *       200:
+ *         description: File processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadResponse'
+ *       400:
+ *         description: Bad request (invalid file type, empty file, etc.)
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
+ *       413:
+ *         description: File too large (max 10MB)
+ *       500:
+ *         description: Internal server error
+ */
 router.post(
   '/',
+  authenticateToken, // Require valid Azure AD token
   upload.single('file'),
   async (req: Request, res: Response<UploadResponse>, next: NextFunction) => {
     try {
@@ -119,63 +249,148 @@ router.post(
         });
       }
 
-      // Get the Azure services
-      const { blobStorage, cosmosDb } = await initializeAzureServices();
-      
-      // Upload file to blob storage
-      const uploadResult = await blobStorage.uploadFile(
-        process.env.AZURE_STORAGE_CONTAINER || 'excel-uploads',
-        req.file
-      );
-      
-      const blobUrl = uploadResult.url;
-
-      // Process the uploaded file
-      const result = await processExcelFile(
-        req.file.buffer,
-        req.file.originalname,
-        process.env.COSMOS_DB_CONTAINER || 'excel-uploads'
-      );
-
-      if (!result.success) {
-        return res.status(400).json({
+      if (!req.user || !req.user.oid) {
+        return res.status(401).json({
           success: false,
-          message: result.error || 'Failed to process file',
-          error: result.error,
+          message: 'Authentication required',
+          error: 'No user information found in request',
         });
       }
 
-      // Update the blob URL in the records if we have results
-      if (result.data && result.data.length > 0) {
-        for (const record of result.data) {
-          try {
-            await cosmosDb.upsertRecord({
-              ...record,
-              blobUrl,
-            });
-          } catch (error) {
-            console.error('Error updating record with blob URL:', error);
-            // Continue with next record even if one fails
-          }
+      const userId = req.user.oid;
+      const containerName = process.env.AZURE_STORAGE_CONTAINER || 'excel-uploads';
+      
+      // Get the Azure services
+      let blobStorage, cosmosDb;
+      try {
+        const services = await initializeAzureServices();
+        blobStorage = services.blobStorage;
+        cosmosDb = services.cosmosDb;
+      } catch (error) {
+        console.error('Failed to initialize Azure services:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to initialize storage services',
+          error: 'Service initialization error',
+        });
+      }
+      
+      // Upload file to blob storage with retry logic
+      let uploadResult;
+      try {
+        uploadResult = await blobStorage.uploadFile(containerName, req.file);
+      } catch (error) {
+        console.error('Error uploading to blob storage:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload file to storage',
+          error: 'Storage upload error',
+        });
+      }
+      
+      const blobUrl = uploadResult.url;
+
+      // Process the uploaded file with user context
+      const result = await processExcelFile(
+        req.file.buffer,
+        req.file.originalname,
+        containerName,
+        userId
+      );
+      
+      // Handle processing errors
+      if (!result.success) {
+        // Attempt to clean up the uploaded blob if processing failed
+        try {
+          await blobStorage.deleteFile(containerName, uploadResult.name);
+        } catch (cleanupError) {
+          console.error('Error cleaning up blob after processing failure:', cleanupError);
         }
+        
+        return res.status(400).json({
+          success: false,
+          message: result.error || 'Failed to process file',
+          error: result.error || 'File processing error',
+        });
       }
 
-      res.status(200).json({
+
+
+      // Update records with blob URL and other metadata
+      if (result.data && result.data.length > 0) {
+        const updatePromises = result.data.map(record => {
+          return cosmosDb.upsertRecord({
+            ...record,
+            blobUrl,
+            lastModified: new Date().toISOString(),
+            blobName: uploadResult.name,
+            blobContainer: containerName,
+          }).catch(error => {
+            console.error('Error updating record with blob URL:', error);
+            return null; // Don't fail the entire batch for one record
+          });
+        });
+        
+        // Wait for all updates to complete
+        await Promise.all(updatePromises);
+      }
+
+      // Prepare response with detailed metadata
+      const responseData = {
         success: true,
         message: 'File processed successfully',
         data: {
           fileId: result.data?.[0]?.id || '',
           fileName: req.file.originalname,
-          sheetName: result.data?.[0]?.sheetName || 'Sheet1',
-          rowCount: result.data?.[0]?.rowCount || 0,
-          columnCount: result.data?.[0]?.columnCount || 0,
-          uploadDate: result.data?.[0]?.uploadDate || new Date().toISOString(),
+          sheetName: 'Sheet1', // Default or extract from result if available
+          rowCount: result.rowCount || result.data?.length || 0,
+          columnCount: result.columnCount || result.headers?.length || 0,
+          uploadDate: new Date().toISOString(),
           blobUrl,
+          headers: result.headers || [],
+          recordCount: result.count || 0,
+          processedAt: new Date().toISOString(),
         },
-      });
+      };
+      
+      res.status(200).json(responseData);
     } catch (error) {
       console.error('Error in upload route:', error);
-      next(error);
+      
+      // More specific error handling
+      if (error.name === 'MulterError') {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            success: false,
+            message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`,
+            error: 'FILE_TOO_LARGE',
+          });
+        }
+        if (error.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({
+            success: false,
+            message: 'Only one file can be uploaded at a time',
+            error: 'TOO_MANY_FILES',
+          });
+        }
+      }
+      
+      if (error.name === 'FileTypeError') {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          error: 'INVALID_FILE_TYPE',
+        });
+      }
+      
+      // Default error response
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process upload',
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      });
     }
   }
 );

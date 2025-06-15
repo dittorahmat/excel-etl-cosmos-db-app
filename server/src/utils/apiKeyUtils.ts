@@ -1,0 +1,76 @@
+import { randomBytes, createHash, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
+
+const randomBytesAsync = promisify(randomBytes);
+
+/**
+ * Generate a cryptographically secure random API key
+ * @param length Length of the API key in bytes (before base64 encoding)
+ * @returns Promise that resolves to the generated API key
+ */
+export async function generateApiKey(length = 32): Promise<string> {
+  const buffer = await randomBytesAsync(length);
+  return buffer.toString('base64')
+    .replace(/\+/g, '-')  // Replace + with -
+    .replace(/\//g, '_')  // Replace / with _
+    .replace(/=+$/, '');  // Remove trailing =
+}
+
+/**
+ * Hash an API key for secure storage
+ * @param key The API key to hash
+ * @returns Hashed key (SHA-256)
+ */
+export function hashApiKey(key: string): string {
+  return createHash('sha256')
+    .update(key)
+    .digest('hex');
+}
+
+/**
+ * Safely compare two API keys in constant time
+ * @param key1 First key to compare
+ * @param key2 Second key to compare
+ * @returns True if keys match, false otherwise
+ */
+export function safeCompareKeys(key1: string, key2: string): boolean {
+  try {
+    const a = Buffer.from(key1);
+    const b = Buffer.from(key2);
+    
+    // Compare in constant time to prevent timing attacks
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch (error) {
+    // If there's an error (e.g., different lengths in Node.js < 16.6.0),
+    // return false to prevent timing attacks
+    return false;
+  }
+}
+
+/**
+ * Validate API key format
+ * @param key The API key to validate
+ * @returns True if the key has a valid format
+ */
+export function isValidApiKeyFormat(key: string): boolean {
+  if (!key || typeof key !== 'string') {
+    return false;
+  }
+  
+  // Check length (between 32 and 256 characters)
+  if (key.length < 32 || key.length > 256) {
+    return false;
+  }
+  
+  // Check for invalid characters (only allow alphanumeric, dash, underscore, dot, tilde)
+  // This regex matches base64 URL-safe characters: A-Z, a-z, 0-9, -, _, ., ~
+  return /^[A-Za-z0-9\-_\.~]+$/.test(key);
+}
+
+/**
+ * Generate a unique identifier for API keys
+ * @returns A unique identifier string
+ */
+export function generateApiKeyId(): string {
+  return `key_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+}
