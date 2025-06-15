@@ -18,6 +18,37 @@
 - Encountered `localStorage is not defined` error in test environment; need to address this to proceed with dashboard tests.
 - Attempted to mock localStorage/sessionStorage in setupTests, but error persists; further troubleshooting of global storage mocking in Vitest/JSDOM environment required before dashboard tests can pass.
 - Created dedicated global test setup file for storage/window mocking and updated Vite config to include it; this should resolve storage mocking issues for frontend tests.
+- README updated to reflect current React dashboard, Azure AD auth, and Excel upload features.
+- All changes committed locally with descriptive message.
+- Push to GitHub failed due to authentication (missing credentials or device setup).
+- Deployment to Azure Static Web Apps and Azure Functions requested by user.
+- Azure CLI and Azure Functions Core Tools installed and verified.
+- Created staticwebapp.config.json for Azure Static Web Apps deployment config.
+- Backend/server for Azure Functions already exists in `server` directory (not `api`).
+- Mistakenly initialized Azure Functions project in `api` directory; use `server` for backend deployment.
+- Backend is an Express.js app (not Azure Functions) in `server` directory.
+- Azure App Service Free tier is recommended for Express.js with minimal/no code changes; Azure Functions requires significant refactoring.
+- Azure Functions (consumption) offers more free compute time but requires splitting routes into separate functions and adapting middleware, error handling, and app structure.
+- Added analysis of refactor effort: moving to Azure Functions would require splitting each route (e.g., upload, data, apiKey) into its own function, adapting middleware/auth logic, and changing startup/configuration patterns.
+- Project requirements/specs emphasize serverless and minimal ops, but current backend is Express.js and best suited for App Service unless major refactor is desired.
+- Long-term free tier options:
+  - Azure App Service Free: easiest for current Express.js backend, but limited to 60 min/day compute, no custom domain, not truly serverless.
+  - Azure Functions (Consumption): best for pure serverless, more free compute, scales to zero, but requires significant refactor and more ops complexity for Express-style APIs.
+- Recommendation: For current architecture and team velocity, Azure App Service Free is best for MVP/short-term; Azure Functions only if/when you want to fully embrace serverless and are ready to refactor backend. See docs/plan.md and docs/spec.md for further details.
+- Proceeding with Azure App Service deployment for Express backend as selected approach.
+- Azure resource group and location are already configured in `.env`; deployment steps should use these values and not create new resources unless necessary.
+- Azure App Service Plan (`excel-etl-asp`) and Web App (`excel-etl-backend-378680`) have been created in the correct resource group/location for Express backend deployment.
+- Azure App Service environment variables for backend have been set from .env and verified in portal/CLI.
+- Azure App Service startup command set to `npm start` and runtime verified as `NODE|20-lts` for Express backend deployment.
+- Application logging (filesystem, verbose) enabled for Azure App Service backend to assist with debugging and diagnostics.
+- TypeScript build errors found in backend (`azure.ts`, `apiKeyAuth.ts`, `apiKey.route.ts`).
+- Fixed duplicate function in `apiKeyAuth.ts` and bracket mismatch in `apiKey.route.ts`.
+- TypeScript build errors and module resolution issues in backend resolved; backend ready for deployment.
+- Syntax and scoping errors in Cosmos DB initialization (azure.ts) fixed; backend TypeScript build now passes.
+- Fixed Azure service/repository initialization and logger usage in server.ts; deployment script can now proceed.
+- Deprecated `az webapp deployment source config-zip`; use `az webapp deploy` for Azure App Service deployment as per latest Microsoft documentation.
+- Backend deployment to Azure App Service succeeded (per deployment logs); next step is frontend deployment.
+- Created `.env.production` for frontend with production API and Azure AD config.
 
 ## Task List
 - [x] Scaffold React app with TypeScript (Vite or CRA)
@@ -29,10 +60,28 @@
 - [x] Implement file upload UI (UploadPage + FileUpload)
 - [x] Enhance Azure AD authentication logic (token management, refresh, error handling)
 - [x] Test Azure AD authentication integration end-to-end
-- [ ] Test dashboard functionality end-to-end (in progress: fixing test env, running tests)
-  - [ ] Fix localStorage/sessionStorage mocking so frontend tests pass
+- [x] Test dashboard functionality end-to-end (in progress: running tests)
+  - [x] Fix localStorage/sessionStorage mocking so frontend tests pass
 - [x] Set up and validate React/Vitest test environment
 - [x] Update/fix AuthProvider tests to use correct mocks and structure
+- [x] Update README.md to reflect current app
+- [x] Commit all changes with descriptive message and push to GitHub
+- [ ] Push committed changes to GitHub (resolve authentication issue)
+- [ ] Deploy app to Azure Static Web Apps and Azure App Service (Express backend)
+  - [x] Create Azure App Service Plan and Web App for backend
+  - [x] Set up Azure App Service for Express backend deployment
+  - [x] Document tradeoffs and long-term options for backend hosting (App Service vs Azure Functions)
+  - [x] Fix TypeScript build errors in backend
+  - [x] Fix module resolution issues (import extensions)
+  - [x] Fix syntax/scoping errors in Cosmos DB initialization (azure.ts)
+  - [x] Fix Azure service/repository initialization and logger usage in server.ts
+  - [x] TypeScript build passes for backend
+  - [x] Deploy backend to Azure App Service using `az webapp deploy`
+  - [x] Verify backend deployment and logs
+- [x] Add staticwebapp.config.json for Azure Static Web Apps config
+- [ ] Configure frontend production environment (.env.production)
+- [ ] Remove/ignore mistakenly created `api` Azure Functions project
+- [ ] Analyze/refactor Express.js app for Azure Functions compatibility (optional, if user chooses serverless)
 
 ## Current Goal
-Test dashboard functionality end-to-end
+Deploy frontend to Azure Static Web Apps
