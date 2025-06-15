@@ -1,12 +1,11 @@
-import { Router } from 'express';
-import { AzureCosmosDB } from '../config/azure';
-import { ApiKeyRepository } from '../repositories/apiKeyRepository';
-import { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey';
-import { Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
+import { AzureCosmosDB } from '../config/azure.js';
+import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
+import { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
 import { body, param } from 'express-validator';
-import { validateRequest } from '../middleware/validateRequest';
-import { authenticateToken } from '../middleware/auth';
-import { authRateLimiter, defaultRateLimiter } from '../middleware/rateLimit';
+import { validateRequest } from '../middleware/validateRequest.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { authRateLimiter, defaultRateLimiter } from '../middleware/rateLimit.js';
 
 export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
   const router = Router();
@@ -132,11 +131,12 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
     [
       param('keyId').isString().notEmpty().withMessage('Key ID is required'),
       validateRequest,
-      defaultRateLimiter,
     ],
-    async (req: Request<{ keyId: string }>, res: Response) => {
+    async (req: Request<RevokeApiKeyParams>, res: Response) => {
       try {
         const userId = req.user?.oid;
+        const { keyId } = req.params;
+
         if (!userId) {
           return res.status(401).json({
             success: false,
@@ -145,7 +145,6 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
           });
         }
 
-        const { keyId } = req.params;
         if (!keyId) {
           return res.status(400).json({
             success: false,
@@ -181,7 +180,6 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
       }
     }
   );
-  });
 
   return router;
 }

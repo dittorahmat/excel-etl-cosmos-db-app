@@ -34,24 +34,27 @@ export const authFetch = async (url: string, options: RequestInit = {}): Promise
   });
 };
 
+// Get the base URL from Vite environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 export const api = {
   get: (endpoint: string, options: RequestInit = {}) => 
-    authFetch(`${process.env.REACT_APP_API_BASE_URL || ''}${endpoint}`, { ...options, method: 'GET' }),
+    authFetch(`${API_BASE_URL}${endpoint}`, { ...options, method: 'GET' }),
   
   post: (endpoint: string, data?: any, options: RequestInit = {}) =>
-    authFetch(`${process.env.REACT_APP_API_BASE_URL || ''}${endpoint}`, {
+    authFetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     }),
 
   put: (endpoint: string, data?: any, options: RequestInit = {}) =>
-    authFetch(`${process.env.REACT_APP_API_BASE_URL || ''}${endpoint}`, {
+    authFetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     }),
 
   delete: (endpoint: string, options: RequestInit = {}) =>
-    authFetch(`${process.env.REACT_APP_API_BASE_URL || ''}${endpoint}`, { ...options, method: 'DELETE' }),
+    authFetch(`${API_BASE_URL}${endpoint}`, { ...options, method: 'DELETE' }),
 };

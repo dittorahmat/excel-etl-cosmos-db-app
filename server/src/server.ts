@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
-import { AzureCosmosDB, initializeAzureServices } from './config/azure.js';
+import { initializeAzureServices } from './config/azure.js';
 import uploadRoute from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
@@ -12,6 +12,10 @@ import { validateToken } from './middleware/auth.js';
 import { requireAuth, requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
 import { logger, LogContext } from './utils/logger.js';
+import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
+import { DataRepository } from './repositories/dataRepository.js';
+import { UploadRepository } from './repositories/uploadRepository.js';
+import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -161,28 +165,33 @@ let server: Server | null = null;
  */
 async function startServer(port: number | string = PORT): Promise<Server> {
   try {
+    logger.info('Initializing Azure services...');
     // Initialize Azure services
-    const cosmosDb = new AzureCosmosDB();
-    const blobStorage = new AzureBlobStorage();
-
+    const { cosmosDb, blobStorage } = await initializeAzureServices();
+    
+    logger.info('Azure services initialized successfully');
+    
     // Initialize repositories
     const dataRepository = new DataRepository(cosmosDb);
     const uploadRepository = new UploadRepository({ cosmosDb, blobStorage });
     const apiKeyRepository = new ApiKeyRepository(cosmosDb);
     const apiKeyUsageRepository = new ApiKeyUsageRepository(cosmosDb);
 
+    logger.info('Repositories initialized');
+    
     // Create Express app with initialized services
     app = createApp(cosmosDb);
     
     // Start the HTTP server
     return new Promise((resolve, reject) => {
       const httpServer = app.listen(port, () => {
-        console.log(`🚀 Server ready at http://localhost:${port}`);
+        logger.info(`🚀 Server ready at http://localhost:${port}`);
         resolve(httpServer);
       });
 
       httpServer.on('error', (error: NodeJS.ErrnoException) => {
         if (error.syscall !== 'listen') {
+          logger.error('Server error:', error);
           reject(error);
           return;
         }
@@ -190,11 +199,11 @@ async function startServer(port: number | string = PORT): Promise<Server> {
         // Handle specific listen errors with friendly messages
         switch (error.code) {
           case 'EACCES':
-            console.error(`Port ${port} requires elevated privileges`);
+            logger.error(`Port ${port} requires elevated privileges`);
             process.exit(1);
             break;
           case 'EADDRINUSE':
-            console.error(`Port ${port} is already in use`);
+            logger.error(`Port ${port} is already in use`);
             process.exit(1);
             break;
           default:

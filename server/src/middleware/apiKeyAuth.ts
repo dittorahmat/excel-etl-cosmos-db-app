@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiKeyRepository } from '../repositories/apiKeyRepository';
-import { AzureCosmosDB } from '../config/azure';
-import { TokenPayload } from './auth';
+import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
+import { AzureCosmosDB } from '../config/azure.js';
+import { TokenPayload } from './auth.js';
 
 declare global {
   namespace Express {
@@ -97,7 +97,6 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
  * Middleware to require either API key or Azure AD authentication
  */
 export function requireAuthOrApiKey(cosmosDb: AzureCosmosDB) {
-export function requireAuth(cosmosDb: AzureCosmosDB) {
   const authMiddleware = apiKeyAuth(cosmosDb);
   
   return async (req: Request, res: Response, next: NextFunction) => {
