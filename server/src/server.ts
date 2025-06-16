@@ -1,9 +1,10 @@
-import express, { type Request, type Response, type NextFunction, type Express } from 'express';
+import express, { type Request, type Response, type NextFunction, type Express, type Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
+import rateLimit from 'express-rate-limit';
 import { initializeAzureServices } from './config/azure.js';
 import uploadRoute from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
@@ -16,6 +17,7 @@ import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
 import { DataRepository } from './repositories/dataRepository.js';
 import { UploadRepository } from './repositories/uploadRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
+import type { AzureCosmosDB, AuthenticatedRequest } from './types/custom.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -71,26 +73,20 @@ function createApp(azureServices: AzureCosmosDB): Express {
     res.json({ message: 'This is a public endpoint' });
   });
   
-  // Rate limit configuration for API routes
+  // Rate limit configuration
   const apiRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // limit each IP to 1000 requests per windowMs
+    max: 100, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again after 15 minutes',
-    keyGenerator: (req) => {
-      // Use API key if available, otherwise use IP
-      return req.headers['x-api-key'] as string || req.ip;
+    keyGenerator: (req: Request) => {
+      return req.ip || 'unknown-ip';
     },
-    handler: (req, res) => {
-      logger.warn(`Rate limit exceeded for ${req.ip}`, {
-        method: req.method,
-        path: req.path,
-        key: req.headers['x-api-key'] ? 'api-key' : 'ip'
-      });
+    handler: (req: Request, res: Response) => {
       res.status(429).json({
-        success: false,
-        error: 'Too many requests, please try again later.'
+        error: 'Too many requests',
+        message: 'Too many requests from this IP, please try again after 15 minutes',
       });
-    }
+    },
   });
 
   // Apply rate limiting to all API routes
@@ -100,14 +96,54 @@ function createApp(azureServices: AzureCosmosDB): Express {
   const authMiddleware = requireAuthOrApiKey(azureServices);
 
   // Apply authentication middleware to protected routes
-  app.use('/api/keys', authMiddleware);
-  app.use('/api/upload', authMiddleware);
-  app.use('/api/data', authMiddleware);
+  app.use('/api/keys', authMiddleware as Application);
+  app.use('/api/upload', authMiddleware as Application);
+  app.use('/api/data', authMiddleware as Application);
   
   // Routes
   app.use('/api/keys', createApiKeyRouter(azureServices));
   app.use('/api/upload', uploadRoute);
   app.use('/api/data', dataRoute);
+
+  // Request logging middleware
+  app.use((req: Request & { id?: string }, res, next) => {
+    const start = Date.now();
+    const requestId = crypto.randomUUID();
+    
+    // Add request ID to request object
+    req.id = requestId;
+    
+    // Log request start
+    logger.info(`Request started`, {
+      requestId,
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+    
+    // Log response finish
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const authReq = req as unknown as AuthenticatedRequest;
+      const logContext: LogContext = {
+        requestId: req.id || 'unknown',
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        duration,
+        userId: authReq.user?.oid || 'anonymous',
+      };
+      
+      if (res.statusCode >= 400) {
+        logger.warn(`Request completed with error`, logContext);
+      } else {
+        logger.info(`Request completed`, logContext);
+      }
+    });
+    
+    next();
+  });
 
   // Example of a protected route with role-based access
   app.get('/api/protected', validateToken, (req: Request, res: Response) => {

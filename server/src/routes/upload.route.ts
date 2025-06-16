@@ -1,10 +1,11 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import multer, { FileFilterCallback } from 'multer';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import multer, { FileFilterCallback, MulterError } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
 import { initializeAzureServices, type CosmosRecord } from '../config/azure.js';
 import type { ExcelRecord, UploadResponse } from '../types/models.js';
 import { authenticateToken } from '../middleware/auth.js';
+import type { MulterError as MulterErrorType, FileTypeError } from '../types/custom.js';
 
 // Extend Express Request type to include our custom properties
 declare global {
@@ -45,8 +46,9 @@ const fileFilter = (
   } else {
     const error = new Error(
       'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.'
-    );
+    ) as FileTypeError;
     error.name = 'FileTypeError';
+    error.code = 'INVALID_FILE_TYPE';
     cb(error);
   }
 };
@@ -354,42 +356,40 @@ router.post(
       };
       
       res.status(200).json(responseData);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error in upload route:', error);
       
       // More specific error handling
-      if (error.name === 'MulterError') {
-        if (error.code === 'LIMIT_FILE_SIZE') {
+      const err = error as Error & { code?: string; name: string; message: string; stack?: string };
+      
+      if (err.name === 'MulterError') {
+        if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(413).json({
             success: false,
-            message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`,
-            error: 'FILE_TOO_LARGE',
+            error: 'File too large. Maximum file size is 10MB.',
           });
         }
-        if (error.code === 'LIMIT_FILE_COUNT') {
+        
+        if (err.code === 'LIMIT_FILE_COUNT') {
           return res.status(400).json({
             success: false,
-            message: 'Only one file can be uploaded at a time',
-            error: 'TOO_MANY_FILES',
+            error: 'Too many files. Only one file can be uploaded at a time.',
           });
         }
       }
       
-      if (error.name === 'FileTypeError') {
+      if (err.name === 'FileTypeError') {
         return res.status(400).json({
           success: false,
-          message: error.message,
-          error: 'INVALID_FILE_TYPE',
+          error: err.message || 'Invalid file type',
         });
       }
       
       // Default error response
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       res.status(500).json({
         success: false,
-        message: 'Failed to process upload',
-        error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        error: 'An error occurred while processing your request',
+        details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
       });
     }
   }

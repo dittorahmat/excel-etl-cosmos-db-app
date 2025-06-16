@@ -1,11 +1,12 @@
-import { Router, Request, Response } from 'express';
-import { AzureCosmosDB } from '../config/azure.js';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import type { AzureCosmosDB } from '../config/azure.js';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
-import { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
+import type { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
 import { body, param } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { authRateLimiter, defaultRateLimiter } from '../middleware/rateLimit.js';
+import { authRateLimiter } from '../middleware/rateLimit.js';
+import type { AuthenticatedRequest } from '../types/custom.js';
 
 export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
   const router = Router();
@@ -18,8 +19,9 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
   router.use(authRateLimiter);
 
   // Middleware to ensure user is authenticated
-  const requireAuth = (req: Request, res: Response, next: () => void) => {
-    if (!req.user) {
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user) {
       return res.status(401).json({
         success: false,
         error: 'Unauthorized',
@@ -41,7 +43,7 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
       body('expiresAt').optional().isISO8601().toDate(),
       body('allowedIps').optional().isArray(),
       body('allowedIps.*').isIP().withMessage('Invalid IP address'),
-      validateRequest,
+      validateRequest as any, // Type assertion for express-validator
     ],
     async (req: Request<{}, {}, CreateApiKeyRequest>, res: Response) => {
       try {

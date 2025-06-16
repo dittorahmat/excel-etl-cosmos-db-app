@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../auth/AuthProvider';
 import {
   Drawer,
   List,
@@ -14,6 +14,7 @@ import {
   Collapse,
   useTheme,
   useMediaQuery,
+  IconButton,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -48,7 +49,8 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps) => {
   const theme = useTheme();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { isAuthenticated } = useAuth();
+  // Auth context is used by other parts of the component
+  useAuth();
   const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({});
 
   // Close mobile drawer when route changes

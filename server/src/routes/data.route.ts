@@ -1,13 +1,12 @@
-import { Router } from 'express';
-import { validateToken } from '../middleware/auth';
-import { AZURE_CONFIG } from '../config/azure';
-import { initializeCosmosDB } from '../config/azure';
-import { Request, Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import { validateToken } from '../middleware/auth.js';
+import { AZURE_CONFIG, initializeCosmosDB } from '../config/azure.js';
+import type { AzureCosmosDB } from '../types/custom.js';
 
 const router = Router();
 
 // Interface for query parameters
-export interface DataQueryParams {
+interface DataQueryParams {
   // Date range filters (ISO format or YYYY-MM-DD)
   startDate?: string;
   endDate?: string;
@@ -153,7 +152,10 @@ function buildQueryFromParams(params: DataQueryParams): {
  *       500:
  *         description: Server error
  */
-router.get('/', validateToken, async (req: Request, res: Response) => {
+router.get(
+  '/',
+  validateToken as any, // Temporary type assertion to fix middleware type
+  async (req: Request, res: Response) => {
   try {
     const { cosmosDb } = await initializeCosmosDB();
     const queryParams = req.query as unknown as DataQueryParams;

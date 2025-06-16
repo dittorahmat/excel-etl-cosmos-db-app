@@ -15,19 +15,20 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": ["node", "jest", "@types/express"],
+    "types": ["node", "jest"],
     "typeRoots": [
-      "./node_modules/@types",
-      "./server/types"
+      "./node_modules/@types"
     ]
   },
   "include": [
     "server/src/**/*.ts",
-    "server/test/**/*.ts",
     "server/types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.test.ts",
+    "**/test/**/*",
+    "**/__tests__/**/*"
   ]
 }
