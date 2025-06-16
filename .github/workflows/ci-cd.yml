@@ -25,10 +25,18 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: |
+        npm ci
+        # Install additional devDependencies needed for linting and testing
+        npm install --save-dev typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin
     
     - name: Lint
-      run: npm run lint
+      run: |
+        # Run linting for both frontend and backend
+        echo "Linting frontend..."
+        npx eslint .
+        echo "Linting backend..."
+        cd server && npx eslint . --ext .ts
     
     - name: Run tests
       run: npm test
