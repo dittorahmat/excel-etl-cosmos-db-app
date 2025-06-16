@@ -1,0 +1,85 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+  
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Lint
+      run: npm run lint
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v4
+      if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage/coverage-final.json
+
+  deploy:
+    name: Deploy
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+        package: .
+
+    - name: Log deployment status to Azure Monitor
+      if: always()
+      uses: Azure/cli@v1.0.0
+      with:
+        azcliversion: 2.0.72
+        inlineScript: |
+          az monitor metrics alert create \
+            --name "DeploymentSuccess" \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --scopes ${{ secrets.AZURE_WEBAPP_RESOURCE_ID }} \
+            --condition "count deployment_http_2xx > 0 where deployment_status == 'Success'" \
+            --description "Track successful deployments" \
+            --evaluation-frequency 5m \
+            --window-size 5m \
+            --severity 0
