@@ -73,7 +73,11 @@ const AppContent = () => {
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+          <Route element={
+            <MainLayout>
+              <Outlet />
+            </MainLayout>
+          }>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

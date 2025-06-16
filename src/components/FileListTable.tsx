@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getAuthToken } from '@/utils/api';
 import {
   Table,
   TableBody,
@@ -56,23 +57,35 @@ export function FileListTable() {
 
   const handleDownload = async (fileId: string, fileName: string) => {
     try {
-      const response = await api.get(`/api/files/${fileId}/download`, {
-        responseType: 'blob',
+      // Use the api instance which uses fetch under the hood
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/files/${fileId}/download`, {
+        headers: {
+          'Authorization': `Bearer ${await getAuthToken()}`,
+        },
+        credentials: 'include',
       });
       
       if (!response.ok) {
         throw new Error('Failed to download file');
       }
       
+      // Get the blob from the response
       const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
+      
+      // Create and trigger a download link
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
+      
+      // Clean up
       window.URL.revokeObjectURL(url);
-      a.remove();
+      document.body.removeChild(a);
     } catch (err) {
       console.error('Error downloading file:', err);
       setError('Failed to download file');

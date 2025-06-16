@@ -1,5 +1,4 @@
-import { AuthenticationResult, PublicClientApplication } from '@azure/msal-browser';
-import { msalInstance } from '../auth/authConfig';
+import { msalInstance } from '../auth/AuthProvider';
 
 export const getAuthToken = async (): Promise<string | null> => {
   try {

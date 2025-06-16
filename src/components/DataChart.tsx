@@ -35,7 +35,6 @@ export function DataChart({ data, loading = false, onExport }: DataChartProps) {
   const [xAxis, setXAxis] = useState<string>('');
   const [yAxis, setYAxis] = useState<string>('');
   const [groupBy, setGroupBy] = useState<string>('');
-  const [availableFields, setAvailableFields] = useState<string[]>([]);
   const [numericFields, setNumericFields] = useState<string[]>([]);
   const [categoryFields, setCategoryFields] = useState<string[]>([]);
 
@@ -43,7 +42,6 @@ export function DataChart({ data, loading = false, onExport }: DataChartProps) {
   useEffect(() => {
     if (data.length > 0) {
       const fields = Object.keys(data[0]).filter(key => key !== 'id' && key !== '_rid' && key !== '_self' && key !== '_etag' && key !== '_attachments' && key !== '_ts');
-      setAvailableFields(fields);
       
       // Try to identify numeric and category fields
       const sampleItem = data[0];
@@ -190,7 +188,7 @@ export function DataChart({ data, loading = false, onExport }: DataChartProps) {
                   nameKey="name"
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 >
-                  {chartData.map((entry, index) => (
+                  {chartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

@@ -54,6 +54,12 @@ export function UploadPage() {
       toast({
         title: 'File uploaded successfully!',
         description: `Processed ${result.count} records.`,
+        open: true,
+        onOpenChange: (open) => {
+          if (!open) {
+            // Handle toast dismiss if needed
+          }
+        },
         action: (
           <ToastAction altText="View details" onClick={() => {
             // Navigate to the file details page or show a modal
@@ -71,6 +77,12 @@ export function UploadPage() {
         variant: 'destructive',
         title: 'Upload failed',
         description: error instanceof Error ? error.message : 'An error occurred during upload',
+        open: true,
+        onOpenChange: (open) => {
+          if (!open) {
+            // Handle toast dismiss if needed
+          }
+        },
       });
       throw error;
     } finally {

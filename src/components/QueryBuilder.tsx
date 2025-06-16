@@ -4,22 +4,34 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/utils/api';
 import { Loader2, Plus, X } from 'lucide-react';
-import { format } from 'date-fns';
+// Format is not used, so we can remove this import
 
 interface QueryBuilderProps {
-  onQueryChange: (query: any) => void;
-  onExecute: (query: any) => void;
+  onQueryChange: (query: Record<string, unknown>) => void;
+  onExecute: (query: Record<string, unknown>) => void;
   loading?: boolean;
 }
 
 export function QueryBuilder({ onQueryChange, onExecute, loading = false }: QueryBuilderProps) {
-  const [availableFields, setAvailableFields] = useState<Array<{name: string, type: string}>>([]);
-  const [filters, setFilters] = useState<Array<{
+  type Filter = {
     id: string;
     field: string;
     operator: string;
     value: string;
-  }>>([{ id: '1', field: '', operator: '=', value: '' }]);
+  };
+
+  type FieldType = {
+    name: string;
+    type: string;
+  };
+
+  const [availableFields, setAvailableFields] = useState<FieldType[]>([]);
+  const [filters, setFilters] = useState<Filter[]>([{ 
+    id: '1', 
+    field: '', 
+    operator: '=', 
+    value: '' 
+  }]);
 
   const operators = [
     { value: '=', label: 'equals' },
@@ -55,66 +67,88 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
     onQueryChange(buildQuery());
   }, [filters]);
 
-  const buildQuery = () => {
+  const buildQuery = (): Record<string, unknown> => {
     const whereClauses = filters
-      .filter(f => f.field && f.operator && f.value !== '')
+      .filter((f): f is Required<Filter> => 
+        Boolean(f.field) && Boolean(f.operator) && f.value !== ''
+      )
       .map(f => {
-        const field = `c.${f.field}`;
-        let value: any = f.value;
+        const fieldType = availableFields.find(af => af.name === f.field)?.type || 'string';
+        const value = fieldType === 'number' ? parseFloat(f.value) : f.value;
         
-        // Handle different value types
-        if (!isNaN(Number(value)) && value !== '') {
-          value = Number(value);
-        } else if (['true', 'false'].includes(value.toLowerCase())) {
-          value = value.toLowerCase() === 'true';
-        } else if (Date.parse(value)) {
-          value = new Date(value).toISOString();
-        } else {
-          value = `'${value.replace(/'/g, "''")}'`;
-        }
-
-        // Build the condition based on operator
-        switch (f.operator) {
-          case 'contains':
-            return `CONTAINS(${field}, ${typeof value === 'string' ? value : `'${value}'`})`;
-          case 'startsWith':
-            return `STARTSWITH(${field}, ${typeof value === 'string' ? value : `'${value}'`})`;
-          case 'endsWith':
-            return `ENDSWITH(${field}, ${typeof value === 'string' ? value : `'${value}'`})`;
-          default:
-            return `${field} ${f.operator} ${value}`;
-        }
+        return {
+          [f.field]: {
+            [f.operator]: value
+          }
+        };
       });
 
+    if (whereClauses.length === 0) {
+      return {};
+    }
+
+    if (whereClauses.length === 1) {
+      return whereClauses[0];
+    }
+
     return {
-      where: whereClauses.length > 0 ? whereClauses.join(' AND ') : undefined,
-      parameters: []
+      and: whereClauses
     };
   };
 
-  const addFilter = () => {
-    setFilters([...filters, { id: Date.now().toString(), field: '', operator: '=', value: '' }]);
+  const addFilter = (): void => {
+    setFilters(prevFilters => [
+      ...prevFilters, 
+      { 
+        id: Date.now().toString(), 
+        field: '', 
+        operator: '=', 
+        value: '' 
+      }
+    ]);
   };
 
-  const removeFilter = (id: string) => {
-    if (filters.length > 1) {
-      setFilters(filters.filter(f => f.id !== id));
-    }
+  const removeFilter = (id: string): void => {
+    if (filters.length <= 1) return;
+    const newFilters = filters.filter(filter => filter.id !== id);
+    setFilters(newFilters);
   };
 
-  const updateFilter = (id: string, field: string, value: string) => {
-    setFilters(filters.map(f => 
-      f.id === id ? { ...f, [field]: value } : f
-    ));
+  const updateFilter = (id: string, field: keyof Filter, value: string): void => {
+    setFilters(prevFilters => 
+      prevFilters.map(filter => 
+        filter.id === id 
+          ? { ...filter, [field]: value }
+          : filter
+      )
+    );
   };
 
-  const handleExecute = () => {
+  const handleExecute = (): void => {
     onExecute(buildQuery());
   };
 
   const getFieldType = (fieldName: string) => {
     const field = availableFields.find(f => f.name === fieldName);
     return field ? field.type : 'string';
+  };
+
+  const getInputType = (fieldType: string): React.HTMLInputTypeAttribute => {
+    const typeMap: Record<string, React.HTMLInputTypeAttribute> = {
+      'number': 'number',
+      'date': 'date',
+      'datetime': 'datetime-local',
+      'time': 'time',
+      'email': 'email',
+      'url': 'url',
+      'tel': 'tel',
+      'password': 'password',
+      'search': 'search',
+      'color': 'color',
+      'range': 'range'
+    };
+    
+    return typeMap[fieldType] || 'text';
   };
 
   return (
@@ -209,18 +243,4 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
       </div>
     </div>
   );
-}
-
-function getInputType(fieldType: string): string {
-  switch (fieldType.toLowerCase()) {
-    case 'number':
-      return 'number';
-    case 'date':
-    case 'datetime':
-      return 'date';
-    case 'boolean':
-      return 'checkbox';
-    default:
-      return 'text';
-  }
 }
