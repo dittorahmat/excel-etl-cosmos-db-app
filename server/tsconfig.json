@@ -11,11 +11,15 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "resolveJsonModule": true,
-    "types": ["node", "jest"],
+    "types": ["node", "vitest/globals"],
     "typeRoots": [
       "../node_modules/@types",
       "./types"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": [
     "src/**/*.ts"
@@ -23,6 +27,13 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts"
+    "test"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  },
+  "references": [
+    { "path": "./tsconfig.test.json" }
   ]
 }

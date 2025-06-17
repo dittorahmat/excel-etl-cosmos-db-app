@@ -99,6 +99,34 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
   });
 };
 
+// Middleware to authenticate JWT token
+export const authenticateToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET || 'your-secret-key',
+    (err: jwt.VerifyErrors | null, decoded: any) => {
+      if (err) {
+        return res.status(403).json({ message: 'Invalid or expired token' });
+      }
+      
+      // Attach the decoded token to the request object
+      req.user = decoded as TokenPayload;
+      next();
+    }
+  );
+};
+
 // Middleware to check for required roles
 export const checkRole = (requiredRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {

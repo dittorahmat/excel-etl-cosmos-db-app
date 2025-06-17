@@ -28,6 +28,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["src", "src/lib", "src/types", "components"],
-  "exclude": ["node_modules", "dist", "build", "**/*.test.ts", "**/*.test.tsx"]
+  "include": [
+    "src",
+    "src/**/*",
+    "components",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "build"]
 }

@@ -33,6 +33,7 @@ export interface AzureBlobStorage {
     name: string;
     size: number;
   }>;
+  deleteFile: (containerName: string, fileName: string) => Promise<void>;
 }
 
 // Base type for all Cosmos DB records
@@ -178,7 +179,7 @@ const initializeMockCosmosDB = () => {
 };
 
 // Initialize mock storage for development
-const initializeMockBlobStorage = () => {
+const initializeMockBlobStorage = (): AzureBlobStorage => {
   const mockBlobs = new Map<string, any>();
 
   const mockBlockBlobClient = {
@@ -217,7 +218,21 @@ const initializeMockBlobStorage = () => {
     getContainerClient: jest.fn().mockReturnValue(mockContainerClient),
   };
 
-  return mockBlobServiceClient as unknown as BlobServiceClient;
+  return {
+    blobServiceClient: mockBlobServiceClient as unknown as BlobServiceClient,
+    getContainerClient: jest.fn().mockReturnValue(mockContainerClient as unknown as ContainerClient),
+    uploadFile: jest.fn().mockImplementation(async (containerName: string, file: Express.Multer.File) => {
+      return {
+        url: `https://mockstorage.blob.core.windows.net/${containerName}/${file.originalname}`,
+        name: file.originalname,
+        size: file.size
+      };
+    }),
+    deleteFile: jest.fn().mockImplementation(async (containerName: string, fileName: string) => {
+      // Mock implementation of deleteFile
+      return Promise.resolve();
+    })
+  };
 };
 
 /**
@@ -263,6 +278,7 @@ export const initializeBlobStorageAsync = async (): Promise<AzureBlobStorage> =>
   if (process.env.NODE_ENV === 'test') {
     const mockBlobClient = {
       upload: async () => ({}),
+      delete: async () => ({}),
     };
     
     const mockContainerClient = {
@@ -282,6 +298,7 @@ export const initializeBlobStorageAsync = async (): Promise<AzureBlobStorage> =>
         name: 'test-file.xlsx',
         size: 1024,
       }),
+      deleteFile: async () => Promise.resolve(),
     };
     return blobStorageInstance;
   }
@@ -322,6 +339,7 @@ export const initializeBlobStorageAsync = async (): Promise<AzureBlobStorage> =>
     blobServiceClient,
     getContainerClient,
     uploadFile,
+    deleteFile,
   };
 
   return blobStorageInstance;
@@ -672,6 +690,10 @@ export const initializeAzureServices = async (): Promise<{
           name: file.originalname,
           size: file.size
         };
+      },
+      deleteFile: async (containerName: string, fileName: string) => {
+        console.log(`[Mock] Deleting file from container ${containerName}: ${fileName}`);
+        return Promise.resolve();
       }
     };
     

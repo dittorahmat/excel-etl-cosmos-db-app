@@ -367,6 +367,7 @@ router.post(
           return res.status(413).json({
             success: false,
             error: 'File too large. Maximum file size is 10MB.',
+            message: 'File size exceeds the maximum allowed limit of 10MB.'
           });
         }
         
@@ -374,21 +375,26 @@ router.post(
           return res.status(400).json({
             success: false,
             error: 'Too many files. Only one file can be uploaded at a time.',
+            message: 'Only one file can be uploaded at a time.'
           });
         }
       }
       
       if (err.name === 'FileTypeError') {
+        const message = err.message || 'Invalid file type. Only Excel and CSV files are allowed.';
         return res.status(400).json({
           success: false,
-          error: err.message || 'Invalid file type',
+          error: message,
+          message: message
         });
       }
       
       // Default error response
+      const errorMessage = 'An error occurred while processing your request';
       res.status(500).json({
         success: false,
-        error: 'An error occurred while processing your request',
+        error: errorMessage,
+        message: errorMessage,
         details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
       });
     }
