@@ -9,6 +9,7 @@ on:
 env:
   NODE_VERSION: '20'
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+  AZURE_STATIC_WEB_APP_NAME: ${{ secrets.AZURE_STATIC_WEB_APP_NAME }}
   
 jobs:
   lint-and-test:
@@ -24,21 +25,31 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
     
-    - name: Install dependencies
+    - name: Install root dependencies
+      working-directory: ./
       run: |
-        npm ci
-        # Install additional devDependencies needed for linting and testing
-        npm install --save-dev typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin
+        npm ci --include=dev
+        npx tsc --version
+        npx eslint --version
     
-    - name: Lint
-      run: |
-        # Run linting for both frontend and backend
-        echo "Linting frontend..."
-        npx eslint .
-        echo "Linting backend..."
-        cd server && npx eslint . --ext .ts
+    - name: Install server dependencies
+      working-directory: ./server
+      run: npm ci --include=dev
     
-    - name: Run tests
+    - name: Lint frontend
+      working-directory: ./
+      run: npx eslint .
+    
+    - name: Lint backend
+      working-directory: ./server
+      run: npx eslint . --ext .ts
+    
+    - name: Run frontend tests
+      working-directory: ./
+      run: npm test
+    
+    - name: Run backend tests
+      working-directory: ./server
       run: npm test
     
     - name: Upload test coverage
@@ -46,10 +57,11 @@ jobs:
       if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage/coverage-final.json
+        files: ./coverage/coverage-final.json,./server/coverage/coverage-final.json
+        fail_ci_if_error: false
 
-  deploy:
-    name: Deploy
+  deploy-frontend:
+    name: Deploy Frontend
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -66,7 +78,39 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Build application
+    - name: Build frontend
+      run: npm run build
+    
+    - name: Deploy to Azure Static Web App
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: 'upload'
+        app_location: '/'
+        output_location: 'dist'
+
+  deploy-backend:
+    name: Deploy Backend
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      working-directory: ./server
+      run: npm ci --production
+    
+    - name: Build backend
+      working-directory: ./server
       run: npm run build
     
     - name: Deploy to Azure Web App
@@ -74,7 +118,7 @@ jobs:
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-        package: .
+        package: ./server
 
     - name: Log deployment status to Azure Monitor
       if: always()

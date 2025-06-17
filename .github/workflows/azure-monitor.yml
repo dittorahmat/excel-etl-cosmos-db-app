@@ -1,0 +1,67 @@
+name: Azure Monitor Alerts
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Check every hour
+
+jobs:
+  setup-azure-monitor:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Create Application Insights component
+      uses: azure/CLI@v1
+      with:
+        azcliversion: 2.0.72
+        inlineScript: |
+          # Create or update Application Insights component
+          az monitor app-insights component create \
+            --app ${{ secrets.AZURE_APP_INSIGHTS_NAME }} \
+            --location ${{ secrets.AZURE_LOCATION }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --application-type web \
+            --kind web \
+            --retention-time 90
+          
+          # Create availability test
+          az monitor metrics alert create \
+            --name "AppAvailabilityAlert" \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --scopes ${{ secrets.AZURE_APP_INSIGHTS_RESOURCE_ID }} \
+            --condition "avg availabilityResults/availabilityPercentage < 99" \
+            --description "Alert when app availability drops below 99%" \
+            --evaluation-frequency 5m \
+            --window-size 15m \
+            --severity 1
+            
+    - name: Setup deployment alerts
+      uses: azure/CLI@v1
+      with:
+        azcliversion: 2.0.72
+        inlineScript: |
+          # Alert on failed requests
+          az monitor metrics alert create \
+            --name "FailedRequestsAlert" \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --scopes ${{ secrets.AZURE_APP_INSIGHTS_RESOURCE_ID }} \
+            --condition "sum requests/failed > 0" \
+            --description "Alert on any failed requests" \
+            --evaluation-frequency 5m \
+            --window-size 5m \
+            --severity 1
+            
+          # Alert on server exceptions
+          az monitor metrics alert create \
+            --name "ServerExceptionsAlert" \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --scopes ${{ secrets.AZURE_APP_INSIGHTS_RESOURCE_ID }} \
+            --condition "sum exceptions/count > 0" \
+            --description "Alert on server exceptions" \
+            --evaluation-frequency 5m \
+            --window-size 5m \
+            --severity 2

@@ -2,18 +2,22 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist-test",
-    "module": "commonjs",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
     "target": "ES2020",
-    "moduleResolution": "node",
     "sourceMap": true,
-    "types": ["node", "jest"],
-    "strict": true
+    "types": ["node", "vitest/globals"],
+    "strict": true,
+    "composite": true,
+    "skipLibCheck": true
   },
   "include": [
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "src/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist"
   ]
 }

@@ -1,0 +1,17 @@
+
+> excel-upload-server@1.0.0 test:coverage
+> vitest run --coverage --config vitest.config.ts
+
+
+ RUN  v1.6.1 /home/ditto/Documents/work with hendra/etl excel to cosmos db/my-app/server
+      Coverage enabled with v8
+
+ ❯ test/upload.test.ts  (0 test)
+ ❯ test/apiKeyRoutes.test.ts  (0 test)
+ ❯ test/apiKeyRepository.test.ts  (0 test)
+ ❯ test/rateLimit.test.ts  (0 test)
+ ❯ test/apiKeyAuth.test.ts  (0 test)
+ ❯ test/apiKeyRevocation.test.ts  (0 test)
+ ❯ test/data.test.ts  (0 test)
+ ❯ test/authMiddleware.test.ts  (0 test)
+ ❯ test/excelParser.test.ts  (0 test)
