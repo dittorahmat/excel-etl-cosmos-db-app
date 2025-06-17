@@ -25,32 +25,28 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
     
-    - name: Install root dependencies
+    - name: Install dependencies
       working-directory: ./
       run: |
         npm ci --include=dev
         npx tsc --version
         npx eslint --version
     
-    - name: Install server dependencies
-      working-directory: ./server
-      run: npm ci --include=dev
-    
     - name: Lint frontend
       working-directory: ./
       run: npx eslint .
     
     - name: Lint backend
-      working-directory: ./server
-      run: npx eslint . --ext .ts
+      working-directory: ./
+      run: npx eslint server --ext .ts
     
     - name: Run frontend tests
       working-directory: ./
       run: npm test
     
     - name: Run backend tests
-      working-directory: ./server
-      run: npm test
+      working-directory: ./
+      run: npm run test:server
     
     - name: Upload test coverage
       uses: codecov/codecov-action@v4
@@ -106,19 +102,27 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      working-directory: ./server
-      run: npm ci --production
+      working-directory: ./
+      run: npm ci --production=false
     
     - name: Build backend
-      working-directory: ./server
-      run: npm run build
+      working-directory: ./
+      run: npm run build:server
+    
+    - name: Prepare deployment package
+      working-directory: ./
+      run: |
+        mkdir -p deployment
+        cp -r server/dist/* deployment/
+        cp server/package*.json deployment/
+        cd deployment && npm ci --production
     
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-        package: ./server
+        package: ./deployment
 
     - name: Log deployment status to Azure Monitor
       if: always()
