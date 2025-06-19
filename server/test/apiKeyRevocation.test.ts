@@ -20,6 +20,7 @@ type MockContainer = {
   items: {
     query: Mock;
     fetchAll: Mock;
+    upsert: Mock;
   };
 };
 
@@ -41,25 +42,30 @@ describe('API Key Revocation', () => {
   beforeEach(async () => {
     // Create a fresh mock container for each test
     mockContainer = {
-      item: vi.fn().mockReturnThis(),
+      item: vi.fn().mockImplementation((id, partitionKey) => ({
+        read: vi.fn().mockResolvedValue({ 
+          resource: { ...testKey, id, userId: partitionKey } 
+        })
+      })),
       read: vi.fn(),
-      upsert: vi.fn(),
+      upsert: vi.fn().mockImplementation((item) => ({ 
+        resource: { ...item } 
+      })),
       items: {
         query: vi.fn().mockReturnThis(),
         fetchAll: vi.fn(),
+        upsert: vi.fn().mockResolvedValue({ 
+          resource: { ...testKey, isActive: false } 
+        })
       },
-    };
+    } as unknown as MockContainer;
     
     // Create a new instance of the repository for each test
     const mockCosmosDb = {
-      container: vi.fn().mockResolvedValue(mockContainer),
+      container: vi.fn().mockImplementation(() => mockContainer),
     } as any;
     
     apiKeyRepository = new ApiKeyRepository(mockCosmosDb);
-    
-    // Set up default mock implementations
-    mockContainer.item.mockReturnThis();
-    mockContainer.upsert.mockResolvedValue({ resource: testKey });
   });
 
   describe('revokeApiKey', () => {
@@ -70,12 +76,17 @@ describe('API Key Revocation', () => {
         userId: testUserId,
       };
       
-      // Mock the read operation to return an active key
-      (mockContainer.item as Mock).mockImplementation((id, partitionKey) => ({
+      // Setup mock for reading the key
+      (mockContainer.item as Mock).mockImplementationOnce((id, partitionKey) => ({
         read: vi.fn().mockResolvedValueOnce({
-          resource: { ...testKey, isActive: true }
+          resource: { ...testKey, id, userId: partitionKey, isActive: true }
         })
       }));
+      
+      // Mock the upsert to simulate successful update
+      (mockContainer.items.upsert as Mock).mockResolvedValueOnce({ 
+        resource: { ...testKey, isActive: false } 
+      });
       
       // Act
       const result = await apiKeyRepository.revokeApiKey(params);
@@ -83,7 +94,7 @@ describe('API Key Revocation', () => {
       // Assert
       expect(result).toBe(true);
       expect(mockContainer.item).toHaveBeenCalledWith(testKeyId, testUserId);
-      expect(mockContainer.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockContainer.items.upsert).toHaveBeenCalledWith(expect.objectContaining({
         id: testKeyId,
         userId: testUserId,
         isActive: false,
@@ -141,25 +152,22 @@ describe('API Key Revocation', () => {
       };
       
       // Mock the read operation to succeed but upsert to fail
-      (mockContainer.item as Mock).mockImplementation(() => ({
-        read: vi.fn().mockResolvedValueOnce({
-          resource: { ...testKey, isActive: true }
-        })
-      }));
-      
-      // Mock the upsert to throw an error
-      const error = new Error('Database error');
-      mockContainer.upsert = vi.fn().mockRejectedValueOnce(error);
-      
-      // Spy on console.error to verify it's called
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      
+      // Mock the read operation to throw an error
+      (mockContainer.item as Mock).mockImplementationOnce(() => ({
+        read: vi.fn().mockRejectedValueOnce(new Error('Database error'))
+      }));
       
       // Act
       const result = await apiKeyRepository.revokeApiKey(params);
       
       // Assert
       expect(result).toBe(false);
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to revoke API key:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to revoke API key:',
+        expect.any(Error)
+      );
       
       // Cleanup
       consoleErrorSpy.mockRestore();
@@ -173,18 +181,25 @@ describe('API Key Revocation', () => {
       };
       
       // Mock the read operation to return an already revoked key
-      (mockContainer.item as Mock).mockImplementation(() => ({
+      (mockContainer.item as Mock).mockImplementationOnce((id, partitionKey) => ({
         read: vi.fn().mockResolvedValueOnce({
-          resource: { ...testKey, isActive: false }
+          resource: { ...testKey, id, userId: partitionKey, isActive: false }
         })
       }));
+      
+      // Mock the upsert to verify it's called with the correct parameters
+      (mockContainer.items.upsert as Mock).mockResolvedValueOnce({ 
+        resource: { ...testKey, isActive: false } 
+      });
       
       // Act
       const result = await apiKeyRepository.revokeApiKey(params);
       
       // Assert
-      expect(result).toBe(true); // Should still return true as the key is effectively revoked
-      expect(mockContainer.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      expect(result).toBe(true); // Should still return true for idempotency
+      expect(mockContainer.items.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        id: testKeyId,
+        userId: testUserId,
         isActive: false,
       }));
     });

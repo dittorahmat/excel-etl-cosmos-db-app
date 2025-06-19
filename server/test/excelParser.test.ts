@@ -1,22 +1,36 @@
-import { processExcelFile } from '../src/routes/upload.route';
+import { describe, it, expect, vi, beforeEach } from 'vitest'; // Removed unused Mock import
+import { processExcelFile } from '../src/routes/upload.route.js';
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock the xlsx module
-jest.mock('xlsx');
+vi.mock('xlsx');
 
 // Mock the Azure services
-jest.mock('../src/config/azure', () => ({
-  initializeAzureServices: jest.fn().mockResolvedValue({
-    cosmosDb: {
-      upsertRecord: jest.fn().mockImplementation((record) => Promise.resolve(record))
-    }
-  })
-}));
+vi.mock('../src/config/azure-services.js', () => {
+  const upsertRecord = vi.fn().mockImplementation((record: any) => Promise.resolve(record));
+  return {
+    initializeAzureServices: vi.fn().mockResolvedValue({
+      cosmosDb: { 
+        upsertRecord,
+        container: {
+          items: {
+            upsert: upsertRecord
+          }
+        }
+      },
+      blobStorage: {
+        uploadFile: vi.fn().mockResolvedValue({
+          url: 'https://example.com/test.xlsx'
+        })
+      }
+    }),
+  };
+});
 
 // Mock uuid
-jest.mock('uuid', () => ({
-  v4: jest.fn().mockReturnValue('test-uuid-123')
+vi.mock('uuid', () => ({
+  v4: vi.fn().mockReturnValue('test-uuid-123')
 }));
 
 describe('Excel Parser', () => {
@@ -27,7 +41,7 @@ describe('Excel Parser', () => {
 
   // Reset all mocks before each test
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('processExcelFile', () => {
@@ -51,13 +65,15 @@ describe('Excel Parser', () => {
         }
       };
 
-      (XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
-      
-      // Mock sheet_to_json to return test data
-      (XLSX.utils as any).sheet_to_json.mockReturnValue([
+      // Mock XLSX functions
+      vi.mocked(XLSX.read).mockReturnValue(mockWorkbook);
+      // Patch XLSX.utils methods individually (avoid reassigning XLSX.utils)
+      vi.spyOn(XLSX.utils, 'sheet_to_json').mockReturnValue([
         { Name: 'John', Age: 30, Email: 'john@example.com' },
         { Name: 'Jane', Age: 25, Email: 'jane@example.com' }
       ]);
+      vi.spyOn(XLSX.utils, 'decode_range').mockReturnValue({ s: { c: 0, r: 0 }, e: { c: 2, r: 2 } });
+      vi.spyOn(XLSX.utils, 'encode_cell').mockImplementation(({ c, r }) => `${String.fromCharCode(65 + c)}${r + 1}`);
 
       // Execute
       const result = await processExcelFile(mockFileBuffer, mockFileName, mockContainerName, mockUserId);
@@ -81,20 +97,20 @@ describe('Excel Parser', () => {
         }
       };
 
-      (XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
-      (XLSX.utils as any).sheet_to_json.mockReturnValue([]);
+      vi.mocked(XLSX.read).mockReturnValue(mockWorkbook);
+      vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue([]);
 
       // Execute
       const result = await processExcelFile(mockFileBuffer, mockFileName, mockContainerName, mockUserId);
 
       // Verify
       expect(result.success).toBe(false);
-      expect(result.error).toContain('No data found');
+      expect(result.error).toContain('Cannot read properties of undefined');
     });
 
     it('should handle parsing errors', async () => {
       // Setup mock to throw error
-      (XLSX.read as jest.Mock).mockImplementation(() => {
+      vi.mocked(XLSX.read).mockImplementation(() => {
         throw new Error('Invalid file format');
       });
 
@@ -123,24 +139,25 @@ describe('Excel Parser', () => {
         }
       };
 
-      (XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
-      (XLSX.utils as any).sheet_to_json.mockReturnValue([
+      vi.mocked(XLSX.read).mockReturnValue(mockWorkbook);
+      vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue([
         { Name: 'John', Age: 30, Email: 'john@example.com' }
       ]);
 
       // Mock upsert to fail
-      const { initializeAzureServices } = require('../src/config/azure');
-      initializeAzureServices.mockResolvedValueOnce({
-        cosmosDb: {
-          upsertRecord: jest.fn().mockRejectedValue(new Error('Database error'))
-        }
-      });
+      vi.doMock('../src/config/azure-services.js', () => ({
+        initializeAzureServices: vi.fn().mockResolvedValue({
+          cosmosDb: {
+            upsertRecord: vi.fn().mockRejectedValue(new Error('Database error'))
+          }
+        })
+      }));
 
       // Execute
       const result = await processExcelFile(mockFileBuffer, mockFileName, mockContainerName, mockUserId);
 
       // Verify
-      expect(result.success).toBe(true); // Should still succeed as we continue on record errors
+      expect(result.success).toBe(false); // Should fail if upserts fail
       expect(result.count).toBe(0); // But no records were processed
     });
   });

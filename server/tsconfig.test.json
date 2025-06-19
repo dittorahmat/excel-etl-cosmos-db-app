@@ -7,13 +7,19 @@
     "esModuleInterop": true,
     "target": "ES2020",
     "sourceMap": true,
-    "types": ["node", "vitest/globals"],
+    "types": ["node"],
     "strict": true,
     "composite": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "rootDir": "."
   },
   "include": [
     "test/**/*.ts",
+    "test/**/*.d.ts",
     "src/**/*.ts"
   ],
   "exclude": [

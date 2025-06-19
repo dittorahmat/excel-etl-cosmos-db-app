@@ -1,8 +1,15 @@
-import { AzureCosmosDB } from '../config/azure';
+import { AzureCosmosDB } from '../config/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 
-interface ApiKeyUsageRecord {
-  id: string;
+// Import types from the types index file
+import type { CosmosRecord } from '../types/index.js';
+
+/**
+ * Represents an API key usage record in Cosmos DB
+ */
+interface ApiKeyUsageRecord extends Omit<CosmosRecord, 'id'> {
+  // Override id to be required and non-optional
+  id: string; // Required for Cosmos DB
   apiKeyId: string;
   userId: string;
   timestamp: string;
@@ -13,7 +20,7 @@ interface ApiKeyUsageRecord {
   userAgent?: string;
   responseTime: number;
   metadata?: Record<string, unknown>;
-  ttl?: number; // Time to live in seconds (for automatic expiration)
+  ttl: number; // Time to live in seconds (for automatic expiration)
 }
 
 export class ApiKeyUsageRepository {
@@ -31,7 +38,7 @@ export class ApiKeyUsageRepository {
   /**
    * Records API key usage in Cosmos DB
    */
-  async recordUsage(params: {
+  async logUsage(params: {
     apiKeyId: string;
     userId: string;
     method: string;
@@ -43,8 +50,7 @@ export class ApiKeyUsageRepository {
     metadata?: Record<string, unknown>;
   }): Promise<void> {
     try {
-      const container = await this.cosmosDb.getContainer(this.containerId, this.partitionKey);
-      
+      // Create the record to be inserted
       const record: ApiKeyUsageRecord = {
         id: uuidv4(),
         apiKeyId: params.apiKeyId,
@@ -58,13 +64,15 @@ export class ApiKeyUsageRepository {
         responseTime: params.responseTime,
         metadata: params.metadata,
         ttl: this.ttlInDays * 24 * 60 * 60, // Convert days to seconds
+        // Ensure we have a partition key value
+        [this.partitionKey.replace(/^\//, '')]: params.apiKeyId
       };
 
-      await container.items.create(record);
+      // Use the upsertRecord method from AzureCosmosDB interface
+      await this.cosmosDb.upsertRecord(record);
     } catch (error) {
-      // Log error but don't fail the request
-      console.error('Failed to record API key usage:', error);
-      // Consider adding error reporting here
+      console.error('Failed to log API key usage:', error);
+      // Don't throw - we don't want to break the request if logging fails
     }
   }
 
@@ -73,8 +81,6 @@ export class ApiKeyUsageRepository {
    */
   async getUsageStats(apiKeyId: string, timeRange: '24h' | '7d' | '30d' = '7d') {
     try {
-      const container = await this.cosmosDb.getContainer(this.containerId, this.partitionKey);
-      
       // Calculate time range
       const now = new Date();
       let fromDate = new Date(now);
@@ -92,16 +98,14 @@ export class ApiKeyUsageRepository {
           break;
       }
 
-      // Query for usage records
-      const query = {
-        query: 'SELECT * FROM c WHERE c.apiKeyId = @apiKeyId AND c.timestamp >= @fromDate',
-        parameters: [
-          { name: '@apiKeyId', value: apiKeyId },
-          { name: '@fromDate', value: fromDate.toISOString() },
-        ],
-      };
+      // Query for usage records using the AzureCosmosDB interface
+      const query = 'SELECT * FROM c WHERE c.apiKeyId = @apiKeyId AND c.timestamp >= @fromDate';
+      const parameters = [
+        { name: '@apiKeyId', value: apiKeyId },
+        { name: '@fromDate', value: fromDate.toISOString() },
+      ];
 
-      const { resources: records } = await container.items.query(query).fetchAll();
+      const records = await this.cosmosDb.query<ApiKeyUsageRecord>(query, parameters);
       
       // Calculate basic statistics
       const stats = {
@@ -157,17 +161,14 @@ export class ApiKeyUsageRepository {
    */
   async getRecentActivity(apiKeyId: string, limit = 50) {
     try {
-      const container = await this.cosmosDb.getContainer(this.containerId, this.partitionKey);
-      
-      const query = {
-        query: 'SELECT TOP @limit * FROM c WHERE c.apiKeyId = @apiKeyId ORDER BY c.timestamp DESC',
-        parameters: [
-          { name: '@apiKeyId', value: apiKeyId },
-          { name: '@limit', value: limit },
-        ],
-      };
+      // Query for recent activity using the AzureCosmosDB interface
+      const query = 'SELECT TOP @limit * FROM c WHERE c.apiKeyId = @apiKeyId ORDER BY c.timestamp DESC';
+      const parameters = [
+        { name: '@apiKeyId', value: apiKeyId },
+        { name: '@limit', value: limit },
+      ];
 
-      const { resources: records } = await container.items.query(query).fetchAll();
+      const records = await this.cosmosDb.query<ApiKeyUsageRecord>(query, parameters);
       return records;
     } catch (error) {
       console.error('Failed to get recent activity:', error);

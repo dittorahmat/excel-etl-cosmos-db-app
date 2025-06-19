@@ -1,12 +1,109 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ApiKeyRepository } from '../src/repositories/apiKeyRepository';
-import { mockCosmosContainer } from './test-utils';
+import { describe, it, expect, vi, beforeEach, MockedFunction, beforeAll } from 'vitest';
+import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
+import { Container } from '@azure/cosmos';
+import type { ApiKey } from '../src/types/apiKey.js';
 
-// Mock the Cosmos DB container
-vi.mock('../src/config/azure', () => ({
+// Define types for our mocks
+type MockContainer = {
+  items: {
+    query: MockedFunction<any>;
+    create: MockedFunction<any>;
+    upsert: MockedFunction<any>;
+    item: MockedFunction<any>;
+  };
+};
+
+type MockItem = {
+  read: MockedFunction<any>;
+  delete: MockedFunction<any>;
+  replace: MockedFunction<any>;
+};
+
+// Create a mock Cosmos container
+const createMockContainer = (): MockContainer => {
+  const mockItem: MockItem = {
+    read: vi.fn().mockResolvedValue({ resource: null }),
+    delete: vi.fn(),
+    replace: vi.fn(),
+  };
+
+  const mockContainer: MockContainer = {
+    items: {
+      query: vi.fn().mockReturnThis(),
+      create: vi.fn(),
+      upsert: vi.fn().mockResolvedValue({ resource: {} }),
+      item: vi.fn().mockReturnValue(mockItem),
+    },
+  };
+
+  return mockContainer;
+};
+
+const mockCosmosContainer = createMockContainer();
+const mockItem = mockCosmosContainer.items.item('test-id');
+
+// Mock the AzureCosmosDB interface
+const mockAzureCosmosDB = {
+  container: vi.fn().mockResolvedValue(mockCosmosContainer),
+};
+
+// Mock the crypto module
+vi.mock('crypto', () => {
+  // Create a partial mock of the crypto module
+  const randomBytes = vi.fn().mockImplementation((size: number, callback?: (err: Error | null, buf: Buffer) => void) => {
+    const buf = Buffer.alloc(size, 'a'); // Return a buffer of 'a's for testing
+    if (callback) {
+      callback(null, buf);
+    }
+    return buf;
+  });
+
+  const createHash = vi.fn().mockImplementation(() => ({
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn().mockReturnValue('hashed-value'),
+  }));
+
+  const timingSafeEqual = vi.fn().mockImplementation((a: Buffer, b: Buffer) => {
+    return a.length === b.length && a.every((val, i) => val === b[i]);
+  });
+  
+  // Return the mock implementation with both default and named exports
+  return {
+    __esModule: true,
+    default: {
+      randomBytes,
+      createHash,
+      timingSafeEqual,
+    },
+    randomBytes,
+    createHash,
+    timingSafeEqual,
+  };
+});
+
+// Mock the util.promisify function
+vi.mock('util', () => ({
+  promisify: vi.fn().mockImplementation((fn) => {
+    return (...args: any[]) => {
+      return new Promise((resolve, reject) => {
+        const callback = (err: any, result: any) => {
+          if (err) reject(err);
+          else resolve(result);
+        };
+        fn(...args, callback);
+      });
+    };
+  }),
+}));
+
+// Mock the Azure services
+vi.mock('../src/config/azure-services.js', () => ({
   initializeAzureServices: vi.fn().mockResolvedValue({
     container: () => mockCosmosContainer,
   }),
+  getCosmosDb: vi.fn().mockImplementation(() => ({
+    container: () => mockCosmosContainer,
+  })),
 }));
 
 describe('ApiKeyRepository', () => {
@@ -16,9 +113,12 @@ describe('ApiKeyRepository', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    repository = new ApiKeyRepository({
-      container: () => mockContainer,
-    } as any);
+    repository = new ApiKeyRepository(mockAzureCosmosDB as any);
+  });
+
+  beforeAll(() => {
+    // Mock the container method to return our mock container
+    (mockAzureCosmosDB.container as MockedFunction<any>).mockResolvedValue(mockContainer);
   });
 
   describe('createApiKey', () => {
@@ -33,7 +133,7 @@ describe('ApiKeyRepository', () => {
       };
 
       // Mock the container's upsert method
-      (mockContainer.items.upsert as any).mockResolvedValueOnce({
+      (mockContainer.items.upsert as MockedFunction<any>).mockResolvedValueOnce({
         resource: mockKey,
       });
 
@@ -47,16 +147,57 @@ describe('ApiKeyRepository', () => {
       expect(mockContainer.items.upsert).toHaveBeenCalled();
       
       // Verify the stored key is hashed
-      const storedKey = (mockContainer.items.upsert as any).mock.calls[0][0];
+      const storedKey = (mockContainer.items.upsert as unknown as MockedFunction<any>).mock.calls[0][0] as ApiKey;
       expect(storedKey.keyHash).toBeDefined();
-      expect(storedKey.keyHash).not.toBe(result.key); // Should store hash, not the actual key
+      expect(storedKey.keyHash).not.toBe((result as any).key); // Should store hash, not the actual key
+    });
+  });
+
+  describe('update', () => {
+    it('should update an existing API key', async () => {
+      const mockKey: ApiKey = {
+        id: 'key-123',
+        userId: mockUserId,
+        keyHash: 'hashed-key',
+        name: 'Test Key',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Mock the item read
+      (mockItem.read as MockedFunction<any>).mockResolvedValueOnce({
+        resource: mockKey,
+      });
+
+      // Mock the upsert
+      (mockContainer.items.upsert as MockedFunction<any>).mockResolvedValueOnce({
+        resource: {
+          ...mockKey,
+          name: 'Updated Key',
+          updatedAt: new Date().toISOString()
+        },
+      });
+
+      await repository.update({
+        id: 'key-123',
+        name: 'Updated Key',
+      });
+
+      expect(mockItem.read).toHaveBeenCalled();
+      expect(mockContainer.items.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'key-123',
+          name: 'Updated Key',
+          updatedAt: expect.any(String),
+        })
+      );
     });
   });
 
   describe('revokeApiKey', () => {
     it('should revoke an existing API key', async () => {
       const keyId = 'key-123';
-      const mockKey = {
+      const mockKey: ApiKey = {
         id: keyId,
         userId: mockUserId,
         keyHash: 'hashed-key',
@@ -65,34 +206,39 @@ describe('ApiKeyRepository', () => {
         createdAt: new Date().toISOString(),
       };
 
-      // Mock the container's item().read() method
-      (mockContainer.item as any).mockImplementation((id: string) => ({
-        read: vi.fn().mockResolvedValue({ resource: mockKey }),
-      }));
-
-      // Mock the container's upsert method
-      (mockContainer.items.upsert as any).mockResolvedValueOnce({
-        resource: { ...mockKey, isActive: false },
+      // Mock the item read
+      (mockItem.read as MockedFunction<any>).mockResolvedValueOnce({
+        resource: mockKey,
       });
 
-      const result = await repository.revokeApiKey({
+      // Mock the upsert
+      (mockContainer.items.upsert as MockedFunction<any>).mockResolvedValueOnce({
+        resource: {
+          ...mockKey,
+          isActive: false,
+        },
+      });
+
+      const result = await (repository as any).revokeApiKey({
         keyId,
         userId: mockUserId,
       });
 
       expect(result).toBe(true);
-      expect(mockContainer.items.upsert).toHaveBeenCalledWith({
-        ...mockKey,
-        isActive: false,
-      });
+      expect(mockContainer.items.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: keyId,
+          isActive: false,
+        })
+      );
     });
 
     it('should return false for non-existent key', async () => {
-      (mockContainer.item as any).mockImplementation(() => ({
-        read: vi.fn().mockResolvedValue({ resource: null }),
-      }));
+      (mockItem.read as MockedFunction<any>).mockResolvedValueOnce({
+        resource: null,
+      });
 
-      const result = await repository.revokeApiKey({
+      const result = await (repository as any).revokeApiKey({
         keyId: 'non-existent',
         userId: mockUserId,
       });

@@ -1,11 +1,30 @@
-import { Request, Response, NextFunction } from 'express';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { validateToken } from '../src/middleware/auth';
+import { validateToken } from '../src/middleware/auth.js';
 
-// Mock the modules
-jest.mock('jsonwebtoken');
-jest.mock('jwks-rsa');
+// Mock the jsonwebtoken module with default export
+vi.mock('jsonwebtoken', () => ({
+  __esModule: true,
+  default: {
+    verify: vi.fn(),
+  },
+  verify: vi.fn(),
+}));
+
+// Create mock functions
+const mockGetSigningKey = vi.fn();
+const mockClient = vi.fn().mockImplementation(() => ({
+  getSigningKey: mockGetSigningKey
+}));
+
+// Mock the jwks-rsa module with default export
+vi.mock('jwks-rsa', () => ({
+  __esModule: true,
+  default: mockClient,
+  JwksClient: mockClient,
+}));
 
 // Mock environment variables
 process.env.AZURE_TENANT_ID = 'test-tenant-id';
@@ -16,28 +35,29 @@ describe('Token Validation Middleware', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let nextFunction: NextFunction;
-  let jsonMock: jest.Mock;
-  let statusMock: jest.Mock;
+  let jsonMock: ReturnType<typeof vi.fn>;
+  let statusMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Setup mock request
     mockRequest = {
       headers: {},
+      get: vi.fn()
     };
     
     // Setup mock response
-    jsonMock = jest.fn();
-    statusMock = jest.fn().mockReturnThis();
+    jsonMock = vi.fn();
+    statusMock = vi.fn().mockReturnThis();
     mockResponse = {
       status: statusMock,
       json: jsonMock,
     };
     
     // Setup next function
-    nextFunction = jest.fn();
+    nextFunction = vi.fn();
     
     // Reset environment variables
     delete process.env.AUTH_ENABLED;
@@ -87,9 +107,9 @@ describe('Token Validation Middleware', () => {
       };
       
       // Mock jwt.verify to simulate invalid token
-      (jwt.verify as jest.Mock).mockImplementationOnce((_token, _getKey, _options, callback) => {
+      vi.mocked(jwt.verify).mockImplementationOnce(((_token: string, _getKey: any, _options: any, callback: any) => {
         callback(new Error('invalid token'), null);
-      });
+      }) as any);
       
       // Act
       await validateToken(
@@ -114,11 +134,11 @@ describe('Token Validation Middleware', () => {
       };
       
       // Mock jwt.verify to simulate expired token
-      (jwt.verify as jest.Mock).mockImplementationOnce((_token, _getKey, _options, callback) => {
+      vi.mocked(jwt.verify).mockImplementationOnce(((_token: string, _getKey: any, _options: any, callback: any) => {
         const error = new Error('jwt expired');
         (error as any).name = 'TokenExpiredError';
         callback(error, null);
-      });
+      }) as any);
       
       // Act
       await validateToken(
@@ -150,15 +170,18 @@ describe('Token Validation Middleware', () => {
       };
       
       // Mock jwt.verify to simulate valid token
-      (jwt.verify as jest.Mock).mockImplementationOnce((_token, _getKey, _options, callback) => {
+      vi.mocked(jwt.verify).mockImplementationOnce(((_token: string, _getKey: any, _options: any, callback: any) => {
         callback(null, mockUser);
-      });
+      }) as any);
       
-      // Mock jwksClient.getSigningKey
-      const mockGetSigningKey = jest.fn();
-      (jwksClient as jest.Mock).mockImplementation(() => ({
-        getSigningKey: mockGetSigningKey,
-      }));
+      // Mock the getSigningKey implementation for this test case
+      mockGetSigningKey.mockImplementationOnce((_kid, cb) => {
+        cb(null, { 
+          getPublicKey: () => 'public-key',
+          rsaPublicKey: 'public-key',
+          publicKey: 'public-key'
+        });
+      });
       
       // Act
       await validateToken(

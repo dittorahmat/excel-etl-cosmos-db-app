@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mockRequest, mockResponse, mockNext } from './test-utils.js';
 import { createApp } from '../src/server.js';
-import { initializeCosmosDB } from '../src/config/azure.js';
+import { initializeAzureServices } from '../src/config/azure-services.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Container } from '@azure/cosmos';
 
@@ -38,8 +38,8 @@ describe('Data Endpoint', () => {
       }),
     };
 
-    // Mock initializeCosmosDB
-    (initializeCosmosDB as jest.Mock).mockResolvedValue({
+    // Mock initializeAzureServices
+    (initializeAzureServices as any).mockResolvedValue({
       cosmosDb: mockCosmosDb,
     });
 

@@ -44,10 +44,67 @@ describe('Token Validation Middleware', () => {
             expect(statusMock).not.toHaveBeenCalled();
         });
         it('should return 401 when no token is provided', async () => {
-            // Arrange
-            mockRequest.headers = {};
-            // Act
-            await validateToken(mockRequest, mockResponse, nextFunction);
+        // Arrange
+        mockRequest.headers = {};
+        
+        // Act
+        await validateToken(mockRequest, mockResponse, nextFunction);
+        
+        // Assert
+        expect(mockResponse.status).toHaveBeenCalledWith(401);
+        expect(mockResponse.json).toHaveBeenCalledWith({
+            error: 'No token provided',
+            message: 'Authentication token is missing',
+        });
+        expect(nextFunction).not.toHaveBeenCalled();
+    });
+    
+    it('should return 401 when token is invalid', async () => {
+        // Arrange
+        mockRequest.headers = {
+            authorization: 'Bearer invalid-token',
+        };
+        
+        // Mock JWT verification to throw an error
+        mockVerify.mockImplementationOnce(() => {
+            throw new Error('Invalid token');
+        });
+        
+        // Act
+        await validateToken(mockRequest, mockResponse, nextFunction);
+        
+        // Assert
+        expect(mockResponse.status).toHaveBeenCalledWith(401);
+        expect(mockResponse.json).toHaveBeenCalledWith({
+            error: 'Invalid token',
+            message: 'Failed to authenticate token',
+        });
+        expect(nextFunction).not.toHaveBeenCalled();
+    });
+    
+    it('should call next() when token is valid', async () => {
+        // Arrange
+        const testToken = 'valid-test-token';
+        const testUser = {
+            oid: 'test-oid',
+            name: 'Test User',
+            email: 'test@example.com',
+            roles: ['user'],
+            scp: 'user.read',
+        };
+        
+        mockRequest.headers = {
+            authorization: `Bearer ${testToken}`,
+        };
+        
+        // Act
+        await validateToken(mockRequest, mockResponse, nextFunction);
+        
+        // Assert
+        expect(nextFunction).toHaveBeenCalled();
+        expect(mockRequest.user).toEqual(testUser);
+        expect(mockResponse.status).not.toHaveBeenCalled();
+    });
             // Assert
             expect(statusMock).toHaveBeenCalledWith(401);
             expect(jsonMock).toHaveBeenCalledWith({

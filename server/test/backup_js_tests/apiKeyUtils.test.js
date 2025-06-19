@@ -52,22 +52,23 @@ describe('API Key Utilities', () => {
     describe('isValidApiKeyFormat', () => {
         it('should validate correct API key formats', () => {
             const validKeys = [
-                'abc123',
-                'abc-123_xyz',
                 'a'.repeat(32), // Minimum length
-                'a'.repeat(256), // Reasonable max length
-                'abc123ABC456-_.~'
+                'a'.repeat(64), // Standard length
+                'a'.repeat(256), // Maximum length
+                'abc123ABC456-_.~' + 'x'.repeat(32 - 14) // Ensure minimum length with valid chars
             ];
             validKeys.forEach(key => {
-                expect(isValidApiKeyFormat(key)).toBe(true);
+                expect(isValidApiKeyFormat(key)).toBe(true, `Expected key to be valid: ${key}`);
             });
         });
         it('should invalidate incorrect API key formats', () => {
             const invalidKeys = [
                 '',
                 ' ',
-                'abc\n123', // Newline
-                'abc=123', // Invalid character
+                'a'.repeat(31), // Too short
+                'a'.repeat(257), // Too long
+                'abc\n123' + 'x'.repeat(30), // Newline
+                'abc=123' + 'x'.repeat(30), // Invalid character
                 'abc/123', // Invalid character
                 'a'.repeat(1025), // Too long
                 'short' // Too short
