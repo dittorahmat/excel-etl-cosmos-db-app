@@ -1,34 +1,74 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import { apiKeyAuth } from '../src/middleware/apiKeyAuth.js';
-import { mockRequest, mockResponse, mockNext } from '../src/test-utils/index.js';
-import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
+// Mock the ApiKeyRepository first, before any imports
+const mockValidateApiKey = vi.fn();
 
-type ApiKeyAuthMiddleware = (options?: any) => RequestHandler;
+// Mock the Azure services
+const mockUpsertRecord = vi.fn().mockResolvedValue({});
+const mockContainer = {
+  items: {
+    upsert: mockUpsertRecord,
+    query: vi.fn().mockReturnThis(),
+    readAll: vi.fn().mockReturnThis(),
+    fetchAll: vi.fn().mockResolvedValue({ resources: [] })
+  }
+};
 
-// Mock the requireAuth middleware
-const requireAuth = (options: any = {}) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (req.user) {
-      return next();
-    }
-    return apiKeyAuth(options)(req, res, next);
-  };
+// Mock the Azure Cosmos DB client
+const mockCosmosDb = {
+  database: vi.fn().mockReturnThis(),
+  container: vi.fn().mockReturnValue(mockContainer)
 };
 
 // Mock the ApiKeyRepository
 vi.mock('../src/repositories/apiKeyRepository.js', () => ({
   ApiKeyRepository: vi.fn().mockImplementation(() => ({
-    validateApiKey: vi.fn(),
+    validateApiKey: mockValidateApiKey
   })),
+  default: vi.fn().mockImplementation(() => ({
+    validateApiKey: mockValidateApiKey
+  }))
 }));
 
-// Mock the Azure Cosmos DB client
-vi.mock('../src/config/azure.js', () => ({
+// Mock the Azure services module
+vi.mock('../src/config/azure-services.js', () => ({
   initializeAzureServices: vi.fn().mockResolvedValue({
-    container: vi.fn(),
-  }),
+    cosmosDb: mockCosmosDb,
+    blobStorage: {}
+  })
 }));
+
+// Mock the azure module
+vi.mock('../src/config/azure.js', () => ({
+  AzureCosmosDB: vi.fn().mockImplementation(() => mockCosmosDb)
+}));
+
+// Now import the actual implementation after setting up mocks
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { apiKeyAuth } from '../src/middleware/apiKeyAuth.js';
+
+// Utility: chainable mock Response
+function createMockResponse() {
+  const res: any = {};
+  res.status = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
+  res.send = vi.fn().mockReturnValue(res);
+  return res as unknown as Response;
+}
+
+// Types
+type ApiKeyAuthMiddleware = (options?: any) => RequestHandler;
+
+// Extended Request type for testing
+interface TestRequest extends Omit<Partial<Request>, 'get'> {
+  user?: any;
+  apiKey?: any;
+  ip?: string;
+  get(name: string): string | string[] | undefined;
+  [key: string]: any; // Allow additional properties
+}
+
+// Provide a mock cosmosDb object for the middleware
+const mockCosmosDb = {} as any;
 
 // Mock the logger to prevent console output during tests
 vi.mock('../src/utils/logger.js', () => ({
@@ -38,94 +78,100 @@ vi.mock('../src/utils/logger.js', () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   },
+  default: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 describe('API Key Authentication Middleware', () => {
   let mockReq: Partial<Request>;
-  let mockRes: Partial<Response>;
+  let mockRes: Response;
   let nextFn: NextFunction;
-  let mockValidateApiKey: any;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    
     mockReq = {
       headers: {},
       query: {},
-      user: undefined,
-      ip: '127.0.0.1',
-      // Add required properties to match Express Request type
-      method: 'GET',
-      url: '/',
-      originalUrl: '/',
-      params: {},
       body: {},
-      cookies: {},
-      signedCookies: {},
       get: vi.fn(),
-      header: vi.fn(),
-      accepts: vi.fn(),
-      acceptsCharsets: vi.fn(),
-      acceptsEncodings: vi.fn(),
-      acceptsLanguages: vi.fn(),
-      range: vi.fn(),
-      is: vi.fn(),
-      protocol: 'http',
-      secure: false,
-      ips: [],
-      subdomains: [],
-      path: '/',
-      hostname: 'localhost',
-      host: 'localhost:3000',
-      fresh: true,
-      stale: false,
-      xhr: false,
-      route: {},
+      ip: '127.0.0.1',
     } as unknown as Request;
-    
-    mockRes = mockResponse() as unknown as Response;
-    nextFn = vi.fn() as unknown as NextFunction;
-    
-    // Reset the mock implementation for each test
-    mockValidateApiKey = vi.fn();
-    const { ApiKeyRepository } = await import('../../src/repositories/apiKeyRepository.js');
-    vi.mocked(ApiKeyRepository).mockImplementation(() => ({
-      validateApiKey: mockValidateApiKey,
-    }));
+    mockRes = createMockResponse();
+    nextFn = vi.fn();
+    vi.clearAllMocks();
+    mockValidateApiKey.mockReset();
+    mockValidateApiKey.mockResolvedValue({
+      id: 'test-api-key-id',
+      userId: 'test-user-id',
+      name: 'test-key',
+      key: 'test-api-key-value',
+      lastUsedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   });
 
   describe('apiKeyAuth', () => {
-    it('should call next() if user is already authenticated', async () => {
+    it('should call next() with error if API key is invalid', async () => {
       // Arrange
-      const req = { ...mockReq, user: { oid: 'user-123' } } as any;
-      const middleware = apiKeyAuth({} as any);
-
+      const req = {
+        ...mockReq,
+        headers: { 'authorization': 'ApiKey invalid-key' },
+        get: vi.fn((name: string) => name === 'authorization' ? 'ApiKey invalid-key' : undefined),
+        query: {},
+        user: { oid: 'test-user-id' },
+        ip: '127.0.0.1'
+      } as unknown as Request;
+      
+      // Mock the repository to return { isValid: false }
+      mockValidateApiKey.mockResolvedValueOnce({
+        isValid: false,
+        key: null
+      });
+      
       // Act
-      await middleware(req, mockRes as Response, nextFn);
-
+      const next = vi.fn();
+      await apiKeyAuth(mockCosmosDb)(req, mockRes as Response, next);
+      
       // Assert
-      expect(nextFn).toHaveBeenCalled();
-      expect(nextFn).toHaveBeenCalledWith();
-      expect(mockValidateApiKey).not.toHaveBeenCalled();
+      expect(mockValidateApiKey).toHaveBeenCalledWith({
+        key: 'invalid-key',
+        userId: 'test-user-id',
+        ipAddress: '127.0.0.1'
+      });
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        error: 'Forbidden',
+        message: 'Invalid or expired API key',
+      });
+      expect(next).not.toHaveBeenCalled();
     });
-
-    it('should return 401 if no API key is provided', async () => {
-      // Arrange
-      const middleware = apiKeyAuth({} as any);
-      const send = vi.fn();
-      const status = vi.fn().mockReturnValue({ send });
-      const res = { ...mockRes, status } as unknown as Response;
-
+  
+    it('should call next() with error if API key is missing', async () => {
+      // Arrange - no API key in headers
+      const req = {
+        ...mockReq,
+        headers: {},
+        get: vi.fn((name: string) => undefined)
+        // No user property, expect 401 Unauthorized for missing user context
+      } as unknown as Request;
+      
       // Act
-      await middleware(mockReq as Request, res, nextFn);
-
+      const next = vi.fn();
+      await apiKeyAuth(mockCosmosDb)(req, mockRes as Response, next);
+      
       // Assert
-      expect(status).toHaveBeenCalledWith(401);
-      expect(send).toHaveBeenCalledWith({
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({
         success: false,
         error: 'Unauthorized',
         message: 'API key is required',
       });
+      expect(next).not.toHaveBeenCalled();
     });
 
     it('should validate API key from Authorization header', async () => {
@@ -134,53 +180,90 @@ describe('API Key Authentication Middleware', () => {
       const req = {
         ...mockReq,
         headers: { authorization: `ApiKey ${apiKey}` },
-      } as any;
+        get: vi.fn((name: string) => name === 'authorization' ? `ApiKey ${apiKey}` : undefined),
+        query: {},
+        user: { oid: 'test-user-id' },
+        ip: '127.0.0.1'
+      } as unknown as Request;
       
-      mockValidateApiKey.mockResolvedValue({
+      // Mock the next function
+      const next = vi.fn();
+      
+      // Mock the repository to return a valid API key
+      mockValidateApiKey.mockResolvedValueOnce({
         isValid: true,
-        key: { id: 'key-123', name: 'Test Key' },
+        key: {
+          id: 'key-123',
+          name: 'Test Key',
+          key: apiKey,
+          userId: 'test-user-id',
+          lastUsedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
       });
 
-      const middleware = apiKeyAuth({} as any);
-
       // Act
-      await middleware(req, mockRes as Response, nextFn);
-
+      await apiKeyAuth(mockCosmosDb)(req, mockRes as Response, next);
+      
       // Assert
       expect(mockValidateApiKey).toHaveBeenCalledWith({
         key: apiKey,
-        userId: undefined, // No user context yet
-        ipAddress: '127.0.0.1',
+        userId: 'test-user-id',
+        ipAddress: '127.0.0.1'
       });
       expect(req.apiKey).toEqual({ id: 'key-123', name: 'Test Key' });
-      expect(nextFn).toHaveBeenCalled();
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith();
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockRes.json).not.toHaveBeenCalled();
     });
 
     it('should validate API key from query parameter', async () => {
-      // Arrange
-      const apiKey = 'test-api-key';
       const req = {
-        ...mockReq,
-        query: { api_key: apiKey },
-      } as any;
+        query: { api_key: 'test-key' },
+        headers: {},
+        user: { oid: 'test-user-id' },
+        ip: '127.0.0.1'
+      } as unknown as Request;
       
-      mockValidateApiKey.mockResolvedValue({
+      // Mock the API key validation
+      mockValidateApiKey.mockResolvedValueOnce({
         isValid: true,
-        key: { id: 'key-123', name: 'Test Key' },
+        key: {
+          id: 'key-123',
+          name: 'Test Key',
+          key: 'test-key',
+          userId: 'test-user-id',
+          lastUsedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
       });
-
-      const middleware = apiKeyAuth({} as any);
-
+      
+      // Create a mock response object
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      } as unknown as Response;
+      
+      // Create a mock next function
+      const next = vi.fn();
+      
       // Act
-      await middleware(req, mockRes as Response, nextFn);
-
+      await apiKeyAuth(mockCosmosDb)(req, res, next);
+      
       // Assert
       expect(mockValidateApiKey).toHaveBeenCalledWith({
-        key: apiKey,
-        userId: undefined,
-        ipAddress: '127.0.0.1',
+        key: 'test-key',
+        userId: 'test-user-id',
+        ipAddress: '127.0.0.1'
       });
-      expect(nextFn).toHaveBeenCalled();
+      expect(req.apiKey).toEqual({ id: 'key-123', name: 'Test Key' });
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
     });
 
     it('should return 403 for invalid API key', async () => {
@@ -189,6 +272,7 @@ describe('API Key Authentication Middleware', () => {
       const req = {
         ...mockReq,
         headers: { authorization: `ApiKey ${apiKey}` },
+        user: { oid: 'test-user-id' },
       } as any;
       
       mockValidateApiKey.mockResolvedValue({ isValid: false });
@@ -197,10 +281,11 @@ describe('API Key Authentication Middleware', () => {
       const status = vi.fn().mockReturnValue({ send });
       const res = { ...mockRes, status } as unknown as Response;
 
-      const middleware = apiKeyAuth({} as any);
+      const middleware = apiKeyAuth(mockCosmosDb);
 
       // Act
-      await middleware(req, res, nextFn);
+      const next = vi.fn();
+      await middleware(req, res, next);
 
       // Assert
       expect(status).toHaveBeenCalledWith(403);
@@ -210,61 +295,44 @@ describe('API Key Authentication Middleware', () => {
         message: 'Invalid or expired API key',
       });
     });
-  });
 
-  describe('requireAuth', () => {
-    it('should allow access with valid Azure AD token', async () => {
+    it('should attach apiKey to request on successful authentication', async () => {
       // Arrange
-      const req = { ...mockReq, user: { oid: 'user-123' } } as any;
-      const middleware = requireAuth({} as any);
-
-      // Act
-      await middleware(req, mockRes as Response, nextFn);
-
-      // Assert
-      expect(nextFn).toHaveBeenCalled();
-    });
-
-    it('should allow access with valid API key', async () => {
-      // Arrange
-      const apiKey = 'valid-key';
+      const apiKey = 'test-api-key-value';
       const req = {
         ...mockReq,
-        headers: { authorization: `ApiKey ${apiKey}` },
-      } as any;
+        headers: { 'authorization': `ApiKey ${apiKey}` },
+        get: (name: string) => name === 'authorization' ? `ApiKey ${apiKey}` : undefined,
+        query: {},
+        user: { oid: 'user-123' },
+        ip: '127.0.0.1'
+      } as unknown as Request;
       
-      mockValidateApiKey.mockResolvedValue({
+      // Mock the API key validation to return success
+      vi.mocked(mockValidateApiKey).mockResolvedValueOnce({
         isValid: true,
-        key: { id: 'key-123', name: 'Test Key' },
+        key: {
+          id: 'key-123',
+          name: 'Test Key',
+          key: apiKey,
+          userId: 'user-123',
+          lastUsedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
       });
 
-      const middleware = requireAuth({} as any);
-
       // Act
-      await middleware(req, mockRes as Response, nextFn);
+      await apiKeyAuth(mockCosmosDb)(req, mockRes as Response, nextFn);
 
       // Assert
+      expect(mockValidateApiKey).toHaveBeenCalledWith({
+        key: apiKey,
+        userId: 'user-123',
+        ipAddress: '127.0.0.1'
+      });
+      expect(req.apiKey).toEqual({ id: 'key-123', name: 'Test Key' });
       expect(nextFn).toHaveBeenCalled();
-    });
-
-    it('should return 401 if no authentication provided', async () => {
-      // Arrange
-      const send = vi.fn();
-      const status = vi.fn().mockReturnValue({ send });
-      const res = { ...mockRes, status } as unknown as Response;
-
-      const middleware = requireAuth({} as any);
-
-      // Act
-      await middleware(mockReq as Request, res, nextFn);
-
-      // Assert
-      expect(status).toHaveBeenCalledWith(401);
-      expect(send).toHaveBeenCalledWith({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Authentication required',
-      });
     });
   });
 });

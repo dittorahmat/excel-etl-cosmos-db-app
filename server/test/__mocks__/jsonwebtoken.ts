@@ -1,5 +1,7 @@
+import { vi } from 'vitest';
+
 const jwt = {
-  verify: jest.fn((token, _getKey, options, callback) => {
+  verify: vi.fn().mockImplementation((token, _getKey, options, callback) => {
     // Mock valid token
     if (token === 'valid.token.here') {
       const decoded = {
@@ -22,7 +24,7 @@ const jwt = {
     }
     // Mock invalid token
     return callback(new Error('invalid token'), null);
-  }),
+  })
 };
 
 export default jwt;

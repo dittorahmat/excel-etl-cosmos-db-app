@@ -1,6 +1,7 @@
+import { vi } from 'vitest';
 // Mock for jwks-rsa library
-export default jest.fn().mockImplementation(() => ({
-    getSigningKey: jest.fn((kid, callback) => {
+export default vi.fn().mockImplementation(() => ({
+    getSigningKey: vi.fn((kid, callback) => {
         // Mock a valid key
         if (kid === 'test-key-id') {
             callback(null, {

@@ -1,5 +1,7 @@
+import { vi } from 'vitest';
+
 // Mock for xlsx library
-export const read = jest.fn().mockImplementation((_buffer, _options) => ({
+export const read = vi.fn().mockImplementation((_buffer, _options) => ({
   SheetNames: ['Sheet1'],
   Sheets: {
     Sheet1: {
@@ -18,12 +20,12 @@ export const read = jest.fn().mockImplementation((_buffer, _options) => ({
 }));
 
 export const utils = {
-  decode_range: jest.fn().mockReturnValue({ s: { c: 0, r: 0 }, e: { c: 2, r: 2 } }),
-  encode_cell: jest.fn().mockImplementation(({ c, r }) => {
+  decode_range: vi.fn().mockReturnValue({ s: { c: 0, r: 0 }, e: { c: 2, r: 2 } }),
+  encode_cell: vi.fn().mockImplementation(({ c, r }) => {
     const col = String.fromCharCode(65 + c); // A, B, C, ...
     return `${col}${r + 1}`;
   }),
-  sheet_to_json: jest.fn().mockReturnValue([
+  sheet_to_json: vi.fn().mockReturnValue([
     { Name: 'John', Age: 30, Email: 'john@example.com' },
     { Name: 'Jane', Age: 25, Email: 'jane@example.com' }
   ])

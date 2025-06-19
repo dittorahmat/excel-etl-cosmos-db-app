@@ -71,11 +71,11 @@ describe('API Key Utilities', () => {
   describe('isValidApiKeyFormat', () => {
     it('should validate correct API key formats', () => {
       const validKeys = [
-        'abc123',
-        'abc-123_xyz',
         'a'.repeat(32), // Minimum length
-        'a'.repeat(256), // Reasonable max length
-        'abc123ABC456-_.~'
+        'a'.repeat(64), // Common length
+        'a'.repeat(256), // Maximum length
+        'abc123ABC456-_.~'.repeat(3), // 45 chars - valid pattern
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~' // All valid chars
       ];
 
       validKeys.forEach(key => {

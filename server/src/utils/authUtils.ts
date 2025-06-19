@@ -1,5 +1,5 @@
 import { ConfidentialClientApplication, AuthenticationResult, Configuration } from '@azure/msal-node';
-import { TokenPayload } from '../middleware/auth';
+import { TokenPayload } from '../middleware/auth.js';
 
 // Configuration for MSAL
 const msalConfig: Configuration = {

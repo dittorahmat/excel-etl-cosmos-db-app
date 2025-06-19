@@ -21,22 +21,31 @@ vi.mock('../src/server.js', async (importOriginal) => {
 });
 
 // Mock the Azure services
-const mockAzureServices = {
-  database: {
-    container: vi.fn().mockReturnValue({
-      items: {
-        query: vi.fn().mockResolvedValue({ resources: [] }),
-        create: vi.fn().mockResolvedValue({ resource: { id: 'test-id' } }),
-        read: vi.fn(),
-        upsert: vi.fn(),
-        delete: vi.fn(),
-      },
-    }),
+const createMockAzureServices = () => ({
+  blobStorage: {
+    uploadFile: vi.fn(),
+    deleteFile: vi.fn(),
+    getFileUrl: vi.fn()
   },
-};
+  cosmosDb: {
+    container: vi.fn().mockReturnThis(),
+    items: {
+      query: vi.fn(),
+      create: vi.fn()
+    },
+    item: vi.fn().mockReturnThis(),
+    read: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
+  },
+});
 
 // Mock the azure module
 vi.mock('../src/config/azure.js', () => ({
+  initializeAzureServices: vi.fn().mockImplementation(() => {
+    const mockServices = createMockAzureServices();
+    return Promise.resolve(mockServices);
+  }),
   initializeBlobStorage: vi.fn().mockResolvedValue({
     blobServiceClient: {
       getContainerClient: vi.fn().mockReturnValue({

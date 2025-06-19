@@ -1,8 +1,9 @@
 import request from 'supertest';
-import { describe, it, expect, beforeAll, afterAll, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi, afterEach, beforeEach } from 'vitest';
 import express from 'express';
+
 // Mock the server module
-vi.mock('../src/server.js', async (importOriginal) => {
+vi.mock('../src/server', async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
@@ -17,6 +18,7 @@ vi.mock('../src/server.js', async (importOriginal) => {
         }),
     };
 });
+
 // Mock the Azure services
 const mockAzureServices = {
     database: {
@@ -31,9 +33,9 @@ const mockAzureServices = {
         }),
     },
 };
-// Mock the azure module
-vi.mock('../src/config/azure.js', () => ({
-    initializeBlobStorage: vi.fn().mockResolvedValue({
+// Mock the Azure services
+vi.mock('../src/services/index.js', () => ({
+    initializeBlobStorageAsync: vi.fn().mockResolvedValue({
         blobServiceClient: {
             getContainerClient: vi.fn().mockReturnValue({
                 createIfNotExists: vi.fn().mockResolvedValue({}),
@@ -43,41 +45,59 @@ vi.mock('../src/config/azure.js', () => ({
                 }),
             }),
         },
+        uploadFile: vi.fn().mockResolvedValue({
+            url: 'http://example.com/test-file.xlsx',
+            name: 'test-file.xlsx',
+            size: 1234
+        }),
+        deleteFile: vi.fn().mockResolvedValue(undefined),
     }),
     initializeCosmosDB: vi.fn().mockResolvedValue(mockAzureServices),
-    getAzureServices: vi.fn().mockReturnValue(mockAzureServices),
+    initializeMockBlobStorage: vi.fn().mockReturnValue({
+        uploadFile: vi.fn().mockResolvedValue({
+            url: 'http://example.com/test-file.xlsx',
+            name: 'test-file.xlsx',
+            size: 1234
+        }),
+        deleteFile: vi.fn().mockResolvedValue(undefined),
+    }),
+    initializeMockCosmosDB: vi.fn().mockReturnValue(mockAzureServices),
 }));
 // Import the createApp after setting up the mocks
-import { createApp } from '../src/server.js';
+import { createApp } from '../../src/server.js';
 describe('Server', () => {
     let app;
+    let server;
     const mockRequest = request.agent('http://localhost:3000');
-    beforeAll(async () => {
-        // Reset all mocks before each test
+    
+        beforeAll(async () => {
         vi.clearAllMocks();
-        // Create a fresh app instance for testing
+        
+        // Create a new app instance for testing
         app = createApp();
-        // Start the server on a test port if needed
-        if (!app.listening) {
-            await new Promise((resolve) => {
-                app.listen(3000, () => {
-                    console.log('Test server running on port 3000');
-                    resolve();
-                });
+        
+        // Start the server on a test port
+        server = await new Promise((resolve) => {
+            const s = app.listen(0, 'localhost', () => {  // Use port 0 to get a random available port
+                console.log(`Test server running on port ${s.address().port}`);
+                resolve(s);
             });
-        }
+        });
+        
+        // Update the base URL for the mock request
+        mockRequest.baseUrl = `http://localhost:${server.address().port}`;
     });
-    afterAll(() => {
-        // Clean up after all tests
+
+    afterAll(async () => {
+        // Close the server after all tests
+        if (server) {
+            await new Promise((resolve) => server.close(resolve));
+        }
         vi.clearAllMocks();
         vi.resetModules();
-        // Close the server if it's running
-        if (app.listening) {
-            app.close();
-        }
     });
+
     afterEach(() => {
-        // Reset all mocks after each test
         vi.clearAllMocks();
     });
     describe('Health Check', () => {

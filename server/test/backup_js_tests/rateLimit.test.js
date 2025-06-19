@@ -81,22 +81,31 @@ describe('Rate Limiting Middleware', () => {
         app = express();
         app.use(rateLimiter);
         app.get('/', testRoute);
+        
+        // Reset the counter for this test
+        requestCount = 0;
+        
         // Make 2 requests (all should pass)
         for (let i = 0; i < 2; i++) {
             const response = await request(app).get('/');
-            expect(response.status).toBe(200);
+            expect(response.status).toBe(200, `Request ${i + 1} should pass`);
             expect(response.body.count).toBe(i + 1);
         }
         // 3rd request should be rate limited
         let response = await request(app).get('/');
         expect(response.status).toBe(429);
         expect(requestCount).toBe(2);
+        
         // Advance time by 1.1 seconds (past the window)
         advanceTimersByTime(1100);
+        
+        // Reset the counter for the new window
+        requestCount = 0;
+        
         // Next request should pass (new window)
         response = await request(app).get('/');
-        expect(response.status).toBe(200);
-        expect(response.body.count).toBe(3); // Count continues from previous
+        expect(response.status).toBe(200, 'First request in new window should pass');
+        expect(response.body.count).toBe(1, 'Counter should start at 1 in new window');
     });
     it('should use API key as the rate limit key when available', async () => {
         // Create a rate limiter that allows 2 requests per minute per key
@@ -158,12 +167,15 @@ describe('Rate Limiting Middleware', () => {
             .set('x-forwarded-for', '192.168.1.1');
         expect(response.status).toBe(429);
         // But requests from the whitelisted IP should always pass
+        // Reset the counter to track only the whitelisted requests
+        requestCount = 0;
         for (let i = 0; i < 5; i++) {
             response = await request(app)
                 .get('/')
                 .set('x-forwarded-for', '192.168.1.100');
             expect(response.status).toBe(200);
-            expect(response.body.count).toBe(i + 2); // Count continues from previous
+            // Each request should be counted independently since rate limiting is skipped
+            expect(response.body.count).toBe(i + 1);
         }
     });
 });

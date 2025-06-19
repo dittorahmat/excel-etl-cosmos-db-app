@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { validateToken } from '../middleware/auth.js';
-import { AZURE_CONFIG, initializeCosmosDB } from '../config/azure.js';
+import { initializeAzureServices } from '../config/azure-services.js';
 import type { AzureCosmosDB } from '../types/custom.js';
 
 const router = Router();
@@ -157,7 +157,7 @@ router.get(
   validateToken as any, // Temporary type assertion to fix middleware type
   async (req: Request, res: Response) => {
   try {
-    const { cosmosDb } = await initializeCosmosDB();
+    const cosmosDb = await initializeCosmosDB();
     const queryParams = req.query as unknown as DataQueryParams;
     
     // Set default limit if not provided
@@ -173,22 +173,22 @@ router.get(
       continuationToken: queryParams.continuationToken,
     };
     
-    const queryIterator = cosmosDb.container.items.query(query, queryOptions);
-    const { resources, hasMoreResults, continuationToken } = await queryIterator.fetchNext();
+    // Use the query method from our AzureCosmosDB interface
+    const queryResult = await cosmosDb.query(
+      query,
+      parameters
+    );
+    
+    // The query method returns an array directly, not an object with resources
+    const items = Array.isArray(queryResult) ? queryResult : [];
     
     // Prepare response
-    const response: {
-      items: any[];
-      continuationToken?: string;
-      count: number;
-    } = {
-      items: resources || [],
-      count: resources?.length || 0,
+    const response = {
+      items,
+      count: items.length,
+      // Note: The current AzureCosmosDB.query implementation doesn't support pagination
+      // If you need pagination, you'll need to update the query method to return pagination info
     };
-    
-    if (hasMoreResults && continuationToken) {
-      response.continuationToken = continuationToken;
-    }
     
     res.json(response);
   } catch (error) {

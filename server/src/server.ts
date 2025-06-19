@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
 import rateLimit from 'express-rate-limit';
-import { initializeAzureServices } from './config/azure.js';
+import { initializeAzureServices } from './config/azure-services.js';
 import uploadRoute from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
@@ -14,8 +14,6 @@ import { requireAuth, requireAuthOrApiKey } from './middleware/authMiddleware.js
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
 import { logger, LogContext } from './utils/logger.js';
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
-import { DataRepository } from './repositories/dataRepository.js';
-import { UploadRepository } from './repositories/uploadRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
 import type { AzureCosmosDB, AuthenticatedRequest } from './types/custom.js';
 
@@ -92,15 +90,26 @@ function createApp(azureServices: AzureCosmosDB): Express {
   // Apply rate limiting to all API routes
   app.use('/api', apiRateLimit);
 
-  // Authentication middleware
-  const authMiddleware = requireAuthOrApiKey(azureServices);
-
-  // Apply authentication middleware to protected routes
-  app.use('/api/keys', authMiddleware as Application);
-  app.use('/api/upload', authMiddleware as Application);
-  app.use('/api/data', authMiddleware as Application);
+  // Initialize repositories
+  const apiKeyRepository = new ApiKeyRepository(azureServices);
+  const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
   
-  // Routes
+  // Setup authentication middleware with required dependencies
+  const authMiddleware = requireAuthOrApiKey({
+    apiKeyRepository,
+    apiKeyUsageRepository
+  });
+
+  // Apply authentication middleware to specific routes
+  const protectedRoutes = ['/api/keys', '/api/upload', '/api/data'];
+  protectedRoutes.forEach(route => {
+    app.use(route, (req: Request, res: Response, next: NextFunction) => {
+      // Cast req to any to bypass TypeScript type checking for the middleware
+      return (authMiddleware as any)(req, res, next);
+    });
+  });
+  
+  // Routes with proper typing
   app.use('/api/keys', createApiKeyRouter(azureServices));
   app.use('/api/upload', uploadRoute);
   app.use('/api/data', dataRoute);
@@ -202,14 +211,11 @@ let server: Server | null = null;
 async function startServer(port: number | string = PORT): Promise<Server> {
   try {
     logger.info('Initializing Azure services...');
-    // Initialize Azure services
-    const { cosmosDb, blobStorage } = await initializeAzureServices();
+    console.log('Initializing Azure services...');
+    const { cosmosDb } = await initializeAzureServices();
+    console.log('Azure services initialized successfully');
     
-    logger.info('Azure services initialized successfully');
-    
-    // Initialize repositories
-    const dataRepository = new DataRepository(cosmosDb);
-    const uploadRepository = new UploadRepository({ cosmosDb, blobStorage });
+    // Create Express application
     const apiKeyRepository = new ApiKeyRepository(cosmosDb);
     const apiKeyUsageRepository = new ApiKeyUsageRepository(cosmosDb);
 

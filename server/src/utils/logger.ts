@@ -39,15 +39,13 @@ const fileFormat = winston.format.combine(
   winston.format.json()
 );
 
-// Define the logger interface
-export interface AppLogger extends WinstonLogger {
+// Define the logger interface with our custom log levels
+export interface AppLogger extends winston.Logger {
   error: winston.LeveledLogMethod;
   warn: winston.LeveledLogMethod;
   info: winston.LeveledLogMethod;
   http: winston.LeveledLogMethod;
   debug: winston.LeveledLogMethod;
-  log: winston.LeveledLogMethod;
-  add: (transport: winston.transport) => WinstonLogger;
 }
 
 // Create logger instance
