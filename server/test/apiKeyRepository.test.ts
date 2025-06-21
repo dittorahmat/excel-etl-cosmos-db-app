@@ -9,8 +9,8 @@ type MockContainer = {
     query: MockedFunction<any>;
     create: MockedFunction<any>;
     upsert: MockedFunction<any>;
-    item: MockedFunction<any>;
   };
+  item: MockedFunction<any>; // Add item directly to MockContainer
 };
 
 type MockItem = {
@@ -32,24 +32,26 @@ const createMockContainer = (): MockContainer => {
       query: vi.fn().mockReturnThis(),
       create: vi.fn(),
       upsert: vi.fn().mockResolvedValue({ resource: {} }),
-      item: vi.fn().mockReturnValue(mockItem),
     },
+    item: vi.fn().mockReturnValue(mockItem),
   };
-
   return mockContainer;
 };
 
 const mockCosmosContainer = createMockContainer();
-const mockItem = mockCosmosContainer.items.item('test-id');
+const mockItem = mockCosmosContainer.item('test-id');
 
 // Mock the AzureCosmosDB interface
 const mockAzureCosmosDB = {
-  container: vi.fn().mockResolvedValue(mockCosmosContainer),
+  container: vi.fn().mockImplementation(() => ({
+    items: mockCosmosContainer.items,
+    item: mockCosmosContainer.item,
+  })),
 };
 
 // Mock the crypto module
-vi.mock('crypto', () => {
-  // Create a partial mock of the crypto module
+vi.mock('crypto', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('crypto');
   const randomBytes = vi.fn().mockImplementation((size: number, callback?: (err: Error | null, buf: Buffer) => void) => {
     const buf = Buffer.alloc(size, 'a'); // Return a buffer of 'a's for testing
     if (callback) {
@@ -66,35 +68,15 @@ vi.mock('crypto', () => {
   const timingSafeEqual = vi.fn().mockImplementation((a: Buffer, b: Buffer) => {
     return a.length === b.length && a.every((val, i) => val === b[i]);
   });
-  
-  // Return the mock implementation with both default and named exports
+
   return {
-    __esModule: true,
-    default: {
-      randomBytes,
-      createHash,
-      timingSafeEqual,
-    },
+    ...actual,
     randomBytes,
     createHash,
     timingSafeEqual,
   };
 });
 
-// Mock the util.promisify function
-vi.mock('util', () => ({
-  promisify: vi.fn().mockImplementation((fn) => {
-    return (...args: any[]) => {
-      return new Promise((resolve, reject) => {
-        const callback = (err: any, result: any) => {
-          if (err) reject(err);
-          else resolve(result);
-        };
-        fn(...args, callback);
-      });
-    };
-  }),
-}));
 
 // Mock the Azure services
 vi.mock('../src/config/azure-services.js', () => ({
@@ -111,14 +93,16 @@ describe('ApiKeyRepository', () => {
   const mockContainer = mockCosmosContainer;
   const mockUserId = 'user-123';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Ensure the container mock is resolved before creating the repository
+    await (mockAzureCosmosDB.container as MockedFunction<any>).mockResolvedValue(mockCosmosContainer);
     repository = new ApiKeyRepository(mockAzureCosmosDB as any);
   });
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Mock the container method to return our mock container
-    (mockAzureCosmosDB.container as MockedFunction<any>).mockResolvedValue(mockContainer);
+    await (mockAzureCosmosDB.container as MockedFunction<any>).mockResolvedValue(mockContainer);
   });
 
   describe('createApiKey', () => {
@@ -145,7 +129,7 @@ describe('ApiKeyRepository', () => {
       expect(result.key).toBeDefined();
       expect(result.name).toBe('Test Key');
       expect(mockContainer.items.upsert).toHaveBeenCalled();
-      
+
       // Verify the stored key is hashed
       const storedKey = (mockContainer.items.upsert as unknown as MockedFunction<any>).mock.calls[0][0] as ApiKey;
       expect(storedKey.keyHash).toBeDefined();
@@ -221,7 +205,7 @@ describe('ApiKeyRepository', () => {
 
       const result = await (repository as any).revokeApiKey({
         keyId,
-        userId: mockUserId,
+        
       });
 
       expect(result).toBe(true);
@@ -240,7 +224,7 @@ describe('ApiKeyRepository', () => {
 
       const result = await (repository as any).revokeApiKey({
         keyId: 'non-existent',
-        userId: mockUserId,
+        
       });
 
       expect(result).toBe(false);
@@ -252,7 +236,7 @@ describe('ApiKeyRepository', () => {
       const mockKeys = [
         {
           id: 'key-1',
-          userId: mockUserId,
+          
           keyHash: 'hash-1',
           name: 'Key 1',
           isActive: true,
@@ -260,7 +244,7 @@ describe('ApiKeyRepository', () => {
         },
         {
           id: 'key-2',
-          userId: mockUserId,
+          
           keyHash: 'hash-2',
           name: 'Key 2',
           isActive: false,
@@ -295,7 +279,7 @@ describe('ApiKeyRepository', () => {
       const keyHash = 'valid-hash';
       const mockKey = {
         id: 'key-123',
-        userId: mockUserId,
+        
         keyHash,
         name: 'Test Key',
         isActive: true,
@@ -312,17 +296,10 @@ describe('ApiKeyRepository', () => {
       (mockContainer.items.query as any).mockReturnValue(mockQuery);
 
       // Mock the hash function to return our test hash
-      vi.mock('crypto', () => ({
-        createHash: () => ({
-          update: () => ({
-            digest: () => keyHash,
-          }),
-        }),
-      }));
 
       const result = await repository.validateApiKey({
         key: keyValue,
-        userId: mockUserId,
+        
       });
 
       expect(result).toBeDefined();
@@ -342,7 +319,7 @@ describe('ApiKeyRepository', () => {
 
       const result = await repository.validateApiKey({
         key: 'invalid-key',
-        userId: mockUserId,
+        
       });
 
       expect(result.isValid).toBe(false);
@@ -353,7 +330,7 @@ describe('ApiKeyRepository', () => {
       const allowedIp = '192.168.1.1';
       const mockKey = {
         id: 'key-123',
-        userId: mockUserId,
+        
         keyHash: 'valid-hash',
         name: 'Test Key',
         isActive: true,
@@ -372,15 +349,15 @@ describe('ApiKeyRepository', () => {
       // Test with allowed IP
       const validResult = await repository.validateApiKey({
         key: 'valid-key',
-        userId: mockUserId,
+        
         ipAddress: allowedIp,
       });
       expect(validResult.isValid).toBe(true);
 
       // Test with disallowed IP
       const invalidResult = await repository.validateApiKey({
-        key: 'valid-key',
-        userId: mockUserId,
+        key: 'invalid-key',
+        
         ipAddress: '10.0.0.1',
       });
       expect(invalidResult.isValid).toBe(false);

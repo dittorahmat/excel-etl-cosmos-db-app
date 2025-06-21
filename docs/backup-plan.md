@@ -1,114 +1,164 @@
-# CI/CD GitHub Actions Workflow Plan
+# Local Build & CI/CD Setup Plan
 
 ## Notes
-- Project uses monorepo structure with separate frontend and backend (see multiple package.json files).
-- CI/CD requirements: lint and test on PR, deploy frontend/backend on merge to main, monitor deployment with Azure Monitor.
-- Use context7 mcp for documentation, Typescript for scripts when possible.
-- Do not edit .env directly; update .env.example with variable descriptions.
-- .env.example is now fully updated and in sync with .env, with clear documentation and placeholders.
-- Service principal creation for CI/CD is currently blocked by insufficient Azure permissions; must resolve before workflow validation.
-- Exploring use of existing Azure AD application credentials (VITE_AZURE_CLIENT_ID, VITE_AZURE_TENANT_ID, etc.) for CI/CD authentication as an alternative to service principal with Contributor role.
-- If admin permissions remain blocked, consider using Azure publish profile for deployment authentication as a fallback (does not require admin role assignment).
-- **Preferred approach:** Use Azure publish profile for deployment authentication to minimize admin intervention. Document this as the default workflow for CI/CD deployments.
-- Frontend (Azure Static Web Apps) workflow reviewed and confirmed ready for automated CI/CD deployment.
-- Production Azure AD redirect URI must be set to the deployed Static Web App URL and registered in Azure AD app registration for correct authentication flow.
-- Currently proceeding with backend CI/CD deployment testing before frontend validation.
-- CI/CD workflow failed at linting step due to missing typescript-eslint dependency; must update workflow or dependencies to resolve.
-- CI/CD workflow and build/lint issues will be resolved locally before triggering further GitHub Actions runs.
-- Encountered ESLint config error: "require is not defined in ES module scope" due to package.json specifying "type": "module" and ESLint config using require syntax. Must use ES module syntax (import/export) or rename config to .cjs for CommonJS.
-- Attempted both CommonJS and ES module syntaxes in eslint.config.js; must ensure config matches Node module type expectations.
-- Local ESLint run fails with: "Cannot find package 'typescript-eslint' imported from eslint.config.js" even though package is present in devDependencies and installed. Indicates possible ESM/CommonJS or node_modules resolution issue. Need to debug local ESLint config and package resolution before proceeding.
-- Created separate ESLint config files: `.eslintrc.cjs` for frontend, `server/.eslintrc.cjs` for backend/server, both using CommonJS for compatibility with ESLint and Node module resolution.
-- Updated lint script in package.json to explicitly use new config files and extensions.
-- Encountered ESLint CLI error: "Invalid option '--ext' - perhaps you meant '-c'? You're using eslint.config.js, some command line flags are no longer available." Need to update lint script to be compatible with new ESLint flat config (no --ext flag, use glob patterns or config).
-- Updated lint script for ESLint flat config compatibility, but error persists: "Cannot find package 'typescript-eslint' imported from eslint.config.js". Indicates unresolved ESM/flat config/module resolution issue. Further debugging required.
-- Performed full clean and reinstall of node_modules and package-lock.json to rule out dependency corruption; TypeScript ESLint packages confirmed present, but error persists. Further root cause analysis needed.
-- Discovered multiple ESLint config files (eslint.config.js in root and node_modules). Next step: simplify config by removing or renaming conflicting files and ensure only one config is used for linting.
-- Removed root eslint.config.js file to prevent config conflict; lint script now explicitly uses .eslintrc.cjs configs for frontend and backend. Next: validate linting works locally and config/module conflict is resolved.
-- Linting now fails with: "ESLint couldn't determine the plugin \"@typescript-eslint\" uniquely" due to multiple installations (root and server/node_modules). Next: deduplicate plugin installation (use only root or only server) and ensure consistent ESLint resolution across monorepo.
-- Root cause confirmed: duplicate installation of @typescript-eslint plugin in both root and server. Next: remove @typescript-eslint from server/package.json and server/node_modules, ensure only root has the plugin, and update all ESLint configs to resolve from root. Then revalidate linting locally and in CI/CD.
-- Duplicate @typescript-eslint dependencies removed from server/package.json. Next: delete server/node_modules, reinstall root dependencies, and validate linting works from root only.
-- Updated both root and server ESLint configs to reference the correct (monorepo root) path to tsconfig.server.json. Next: re-run linting and confirm parserOptions.project errors are resolved for all relevant files.
-- Both root and server ESLint configs now reference the correct monorepo root tsconfig.server.json. Next: re-run linting and confirm parserOptions.project errors are resolved for all backend files.
-- Linting configuration is now correct and parserOptions.project errors are resolved; local build attempted and TypeScript build errors surfaced in backend test files (type incompatibilities, missing/incorrect imports, module resolution, and interface mismatches). Next: triage and fix these build errors to enable successful backend build and CI/CD pipeline progression.
-- Backend TypeScript config (tsconfig.server.json) and build script now updated to exclude test files from build output. Next: re-attempt backend build and verify if build errors are resolved.
-- Backend build was re-attempted; TypeScript errors remain in backend source files (type incompatibilities, missing/incorrect imports, module resolution, and interface mismatches). Next: triage and fix these errors in backend source files for a successful build.
-- Added missing `authenticateToken` middleware export to backend source to resolve TypeScript build error related to missing export in middleware/auth.ts. Continue addressing remaining build errors in backend source files.
-- Attempted to locate `AzureBlobStorage` class for fixing missing `deleteFile` method, but class/file was not found in the codebase. Further investigation or user clarification needed to proceed with backend build error resolution.
-- Confirmed `AzureBlobStorage` is defined as a TypeScript interface in the Azure config file, but there is no implementation or method for `deleteFile`. Next: implement or stub the missing `deleteFile` method, or clarify its intended behavior and location.
-- Added `deleteFile` method to `AzureBlobStorage` interface; next: implement/stub in mock and real implementations.
-- Added and implemented/stubbed `deleteFile` method in both mock and real `AzureBlobStorage` implementations. Proceed to backend build error triage.
-- All mock and real AzureBlobStorage implementations now include the required `deleteFile` method, including in initializeAzureServices. No further missing method errors remain for this interface.
-- Vitest upgraded to ^3.0.0 and vitest-mock-extended to ^3.1.0; dependencies now install successfully. Backend build/test is unblocked. Continue TypeScript error resolution in backend source files.
-- Test setup updated to handle Node.js and browser environments; window/global mocking error resolved. Backend tests now run, proceed to address any remaining TypeScript or functional errors in backend tests.
-- Backend tests now run, but several fail due to missing modules, incorrect mocks, assertion errors, and mixing Jest/Vitest APIs. Next: triage and fix these backend test failures.
-- Confirmed that `apiKeyRepository.ts` exists and is implemented. The missing module error is likely due to an import path, file extension, or mock configuration issue rather than an absent file. Next: review import statements and Vitest mock setup for correct resolution.
-- `tsconfig.json` includes `"types": ["node", "jest"]`, which may cause issues with test typings and mocks; should use Vitest types instead of Jest for consistency.
-- `tsconfig.json` updated to use Vitest types (`"vitest/globals"`), include test files in `include`, and add module path aliases for better resolution. Test file imports and mocks are being updated to use `.js` extensions and Vitest conventions for ESM compatibility.
-- Test utilities (`test-utils.ts`) have been moved to `src/test-utils/index.ts` for ESM compatibility and type safety. Test files are being updated to import from the new path.
-- Type issues in backend test utilities and test file have been addressed; test files now use new test-utils path and improved type safety.
-- `apiKeyRepository` import and mocking in test file updated to use dynamic `import()` and `vi.mocked` for ESM compatibility; this is a step toward resolving module resolution errors in backend tests.
-- `apiKeyRevocation.test.ts` updated to use Vitest syntax and logger mocks; beforeEach is now async for future async setup. Continue updating/fixing other backend test files for Vitest/ESM compatibility and assertion correctness.
-- Backend tests now run successfully after fixing Vitest/ESM compatibility and assertion issues. Next: verify backend build success and proceed to frontend workflow/integration testing.
-- Backend build is now successfully verified after tsconfig/test config fixes. Next: proceed to frontend workflow/integration testing.
-- Backend build was successfully verified; TypeScript build errors were found due to test files being included in the build. Updated tsconfig to exclude test files from build and added/updated tsconfig.test.json for test compilation. Next: proceed to frontend workflow/integration testing.
-- Frontend build and tests are now verified as successful. Next: validate GitHub Actions CI/CD workflow for both backend and frontend, including deployment and integration.
-- CI/CD workflow file updated to handle both frontend and backend deployments (separate jobs for lint/test, frontend deploy, backend deploy; Azure Static Web Apps and Azure App Service both configured). Next: trigger and validate the workflow on GitHub.
-- Required GitHub Actions secrets are set up in repository; workflow runs are being validated via GitHub CLI and API.
-- The most recent CI/CD workflow run (main branch, push event) completed with a failure. Next: investigate workflow logs and address the root cause before proceeding.
-- The failed "Lint and Test" job in the last workflow run did not provide any error logs (log output was empty or unavailable). Next: re-run the workflow to capture error output or investigate log retrieval issues.
+- Do not use 'vitest-globals' in tsconfig types; use 'vitest' or rely on Vitest auto-injection.
+- All code should be in TypeScript; rewrite any JavaScript as TypeScript.
+- When adding environment variables, update `.env.example` with descriptions, not `.env`.
+- Always use context7 mcp for current documentation of the tech stack.
+- Apply YAGNI, SOLID, KISS, DRY principles to new code.
+- If a .ts, .tsx, .js or .jsx code file exceeds 500 lines, split it into separate files.
+- Only make changes with at least 95% confidence; ask for clarification if unsure.
+- Update all ES module import paths to use explicit .js extensions as required by Node.js ESM resolution.
+- After removing azure.ts, several tests are failing due to missing or invalid Azure credentials and issues with mocking in Vitest. These must be fixed before proceeding with CI/CD setup.
+- Rate limiting test logic updated to properly reset counters and reflect middleware behavior. Continue to address Azure credential/mocking test failures.
+- Azure credential and mocking test failures have been resolved with improved Vitest mocks and test structure.
+- TypeScript errors in azure-services.ts fixed by enforcing non-null checks and type assertions.
+- TypeScript typing and structure in apiKeyAuth.test.ts have been improved; Express mock request compatibility issues resolved.
+- All TypeScript/lint errors in apiKeyAuth.test.ts have been resolved; focus now on remaining backend/server test failures (notably mocks and import issues).
+- CI/CD setup initiated. Blocked by backend/server test failures: import resolution errors ("Failed to resolve import ...server.js"), and rate limiting test logic still failing locally. These must be fixed for a passing pipeline.
+- All test and ESM import path issues have been addressed; ready to proceed with CI/CD pipeline setup.
+- Test failures remain: authentication mocks, rate limiting, and mocking issues must be resolved before CI/CD can proceed.
+- Multer mock in upload route test updated to allow simulation of missing file (req.file undefined), resolving 400/500 status mismatch in test.
+- Multer mock now patched to expose .single for override, resolving test errors with mockImplementationOnce.
+- The upload route test for 'should return 400 if no file is uploaded' is still returning a 500 error. The route handler checks for !req.file and should return a 400, but the test receives a 500. Root cause is now identified: the error is 'Multipart: Boundary not found' from Busboy/multer when no file is attached and the request is sent as multipart/form-data without a boundary. Next step is to address this boundary issue in the test setup.
+- Multer mock must provide a default export for ESM compatibility when using Vitest. This resolves the 'vi.mock("multer") is not returning an object. Did you mean to return an object with a "default" key?' error and allows the test to intercept multer usage as intended.
+- Vitest vi.mock factories are hoisted: all variables used inside the factory must be declared inside the factory, not at the top level, or ReferenceError will occur. This is critical for mocking multer and other modules that must be intercepted before import.
+- The multer mock is now correctly hoisted and avoids ReferenceError, but the 'should return 400 if no file is uploaded' test is returning 200 (success) instead of 400 (error). The mock is always setting req.file, so the route handler never triggers the 400 error. Next step: update the multer mock or test to allow simulating the 'no file uploaded' scenario.
+- Even with custom router/multer/auth mocks, the upload route test for "should return 400 if no file is uploaded" still returns 200, indicating the test setup is not bypassing the default route handler logic as intended. The root cause is likely the Express router's internal handler structure or the mock not fully intercepting the middleware chain.
+- Direct invocation of the route handler via the router stack (e.g., uploadRouter.default.stack[0].route.stack[0].handle) is still not reliably triggering the expected status code, suggesting Express's internal wrapping or handler composition may interfere with test assertions. Further debugging and/or a different approach to handler exposure or test structure is needed.
+- Upload route handler has been refactored to a named export (uploadHandler) for better testability and direct unit testing.
+- Syntax error (unmatched parenthesis) in upload.route.ts fixed; all brackets and parentheses now properly matched.
+- Upload route test updated to use proper mocking and the new uploadHandler export.
+- New test failures after running the suite:
+  - Dynamic import/await used incorrectly in apiKeyAuth.test.ts (must be inside async function) - FIXED
+  - Syntax error in apiKeyAuth.test.ts must be fixed for tests to run - FIXED
+  - Crypto module properly mocked in apiKeyRepository.test.ts, with randomBytes export as both a named and default export.
+  - jwks-rsa mock not properly set up in authMiddleware.test.ts (missing default export).
+  - Import errors for ./config/azure.js in server.ts and upload.route.ts (file missing or wrong import path).
+  - Router is not being properly initialized in apiKeyRoutes.test.ts (middleware function is undefined).
+  - Vitest test failures in authMiddleware.test.ts: jsonwebtoken mock missing default export, causing all token validation tests to fail.
+- After fixing jsonwebtoken mock, only one test fails in authMiddleware.test.ts: TypeError "Cannot read properties of undefined (reading 'value')" related to JwksClient mocking. - FIXED
+- Cosmos DB container and crypto module mocks in apiKeyRepository.test.ts have been refactored and typed to resolve TypeScript and test errors.
+- Cosmos DB mocks and test structure in apiKeyRepository.test.ts have been aligned with the actual ApiKeyRepository implementation. Test for update method added.
+- Vitest configuration and setup file are being checked to diagnose why tests are not running.
+- Duplicate .js test files have been backed up and removed; only TypeScript test files remain to avoid Vitest confusion.
+- Obsolete/backup test files upload.test.new.ts and upload-route.fixed.test.ts have been deleted; only main test files remain.
+- Vitest test file for upload route refactored to use vi.hoisted for all mocks, and multer mock compatibility fixed to resolve memoryStorage TypeError. Continue to monitor for any remaining test runner or mock-related issues.
+- Multer mock in upload route test file refactored for proper TypeScript type safety.
+- Multer mock for upload route moved to __mocks__ directory and test file updated to use it, resolving Vitest hoisting and StorageEngine interface issues.
+- Lint error: Namespace 'global.jest' has no exported member 'Mock'. Replace with Vitest-compatible mock typing in upload route test file. (Obsolete: now using only Vitest and supertest.)
+- Upload route test now fails due to status assertion not being called (route handler may not be invoked as expected) and errors accessing or replacing the multer mock's single method (TypeError: Cannot read properties of undefined (reading 'mockImplementationOnce')). Need to fix test logic, ensure correct access to the mock, and verify the router handler is invoked properly.
+- Latest upload route test failures are due to custom mockMulter and mockSingle not being properly injected into the code under test, so status/json assertions are not triggered. Need to ensure mock is injected and test assertions are triggered.
+- Current upload route tests are still failing: the route handler is not being triggered as expected, even after improved mocking. Need to ensure the middleware and handler chain is executed so assertions are reached.
+- Upload route test refactored to use supertest for end-to-end request/response flow, with detailed debug logging added. supertest has been installed as a dev dependency. Next step: run and analyze the enhanced test output to ensure the handler is triggered and assertions are reached.
+- Authentication middleware and auth config are now explicitly mocked in the upload route test to bypass JWT validation and ensure test requests are accepted; next step is to rerun the test to confirm if this resolves the 403 errors.
+- cosmosDb.upsertRecord is now properly mocked in the upload route test, and test assertions have been improved; next step is to rerun the upload route tests and verify passing status before moving to other backend/server test failures.
+- Upload route test fixes have been migrated to the main test file (`upload-route.test.ts`). All upload route tests are now passing. Continue with remaining backend/server test failures.
+- Current blocking errors:
+  - [x] Fix ReferenceError: jest is not defined in excelParser.test.ts
+  - [x] Fix Vitest mock hoisting and multer memoryStorage issues in upload route test file
+  - [ ] Fix import errors for ./config/azure.js in data.route.ts and related files
+- Further test failures remain: missing/incorrect mocks in several test files (e.g., import errors in data.route.ts, server.test.ts, apiKeyRoutes.test.ts, etc.).
+- Vitest hoisting issue: vi.mock factories are hoisted before variable declarations. All mock variables used in vi.mock must be declared before the vi.mock call. This is causing ReferenceError for mockUploadFile in upload-route.test.ts. Refactor mocks to avoid referencing variables before declaration.
+- New upload route test failures: missing XLSX mock for encode_cell, need to update XLSX mock with encode_cell function.
+- Upload route test for 'should return 400 if no file is uploaded' now directly calls uploadHandler and returns 400, but fails because Azure service mock (mockUploadFile) is still called. Indicates handler or test isolation issue; further debugging required.
+- Batch fix required: Several test files (apiKeyAuth.test.ts, apiKeyRoutes.test.ts, excelParser.test.ts, etc.) are failing due to a mix of Jest/Vitest API usage, incomplete mock response objects, broken middleware/route imports, and improper mock implementations. Replace all Jest calls with Vitest equivalents, ensure all mocks are correctly implemented, and verify all middleware/route imports and exports are correct.
+- Batch Jest→Vitest conversion and mock/route import fixes are underway. All test file mocks (including __mocks__ directory) must be updated to Vitest syntax for consistency and reliability.
+- [x] Replace all Jest calls with Vitest equivalents (e.g., jest.clearAllMocks() → vi.clearAllMocks()) in excelParser.test.ts, apiKeyAuth.test.ts, apiKeyRoutes.test.ts
+- [x] Ensure all mock response objects have both status and json methods returning this in apiKeyAuth.test.ts, apiKeyRoutes.test.ts
+- [x] Fix all broken middleware/route imports and exports in apiKeyRoutes.test.ts
+- [ ] Ensure all mocks (especially for API key validation and Azure services) are correctly set up in all test files and __mocks__
+- [ ] Rerun the full test suite and resolve any remaining issues
+- [ ] Continue fixing remaining backend/server test failures
+- Vitest global types must be included in tsconfig.test.json ("types": ["node", "vitest"]) to resolve missing test function globals (describe, it, vi, expect, etc.) in test files.
+- ESM import paths must use explicit .js extensions (e.g., '../src/routes/upload.route.js') for NodeNext compatibility; otherwise, TypeScript/Node will report module not found errors.
+- After updating tsconfig.test.json and import paths, check for and fix errors like "no exported member" or missing type definitions. If processExcelFile is not exported as a named export, update the export/import accordingly.
+- Import error for 'CosmosRecord' in upload.route.ts fixed: now imported from '../types/index.js' instead of '../config/azure-services.js'.
 
 ## Task List
-- [x] Review docs/plan.md and docs/spec.md for requirements
-- [x] Design GitHub Actions workflow structure
-- [x] Implement lint and test jobs for PRs
-- [x] Implement deploy jobs for frontend/backend on merge to main
-  - [x] Frontend deployment automation
-- [x] Integrate Azure Monitor for deployment status
-- [x] Update .env.example with any new required variables and descriptions
-- [ ] Test and validate workflow on GitHub
-  - [ ] Test backend deployment workflow (trigger, build, deploy, monitor)
-    - [x] Fix CI/CD lint dependencies (add typescript-eslint, validate lint step)
-    - [x] Validate new ESLint config files (frontend/backend) and lint script locally
-    - [x] Confirm linting works after config cleanup (no module resolution errors)
-    - [x] Remove @typescript-eslint from server/package.json and server/node_modules; ensure only root has the plugin
-    - [x] Update all ESLint configs to resolve plugins from root
-    - [x] Validate linting works locally after deduplication
-    - [x] Resolve plugin duplication: ensure only one @typescript-eslint/eslint-plugin is installed and used
-    - [x] Validate linting works without plugin duplication errors (single plugin resolution)
-    - [x] Fix ESLint parserOptions.project/tsconfig path to resolve "file was not found in any of the provided project(s)" errors
-    - [x] Validate linting works without project reference errors
-    - [x] Update tsconfig.app.json and tsconfig.server.json "include" arrays to cover all relevant files (especially test/config files), then revalidate linting
-    - [x] Debug and fix tsconfig.server.json includes/excludes so backend test and config files are picked up by TypeScript project and linting
-    - [x] Further debug why backend test/config files are not picked up by TypeScript project for linting
-    - [x] Revalidate linting after updating ESLint config to use absolute tsconfig.server.json path
-    - [x] Revalidate linting after updating root ESLint config for absolute TypeScript config paths and monorepo structure
-    - [x] Revalidate linting after updating ESLint config paths to monorepo root tsconfig.server.json
-    - [x] Confirm that parserOptions.project errors are resolved after correcting tsconfig.server.json path in server ESLint config
-    - [x] Attempt local build and address any build errors
-    - [x] Triage and fix TypeScript build errors in backend test files (type incompatibilities, missing/incorrect imports, module resolution, and interface mismatches)
-    - [x] Update backend TypeScript config (tsconfig.server.json) and build script to exclude test files from build output
-    - [x] Backend build successfully verified (after excluding test files from build)
-    - [x] Investigate missing backend dependencies/class definitions (e.g., AzureBlobStorage) required for build
-    - [x] Implement or stub `deleteFile` in mock and real AzureBlobStorage implementations to resolve build errors
-    - [x] All mock and real AzureBlobStorage implementations now include the required `deleteFile` method, including in initializeAzureServices. No further missing method errors remain for this interface.
-    - [x] Resolve vitest-mock-extended version conflict and ensure compatible install (requires upgrading Vitest to >=2.x or downgrading/removing mock package)
-    - [x] Fix test setup to support Node.js environment (mock window/localStorage/etc.)
-    - [x] Triage and fix TypeScript build errors in backend source files (type incompatibilities, missing/incorrect imports, module resolution, and interface mismatches)
-      - [ ] Fix missing required properties (e.g., `message`) in error responses in backend routes
-      - [ ] Resolve missing/mismatched dependency issues (e.g., express-validator)
-      - [ ] Review and fix import paths and mock configuration for apiKeyRepository and related modules
-      - [x] Update test files to use `.js` extensions in imports and Vitest mocks for ESM compatibility
-      - [x] Refactor test utility imports to use `src/test-utils/index.ts` path
-      - [x] Backend tests now run successfully after Vitest/ESM compatibility fixes
-  - [x] Frontend build and tests successfully verified
-  - [ ] Investigate and resolve CI/CD workflow failure (check logs, fix errors)
-    - [ ] Re-run workflow to capture error output or debug log retrieval
-  - [ ] Validate GitHub Actions CI/CD workflow for backend and frontend (trigger, build, deploy, integration)
-  - [ ] Trigger and validate GitHub Actions CI/CD workflow for backend and frontend (in progress)
-  - [ ] Test frontend deployment workflow (trigger, build, deploy, auth)
-  - [ ] Verify end-to-end integration (frontend-backend communication, authentication)
-- [ ] Verify Azure AD app registration and redirect URIs for both development (localhost) and production (Static Web App URL)
+- [x] Run local build to verify current setup
+- [x] Check and update Vitest configuration in all tsconfig files
+- [x] Fix TypeScript errors in server/src/config/azure.ts
+- [x] Refactor imports across the codebase to use new Azure service modules
+- [x] Fix ES module import paths and type errors
+- [x] Test the refactored codebase
+- [x] Remove old azure.ts file after migration
+- [x] Fix test failures after migration (invalid Azure credentials, mocking issues)
+- [x] Fix rate limiting test failures
+- [x] Fix Azure credential and mocking test failures
+- [x] Update and fix test files to use new Azure service module structure
+  - [x] Align API key format tests with implementation requirements
+  - [x] Review and update other failing test cases
+- [x] Fix TypeScript errors in server/src/config/azure-services.ts
+- [x] Begin CI/CD setup (to be detailed after local build)
+- [ ] Fix remaining backend/server test failures (authentication mocks, rate limiting, mocking issues)
+  - [x] Fix test import paths to match actual file locations
+  - [x] Fix ESM import paths in Azure service files (blob/cosmos) to use .js extensions
+  - [x] Fix dynamic import/await usage in apiKeyAuth.test.ts
+  - [x] Fix syntax error in apiKeyAuth.test.ts preventing test execution
+  - [x] Properly mock crypto module in apiKeyRepository.test.ts
+  - [x] Ensure randomBytes export is present in all crypto mocks as both a named and default export
+  - [x] Align Cosmos DB mocks and test structure in apiKeyRepository.test.ts with actual repository implementation; add/update test for update method
+  - [x] Fix remaining TypeScript errors and spread/object property issues in apiKeyRepository.test.ts
+  - [x] Improve TypeScript typing and test structure in apiKeyAuth.test.ts
+  - [x] Fix remaining TypeScript/lint errors in apiKeyAuth.test.ts
+  - [x] Properly mock jwks-rsa module in authMiddleware.test.ts
+  - [x] Fix import errors for ./config/azure.js in server.ts - FIXED
+  - [x] Fix import errors for ./config/azure.js in upload.route.ts - FIXED
+  - [x] Fix router initialization in apiKeyRoutes.test.ts
+  - [ ] Verify Vitest configuration and setup file to diagnose test runner issues
+  - [x] Fix jsonwebtoken mock default export in authMiddleware.test.ts for Vitest compatibility
+  - [x] Fix JwksClient mock error (reading 'value') in authMiddleware.test.ts
+  - [x] Fix duplicate symbol "next" in apiKeyAuth.test.ts
+  - [x] Fix ReferenceError: jest is not defined in excelParser.test.ts
+  - [ ] Fix import errors for ../config/azure.js in data.route.ts and related files
+  - [ ] Fix TypeError: Router.use() requires a middleware function but got undefined in apiKeyRoutes.test.ts
+  - [ ] Fix top-level variable hoisting issues in test/server.test.ts and authMiddleware.test.ts
+  - [x] Move multer mock to __mocks__ directory and update test file to use it, resolving Vitest hoisting and StorageEngine interface issues
+  - [x] Migrate upload route test fixes to main test file and verify passing status
+  - [x] Update multer mock in upload route test to simulate missing file uploads, resolving 400/500 status mismatch
+  - [x] Update multer mock in upload route test to expose .single for override, resolving test errors with mockImplementationOnce
+  - [x] Address 'Multipart: Boundary not found' error in upload route test when no file is uploaded (fix multipart boundary issue in test setup)
+  - [x] Add Express error handler middleware to upload route test to capture/log error and diagnose 500 status in 'no file uploaded' test
+  - [x] Refactor upload route handler to a named export (uploadHandler) for direct unit testing
+  - [x] Fix syntax error (unmatched parenthesis) in upload.route.ts
+  - [x] Update upload route test to use uploadHandler and proper mocking
+  - [ ] Rerun and verify upload route test for correct 400 error on missing file
+  - [ ] Debug and refactor the upload route test to ensure the 'no file uploaded' scenario is accurately simulated and the correct status code is returned, considering the impact of Express router internals on direct handler invocation.
+  - [ ] Batch fix all test files:
+    - [x] Replace all Jest calls with Vitest equivalents (e.g., jest.clearAllMocks() → vi.clearAllMocks()) in excelParser.test.ts, apiKeyAuth.test.ts, apiKeyRoutes.test.ts
+    - [x] Ensure all mock response objects have both status and json methods returning this in apiKeyAuth.test.ts, apiKeyRoutes.test.ts
+    - [x] Fix all broken middleware/route imports and exports in apiKeyRoutes.test.ts
+    - [ ] Ensure all mocks (especially for API key validation and Azure services) are correctly set up in all test files and __mocks__
+    - [ ] Rerun the full test suite and resolve any remaining issues
+  - [ ] Continue fixing remaining backend/server test failures
+  - [x] Fix import path for processExcelFile in excelParser.test.ts to use .js extension
+  - [x] Fix "no exported member" error for processExcelFile if it is not a named export
+  - [x] Fix missing Vitest type definitions error in tsconfig.test.json if present
 
 ## Current Goal
-Fix lint errors/warnings in codebase
+Continue fixing remaining backend/server test failures
+
+## Batch Fix for Failing Test Files
+- Batch fix required: Several test files (apiKeyAuth.test.ts, apiKeyRoutes.test.ts, excelParser.test.ts, etc.) are failing due to a mix of Jest/Vitest API usage, incomplete mock response objects, broken middleware/route imports, and improper mock implementations. Replace all Jest calls with Vitest equivalents, ensure all mocks are correctly implemented, and verify all middleware/route imports and exports are correct.
+- Batch Jest→Vitest conversion and mock/route import fixes are underway. All test file mocks (including __mocks__ directory) must be updated to Vitest syntax for consistency and reliability.
+- [ ] Batch fix all test files (in progress):
+  - [ ] apiKeyAuth.test.ts:
+    - [ ] Fix response object mocks: ensure res.status() returns an object with a chainable .json() method (and .send() where used).
+    - [ ] Ensure mockValidateApiKey is properly injected, reset, and used between tests (reset with vi.resetAllMocks and/or mockReset in beforeEach).
+    - [ ] Fix all middleware imports/exports and ensure correct file extensions (.js) for ESM.
+    - [ ] Ensure req.user is properly attached by the middleware and correctly asserted in tests.
+    - [ ] Remove any use of Jest mock types (use vi.Mock or appropriate Vitest types only).
+  - [ ] apiKeyRoutes.test.ts:
+    - [ ] Ensure apiKeyRoutes is exported as default and imported with .js extension.
+    - [ ] Fix all middleware/route imports/exports for ESM compatibility.
+    - [ ] Ensure all repository mocks return correct values and are reset between tests.
+    - [ ] Ensure authentication middleware is properly mocked for both positive and negative test cases.
+  - [ ] excelParser.test.ts:
+    - [ ] Update Azure service import to ../src/config/azure-services.js (remove any ../src/config/azure references).
+    - [ ] Ensure all mocks for XLSX.read and related functions return the expected workbook structure (SheetNames, Sheets, !ref, etc.).
+    - [ ] Fix error handling in processExcelFile for edge cases (empty sheets, invalid formats, upsert failures).
+    - [ ] Ensure all Azure service mocks are consistent and reset between tests.
+  - [ ] General:
+    - [ ] Ensure all mocks (especially for API key validation and Azure services) are correctly set up in all test files and __mocks__.
+    - [ ] Rerun the full test suite and resolve any remaining issues.

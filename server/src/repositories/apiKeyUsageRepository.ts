@@ -1,4 +1,4 @@
-import { AzureCosmosDB } from '../config/azure.js';
+import { AzureCosmosDB } from '../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Import types from the types index file
@@ -124,7 +124,7 @@ export class ApiKeyUsageRepository {
       let totalResponseTime = 0;
       let successCount = 0;
 
-      records.forEach(record => {
+      records.forEach((record: any) => {
         // Count by status code
         stats.byStatusCode[record.statusCode] = (stats.byStatusCode[record.statusCode] || 0) + 1;
         

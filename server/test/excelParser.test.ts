@@ -11,7 +11,7 @@ vi.mock('../src/config/azure-services.js', () => {
   const upsertRecord = vi.fn().mockImplementation((record: any) => Promise.resolve(record));
   return {
     initializeAzureServices: vi.fn().mockResolvedValue({
-      cosmosDb: { 
+      cosmosDb: {
         upsertRecord,
         container: {
           items: {
@@ -105,7 +105,7 @@ describe('Excel Parser', () => {
 
       // Verify
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Cannot read properties of undefined');
+      expect(result.error).toContain('No data found in the Excel file.');
     });
 
     it('should handle parsing errors', async () => {
@@ -145,13 +145,40 @@ describe('Excel Parser', () => {
       ]);
 
       // Mock upsert to fail
-      vi.doMock('../src/config/azure-services.js', () => ({
-        initializeAzureServices: vi.fn().mockResolvedValue({
-          cosmosDb: {
-            upsertRecord: vi.fn().mockRejectedValue(new Error('Database error'))
-          }
-        })
-      }));
+      // Re-mock initializeAzureServices to return a cosmosDb mock that rejects upsertRecord
+      const mockUpsertRecord = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockContainer = {
+        items: {
+          upsert: mockUpsertRecord,
+        },
+      };
+
+      const mockCosmosDb = {
+        cosmosClient: {} as any, // Mock the client
+        container: vi.fn().mockResolvedValue(mockContainer),
+        upsertRecord: mockUpsertRecord,
+        query: vi.fn(),
+        getById: vi.fn(),
+        deleteRecord: vi.fn(),
+      };
+
+      const mockBlobStorage = {
+        blobServiceClient: {} as any, // Mock the client
+        getContainerClient: vi.fn(),
+        uploadFile: vi.fn(),
+        deleteFile: vi.fn(),
+      };
+
+      vi.mock('../src/config/azure-services.js', async () => {
+        const actual = await vi.importActual<typeof import('../src/config/azure-services.js')>('../src/config/azure-services.js');
+        return {
+          ...actual,
+          initializeAzureServices: vi.fn().mockResolvedValue({
+            cosmosDb: mockCosmosDb,
+            blobStorage: mockBlobStorage,
+          }),
+        };
+      });
 
       // Execute
       const result = await processExcelFile(mockFileBuffer, mockFileName, mockContainerName, mockUserId);

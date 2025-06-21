@@ -1,7 +1,7 @@
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
-import { AZURE_CONFIG } from '../../config/azure-config';
-import { AzureBlobStorage } from '../../types/azure';
+import { AZURE_CONFIG } from '../../config/azure-config.js';
+import { AzureBlobStorage } from '../../types/azure.js';
 
 let blobServiceClient: BlobServiceClient | null = null;
 let containerClient: ContainerClient | null = null;

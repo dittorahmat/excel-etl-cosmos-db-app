@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+// import { vi } from 'vitest'; // Only import in test context
 import { MockCosmosDB, CosmosRecord } from '../../types/azure.js';
 
 // In-memory store for mock data
@@ -9,73 +9,68 @@ const mockDataStore: Record<string, Record<string, any>> = {};
  * @returns A mock implementation of AzureCosmosDB
  */
 export function initializeMockCosmosDB(): MockCosmosDB {
-  const upsertMock = vi.fn().mockImplementation(
-    async <T extends CosmosRecord>(record: T, containerName = 'default'): Promise<T> => {
-      if (!mockDataStore[containerName]) {
-        mockDataStore[containerName] = {};
-      }
-      
-      const id = record.id || `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const recordWithId = { ...record, id };
-      mockDataStore[containerName][id] = recordWithId;
-      return recordWithId as T;
-    }
-  );
+  const upsertMock = async <T extends CosmosRecord>(record: T, containerName = 'default'): Promise<T> => {
+  if (!mockDataStore[containerName]) {
+    mockDataStore[containerName] = {};
+  }
+  const id = record.id || `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const recordWithId = { ...record, id };
+  mockDataStore[containerName][id] = recordWithId;
+  return recordWithId as T;
+};
 
-  const queryMock = vi.fn().mockImplementation(
-    async <T extends CosmosRecord>(
-      query: string,
-      parameters: { name: string; value: any }[] = [],
-      containerName = 'default'
-    ): Promise<T[]> => {
-      if (!mockDataStore[containerName]) {
-        return [];
-      }
-      
-      // Simple mock query implementation - in a real scenario, this would parse the query
-      return Object.values(mockDataStore[containerName]) as T[];
-    }
-  );
+  const queryMock = async <T extends CosmosRecord>(
+  query: string,
+  parameters: { name: string; value: any }[] = [],
+  containerName = 'default'
+): Promise<T[]> => {
+  if (!mockDataStore[containerName]) {
+    return [];
+  }
+  // Simple mock query implementation - in a real scenario, this would parse the query
+  return Object.values(mockDataStore[containerName]) as T[];
+};
 
-  const getByIdMock = vi.fn().mockImplementation(
-    async <T extends CosmosRecord>(
-      id: string,
-      _partitionKey: string,
-      containerName = 'default'
-    ): Promise<T | undefined> => {
-      if (!mockDataStore[containerName]) {
-        return undefined;
-      }
-      return mockDataStore[containerName][id] as T | undefined;
-    }
-  );
+  const getByIdMock = async <T extends CosmosRecord>(
+  id: string,
+  _partitionKey: string,
+  containerName = 'default'
+): Promise<T | undefined> => {
+  if (!mockDataStore[containerName]) {
+    return undefined;
+  }
+  return mockDataStore[containerName][id] as T | undefined;
+};
 
-  const deleteMock = vi.fn().mockImplementation(
-    async (
-      id: string,
-      _partitionKey: string,
-      containerName = 'default'
-    ): Promise<void> => {
-      if (mockDataStore[containerName]) {
-        delete mockDataStore[containerName][id];
-      }
-    }
-  );
+  const deleteMock = async (
+  id: string,
+  _partitionKey: string,
+  containerName = 'default'
+): Promise<void> => {
+  if (mockDataStore[containerName]) {
+    delete mockDataStore[containerName][id];
+  }
+};
 
-  const containerMock = vi.fn().mockImplementation(async () => ({
+  const containerMock = async (containerName: string, partitionKey: string) => Promise.resolve({
+    // Minimal mock to satisfy Container interface for testing only
+    id: containerName,
     items: {
       upsert: upsertMock,
       query: queryMock,
     },
-  }));
+    // Add any other minimal properties/methods if needed for tests
+  }) as any;
 
   const mockCosmosDB: MockCosmosDB = {
+    database: {}, // minimal mock to satisfy type
+
     cosmosClient: {
       databases: {
-        createIfNotExists: vi.fn().mockResolvedValue({
+        createIfNotExists: async () => ({
           database: {
             containers: {
-              createIfNotExists: vi.fn().mockResolvedValue({
+              createIfNotExists: async () => ({
                 container: containerMock,
               }),
             },

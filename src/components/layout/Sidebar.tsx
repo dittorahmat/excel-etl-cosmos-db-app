@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/AuthProvider.js';
 import {
   Drawer,
   List,

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction, type RequestHandler } from 'express';
-import type { AzureCosmosDB } from '../config/azure.js';
+import type { AzureCosmosDB } from '../types/azure.js';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import type { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
 import { body, param } from 'express-validator';

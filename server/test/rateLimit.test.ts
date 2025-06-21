@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import { createRateLimiter } from '../src/middleware/rateLimit';
+import { createRateLimiter } from '../src/middleware/rateLimit.js';
 
 // Mock the Date.now() function to control time in tests
 const mockDateNow = vi.spyOn(Date, 'now');
@@ -134,7 +134,7 @@ describe('Rate Limiting Middleware', () => {
     const rateLimiter = createRateLimiter({
       windowMs: 60000, // 1 minute
       max: 2,
-      keyGenerator: (req) => {
+      keyGenerator: (req: any) => {
         // Use API key from header or query param
         const apiKey = req.headers['x-api-key'] || req.query.api_key;
         return apiKey ? `key-${apiKey}` : req.ip || 'unknown-ip';
@@ -180,7 +180,7 @@ describe('Rate Limiting Middleware', () => {
     const rateLimiter = createRateLimiter({
       windowMs: 60000, // 1 minute
       max: 1,
-      skip: (req) => {
+      skip: (req: any) => {
         // Log the IP being checked
         const ip = Array.isArray(req.headers['x-forwarded-for']) 
           ? req.headers['x-forwarded-for'][0] 

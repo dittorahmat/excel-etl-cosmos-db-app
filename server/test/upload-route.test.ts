@@ -107,7 +107,7 @@ const resetAzureMocks = () => {
     etag: 'test-etag',
     lastModified: new Date().toISOString()
   });
-  
+
   mockUpsertRecord.mockClear().mockResolvedValue({
     id: 'test-id',
     _partitionKey: 'test-user-id',
@@ -118,7 +118,7 @@ const resetAzureMocks = () => {
     _self: 'test-self',
     _ts: Math.floor(Date.now() / 1000)
   });
-  
+
   mockDeleteFile.mockClear().mockResolvedValue(true);
 };
 
@@ -161,7 +161,7 @@ vi.mock('xlsx', () => ({
   }
 }));
 
-import uploadRouter from '../src/routes/upload.route.js';
+import uploadRouter, { uploadHandler } from '../src/routes/upload.route.js';
 // Import the mocked module as a namespace for mock assertions
 import * as azureServicesMock from '../src/config/azure-services.js';
 // --- E2E supertest-based tests only ---
@@ -197,52 +197,47 @@ describe('Upload Route', () => {
     });
 
     it('should return 400 if no file is uploaded', async () => {
-      // Import the uploadHandler directly
-      const { uploadHandler } = await import('../src/routes/upload.route.js');
-      
       // Create a minimal mock request object without a file
       const mockReq = {
         file: undefined, // Explicitly set to undefined
         user: { oid: 'test-user-id' },
         body: {},
-        // Add minimal required Express request properties
         method: 'POST',
         url: '/upload',
-        headers: {}
+        headers: {},
       } as any;
-      
+
       // Create a minimal mock response object
       const mockRes = {
         status: vi.fn().mockReturnThis(),
         json: vi.fn(),
-        // Add minimal required Express response properties
         set: vi.fn().mockReturnThis(),
-        sendStatus: vi.fn()
+        sendStatus: vi.fn(),
       } as any;
-      
+
       // Create a mock next function
       const mockNext = vi.fn();
-      
+
       // Call the handler directly
       await uploadHandler(mockReq, mockRes, mockNext);
-      
+
       // Verify the response
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
           error: 'No file uploaded',
-          message: 'No file uploaded'
+          message: 'No file uploaded',
         })
       );
-      
+
       // Verify next was not called with an error
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
-      
+
       // Verify no Azure services were called
       expect(mockUploadFile).not.toHaveBeenCalled();
       expect(mockUpsertRecord).not.toHaveBeenCalled();
-      
+
       // Also verify no other unexpected calls were made
       expect(mockRes.sendStatus).not.toHaveBeenCalled();
     });

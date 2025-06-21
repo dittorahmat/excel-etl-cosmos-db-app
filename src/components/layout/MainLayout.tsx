@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Box, Container, useMediaQuery, useTheme } from '@mui/material';
-import { Navbar } from './Navbar';
-import { Sidebar } from './Sidebar';
+import { Navbar } from './Navbar.js';
+import { Sidebar } from './Sidebar.js';
 
 export const MainLayout = ({ children }: { children: ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);

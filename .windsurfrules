@@ -4,7 +4,7 @@ when adding environment variables, don't edit .env file. edit .env.example file 
 always use context7 mcp for current documentation of the tech stack you are currently working on.
 always use sequential-thinking mcp for thinking on the implementation
 when designing or adding new code, always consider YAGNI + SOLID + KISS + DRY principles
-if a code file is over 500 lines, please split it down into separate files without breaking any functionalities
+if a .ts, .tsx, .js or .jsx code file is over 500 lines, please split it down into separate files without breaking any functionalities
 when you find an error, find and fix all possible root causes of that error
 only make changes you are at least 95% confident in
-when you are not sure about something, ask for clarification
+when you are not sure about something, use context7 mcp to get the best practice on solving your problem

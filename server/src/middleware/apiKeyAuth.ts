@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
-import { AzureCosmosDB } from '../config/azure.js';
+import { AzureCosmosDB } from '../types/azure.js';
 import { TokenPayload } from './auth.js';
 
 declare global {
@@ -42,6 +42,7 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
     }
 
     if (!apiKey) {
+      console.warn('[apiKeyAuth] No API key provided', { headers: req.headers, query: req.query });
       return res.status(401).json({
         success: false,
         error: 'Unauthorized',
@@ -50,6 +51,7 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
     }
 
     try {
+      // Get user ID from the request (this should be set by a previous middleware)
       // Get user ID from the request (this should be set by a previous middleware)
       const userId = (req.user as any)?.oid;
       if (!userId) {
@@ -63,11 +65,11 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
       // Validate the API key
       const { isValid, key } = await apiKeyRepository.validateApiKey({
         key: apiKey,
-        userId,
         ipAddress: req.ip,
       });
 
       if (!isValid || !key) {
+        console.warn('[apiKeyAuth] Invalid or expired API key', { apiKey });
         return res.status(403).json({
           success: false,
           error: 'Forbidden',
@@ -77,8 +79,8 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
 
       // Attach API key info to the request for use in route handlers
       req.apiKey = {
-        id: key.id,
-        name: key.name,
+        id: String(key.id),
+        name: String(key.name),
       };
 
       next();
@@ -98,14 +100,14 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
  */
 export function requireAuthOrApiKey(cosmosDb: AzureCosmosDB) {
   const authMiddleware = apiKeyAuth(cosmosDb);
-  
+
   return async (req: Request, res: Response, next: NextFunction) => {
-    // If user is already authenticated with Azure AD, continue
     if (req.user) {
+      console.info('[requireAuthOrApiKey] Azure AD user detected, skipping API key validation', { user: req.user });
       return next();
     }
-    
-    // Otherwise, try API key authentication
+    console.info('[requireAuthOrApiKey] No Azure AD user, attempting API key authentication');
     return authMiddleware(req, res, next);
   };
 }
+

@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '../ui/button.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card.js';
 
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils.js';
 import { Upload, FileText, X } from 'lucide-react';
 
 type FileUploadProps = {

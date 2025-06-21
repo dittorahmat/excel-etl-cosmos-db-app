@@ -5,7 +5,7 @@ import {
   safeCompareKeys, 
   isValidApiKeyFormat, 
   generateApiKeyId 
-} from '../src/utils/apiKeyUtils';
+} from '../src/utils/apiKeyUtils.js';
 
 describe('API Key Utilities', () => {
   describe('generateApiKey', () => {

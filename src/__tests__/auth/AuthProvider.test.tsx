@@ -1,12 +1,13 @@
+import '@testing-library/jest-dom/vitest';
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { AuthProvider } from '../../auth/AuthProvider';
-import { useAuth } from '../../auth/AuthContext';
-import type { AuthContextType } from '../../auth/AuthContext';
+import { vi, describe, it, expect, afterEach } from 'vitest';
+import { AuthProvider } from '../../auth/AuthProvider.js';
+import { useAuth } from '../../auth/AuthProvider.js';
+import type { AuthContextType } from '../../auth/AuthProvider.js';
 
 // Mock the AuthContext
 const mockUseAuth = vi.fn();
-vi.mock('../../auth/AuthContext', () => ({
+vi.mock('../../auth/AuthProvider', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
@@ -65,7 +66,7 @@ const mockAuth: AuthContextType = {
 describe('AuthProvider', () => {
   // Test component that uses the auth context
   const TestComponent = () => {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, login, logout } = useAuth();
     return (
       <div>
         <div data-testid="auth-status">
@@ -80,9 +81,7 @@ describe('AuthProvider', () => {
       </div>
     );
   };
-  
 
-  
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -100,7 +99,7 @@ describe('AuthProvider', () => {
         <TestComponent />
       </AuthProvider>
     );
-    
+
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     });
@@ -113,31 +112,31 @@ describe('AuthProvider', () => {
       idToken: 'test-id-token',
       expiresOn: new Date(Date.now() + 3600000).toISOString(),
     };
-    
+
     const loginMock = vi.fn().mockResolvedValue(loginResponse);
-    
+
     mockUseAuth.mockImplementation(() => ({
       ...mockAuth,
       login: loginMock,
     }));
-    
+
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
-    
+
     // Initial state should be not authenticated
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
-    
+
     // Simulate login button click
     await act(async () => {
       screen.getByTestId('login-button').click();
     });
-    
+
     // Verify login was called
     expect(loginMock).toHaveBeenCalledTimes(1);
-    
+
     // Verify storage was updated
     await waitFor(() => {
       expect(localStorage.getItem('msal.token.keys')).toBeTruthy();
@@ -147,28 +146,28 @@ describe('AuthProvider', () => {
   it('should handle logout flow', async () => {
     // Mock logout implementation
     const logoutMock = vi.fn().mockResolvedValue(undefined);
-    
+
     mockUseAuth.mockImplementation(() => ({
       ...mockAuth,
       isAuthenticated: true,
       user: { name: 'Test User', email: 'test@example.com' },
       logout: logoutMock,
     }));
-    
+
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
-    
+
     // Initial state should be authenticated
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
-    
+
     // Simulate logout button click
     await act(async () => {
       screen.getByTestId('logout-button').click();
     });
-    
+
     // Verify logout was called
     expect(logoutMock).toHaveBeenCalledTimes(1);
   });
@@ -176,22 +175,22 @@ describe('AuthProvider', () => {
   it('should handle token refresh', async () => {
     const testToken = 'test-refreshed-token';
     const getAccessTokenMock = vi.fn().mockResolvedValue(testToken);
-    
+
     mockUseAuth.mockImplementation(() => ({
       ...mockAuth,
       getAccessToken: getAccessTokenMock,
     }));
-    
+
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
-    
+
     // Trigger token refresh
     const { getAccessToken } = mockUseAuth();
     const token = await getAccessToken();
-    
+
     expect(token).toBe(testToken);
     expect(getAccessTokenMock).toHaveBeenCalledTimes(1);
   });

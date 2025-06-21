@@ -1,4 +1,9 @@
-import { msalInstance } from '../auth/AuthProvider';
+import { msalInstance } from '../auth/AuthProvider.js';
+
+// Extended Response type with generic JSON body
+type ApiResponse<T = unknown> = Response & {
+  json(): Promise<T>;
+};
 
 export const getAuthToken = async (): Promise<string | null> => {
   try {
@@ -18,7 +23,7 @@ export const getAuthToken = async (): Promise<string | null> => {
   }
 };
 
-export const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+export const authFetch = async <T = unknown>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
   const token = await getAuthToken();
   
   const headers = new Headers(options.headers);
@@ -37,23 +42,37 @@ export const authFetch = async (url: string, options: RequestInit = {}): Promise
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const api = {
-  get: (endpoint: string, options: RequestInit = {}) => 
-    authFetch(`${API_BASE_URL}${endpoint}`, { ...options, method: 'GET' }),
+  get: <T = unknown>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> => 
+    authFetch<T>(`${API_BASE_URL}${endpoint}`, { ...options, method: 'GET' }),
   
-  post: (endpoint: string, data?: any, options: RequestInit = {}) =>
-    authFetch(`${API_BASE_URL}${endpoint}`, {
+  post: <T = unknown, D = unknown>(
+    endpoint: string, 
+    data?: D, 
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> =>
+    authFetch<T>(`${API_BASE_URL}${endpoint}`, {
       ...options,
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  put: (endpoint: string, data?: any, options: RequestInit = {}) =>
-    authFetch(`${API_BASE_URL}${endpoint}`, {
+  put: <T = unknown, D = unknown>(
+    endpoint: string, 
+    data?: D, 
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> =>
+    authFetch<T>(`${API_BASE_URL}${endpoint}`, {
       ...options,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  delete: (endpoint: string, options: RequestInit = {}) =>
-    authFetch(`${API_BASE_URL}${endpoint}`, { ...options, method: 'DELETE' }),
+  delete: <T = unknown>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> =>
+    authFetch<T>(`${API_BASE_URL}${endpoint}`, { 
+      ...options, 
+      method: 'DELETE' 
+    }),
 };

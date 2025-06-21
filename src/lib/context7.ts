@@ -1,5 +1,5 @@
 import { Context7Client } from '@upstash/context7-mcp';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '../auth/AuthProvider.js';
 
 // Initialize the Context7 client
 export const context7Client = new Context7Client({

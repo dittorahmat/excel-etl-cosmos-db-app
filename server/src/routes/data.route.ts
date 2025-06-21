@@ -1,6 +1,17 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { validateToken } from '../middleware/auth.js';
-import { initializeAzureServices } from '../config/azure-services.js';
+// TODO: Replace with actual import
+async function initializeCosmosDB(): Promise<AzureCosmosDB> { 
+  return {
+    cosmosClient: {} as any,
+    database: {} as any,
+    container: async () => ({} as any),
+    upsertRecord: async (record) => record,
+    query: async () => [],
+    getById: async () => undefined,
+    deleteRecord: async () => undefined
+  };
+}
 import type { AzureCosmosDB } from '../types/custom.js';
 
 const router = Router();

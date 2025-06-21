@@ -32,7 +32,7 @@ const PORT = process.env.PORT || 3000;
  */
 function createApp(azureServices: AzureCosmosDB): Express {
   const app = express();
-  
+
   // Middleware
   app.use(cors({
     origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
@@ -40,13 +40,13 @@ function createApp(azureServices: AzureCosmosDB): Express {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
   }));
-  
+
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Authentication and request logging
   app.use(authLogger);
-  
+
   // Request logging
   app.use((req: Request, res: Response, next: NextFunction) => {
     logger.http(`Incoming request: ${req.method} ${req.originalUrl}`, {
@@ -57,7 +57,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
     });
     next();
   });
-  
+
   // Error handling for authentication
   app.use(authErrorHandler);
 
@@ -70,7 +70,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
   app.get('/api/public', (_req: Request, res: Response) => {
     res.json({ message: 'This is a public endpoint' });
   });
-  
+
   // Rate limit configuration
   const apiRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -93,7 +93,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
   // Initialize repositories
   const apiKeyRepository = new ApiKeyRepository(azureServices);
   const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
-  
+
   // Setup authentication middleware with required dependencies
   const authMiddleware = requireAuthOrApiKey({
     apiKeyRepository,
@@ -108,7 +108,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
       return (authMiddleware as any)(req, res, next);
     });
   });
-  
+
   // Routes with proper typing
   app.use('/api/keys', createApiKeyRouter(azureServices));
   app.use('/api/upload', uploadRoute);
@@ -118,10 +118,10 @@ function createApp(azureServices: AzureCosmosDB): Express {
   app.use((req: Request & { id?: string }, res, next) => {
     const start = Date.now();
     const requestId = crypto.randomUUID();
-    
+
     // Add request ID to request object
     req.id = requestId;
-    
+
     // Log request start
     logger.info(`Request started`, {
       requestId,
@@ -130,7 +130,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
       ip: req.ip,
       userAgent: req.get('user-agent'),
     });
-    
+
     // Log response finish
     res.on('finish', () => {
       const duration = Date.now() - start;
@@ -143,14 +143,14 @@ function createApp(azureServices: AzureCosmosDB): Express {
         duration,
         userId: authReq.user?.oid || 'anonymous',
       };
-      
+
       if (res.statusCode >= 400) {
         logger.warn(`Request completed with error`, logContext);
       } else {
         logger.info(`Request completed`, logContext);
       }
     });
-    
+
     next();
   });
 
@@ -214,16 +214,16 @@ async function startServer(port: number | string = PORT): Promise<Server> {
     console.log('Initializing Azure services...');
     const { cosmosDb } = await initializeAzureServices();
     console.log('Azure services initialized successfully');
-    
+
     // Create Express application
     const apiKeyRepository = new ApiKeyRepository(cosmosDb);
     const apiKeyUsageRepository = new ApiKeyUsageRepository(cosmosDb);
 
     logger.info('Repositories initialized');
-    
+
     // Create Express app with initialized services
     app = createApp(cosmosDb);
-    
+
     // Start the HTTP server
     return new Promise((resolve, reject) => {
       const httpServer = app.listen(port, () => {
@@ -264,7 +264,7 @@ async function startServer(port: number | string = PORT): Promise<Server> {
  */
 async function shutdown(signal: string): Promise<void> {
   console.log(`\n${new Date().toISOString()} Received ${signal}. Shutting down gracefully...`);
-  
+
   try {
     if (server) {
       await new Promise<void>((resolve, reject) => {
@@ -279,7 +279,7 @@ async function shutdown(signal: string): Promise<void> {
         });
       });
     }
-    
+
     console.log('Shutdown complete');
     process.exit(0);
   } catch (error) {
@@ -317,4 +317,4 @@ if (isMainModule) {
     });
 }
 
-export { app, startServer, shutdown };
+export { createApp, app, startServer, shutdown };

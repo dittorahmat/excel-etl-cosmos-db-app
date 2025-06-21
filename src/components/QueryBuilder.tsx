@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { api } from '@/utils/api';
+import { Button } from './ui/button.js';
+import { Input } from './ui/input.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.js';
+import { api } from '../utils/api.js';
 import { Loader2, Plus, X } from 'lucide-react';
 // Format is not used, so we can remove this import
 

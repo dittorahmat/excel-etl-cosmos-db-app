@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+// import { vi } from 'vitest'; // Only import in test context
 import { MockBlobStorage } from '../../types/azure.js';
 
 /**
@@ -6,35 +6,34 @@ import { MockBlobStorage } from '../../types/azure.js';
  * @returns A mock implementation of AzureBlobStorage
  */
 export function initializeMockBlobStorage(): MockBlobStorage {
-  const uploadMock = vi.fn().mockImplementation((_containerName: string, file: Express.Multer.File) => {
-    return Promise.resolve({
-      url: `https://mockstorage.blob.core.windows.net/mockcontainer/mock-${file.originalname}`,
-      name: `mock-${file.originalname}`,
-      size: file.size,
-    });
+  const uploadMock = (...args: any[]) => Promise.resolve({
+    url: `https://mockstorage.blob.core.windows.net/mockcontainer/mock-${args[1]?.originalname ?? 'file'}`,
+    name: `mock-${args[1]?.originalname ?? 'file'}`,
+    size: args[1]?.size ?? 0,
   });
 
-  const deleteMock = vi.fn().mockImplementation((): Promise<void> => Promise.resolve());
+  const deleteMock = (...args: any[]) => Promise.resolve();
 
   const mockBlobStorage: MockBlobStorage = {
     blobServiceClient: {
-      getContainerClient: vi.fn().mockReturnValue({
-        getBlockBlobClient: vi.fn().mockReturnValue({
-          uploadData: vi.fn().mockResolvedValue(undefined),
-          deleteIfExists: vi.fn().mockResolvedValue(undefined),
+      getContainerClient: (...args: any[]) => ({
+        getBlockBlobClient: (...args: any[]) => ({
+          uploadData: (...args: any[]) => Promise.resolve(undefined),
+          deleteIfExists: (...args: any[]) => Promise.resolve(undefined),
           url: 'https://mockstorage.blob.core.windows.net/mockcontainer/mock-file',
         }),
-        createIfNotExists: vi.fn().mockResolvedValue(undefined),
+        createIfNotExists: (...args: any[]) => Promise.resolve(undefined),
       }),
     } as any,
-    getContainerClient: vi.fn().mockImplementation(() => ({
-      getBlockBlobClient: vi.fn().mockReturnValue({
-        uploadData: vi.fn().mockResolvedValue(undefined),
-        deleteIfExists: vi.fn().mockResolvedValue(undefined),
+    // Minimal mock to satisfy ContainerClient interface for testing only
+    getContainerClient: (...args: any[]) => ({
+      getBlockBlobClient: (...args: any[]) => ({
+        uploadData: (...args: any[]) => Promise.resolve(undefined),
+        deleteIfExists: (...args: any[]) => Promise.resolve(undefined),
         url: 'https://mockstorage.blob.core.windows.net/mockcontainer/mock-file',
       }),
-      createIfNotExists: vi.fn().mockResolvedValue(undefined),
-    })),
+      createIfNotExists: (...args: any[]) => Promise.resolve(undefined),
+    }) as any,
     uploadFile: uploadMock,
     deleteFile: deleteMock,
     _mocks: {

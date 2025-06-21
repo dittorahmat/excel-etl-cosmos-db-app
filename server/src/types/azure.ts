@@ -1,6 +1,6 @@
 import type { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import type { CosmosClient, Container } from '@azure/cosmos';
-import type { Mock } from 'vitest';
+
 
 // Base type for all Cosmos DB records
 export type CosmosRecord = Record<string, unknown> & {
@@ -14,7 +14,7 @@ export interface AzureBlobStorage {
   blobServiceClient: BlobServiceClient;
   getContainerClient: (containerName: string) => ContainerClient;
   uploadFile: (
-    containerName: string, 
+    containerName: string,
     file: Express.Multer.File
   ) => Promise<{
     url: string;
@@ -30,7 +30,10 @@ export interface AzureBlobStorage {
 export interface AzureCosmosDB {
   /** The underlying CosmosClient instance */
   cosmosClient: CosmosClient;
-  
+
+  /** The Cosmos DB database instance */
+  database: any; // Added to align with custom.d.ts
+
   /**
    * Get a reference to a Cosmos DB container
    * @param containerName - The name of the container
@@ -91,16 +94,16 @@ export interface AzureCosmosDB {
 // Mock implementation types
 export interface MockBlobStorage extends AzureBlobStorage {
   _mocks: {
-    upload: Mock;
-    delete: Mock;
+    upload: any;
+    delete: any;
   };
 }
 
 export interface MockCosmosDB extends AzureCosmosDB {
   _mocks: {
-    upsert: Mock;
-    query: Mock;
-    getById: Mock;
-    delete: Mock;
+    upsert: any;
+    query: any;
+    getById: any;
+    delete: any;
   };
 }
