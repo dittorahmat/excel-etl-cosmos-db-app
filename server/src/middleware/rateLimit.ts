@@ -196,7 +196,7 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimitRequest
         message: options.message || 'Rate limit exceeded. Please try again later.',
       });
     },
-    getStore: () => (rateLimitOptions.store as MemoryStore).getStore(),
+
   };
   
   return rateLimit(rateLimitOptions);

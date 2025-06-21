@@ -63,12 +63,24 @@ const frontendConfig = {
   env: {
     browser: true,
     es2020: true,
-    node: false,
+    node: false
+  },
+  globals: {
+    JSX: 'readonly',
   },
   parserOptions: {
     ...commonConfig.parserOptions,
     project: path.resolve(__dirname, 'tsconfig.app.json'),
     tsconfigRootDir: __dirname,
+    ecmaFeatures: {
+      jsx: true,
+    },
+  },
+  settings: {
+    ...commonConfig.settings,
+    react: {
+      version: 'detect',
+    },
   },
 };
 
@@ -79,6 +91,14 @@ const backendConfig = {
     node: true,
     es2020: true,
     browser: false,
+  },
+  globals: {
+    // Node.js globals
+    Buffer: 'readonly',
+    process: 'readonly',
+    URL: 'readonly',
+    URLSearchParams: 'readonly',
+    console: 'readonly',
   },
   parserOptions: {
     ...commonConfig.parserOptions,
@@ -111,22 +131,48 @@ module.exports = {
     {
       files: ['src/**/*.{ts,tsx,js,jsx}'],
       ...frontendConfig,
+      rules: {
+        ...frontendConfig.rules,
+        'no-undef': 'off', // TypeScript handles this
+        'react/react-in-jsx-scope': 'off', // Not needed with React 17+
+      },
     },
     // Apply backend config to backend files
     {
       files: ['server/**/*.ts'],
       ...backendConfig,
+      rules: {
+        ...backendConfig.rules,
+        'no-console': 'off', // Allow console in backend
+      },
     },
     // Handle test files
     {
       files: ['**/*.test.{ts,tsx,js,jsx}'],
       env: {
-        jest: true,
+        node: true,
+        browser: true,
+        es2020: true
+      },
+      globals: {
+        vi: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+        describe: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
       },
       rules: {
         ...commonConfig.rules,
+        // Relax rules for test files
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/no-unused-vars': 'off',
+        '@typescript-eslint/no-require-imports': 'off',
+        'no-console': 'off',
+        'no-undef': 'off',
       },
     },
   ],

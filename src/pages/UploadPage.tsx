@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { FileUpload } from '../components/upload/FileUpload';
-import { useToast } from '../components/ui/use-toast';
-import { ToastAction } from '../components/ui/toast';
+import { FileUpload } from '../components/upload/FileUpload.js';
+import { useToast } from '../components/ui/use-toast.js';
+import { ToastAction } from '../components/ui/toast.js';
 import { Upload, FileCheck } from 'lucide-react';
 
 export function UploadPage() {

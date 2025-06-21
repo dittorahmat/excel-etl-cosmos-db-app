@@ -4,20 +4,18 @@ import express from 'express';
 import { json } from 'body-parser';
 import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
 import { createApiKeyRouter } from '../src/routes/apiKey.route.js';
+import { authenticateToken } from '../src/middleware/auth.js'; // Import the actual middleware
 
 // Mock the authentication middleware to always attach a user for positive tests
-vi.mock('../src/middleware/auth.js', () => ({
-  authenticateToken: (req: any, _res: any, next: any) => {
+vi.mock('../src/middleware/auth', () => ({
+  authenticateToken: vi.fn((req: any, _res: any, next: any) => {
     req.user = { oid: 'user-123' };
     next();
-  },
+  }),
 }));
 
-// Mock the ApiKeyRepository
-// Remove this duplicate mock; only use the .js extension mock below
-
 // Mock the Azure Cosmos DB client
-vi.mock('../src/config/azure-services.js', () => ({
+vi.mock('../src/config/azure-services', () => ({
   initializeAzureServices: vi.fn().mockResolvedValue({
     cosmosDb: {
       upsertRecord: vi.fn().mockResolvedValue({}),
@@ -25,16 +23,13 @@ vi.mock('../src/config/azure-services.js', () => ({
   }),
 }));
 
-// Import the actual router
-
-
 // Mock the ApiKeyRepository methods
 const mockCreateApiKey = vi.fn();
 const mockListApiKeys = vi.fn();
 const mockRevokeApiKey = vi.fn();
 
 // Mock the ApiKeyRepository class
-vi.mock('../src/repositories/apiKeyRepository.js', () => ({
+vi.mock('../src/repositories/apiKeyRepository', () => ({
   ApiKeyRepository: vi.fn().mockImplementation(() => ({
     createApiKey: mockCreateApiKey,
     listApiKeys: mockListApiKeys,
@@ -43,7 +38,6 @@ vi.mock('../src/repositories/apiKeyRepository.js', () => ({
 }));
 
 describe('API Key Routes', () => {
-  const originalAuth = require('../src/middleware/auth.js');
   let app: express.Express;
   const mockUserId = 'user-123';
   const mockToken = 'mock-jwt-token';
@@ -51,17 +45,17 @@ describe('API Key Routes', () => {
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
-    
+
     // Create a new Express app for each test
     app = express();
     app.use(json());
-    
+
     // Mock authentication middleware
     app.use((req: any, _res, next) => {
       req.user = { oid: mockUserId };
       next();
     });
-    
+
     // Setup routes
     // CosmosDb mock can be an empty object for routing tests
     const cosmosDbMock = {} as any;
@@ -80,9 +74,9 @@ describe('API Key Routes', () => {
         expiresAt: null,
         userId: mockUserId,
       };
-      
+
       mockCreateApiKey.mockResolvedValue(mockApiKey);
-      
+
       const requestBody = {
         name: 'Test Key',
       };
@@ -105,7 +99,7 @@ describe('API Key Routes', () => {
           expiresAt: mockApiKey.expiresAt,
         },
       });
-      
+
       expect(mockCreateApiKey).toHaveBeenCalledWith(mockUserId, {
         name: 'Test Key',
         expiresAt: undefined,
@@ -149,7 +143,7 @@ describe('API Key Routes', () => {
           },
         ],
       };
-      
+
       mockListApiKeys.mockResolvedValue(mockKeys);
 
       // Act
@@ -163,7 +157,7 @@ describe('API Key Routes', () => {
         success: true,
         data: mockKeys.keys,
       });
-      
+
       expect(mockListApiKeys).toHaveBeenCalledWith(mockUserId);
     });
   });
@@ -185,7 +179,7 @@ describe('API Key Routes', () => {
         success: true,
         message: 'API key revoked successfully',
       });
-      
+
       expect(mockRevokeApiKey).toHaveBeenCalledWith({
         keyId,
         userId: mockUserId,
@@ -214,13 +208,16 @@ describe('API Key Routes', () => {
 
   describe('Authentication', () => {
     it('should require authentication for all routes', async () => {
-      // Override the authenticateToken mock for this test only
-      const authModule = require('../src/middleware/auth.js');
-      const originalAuthFn = authModule.authenticateToken;
-      authModule.authenticateToken = (_req: any, _res: any, next: any) => {
+      // Use vi.importActual to get the actual module and then mock the function for this test
+      const authModule = await vi.importActual<typeof import('../src/middleware/auth.js')>('../src/middleware/auth.js');
+      const mockAuthenticateToken = vi.fn((_req: any, _res: any, next: any) => {
         // Don't set req.user, just call next()
         next();
-      };
+        return undefined; // Explicitly return undefined
+      });
+
+      // Temporarily override the mock for this test
+      vi.spyOn(authModule, 'authenticateToken').mockImplementation(mockAuthenticateToken);
 
       const unauthApp = express();
       unauthApp.use(json());
@@ -247,8 +244,8 @@ describe('API Key Routes', () => {
         });
       }
 
-      // Restore the original mock
-      authModule.authenticateToken = originalAuthFn;
+      // Restore the original mock after the test
+      vi.restoreAllMocks();
     });
   });
 });

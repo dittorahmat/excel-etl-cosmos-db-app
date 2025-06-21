@@ -20,16 +20,20 @@ export interface UploadResponse {
   success: boolean;
   message: string;
   data?: {
-    fileId: string;
+    fileId?: string; // Make optional as it might not always be available immediately
     fileName: string;
-    sheetName: string;
+    sheetName?: string; // Make optional
     rowCount: number;
     columnCount: number;
-    uploadDate: string;
+    uploadDate?: string; // Make optional
     blobUrl: string;
+    headers?: string[]; // Add headers
+    recordCount?: number; // Add recordCount
+    processedAt?: string; // Add processedAt
   };
   error?: string;
   details?: unknown;
+  statusCode?: number; // Add statusCode
 }
 
 export interface ErrorResponse {

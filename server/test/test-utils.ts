@@ -7,19 +7,14 @@ import { randomBytes, createHash, timingSafeEqual } from 'crypto';
 // Mock crypto functions
 vi.mock('crypto', async (importOriginal) => {
   const actual = await importOriginal();
-  return {
-    ...actual,
-    randomBytes: vi.fn().mockImplementation((size) => {
-      return Buffer.alloc(size, 'a'); // Return a buffer of 'a's for testing
-    }),
+  return Object.assign({}, actual, {
+    randomBytes: vi.fn().mockImplementation((size) => Buffer.alloc(size, 'a')),
     createHash: vi.fn().mockImplementation(() => ({
       update: vi.fn().mockReturnThis(),
       digest: vi.fn().mockReturnValue('mocked-hash-value'),
     })),
-    timingSafeEqual: vi.fn().mockImplementation((a, b) => {
-      return a.length === b.length && a.every((val: number, i: number) => val === b[i]);
-    }),
-  };
+    timingSafeEqual: vi.fn().mockImplementation((a, b) => a.length === b.length && a.every((val: number, i: number) => val === b[i])),
+  });
 });
 
 export interface MockFile extends Express.Multer.File {
@@ -27,10 +22,10 @@ export interface MockFile extends Express.Multer.File {
   originalname: string;
   mimetype: string;
   size: number;
-  stream?: any;
-  destination?: string;
-  filename?: string;
-  path?: string;
+  stream: any; // Not optional, required by File
+  destination: string;
+  filename: string;
+  path: string;
   [key: string]: any;
 }
 
@@ -83,9 +78,11 @@ export const mockRequest = (body: any = {}, file?: Express.Multer.File): MockReq
 };
 
 export interface MockResponse extends Partial<Response> {
-  status: (code: number) => MockResponse;
-  json: (body: any) => MockResponse;
-  send: (body: any) => MockResponse;
+  status?: (code: number) => Response;
+  sendStatus?: (code: number) => Response;
+  send?: (body: any) => Response;
+  json?: (body: any) => Response;
+  end?: () => Response;
   [key: string]: any;
 }
 
@@ -97,4 +94,4 @@ export const mockResponse = (): MockResponse => {
   return res as MockResponse;
 };
 
-export const mockNext = vi.fn<Parameters<NextFunction>, ReturnType<NextFunction>>();
+export const mockNext: NextFunction = vi.fn();

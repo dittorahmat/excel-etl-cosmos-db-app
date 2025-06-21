@@ -3,7 +3,7 @@ import type { Configuration, AccountInfo } from '@azure/msal-browser';
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { msalConfig, loginRequest } from './authConfig';
+import { msalConfig, loginRequest } from './authConfig.js';
 
 // Type assertion with proper configuration check
 const assertMsalConfig = (config: unknown): config is Configuration => {
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const account = accounts[0];
       const cachedToken = localStorage.getItem('msalToken');
       const tokenExpiry = localStorage.getItem('msalTokenExpiry');
-      
+
       // Check if we have a valid cached token
       if (cachedToken && tokenExpiry && !isTokenExpired(parseInt(tokenExpiry, 10))) {
         return cachedToken;
@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const account = accounts[0];
           setUser(account);
           setIsAuthenticated(true);
-          
+
           // Pre-fetch token to ensure it's fresh
           await getTokenSilently();
         } else {
@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.account) {
         setUser(response.account);
         setIsAuthenticated(true);
-        
+
         // Cache the initial token
         if (response.accessToken) {
           const expiresOn = response.expiresOn?.getTime() || Date.now() + 3600000;
@@ -223,3 +223,5 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => (
     <AuthProvider>{children}</AuthProvider>
   </MsalProvider>
 );
+
+export type { AuthContextType };

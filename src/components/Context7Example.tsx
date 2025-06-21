@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { KeyboardEvent, ChangeEvent } from 'react';
-import { useContext7WithAuth } from '@/lib/context7';
+import { useContext7WithAuth } from '../lib/context7.js';
 
 // Using native button for now since shadcn button is not properly set up
 const Button = (props: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }) => (

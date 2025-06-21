@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import { vi } from 'vitest';
+// import { vi } from 'vitest'; // Only import in test context
 
 import { Readable } from 'stream';
 
@@ -42,7 +42,7 @@ export const mockFile: MockFile = {
 
 // Helper type to make all properties partial and mockable
 type Mockable<T> = {
-  [P in keyof T]?: T[P] extends (...args: any[]) => any ? ReturnType<typeof vi.fn> : T[P];
+  [P in keyof T]?: T[P] extends (...args: any[]) => any ? (...args: any[]) => any : T[P];
 };
 
 export interface MockRequest extends Mockable<Request> {
@@ -52,14 +52,14 @@ export interface MockRequest extends Mockable<Request> {
     name?: string;
     email?: string;
   };
-  get?: ReturnType<typeof vi.fn>;
-  header?: ReturnType<typeof vi.fn>;
-  accepts?: ReturnType<typeof vi.fn>;
-  acceptsCharsets?: ReturnType<typeof vi.fn>;
-  acceptsEncodings?: ReturnType<typeof vi.fn>;
-  acceptsLanguages?: ReturnType<typeof vi.fn>;
-  range?: ReturnType<typeof vi.fn>;
-  is?: ReturnType<typeof vi.fn>;
+  get?: (...args: any[]) => any;
+  header?: (...args: any[]) => any;
+  accepts?: (...args: any[]) => any;
+  acceptsCharsets?: (...args: any[]) => any;
+  acceptsEncodings?: (...args: any[]) => any;
+  acceptsLanguages?: (...args: any[]) => any;
+  range?: (...args: any[]) => any;
+  is?: (...args: any[]) => any;
 }
 
 export const mockRequest = (body: any = {}, file?: Express.Multer.File): MockRequest => {
@@ -89,14 +89,14 @@ export const mockRequest = (body: any = {}, file?: Express.Multer.File): MockReq
   };
 
   // Add mock functions with proper typing
-  req.get = vi.fn();
-  req.header = vi.fn();
-  req.accepts = vi.fn();
-  req.acceptsCharsets = vi.fn();
-  req.acceptsEncodings = vi.fn();
-  req.acceptsLanguages = vi.fn();
-  req.range = vi.fn();
-  req.is = vi.fn();
+  req.get = (...args: any[]) => undefined;
+  req.header = (...args: any[]) => undefined;
+  req.accepts = (...args: any[]) => undefined;
+  req.acceptsCharsets = (...args: any[]) => undefined;
+  req.acceptsEncodings = (...args: any[]) => undefined;
+  req.acceptsLanguages = (...args: any[]) => undefined;
+  req.range = (...args: any[]) => undefined;
+  req.is = (...args: any[]) => undefined;
 
   return req as MockRequest;
 };
@@ -135,31 +135,16 @@ export const mockResponse = (): MockResponse => {
   ];
 
   chainableMethods.forEach(method => {
-    res[method] = vi.fn().mockReturnValue(res);
+    res[method] = (...args: any[]) => res;
   });
 
   // Non-chainable methods
-  res.end = vi.fn().mockReturnValue(undefined);
+  res.end = (...args: any[]) => undefined;
 
   return res as MockResponse;
 };
 
-export const mockNext = vi.fn<Parameters<NextFunction>, ReturnType<NextFunction>>();
+export const mockNext = (...args: any[]) => undefined;
 
-// Mock crypto functions
-vi.mock('crypto', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('crypto')>();
-  return {
-    ...actual,
-    randomBytes: vi.fn().mockImplementation((size) => {
-      return Buffer.alloc(size, 'a'); // Return a buffer of 'a's for testing
-    }),
-    createHash: vi.fn().mockImplementation(() => ({
-      update: vi.fn().mockReturnThis(),
-      digest: vi.fn().mockReturnValue('mocked-hash-value'),
-    })),
-    timingSafeEqual: vi.fn().mockImplementation((a, b) => {
-      return a.length === b.length && a.every((val: number, i: number) => val === b[i]);
-    }),
-  };
-});
+// Mock crypto functions (test-only, removed for production build)
+// vi.mock('crypto', ... ) removed for production safety.

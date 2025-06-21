@@ -1,17 +1,24 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
-import { api } from '../utils/api';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '../auth/AuthProvider.js';
+import { api } from '../utils/api.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { Button } from '../components/ui/button.js';
 import { Loader2, Upload as UploadIcon, Database as DatabaseIcon, BarChart2 as ChartIcon } from 'lucide-react';
-import { FileListTable } from '@/components/FileListTable';
-import { QueryBuilder } from '@/components/QueryBuilder';
-import { DataChart } from '@/components/DataChart';
+import { FileListTable } from '../components/FileListTable.js';
+import { QueryBuilder } from '../components/QueryBuilder.js';
+import { DataChart } from '../components/DataChart.js';
+
+interface QueryResultItem {
+  // Define the structure of your query result items here
+  // For example:
+  id: string;
+  [key: string]: unknown;
+}
 
 interface QueryResult {
-  items: any[];
+  items: QueryResultItem[];
   hasMore: boolean;
   requestCharge?: number;
 }
@@ -24,8 +31,10 @@ export const DashboardPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Define Query type for query builder
+  type Query = Record<string, unknown>;
   // Handle query execution from QueryBuilder
-  const handleExecuteQuery = useCallback(async (query: any) => {
+  const handleExecuteQuery = useCallback(async (query: Query) => {
     try {
       setLoading(true);
       setError(null);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/AuthProvider.js';
 import { AccountInfo } from '@azure/msal-browser';
 import {
   AppBar,

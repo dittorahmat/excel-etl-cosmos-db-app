@@ -1,8 +1,8 @@
 import { CosmosClient, Container, Database } from '@azure/cosmos';
 import { DefaultAzureCredential } from '@azure/identity';
 import { v4 as uuidv4 } from 'uuid';
-import { AZURE_CONFIG } from '../../config/azure-config';
-import { AzureCosmosDB, CosmosRecord } from '../../types/azure';
+import { AZURE_CONFIG } from '../../config/azure-config.js';
+import { AzureCosmosDB, CosmosRecord } from '../../types/azure.js';
 
 let cosmosClient: CosmosClient | null = null;
 let database: Database | null = null;
@@ -58,6 +58,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
 
   return {
     cosmosClient,
+    database, // add this to match interface
     container: async (containerName: string, partitionKey: string) => {
       if (!database) {
         throw new Error('Database not initialized');

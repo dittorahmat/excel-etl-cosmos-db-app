@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mockRequest, mockResponse, mockNext } from './test-utils.js';
+import request from 'supertest'; // Import supertest
 import { createApp } from '../src/server.js';
 import { initializeAzureServices } from '../src/config/azure-services.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Container } from '@azure/cosmos';
 
 // Mock the Azure services
-vi.mock('../src/config/azure', () => ({
-  initializeCosmosDB: vi.fn(),
+vi.mock('../src/config/azure-services.js', () => ({
   initializeAzureServices: vi.fn(),
 }));
 
@@ -22,10 +21,10 @@ describe('Data Endpoint', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     vi.clearAllMocks();
-    
+
     // Setup test user
     testUserId = uuidv4();
-    
+
     // Mock Cosmos DB
     mockCosmosDb = {
       container: {} as Container,
@@ -44,25 +43,18 @@ describe('Data Endpoint', () => {
     });
 
     // Create Express app
-    app = createApp();
+    app = createApp(mockCosmosDb as any); // Pass mockCosmosDb to createApp
   });
 
   describe('GET /api/data', () => {
     it('should return data with default pagination', async () => {
-      const req = mockRequest({
-        method: 'GET',
-        url: '/api/data',
-        user: { oid: testUserId },
-        query: {},
-      });
-      
-      const res = mockResponse();
-      const next = mockNext();
-      
-      await app._router.handle(req, res, next);
-      
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
+      const response = await request(app)
+        .get('/api/data')
+        .set('Authorization', `Bearer mock-token`) // Assuming auth is handled by middleware
+        .query({});
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
         items: [
           { id: '1', category: 'test', date: '2025-01-01', amount: 100 },
           { id: '2', category: 'test', date: '2025-01-02', amount: 200 },
@@ -72,21 +64,14 @@ describe('Data Endpoint', () => {
     });
 
     it('should filter by date range', async () => {
-      const req = mockRequest({
-        method: 'GET',
-        url: '/api/data',
-        user: { oid: testUserId },
-        query: {
+      const response = await request(app)
+        .get('/api/data')
+        .set('Authorization', `Bearer mock-token`)
+        .query({
           startDate: '2025-01-01',
           endDate: '2025-01-31',
-        },
-      });
-      
-      const res = mockResponse();
-      const next = mockNext();
-      
-      await app._router.handle(req, res, next);
-      
+        });
+
       expect(mockCosmosDb.queryRecords).toHaveBeenCalledWith(
         expect.stringContaining('WHERE'),
         expect.arrayContaining([
@@ -94,31 +79,24 @@ describe('Data Endpoint', () => {
           { name: '@endDate1', value: '2025-01-31' },
         ])
       );
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(response.statusCode).toBe(200);
     });
 
     it('should filter by category', async () => {
-      const req = mockRequest({
-        method: 'GET',
-        url: '/api/data',
-        user: { oid: testUserId },
-        query: {
+      const response = await request(app)
+        .get('/api/data')
+        .set('Authorization', `Bearer mock-token`)
+        .query({
           category: 'test',
-        },
-      });
-      
-      const res = mockResponse();
-      const next = mockNext();
-      
-      await app._router.handle(req, res, next);
-      
+        });
+
       expect(mockCosmosDb.queryRecords).toHaveBeenCalledWith(
         expect.stringContaining('LOWER(c.category) = LOWER(@category0)'),
         expect.arrayContaining([
           { name: '@category0', value: 'test' },
         ])
       );
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(response.statusCode).toBe(200);
     });
 
     it('should handle pagination with continuation token', async () => {
@@ -127,23 +105,16 @@ describe('Data Endpoint', () => {
         hasMoreResults: true,
         continuationToken: 'token123',
       });
-      
-      const req = mockRequest({
-        method: 'GET',
-        url: '/api/data',
-        user: { oid: testUserId },
-        query: {
+
+      const response = await request(app)
+        .get('/api/data')
+        .set('Authorization', `Bearer mock-token`)
+        .query({
           limit: '2',
           continuationToken: 'token123',
-        },
-      });
-      
-      const res = mockResponse();
-      const next = mockNext();
-      
-      await app._router.handle(req, res, next);
-      
-      expect(res.json).toHaveBeenCalledWith({
+        });
+
+      expect(response.body).toEqual({
         items: [{ id: '1' }, { id: '2' }],
         count: 2,
         continuationToken: 'token123',
@@ -155,22 +126,15 @@ describe('Data Endpoint', () => {
         resources: [],
         hasMoreResults: false,
       });
-      
-      const req = mockRequest({
-        method: 'GET',
-        url: '/api/data',
-        user: { oid: testUserId },
-        query: {
+
+      const response = await request(app)
+        .get('/api/data')
+        .set('Authorization', `Bearer mock-token`)
+        .query({
           category: 'nonexistent',
-        },
-      });
-      
-      const res = mockResponse();
-      const next = mockNext();
-      
-      await app._router.handle(req, res, next);
-      
-      expect(res.json).toHaveBeenCalledWith({
+        });
+
+      expect(response.body).toEqual({
         items: [],
         count: 0,
       });
@@ -179,21 +143,14 @@ describe('Data Endpoint', () => {
     it('should handle Cosmos DB errors', async () => {
       const testError = new Error('Cosmos DB error');
       mockCosmosDb.queryRecords.mockRejectedValueOnce(testError);
-      
-      const req = mockRequest({
-        method: 'GET',
-        url: '/api/data',
-        user: { oid: testUserId },
-        query: {},
-      });
-      
-      const res = mockResponse();
-      const next = mockNext();
-      
-      await app._router.handle(req, res, next);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
+
+      const response = await request(app)
+        .get('/api/data')
+        .set('Authorization', `Bearer mock-token`)
+        .query({});
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toEqual({
         error: 'Internal Server Error',
         message: 'Cosmos DB error',
       });

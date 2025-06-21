@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
-import { AuthWrapper, useAuth } from './auth/AuthProvider';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { UploadPage } from './pages/UploadPage';
-import { MainLayout } from './components/layout/MainLayout';
+import { AuthWrapper, useAuth } from './auth/AuthProvider.js';
+import { LoginPage } from './pages/LoginPage.js';
+import { DashboardPage } from './pages/DashboardPage.js';
+import { UploadPage } from './pages/UploadPage.js';
+import { MainLayout } from './components/layout/MainLayout.js';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 

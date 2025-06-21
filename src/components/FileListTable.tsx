@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAuthToken } from '@/utils/api';
+import { getAuthToken } from '../utils/api.js';
 import {
   Table,
   TableBody,
@@ -7,9 +7,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { api } from '@/utils/api';
+} from './ui/table.js';
+import { Button } from './ui/button.js';
+import { api } from '../utils/api.js';
 import { format } from 'date-fns';
 import { FileText, Download, Trash2, Loader2 } from 'lucide-react';
 

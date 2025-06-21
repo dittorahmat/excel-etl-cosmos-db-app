@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/auth/AuthProvider";
+import { Button } from "../ui/button.js"
+import { useAuth } from "../../auth/AuthProvider.js"
 
 export const LoginButton = () => {
   const { isAuthenticated, login, logout, user } = useAuth();

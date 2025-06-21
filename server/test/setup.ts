@@ -4,6 +4,11 @@ import { config } from 'dotenv';
 // Load environment variables from .env file
 config({ path: '../../.env' });
 
+// Set dummy Azure AD environment variables for testing
+process.env.AZURE_CLIENT_ID = 'test-client-id';
+process.env.AZURE_TENANT_ID = 'test-tenant-id';
+process.env.AZURE_CLIENT_SECRET = 'test-client-secret';
+
 // Mock global objects for Node.js environment
 globalThis.URL = {
   createObjectURL: vi.fn(),
@@ -24,6 +29,12 @@ const localStorageMock = (() => {
     clear: () => {
       store = {};
     },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key(index: number) {
+      return Object.keys(store)[index] || null;
+    }
   };
 })();
 
@@ -40,6 +51,12 @@ const sessionStorageMock = (() => {
     clear: () => {
       store = {};
     },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key(index: number) {
+      return Object.keys(store)[index] || null;
+    }
   };
 })();
 
@@ -53,7 +70,7 @@ if (typeof window === 'undefined') {
     removeEventListener: vi.fn(),
     // Add other window properties as needed
   };
-  
+
   // @ts-ignore
   global.document = {
     addEventListener: vi.fn(),
