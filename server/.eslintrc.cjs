@@ -11,8 +11,12 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2020,
     sourceType: 'module',
-    project: path.resolve(__dirname, '../tsconfig.server.json'),
-    tsconfigRootDir: path.resolve(__dirname, '..'), // Point to the root directory
+    project: [
+      path.resolve(__dirname, '../tsconfig.json'),
+      path.resolve(__dirname, '../tsconfig.server.json')
+    ],
+    tsconfigRootDir: path.resolve(__dirname, '..'),
+    createDefaultProgram: true
   },
   plugins: ['@typescript-eslint'],
   settings: {
@@ -44,14 +48,19 @@ module.exports = {
     },
   ],
   ignorePatterns: [
-    'dist',
-    'node_modules',
-    'coverage',
+    '**/dist',
+    '**/node_modules',
+    '**/coverage',
     '**/*.d.ts',
     '**/__tests__/**',
     '**/*.test.ts',
     '**/*.spec.ts',
     '**/test/**',
     '**/test-utils/**',
+    '**/__mocks__/**',
+    '**/mocks/**',
+    '**/vite.config.*',
+    '**/vitest.config.*',
+    '**/jest.config.*'
   ],
 };

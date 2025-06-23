@@ -24,7 +24,7 @@ const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
 
 export const Context7Example = () => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   

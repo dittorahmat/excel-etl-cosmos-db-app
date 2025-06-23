@@ -1,4 +1,4 @@
-import express, { type Request, type Response, type NextFunction, type Express, type Application } from 'express';
+import express, { type Request, type Response, type NextFunction, type Express } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -10,7 +10,7 @@ import uploadRoute from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
 import { validateToken } from './middleware/auth.js';
-import { requireAuth, requireAuthOrApiKey } from './middleware/authMiddleware.js';
+import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
 import { logger, LogContext } from './utils/logger.js';
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
@@ -90,22 +90,22 @@ function createApp(azureServices: AzureCosmosDB): Express {
   // Apply rate limiting to all API routes
   app.use('/api', apiRateLimit);
 
-  // Initialize repositories
-  const apiKeyRepository = new ApiKeyRepository(azureServices);
-  const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
+  // Initialize repositories with Cosmos DB client
+  const _apiKeyRepository = new ApiKeyRepository(azureServices);
+  const _apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
 
   // Setup authentication middleware with required dependencies
   const authMiddleware = requireAuthOrApiKey({
-    apiKeyRepository,
-    apiKeyUsageRepository
+    apiKeyRepository: _apiKeyRepository,
+    apiKeyUsageRepository: _apiKeyUsageRepository
   });
 
   // Apply authentication middleware to specific routes
   const protectedRoutes = ['/api/keys', '/api/upload', '/api/data'];
   protectedRoutes.forEach(route => {
     app.use(route, (req: Request, res: Response, next: NextFunction) => {
-      // Cast req to any to bypass TypeScript type checking for the middleware
-      return (authMiddleware as any)(req, res, next);
+          // Use type assertion to bypass TypeScript type checking for the middleware
+      return (authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(req, res, next);
     });
   });
 
@@ -163,7 +163,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
   });
 
   // Error handling middleware
-  const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
     const logContext: LogContext = {
       requestId: req.id,
       method: req.method,
@@ -201,9 +201,9 @@ function createApp(azureServices: AzureCosmosDB): Express {
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
-// App and server instances
+// Server instance
+let server: Server;
 let app: Express;
-let server: Server | null = null;
 
 /**
  * Start the Express server
@@ -317,4 +317,5 @@ if (isMainModule) {
     });
 }
 
-export { createApp, app, startServer, shutdown };
+// Export the server instance and functions
+export { createApp, startServer, shutdown };

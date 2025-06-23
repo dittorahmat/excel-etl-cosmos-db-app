@@ -10,7 +10,7 @@ const msalConfig: Configuration = {
   },
   system: {
     loggerOptions: {
-      loggerCallback: (logLevel: any, message: string) => {
+      loggerCallback: (logLevel: number, message: string) => {
         console.log(message);
       },
       piiLoggingEnabled: false,

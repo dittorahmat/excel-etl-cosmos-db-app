@@ -1,12 +1,14 @@
 import { CosmosClient, Container, Database } from '@azure/cosmos';
-import { DefaultAzureCredential } from '@azure/identity';
+import type { CosmosRecord } from '../../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
-import { AzureCosmosDB, CosmosRecord } from '../../types/azure.js';
+import { AzureCosmosDB } from '../../types/azure.js';
 
 let cosmosClient: CosmosClient | null = null;
 let database: Database | null = null;
-let container: Container | null = null;
+// Container is initialized but not directly used in this file
+// It's kept for potential future use
+const _container: Container | null = null;
 
 /**
  * Initialize Azure Cosmos DB client
@@ -41,7 +43,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         paths: [AZURE_CONFIG.cosmos.partitionKey],
       },
     });
-    container = containerResult.container;
+    _container = containerResult.container;
   }
 
   return createCosmosDbClient();
@@ -96,7 +98,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
     },
     query: async <T extends CosmosRecord>(
       query: string,
-      parameters: { name: string; value: any }[] = [],
+      parameters: { name: string; value: unknown }[] = [],
       containerName: string = AZURE_CONFIG.cosmos.containerName
     ): Promise<T[]> => {
       if (!database) {
@@ -125,7 +127,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
         const { resource } = await container.item(id, partitionKey).read<T>();
         return resource;
       } catch (error) {
-        if ((error as any).code === 404) {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 404) {
           return undefined;
         }
         throw error;

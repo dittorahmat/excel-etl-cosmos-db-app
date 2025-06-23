@@ -1,4 +1,4 @@
-import winston, { Logger as WinstonLogger, LoggerOptions } from 'winston';
+import winston from 'winston'; // WinstonLogger and LoggerOptions were imported but not used
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { TransformableInfo } from 'logform';

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider.js';
+import { useAuth } from '../../auth/AuthProvider';
 import { AccountInfo } from '@azure/msal-browser';
+// Import the default export from ErrorBoundary
+import ErrorBoundaryComponent from '../common/ErrorBoundary';
 import {
   AppBar,
   Toolbar,
@@ -24,19 +26,86 @@ import {
   Settings,
 } from '@mui/icons-material';
 
-// Extend MSAL AccountInfo with additional properties we expect
+/**
+ * Extended MSAL AccountInfo with additional properties we expect
+ */
 interface ExtendedAccountInfo extends AccountInfo {
-  // username is already defined in AccountInfo as string
   name?: string;
   email?: string;
   picture?: string;
 }
 
+/**
+ * Navbar component props
+ */
 interface NavbarProps {
+  /** Callback function for menu button click */
   onMenuClick?: () => void;
 }
 
-export const Navbar = ({ onMenuClick }: NavbarProps) => {
+/**
+ * User profile information
+ */
+interface UserProfile {
+  name: string;
+  email: string;
+  picture?: string;
+}
+
+/**
+ * Navbar component that displays the application header with user menu and navigation
+ * 
+ * @component
+ * @param {Object} props - Component props
+ * @param {() => void} [props.onMenuClick] - Callback function for menu button click
+ * @returns {JSX.Element} Rendered Navbar component
+ */
+// Styles for the Navbar component
+const styles = {
+  appBar: {
+    elevation: 0,
+  },
+  menuButton: {
+    mr: 2,
+  },
+  title: {
+    flexGrow: 1,
+    textDecoration: 'none',
+    color: 'inherit',
+    fontWeight: 'bold',
+    '&:hover': {
+      opacity: 0.9,
+    },
+  },
+  menuPaper: {
+    overflow: 'visible',
+    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+    mt: 1.5,
+    '& .MuiAvatar-root': {
+      width: 32,
+      height: 32,
+      ml: -0.5,
+      mr: 1,
+    },
+    '&:before': {
+      content: '""',
+      display: 'block',
+      position: 'absolute',
+      top: 0,
+      right: 14,
+      width: 10,
+      height: 10,
+      bgcolor: 'background.paper',
+      transform: 'translateY(-50%) rotate(45deg)',
+      zIndex: 0,
+    },
+  },
+} as const;
+
+/**
+ * Navbar component that displays the application header with user menu and navigation
+ */
+export const Navbar = ({ onMenuClick }: NavbarProps): JSX.Element => {
   const { isAuthenticated, user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
@@ -44,55 +113,61 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   // Safely type the user as our extended type
   const typedUser = user as ExtendedAccountInfo | null;
 
-  // Create a safe user profile object with fallbacks
-  const userProfile = {
+  /**
+   * Get user profile information with fallbacks
+   */
+  const getUserProfile = (): UserProfile => ({
     name: typedUser?.name || typedUser?.username || 'User',
     email: typedUser?.email || '',
     picture: typedUser?.picture,
-  };
+  });
 
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  // Get user profile
+  const userProfile = getUserProfile();
+
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>): void => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback((): void => {
     setAnchorEl(null);
-  };
+  }, []);
 
-  const handleLogout = async () => {
-    handleMenuClose();
+  const handleLogout = useCallback(async () => {
     try {
       await logout();
       navigate('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Error signing out:', error);
     }
-  };
+    handleMenuClose();
+  }, [logout, navigate, handleMenuClose]);
 
-  const handleProfileClick = () => {
+  const handleProfileClick = (): void => {
     handleMenuClose();
     navigate('/profile');
   };
 
-  const handleSettingsClick = () => {
+  const handleSettingsClick = (): void => {
     handleMenuClose();
     navigate('/settings');
   };
 
+  /**
+   * Get user initials from their name
+   */
   const getUserInitials = (): string => {
-    if (!typedUser) return 'U';
-    
-    const name = userProfile.name || '';
+    const name = userProfile.name || 'U';
     return name
       .split(' ')
-      .map((part: string) => part[0])
+      .map((part: string) => (part[0] || '').toUpperCase())
       .join('')
-      .toUpperCase()
       .substring(0, 2);
   };
 
   return (
-    <AppBar position="static" elevation={0}>
+    <ErrorBoundaryComponent>
+      <AppBar position="static" sx={styles.appBar}>
       <Toolbar>
         {onMenuClick && (
           <IconButton
@@ -100,7 +175,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             color="inherit"
             aria-label="menu"
             onClick={onMenuClick}
-            sx={{ mr: 2 }}
+            sx={styles.menuButton}
           >
             <MenuIcon />
           </IconButton>
@@ -110,15 +185,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           variant="h6"
           component={RouterLink}
           to="/"
-          sx={{
-            flexGrow: 1,
-            textDecoration: 'none',
-            color: 'inherit',
-            fontWeight: 'bold',
-            '&:hover': {
-              opacity: 0.9,
-            },
-          }}
+          sx={styles.title}
         >
           Excel ETL App
         </Typography>
@@ -155,29 +222,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               onClick={handleMenuClose}
               PaperProps={{
                 elevation: 0,
-                sx: {
-                  overflow: 'visible',
-                  filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                  mt: 1.5,
-                  '& .MuiAvatar-root': {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
-                  },
-                  '&:before': {
-                    content: '""',
-                    display: 'block',
-                    position: 'absolute',
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: 'background.paper',
-                    transform: 'translateY(-50%) rotate(45deg)',
-                    zIndex: 0,
-                  },
-                },
+                sx: styles.menuPaper
               }}
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
@@ -228,6 +273,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           </Button>
         )}
       </Toolbar>
-    </AppBar>
+      </AppBar>
+    </ErrorBoundaryComponent>
   );
 };

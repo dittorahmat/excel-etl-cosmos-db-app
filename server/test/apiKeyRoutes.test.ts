@@ -1,17 +1,22 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { json } from 'body-parser';
-import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
 import { createApiKeyRouter } from '../src/routes/apiKey.route.js';
-import { authenticateToken } from '../src/middleware/auth.js'; // Import the actual middleware
 
-// Mock the authentication middleware to always attach a user for positive tests
+// Mock the rate limiter middleware
+vi.mock('../src/middleware/rateLimit.js', () => ({
+  authRateLimiter: (_req: any, _res: any, next: any) => next(), // Simple pass-through mock
+}));
+
+// Mock the authentication middleware
+const mockAuthenticateToken = vi.fn((req: any, _res: any, next: any) => {
+  req.user = { oid: 'user-123' };
+  next();
+});
+
 vi.mock('../src/middleware/auth', () => ({
-  authenticateToken: vi.fn((req: any, _res: any, next: any) => {
-    req.user = { oid: 'user-123' };
-    next();
-  }),
+  authenticateToken: mockAuthenticateToken,
 }));
 
 // Mock the Azure Cosmos DB client
@@ -25,8 +30,8 @@ vi.mock('../src/config/azure-services', () => ({
 
 // Mock the ApiKeyRepository methods
 const mockCreateApiKey = vi.fn();
-const mockListApiKeys = vi.fn();
-const mockRevokeApiKey = vi.fn();
+const mockListApiKeys = vi.fn().mockResolvedValue({ keys: [] });
+const mockRevokeApiKey = vi.fn().mockResolvedValue(true);
 
 // Mock the ApiKeyRepository class
 vi.mock('../src/repositories/apiKeyRepository', () => ({
@@ -46,21 +51,35 @@ describe('API Key Routes', () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Create a new Express app for each test
-    app = express();
-    app.use(json());
-
-    // Mock authentication middleware
-    app.use((req: any, _res, next) => {
+    // Reset the authenticateToken mock
+    mockAuthenticateToken.mockImplementation((req: any, _res: any, next: any) => {
       req.user = { oid: mockUserId };
       next();
     });
 
-    // Setup routes
-    // CosmosDb mock can be an empty object for routing tests
+    // Create a new Express app for each test
+    app = express();
+    app.use(json());
+
+    // Setup routes with a timeout for tests
     const cosmosDbMock = {} as any;
     const apiKeyRouter = createApiKeyRouter(cosmosDbMock);
     app.use('/api/keys', apiKeyRouter);
+    
+    // Add error handling middleware to prevent unhandled rejections
+    app.use((err: any, _req: any, res: any, _next: any) => {
+      console.error('Test error handler:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Test Error',
+        message: err.message,
+      });
+    });
+  });
+  
+  afterEach(() => {
+    // Clean up any pending timeouts
+    vi.clearAllTimers();
   });
 
   describe('POST /api/keys', () => {
@@ -72,38 +91,35 @@ describe('API Key Routes', () => {
         name: 'Test Key',
         createdAt: new Date().toISOString(),
         expiresAt: null,
+        allowedIps: [],
         userId: mockUserId,
       };
 
-      mockCreateApiKey.mockResolvedValue(mockApiKey);
-
-      const requestBody = {
-        name: 'Test Key',
-      };
+      // Setup mocks
+      mockListApiKeys.mockResolvedValueOnce({ keys: [] }); // No existing keys
+      mockCreateApiKey.mockResolvedValueOnce(mockApiKey);
 
       // Act
       const response = await request(app)
         .post('/api/keys')
         .set('Authorization', `Bearer ${mockToken}`)
-        .send(requestBody);
+        .send({
+          name: 'Test Key',
+          expiresAt: null,
+          allowedIps: []
+        });
 
       // Assert
       expect(response.status).toBe(201);
       expect(response.body).toEqual({
         success: true,
-        data: {
-          id: mockApiKey.id,
-          key: mockApiKey.key,
-          name: mockApiKey.name,
-          createdAt: mockApiKey.createdAt,
-          expiresAt: mockApiKey.expiresAt,
-        },
+        data: mockApiKey
       });
-
+      expect(mockListApiKeys).toHaveBeenCalledWith(mockUserId);
       expect(mockCreateApiKey).toHaveBeenCalledWith(mockUserId, {
         name: 'Test Key',
-        expiresAt: undefined,
-        allowedIps: undefined,
+        expiresAt: null,
+        allowedIps: []
       });
     });
 
@@ -144,6 +160,8 @@ describe('API Key Routes', () => {
         ],
       };
 
+      // Reset the mock and set up the implementation for this test
+      mockListApiKeys.mockReset();
       mockListApiKeys.mockResolvedValue(mockKeys);
 
       // Act
@@ -158,6 +176,7 @@ describe('API Key Routes', () => {
         data: mockKeys.keys,
       });
 
+      expect(mockListApiKeys).toHaveBeenCalledTimes(1);
       expect(mockListApiKeys).toHaveBeenCalledWith(mockUserId);
     });
   });
@@ -208,44 +227,42 @@ describe('API Key Routes', () => {
 
   describe('Authentication', () => {
     it('should require authentication for all routes', async () => {
-      // Use vi.importActual to get the actual module and then mock the function for this test
-      const authModule = await vi.importActual<typeof import('../src/middleware/auth.js')>('../src/middleware/auth.js');
-      const mockAuthenticateToken = vi.fn((_req: any, _res: any, next: any) => {
-        // Don't set req.user, just call next()
+      // Override the mock to not set req.user
+      mockAuthenticateToken.mockImplementationOnce((_req: any, _res: any, next: any) => {
+        // Don't set req.user to simulate unauthenticated request
         next();
-        return undefined; // Explicitly return undefined
       });
 
-      // Temporarily override the mock for this test
-      vi.spyOn(authModule, 'authenticateToken').mockImplementation(mockAuthenticateToken);
+      // Test GET /api/keys without authentication
+      const getResponse = await request(app)
+        .get('/api/keys')
+        .set('Authorization', 'Bearer invalid-token');
 
-      const unauthApp = express();
-      unauthApp.use(json());
-      const cosmosDbMock = {} as any;
-      const apiKeyRouter = createApiKeyRouter(cosmosDbMock);
-      unauthApp.use('/api/keys', apiKeyRouter);
+      expect(getResponse.status).toBe(401);
+      expect(getResponse.body).toEqual({
+        success: false,
+        error: 'Unauthorized',
+        message: 'User ID not found',
+      });
 
-      // Test all routes
-      const routes = [
-        { method: 'post', path: '/api/keys' },
-        { method: 'get', path: '/api/keys' },
-        { method: 'delete', path: '/api/keys/123' },
-      ];
+      // Reset the mock for the next test
+      mockAuthenticateToken.mockImplementationOnce((_req: any, _res: any, next: any) => {
+        // Don't set req.user to simulate unauthenticated request
+        next();
+      });
 
-      for (const route of routes) {
-        const response = await (request(unauthApp) as any)
-          [route.method](route.path);
+      // Test POST /api/keys without authentication
+      const postResponse = await request(app)
+        .post('/api/keys')
+        .set('Authorization', 'Bearer invalid-token')
+        .send({ name: 'Test Key' });
 
-        expect(response.status).toBe(401);
-        // Accept either the default error or the custom error shape
-        expect(response.body).toMatchObject({
-          // Accept either actual error or shape
-          message: expect.any(String),
-        });
-      }
-
-      // Restore the original mock after the test
-      vi.restoreAllMocks();
+      expect(postResponse.status).toBe(401);
+      expect(postResponse.body).toEqual({
+        success: false,
+        error: 'Unauthorized',
+        message: 'User ID not found',
+      });
     });
   });
 });

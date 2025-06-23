@@ -1,5 +1,5 @@
 // Global test setup that runs once before all tests
-import { beforeAll, afterAll, vi } from 'vitest';
+import { vi, beforeAll, afterAll } from 'vitest';
 
 // Extend the global Window interface to include our mocks
 declare global {
@@ -11,29 +11,29 @@ declare global {
 // Create a simple in-memory storage implementation
 class MemoryStorage implements Storage {
   private store: Record<string, string> = {};
-
-  getItem(key: string): string | null {
-    return this.store[key] ?? null;
-  }
-
-  setItem(key: string, value: string): void {
-    this.store[key] = String(value);
-  }
-
-  removeItem(key: string): void {
-    delete this.store[key];
-  }
-
-  clear(): void {
-    this.store = {};
-  }
-
+  
   get length(): number {
     return Object.keys(this.store).length;
   }
-
+  
+  clear(): void {
+    this.store = {};
+  }
+  
   key(index: number): string | null {
     return Object.keys(this.store)[index] ?? null;
+  }
+  
+  getItem(key: string): string | null {
+    return this.store[key] ?? null;
+  }
+  
+  setItem(key: string, value: string): void {
+    this.store[key] = String(value);
+  }
+  
+  removeItem(key: string): void {
+    delete this.store[key];
   }
 }
 

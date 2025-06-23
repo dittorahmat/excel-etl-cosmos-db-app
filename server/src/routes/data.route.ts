@@ -1,18 +1,28 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { validateToken } from '../middleware/auth.js';
-// TODO: Replace with actual import
-async function initializeCosmosDB(): Promise<AzureCosmosDB> { 
+import { CosmosClient, type Container } from '@azure/cosmos';
+import type { AzureCosmosDB, CosmosRecord } from '../types/custom.js';
+
+// Mock implementation - will be replaced with actual import in production
+async function _initializeCosmosDB(): Promise<AzureCosmosDB> { 
   return {
-    cosmosClient: {} as any,
+    cosmosClient: {} as unknown as CosmosClient,
     database: {} as any,
-    container: async () => ({} as any),
-    upsertRecord: async (record) => record,
-    query: async () => [],
-    getById: async () => undefined,
-    deleteRecord: async () => undefined
+    container: async <T extends Record<string, unknown>>(containerName: string, partitionKey: string) => {
+      return {} as unknown as Container;
+    },
+    upsertRecord: async <T extends Record<string, unknown>>(record: T) => record,
+    query: async <T extends CosmosRecord>(query: string, parameters?: { name: string; value: unknown }[]) => {
+      return [] as T[];
+    },
+    getById: async (id: string, containerName?: string, partitionKeyValue?: string) => {
+      return undefined;
+    },
+    deleteRecord: async (id: string, partitionKey: string, containerName?: string) => {
+      // No-op for mock
+    }
   };
 }
-import type { AzureCosmosDB } from '../types/custom.js';
 
 const router = Router();
 
@@ -36,10 +46,10 @@ interface DataQueryParams {
 // Helper to build Cosmos DB query from request parameters
 function buildQueryFromParams(params: DataQueryParams): {
   query: string;
-  parameters: { name: string, value: any }[];
+  parameters: { name: string, value: unknown }[];
 } {
   const conditions: string[] = [];
-  const parameters: { name: string, value: any }[] = [];
+  const parameters: { name: string, value: unknown }[] = [];
   let paramIndex = 0;
 
   // Handle date range filters
@@ -168,7 +178,7 @@ router.get(
   validateToken as any, // Temporary type assertion to fix middleware type
   async (req: Request, res: Response) => {
   try {
-    const cosmosDb = await initializeCosmosDB();
+    const db = await _initializeCosmosDB();
     const queryParams = req.query as unknown as DataQueryParams;
     
     // Set default limit if not provided
@@ -178,17 +188,14 @@ router.get(
     const { query, parameters } = buildQueryFromParams(queryParams);
     
     // Execute the query with pagination
-    const queryOptions = {
+    const _queryOptions = {
       parameters,
       maxItemCount: limit,
       continuationToken: queryParams.continuationToken,
     };
     
-    // Use the query method from our AzureCosmosDB interface
-    const queryResult = await cosmosDb.query(
-      query,
-      parameters
-    );
+    // Execute the query using our database client
+    const queryResult = await db.query(query, parameters);
     
     // The query method returns an array directly, not an object with resources
     const items = Array.isArray(queryResult) ? queryResult : [];
