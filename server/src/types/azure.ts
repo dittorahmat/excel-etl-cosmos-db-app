@@ -1,5 +1,22 @@
 import type { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
-import type { CosmosClient, Container } from '@azure/cosmos';
+import type { 
+  CosmosClient, 
+  Container, 
+  SqlQuerySpec,
+  ContainerRequest
+} from '@azure/cosmos';
+// Mock types are now defined locally
+import type { Request } from 'express';
+
+// Express Multer File type
+export interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
 
 
 // Base type for all Cosmos DB records
@@ -15,7 +32,7 @@ export interface AzureBlobStorage {
   getContainerClient: (containerName: string) => ContainerClient;
   uploadFile: (
     containerName: string,
-    file: Express.Multer.File
+    file: MulterFile
   ) => Promise<{
     url: string;
     name: string;
@@ -101,9 +118,62 @@ export interface MockBlobStorage extends AzureBlobStorage {
 
 export interface MockCosmosDB extends AzureCosmosDB {
   _mocks: {
-    upsert: any;
-    query: any;
-    getById: any;
-    delete: any;
+    upsert: <T extends CosmosRecord>(
+      record: T, 
+      containerName?: string
+    ) => Promise<T>;
+    query: <T extends CosmosRecord>(
+      query: string | SqlQuerySpec, 
+      parameters?: Array<{ name: string; value: unknown }>, 
+      containerName?: string
+    ) => Promise<T[]>;
+    getById: <T extends CosmosRecord>(
+      id: string, 
+      partitionKey: string, 
+      containerName?: string
+    ) => Promise<T | undefined>;
+    delete: (
+      id: string, 
+      partitionKey: string, 
+      containerName?: string
+    ) => Promise<boolean>;
   };
+  
+  // Database operations
+  database: {
+    id: string;
+    containers: {
+      createIfNotExists: (body: ContainerRequest) => Promise<{ container: Container }>;
+    };
+  };
+  
+  // Container operations
+  container: (containerName: string, partitionKey?: string) => Promise<Container>;
+  
+  // Document operations
+  upsert: <T extends CosmosRecord>(
+    record: T, 
+    containerName?: string
+  ) => Promise<T>;
+  
+  query: <T extends CosmosRecord>(
+    query: string | SqlQuerySpec, 
+    parameters?: Array<{ name: string; value: unknown }>, 
+    containerName?: string
+  ) => Promise<T[]>;
+  
+  getById: <T extends CosmosRecord>(
+    id: string, 
+    partitionKey: string, 
+    containerName?: string
+  ) => Promise<T | undefined>;
+  
+  delete: (
+    id: string, 
+    partitionKey: string, 
+    containerName?: string
+  ) => Promise<boolean>;
+  
+  // Add any other methods that are used in the mock implementation
+  [key: string]: unknown;
 }

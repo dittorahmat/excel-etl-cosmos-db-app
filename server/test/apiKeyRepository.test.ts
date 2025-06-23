@@ -205,7 +205,7 @@ describe('ApiKeyRepository', () => {
 
       const result = await (repository as any).revokeApiKey({
         keyId,
-        
+        userId: 'user-123',
       });
 
       expect(result).toBe(true);

@@ -1,17 +1,14 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
-import type { Express } from 'express';
-import multer, { FileFilterCallback, MulterError } from 'multer';
+import multer from 'multer';
 import { logger } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
-import { initializeAzureServices } from '../config/azure-services.js';
-import type { CosmosRecord } from '../types/index.js';
-import type { ExcelRecord, UploadResponse } from '../types/models.js';
+import type { UploadResponse } from '../types/models.js';
 import { authenticateToken } from '../middleware/auth.js';
-import type { MulterError as MulterErrorType, FileTypeError } from '../types/custom.js';
 
-// Extend Express Request type to include our custom properties
-// This is already declared in custom.d.ts, so no need to redeclare here.
+// Import types and values needed for error handling
+import { MulterError } from 'multer';
+import type { FileTypeError } from '../types/custom.js';
 
 const router = Router();
 
@@ -20,9 +17,9 @@ const storage = multer.memoryStorage();
 
 // File filter for multer
 const fileFilter = (
-  req: Request,
+  _req: Request,
   file: Express.Multer.File,
-  cb: (error: any, acceptFile?: boolean) => void
+  cb: (error: Error | null, acceptFile?: boolean) => void
 ) => {
   const allowedMimeTypes = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
@@ -38,7 +35,7 @@ const fileFilter = (
   } else {
     const error = new Error(
       'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.'
-    ) as FileTypeError;
+    ) as unknown as FileTypeError;
     error.name = 'FileTypeError';
     error.code = 'INVALID_FILE_TYPE';
     cb(error);
@@ -297,14 +294,13 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>, next: 
     } catch (error) {
       console.error('[upload.route] Error in file processing:', error);
 
-      // Handle specific error types
-      if (error instanceof MulterError) {
-        if (error.code === 'LIMIT_FILE_SIZE') {
+      // Handle multer errors
+      if ((error as MulterError).code) {
+        if ((error as MulterError).code === 'LIMIT_FILE_SIZE') {
           return res.status(413).json(
             createErrorResponse(413, 'File too large', `File size exceeds the limit of ${MAX_FILE_SIZE_MB}MB`)
           );
         }
-
         if (error.code === 'LIMIT_FILE_COUNT') {
           return res.status(400).json(
             createErrorResponse(400, 'Too many files', 'Only one file can be uploaded at a time')

@@ -23,13 +23,16 @@ if (!azureAdConfig.clientId) {
   console.error('Missing required configuration: VITE_AZURE_CLIENT_ID');
 }
 
-console.log('Azure AD Config:', {
-  clientId: !!azureAdConfig.clientId ? '***' : 'MISSING',
-  tenantId: azureAdConfig.tenantId,
-  redirectUri: azureAdConfig.redirectUri,
-  authority: azureAdConfig.authority,
-  scopes: azureAdConfig.scopes
-});
+// Only log in development environment
+if (import.meta.env.DEV && !import.meta.env.VITEST) {
+  console.log('Azure AD Config:', {
+    clientId: azureAdConfig.clientId ? '***' : 'MISSING',
+    tenantId: azureAdConfig.tenantId,
+    redirectUri: azureAdConfig.redirectUri,
+    authority: azureAdConfig.authority,
+    scopes: azureAdConfig.scopes
+  });
+}
 
 // MSAL Configuration
 export const msalConfig = {
@@ -87,8 +90,10 @@ export const apiConfig = {
   uri: env.VITE_API_BASE_URL || '/api',
 };
 
-// Log the API configuration for debugging
-console.log('API Config:', {
-  scope: apiConfig.scopes[0],
-  uri: apiConfig.uri
-});
+// Log the API configuration for debugging in development only
+if (import.meta.env.DEV && !import.meta.env.VITEST) {
+  console.log('API Config:', {
+    scope: apiConfig.scopes[0],
+    uri: apiConfig.uri
+  });
+}

@@ -1,27 +1,19 @@
+import React from 'react';
 import { MsalProvider, useMsal } from '@azure/msal-react';
-import type { Configuration, AccountInfo } from '@azure/msal-browser';
+import type { AccountInfo } from '@azure/msal-browser';
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { msalConfig, loginRequest } from './authConfig.js';
+import { msalConfig, loginRequest } from './authConfig';
+import { assertMsalConfig, isTokenExpired } from './authUtils';
 
-// Type assertion with proper configuration check
-const assertMsalConfig = (config: unknown): config is Configuration => {
-  return (
-    config !== null &&
-    typeof config === 'object' &&
-    'auth' in (config as Configuration)
-  );
-};
-
+// Create MSAL instance
 export const msalInstance = new PublicClientApplication(
   assertMsalConfig(msalConfig) ? msalConfig : { auth: { clientId: '' } }
 );
 
-// Token refresh buffer time (5 minutes before expiration)
-const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000;
-
-interface AuthContextType {
+// Auth types and interfaces
+export interface AuthContextType {
   isAuthenticated: boolean;
   user: AccountInfo | null;
   login: () => Promise<void>;
@@ -31,19 +23,19 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
-
-// Helper to check if token is expired or about to expire
-const isTokenExpired = (tokenExpiresOn: number): boolean => {
-  const now = new Date().getTime();
-  return tokenExpiresOn - now < TOKEN_REFRESH_BUFFER;
-};
-
-interface AuthProviderProps {
+export interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export interface AuthWrapperProps {
+  children: ReactNode;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+
+
+const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -203,7 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
  * Hook to use the auth context
  * @returns AuthContextType with authentication state and methods
  */
-export const useAuth = (): AuthContextType => {
+const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
@@ -211,17 +203,13 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-interface AuthWrapperProps {
-  children: ReactNode;
-}
-
 /**
  * Wrapper component that provides MSAL and Auth contexts
  */
-export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => (
+const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => (
   <MsalProvider instance={msalInstance}>
     <AuthProvider>{children}</AuthProvider>
   </MsalProvider>
 );
 
-export type { AuthContextType };
+export { AuthProvider, useAuth, AuthWrapper };

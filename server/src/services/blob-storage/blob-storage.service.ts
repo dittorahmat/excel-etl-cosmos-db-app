@@ -1,7 +1,6 @@
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
-import { AzureBlobStorage } from '../../types/azure.js';
+import type { AzureBlobStorage, MulterFile } from '../../types/azure.js';
 
 let blobServiceClient: BlobServiceClient | null = null;
 let containerClient: ContainerClient | null = null;
@@ -51,7 +50,7 @@ export async function initializeBlobStorageAsync(): Promise<AzureBlobStorage> {
     getContainerClient: (containerName: string) => {
       return blobServiceClient!.getContainerClient(containerName);
     },
-    uploadFile: async (containerName: string, file: Express.Multer.File) => {
+    uploadFile: async (containerName: string, file: MulterFile) => {
       const containerClient = blobServiceClient!.getContainerClient(containerName);
       const blobName = `${Date.now()}-${file.originalname}`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
@@ -86,7 +85,7 @@ export async function getOrInitializeBlobStorage(): Promise<AzureBlobStorage> {
   return {
     blobServiceClient,
     getContainerClient: (containerName: string) => blobServiceClient!.getContainerClient(containerName),
-    uploadFile: async (containerName: string, file: Express.Multer.File) => {
+    uploadFile: async (containerName: string, file: MulterFile) => {
       const containerClient = blobServiceClient!.getContainerClient(containerName);
       const blobName = `${Date.now()}-${file.originalname}`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);

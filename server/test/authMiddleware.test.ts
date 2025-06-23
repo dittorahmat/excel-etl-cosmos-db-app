@@ -1,23 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import jwksClient from 'jwks-rsa';
 import { validateToken } from '../src/middleware/auth.js';
 
-// Mock the jsonwebtoken module
+// Mock modules first to avoid hoisting issues
 vi.mock('jsonwebtoken', () => ({
   default: {
     verify: vi.fn(),
   },
 }));
 
-// Mock the jwks-rsa module
+// Create mock functions after mocks are set up
 const mockGetSigningKey = vi.fn();
+
 vi.mock('jwks-rsa', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    getSigningKey: mockGetSigningKey,
+  default: vi.fn(() => ({
+    getSigningKey: () => mockGetSigningKey,
   })),
 }));
+
+// Import after mocks are set up
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 
 // Mock environment variables
 process.env.AZURE_TENANT_ID = 'test-tenant-id';

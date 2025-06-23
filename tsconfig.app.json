@@ -31,9 +31,9 @@
     "isolatedModules": true
   },
   "include": [
-    "src",
-    "src/**/*",
-    "components",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts",
     "vite.config.ts",
     "vitest.config.ts"
   ],

@@ -1,9 +1,19 @@
+/* eslint-env node */
+
+/** @type {import('@azure/msal-node').PublicClientApplication} */
 import { PublicClientApplication, CryptoProvider } from '@azure/msal-node';
 import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import open from 'open';
 import http from 'http';
+
+// Disable console logging for production
+const logger = {
+  log: (...args) => process.env.NODE_ENV !== 'production' && console.log(...args),
+  error: (...args) => process.env.NODE_ENV !== 'production' && console.error(...args),
+  info: (...args) => process.env.NODE_ENV !== 'production' && console.info(...args)
+};
 
 // Get the current directory in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -19,7 +29,7 @@ const msalConfig = {
   },
   system: {
     loggerOptions: {
-      loggerCallback: (loglevel, message) => console.log(message),
+      loggerCallback: (loglevel, message) => logger.log(message),
       logLevel: 'Info',
     },
   },
@@ -71,11 +81,11 @@ async function testAuth() {
       responseMode: 'query'
     });
     
-    console.log('✅ Authentication URL generated successfully');
-    console.log('\nNext steps:');
-    console.log('1. The authentication page will open in your default browser');
-    console.log('2. Sign in with your Azure AD account');
-    console.log('3. After sign-in, you will be automatically redirected back to the local server');
+    logger.log('✅ Authentication URL generated successfully');
+    logger.log('\nNext steps:');
+    logger.log('1. The authentication page will open in your default browser');
+    logger.log('2. Sign in with your Azure AD account');
+    logger.log('3. After sign-in, you will be automatically redirected back to the local server');
     
     // Open the authentication URL in the default browser
     await open(authCodeUrl);
@@ -91,39 +101,8 @@ async function testAuth() {
     return { code: result.code, codeVerifier: verifier };
     
   } catch (error) {
-    console.error('❌ Error:', error.message);
-    if (error.errorCode) {
-      console.log(`\nError Code: ${error.errorCode}`);
-      console.log('Possible issues:');
-      
-      if (error.errorCode === 'invalid_client') {
-        console.log('- The application might not have the required API permissions');
-        console.log('- The redirect URI might not be configured correctly');
-        console.log('- The client ID or tenant ID might be incorrect');
-      } else if (error.errorCode === 'AADSTS50011') {
-        console.log('- The reply URL specified in the request does not match the reply URLs configured for the application');
-        console.log('  Please check your app registration in Azure Portal:');
-        console.log('  1. Go to Azure Portal > App registrations > Your app > Authentication');
-        console.log('  2. Under "Platform configurations", ensure "http://localhost:3000" is added as a redirect URI');
-      } else if (error.errorCode === 'AADSTS65001') {
-        console.log('- The user or administrator has not consented to use the application');
-        console.log('  Please have an admin grant consent to the application');
-      }
-    }
-    
-    console.log('\nFull error details:');
-    console.error(JSON.stringify(error, null, 2));
-  }
-}
-
-// Extract code from URL if full URL is provided
-function extractCodeFromUrl(url) {
-  try {
-    const urlObj = new URL(url);
-    const params = new URLSearchParams(urlObj.search);
-    return params.get('code');
-  } catch (e) {
-    return url; // If it's not a URL, assume it's just the code
+    logger.error('Error:', error);
+    process.exit(1);
   }
 }
 
@@ -132,7 +111,7 @@ if (process.argv.length < 3) {
   try {
     const { code, codeVerifier } = await testAuth();
     
-    console.log('\nExchanging authorization code for token...');
+    logger.log('\nExchanging authorization code for token...');
     const tokenResponse = await pca.acquireTokenByCode({
       scopes: ['User.Read', 'openid', 'profile', 'email'],
       redirectUri: 'http://localhost:3000',
@@ -140,37 +119,37 @@ if (process.argv.length < 3) {
       codeVerifier: codeVerifier
     });
     
-    console.log('\n✅ Token acquired successfully!');
-    console.log('\n=== Access Token ===');
-    console.log(tokenResponse.accessToken);
+    logger.log('\n✅ Token acquired successfully!');
+    logger.log('\n=== Access Token ===');
+    logger.log(tokenResponse.accessToken);
     
-    console.log('\n=== Token Details ===');
-    console.log('Expires On:  ', new Date(tokenResponse.expiresOn).toLocaleString());
-    console.log('Token Type:  ', tokenResponse.tokenType);
-    console.log('Scopes:      ', tokenResponse.scopes.join(' '));
+    logger.log('\n=== Token Details ===');
+    logger.log('Expires On:  ', new Date(tokenResponse.expiresOn).toLocaleString());
+    logger.log('Token Type:  ', tokenResponse.tokenType);
+    logger.log('Scopes:      ', tokenResponse.scopes.join(' '));
     
     // Decode and display ID token claims
     if (tokenResponse.idToken) {
       const idTokenClaims = JSON.parse(Buffer.from(tokenResponse.idToken.split('.')[1], 'base64').toString());
-      console.log('\n=== ID Token Claims ===');
-      console.log('Name:        ', idTokenClaims.name);
-      console.log('Email:       ', idTokenClaims.email || idTokenClaims.preferred_username);
-      console.log('Issuer:      ', idTokenClaims.iss);
-      console.log('Audience:    ', idTokenClaims.aud);
-      console.log('Issued At:   ', new Date(idTokenClaims.iat * 1000).toLocaleString());
-      console.log('Expires At:  ', new Date(idTokenClaims.exp * 1000).toLocaleString());
+      logger.log('\n=== ID Token Claims ===');
+      logger.log('Name:        ', idTokenClaims.name);
+      logger.log('Email:       ', idTokenClaims.email || idTokenClaims.preferred_username);
+      logger.log('Issuer:      ', idTokenClaims.iss);
+      logger.log('Audience:    ', idTokenClaims.aud);
+      logger.log('Issued At:   ', new Date(idTokenClaims.iat * 1000).toLocaleString());
+      logger.log('Expires At:  ', new Date(idTokenClaims.exp * 1000).toLocaleString());
     }
     
   } catch (error) {
-    console.error('\n❌ Error exchanging auth code for token:');
-    console.error('Error Code:   ', error.errorCode || 'N/A');
-    console.error('Error Message:', error.message);
+    logger.error('\n❌ Error exchanging auth code for token:');
+    logger.error('Error Code:   ', error.errorCode || 'N/A');
+    logger.error('Error Message:', error.message);
     
     if (error.errorCode === 'invalid_grant') {
-      console.log('\nPossible issues:');
-      console.log('- The authorization code has expired (they are only valid for a few minutes)');
-      console.log('- The authorization code was already used');
-      console.log('- The code verifier does not match the code challenge');
+      logger.log('\nPossible issues:');
+      logger.log('- The authorization code has expired (they are only valid for a few minutes)');
+      logger.log('- The authorization code was already used');
+      logger.log('- The code verifier does not match the code challenge');
     }
     
     console.log('\nFull error details:');

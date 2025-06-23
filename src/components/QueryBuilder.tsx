@@ -62,12 +62,7 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
     loadFields();
   }, []);
 
-  useEffect(() => {
-    // Notify parent component about query changes
-    onQueryChange(buildQuery());
-  }, [filters]);
-
-  const buildQuery = (): Record<string, unknown> => {
+  const buildQuery = useCallback((): Record<string, unknown> => {
     const whereClauses = filters
       .filter((f): f is Required<Filter> => 
         Boolean(f.field) && Boolean(f.operator) && f.value !== ''
@@ -94,7 +89,12 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
     return {
       and: whereClauses
     };
-  };
+  }, [filters, availableFields]);
+
+  useEffect(() => {
+    // Notify parent component about query changes
+    onQueryChange(buildQuery());
+  }, [buildQuery, onQueryChange]);
 
   const addFilter = (): void => {
     setFilters(prevFilters => [

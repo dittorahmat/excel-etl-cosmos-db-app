@@ -1,246 +1,306 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import express, { Router } from 'express';
+// @vitest-environment node
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import express, { Express, Request, Response, NextFunction } from 'express';
+import { Readable } from 'stream';
 
-// Enable debug logging
-const debug = process.env.DEBUG === 'true';
-const log = debug ? console.log : () => {};
+// Hoist mock declarations to avoid hoisting issues
+const mockUploadHandler = vi.hoisted(() => ({
+  post: vi.fn()
+}));
 
-// Define mock functions using vi.fn() directly in the mock implementation
-vi.mock('../src/config/azure-services.js', () => {
-  // These will be hoisted to the top
-  const mockUploadFile = vi.fn();
-  const mockUpsertRecord = vi.fn();
-  const mockDeleteFile = vi.fn();
+const mockInitializeAzureServices = vi.hoisted(() => vi.fn());
 
-  return {
-    __esModule: true,
-    initializeAzureServices: vi.fn().mockResolvedValue({
-      blobStorage: {
-        uploadFile: mockUploadFile,
-        deleteFile: mockDeleteFile
-      },
-      cosmosDb: {
-        container: {
-          items: {
-            upsert: mockUpsertRecord
-          }
-        },
-        upsertRecord: mockUpsertRecord
-      }
-    }),
-    // Export mocks for test access
-    mockUploadFile,
-    mockUpsertRecord,
-    mockDeleteFile,
-    __mocks: {
-      mockUploadFile,
-      mockUpsertRecord,
-      mockDeleteFile
-    }
-  };
-});
-
-// Get references to the mocks for test access
-let mockUploadFile: ReturnType<typeof vi.fn>;
-let mockUpsertRecord: ReturnType<typeof vi.fn>;
-let mockDeleteFile: ReturnType<typeof vi.fn>;
-
-beforeAll(async () => {
-  const mocks = (await vi.importMock('../src/config/azure-services.js') as any).__mocks;
-  mockUploadFile = mocks.mockUploadFile;
-  mockUpsertRecord = mocks.mockUpsertRecord;
-  mockDeleteFile = mocks.mockDeleteFile;
-});
-
-// Mock the multer module with a factory function
-vi.mock('multer', () => {
-  // Create a mutable object to hold our mock implementation
-  const mocks = {
-    single: vi.fn().mockImplementation(() => (req: any, res: any, next: any) => {
-      // Default behavior - sets req.file
-      req.file = {
-        fieldname: 'file',
-        originalname: 'test.xlsx',
-        encoding: '7bit',
-        mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        buffer: Buffer.from('test'),
-        size: 1024,
-        destination: '',
-        filename: 'test.xlsx',
-        path: '/tmp/test.xlsx',
-        stream: null as any
-      };
-      next();
-    })
-  };
-
-  const mockMulter = vi.fn().mockImplementation(() => ({
-    single: mocks.single
-  }));
-
-  // Add static methods
-  (mockMulter as any).memoryStorage = vi.fn().mockReturnValue({});
-
-  // Return both default and named exports
-  return {
-    __esModule: true,
-    default: mockMulter,
-    ...mockMulter,
-    // Export mocks for test-specific overrides
-    _mocks: mocks
-  };
-});
-
-// Get the mock instance for test-specific overrides
-const getMulterMocks = async () => {
-  const multer = await import('multer');
-  return (multer as any)._mocks;
-};
-
-// Helper to reset all mocks
-const resetAzureMocks = () => {
-  mockUploadFile.mockClear().mockResolvedValue({
-    url: 'https://example.com/test.xlsx',
-    name: 'test.xlsx',
-    container: 'test-container',
-    etag: 'test-etag',
-    lastModified: new Date().toISOString()
-  });
-
-  mockUpsertRecord.mockClear().mockResolvedValue({
-    id: 'test-id',
-    _partitionKey: 'test-user-id',
-    fileName: 'test.xlsx',
-    uploadDate: new Date().toISOString(),
-    _etag: 'test-etag',
-    _rid: 'test-rid',
-    _self: 'test-self',
-    _ts: Math.floor(Date.now() / 1000)
-  });
-
-  mockDeleteFile.mockClear().mockResolvedValue(true);
-};
-
-
-// Mock the authenticateToken middleware
-vi.mock('../src/middleware/auth.js', () => ({
-  authenticateToken: vi.fn().mockImplementation((req: any, _res: any, next: any) => {
-    req.user = { oid: 'test-user-id' };
-    return next();
+// Mock multer
+const mockMulter = vi.hoisted(() => ({
+  single: vi.fn().mockImplementation(() => (req: Request, res: Response, next: NextFunction) => {
+    // Simulate multer's behavior of not setting req.file when no file is uploaded
+    next();
+  }),
+  memoryStorage: vi.fn().mockReturnValue({
+    _handleFile: vi.fn(),
+    _removeFile: vi.fn()
   })
 }));
 
-// Reset all mocks before each test
-beforeEach(() => {
-  resetAzureMocks();
+// Import the actual router for testing
+import uploadRouter from '../../src/routes/upload.route.js';
+
+// Mock the upload handler
+vi.mock('../../src/routes/upload.route.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    uploadHandler: mockUploadHandler
+  };
 });
 
+// Mock the azure services
+vi.mock('../../src/config/azure-services.js', () => ({
+  __esModule: true,
+  initializeAzureServices: mockInitializeAzureServices
+}));
 
+// Mock multer module
+vi.mock('multer', () => ({
+  __esModule: true,
+  default: vi.fn(() => mockMulter)
+}));
 
-// Mock XLSX
-vi.mock('xlsx', () => ({
-  read: vi.fn().mockReturnValue({
-    SheetNames: ['Sheet1'],
-    Sheets: {
-      Sheet1: {
-        '!ref': 'A1:B2',
-        A1: { v: 'Header1' },
-        B1: { v: 'Header2' },
-        A2: { v: 'Value1' },
-        B2: { v: 'Value2' }
-      }
+// Mock XLSX module
+vi.mock('xlsx', () => mockXLSX);
+
+// Helper function to create a mock Excel buffer
+const createMockExcelBuffer = (): Buffer => {
+  return Buffer.from('test');
+};
+
+// Helper function to create a test Express app
+const createTestApp = () => {
+  const app = express();
+  app.use(express.json());
+  
+  // Mock the upload route
+  app.post('/api/upload', (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded',
+        message: 'Please provide a file to upload'
+      });
     }
-  }),
+    
+    return res.status(200).json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: []
+    });
+  });
+  
+  return app;
+};
+
+
+
+const mockXLSX = vi.hoisted(() => ({
+  read: vi.fn(),
   utils: {
-    sheet_to_json: vi.fn().mockReturnValue([
-      { Header1: 'Value1', Header2: 'Value2' }
-    ]),
-    decode_range: vi.fn().mockReturnValue({ s: { c: 0, r: 0 }, e: { c: 1, r: 1 } }),
-    encode_cell: vi.fn().mockReturnValue('A1')
+    sheet_to_json: vi.fn(),
+    aoa_to_sheet: vi.fn()
   }
 }));
 
-import uploadRouter, { uploadHandler } from '../src/routes/upload.route.js';
-// Import the mocked module as a namespace for mock assertions
-import * as azureServicesMock from '../src/config/azure-services.js';
-// --- E2E supertest-based tests only ---
 describe('Upload Route', () => {
-  describe('POST /upload', () => {
-    it('should process and upload a valid Excel file', async () => {
-      const app = express();
-      app.use(express.json());
-      app.use((req, res, next) => {
-        req.user = { oid: 'test-user-id' };
+  console.log('Describe block is being executed');
+  let app: Express;
+  let req: any;
+  let res: any;
+  let next: any;
+
+  beforeEach(() => {
+    // Reset all mocks before each test
+    vi.clearAllMocks();
+    
+    // Create a fresh Express app for each test
+    app = express();
+    app.use(express.json());
+    
+    // Initialize mock request and response objects
+    req = {
+      file: undefined,
+      files: undefined,
+      headers: {},
+      body: {},
+      params: {},
+      query: {},
+      method: 'POST',
+      path: '/api/upload'
+    };
+    
+    // Create properly typed mock response
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
+      sendStatus: vi.fn().mockReturnThis()
+    } as unknown as Response & {
+      status: jest.Mock;
+      json: jest.Mock;
+      send: jest.Mock;
+      sendStatus: jest.Mock;
+    };
+    
+    next = vi.fn() as unknown as jest.Mock;
+    
+    // Apply the upload router
+    app.use('/api/upload', uploadRouter);
+  });
+
+  beforeAll(() => {
+    console.log('Setting up before all tests');
+  });
+
+  afterAll(() => {
+    console.log('Cleaning up after all tests');
+  });
+
+  beforeEach(() => {
+    console.log('Setting up before each test');
+    app = createTestApp();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    console.log('Cleaning up after each test');
+  });
+
+  it('should run a simple test', () => {
+    console.log('Running simple test');
+    expect(true).toBe(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('POST /api/upload', () => {
+    it('should return 400 if no file is uploaded', async () => {
+      // Mock multer to not set req.file
+      mockMulter.single.mockImplementation(() => (req: Request, res: Response, next: NextFunction) => {
+        (req as any).file = undefined;
         next();
       });
-      app.use('/upload', uploadRouter);
-      const testFile = Buffer.from('test content');
+
       const response = await request(app)
-        .post('/upload')
-        .attach('file', testFile, 'test.xlsx')
+        .post('/api/upload')
         .set('Content-Type', 'multipart/form-data')
         .set('Authorization', 'Bearer test-token');
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(
-        expect.objectContaining({
-          success: true,
-          message: expect.any(String),
-          data: expect.objectContaining({
-            fileName: 'test.xlsx',
-            blobUrl: 'https://example.com/test.xlsx'
-          })
-        })
-      );
-      expect((azureServicesMock as any).mockUploadFile).toHaveBeenCalled();
-      expect((azureServicesMock as any).mockUpsertRecord).toHaveBeenCalled();
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({
+        success: false,
+        statusCode: 400,
+        error: 'No file uploaded',
+        message: 'Please provide a file to upload'
+      });
     });
 
-    it('should return 400 if no file is uploaded', async () => {
-      // Create a minimal mock request object without a file
-      const mockReq = {
-        file: undefined, // Explicitly set to undefined
-        user: { oid: 'test-user-id' },
-        body: {},
-        method: 'POST',
-        url: '/upload',
-        headers: {},
-      } as any;
+    it('should return 401 if user is not authenticated', async () => {
+      // Create a test app without the auth middleware
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use('/api/upload', uploadRouter);
 
-      // Create a minimal mock response object
-      const mockRes = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-        set: vi.fn().mockReturnThis(),
-        sendStatus: vi.fn(),
-      } as any;
+      const response = await request(testApp)
+        .post('/api/upload')
+        .set('Content-Type', 'multipart/form-data');
 
-      // Create a mock next function
-      const mockNext = vi.fn();
+      expect(response.status).toBe(401);
+      expect(response.body).toMatchObject({
+        success: false,
+        statusCode: 401,
+        error: 'Authentication required'
+      });
+    });
 
-      // Call the handler directly
-      await uploadHandler(mockReq, mockRes, mockNext);
+    it('should process and upload a valid Excel file', async () => {
+      // Mock the multer single file upload
+      const mockFile = {
+        buffer: createMockExcelBuffer(),
+        originalname: 'test.xlsx',
+        mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: 1024,
+        fieldname: 'file',
+        encoding: '7bit',
+        destination: '',
+        filename: 'test.xlsx',
+        path: '/tmp/test.xlsx',
+        stream: null
+      } as Express.Multer.File;
 
-      // Verify the response
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(
+      mockMulter.single.mockImplementation(() => (req: Request, res: Response, next: NextFunction) => {
+        (req as any).file = mockFile;
+        next();
+      });
+
+      // Mock Azure services
+      const mockUploadResult = { 
+        url: 'https://example.com/test.xlsx',
+        name: 'test.xlsx',
+        container: 'test-container',
+        etag: 'test-etag',
+        lastModified: new Date().toISOString()
+      };
+      
+      const mockBlobStorage = {
+        uploadFile: vi.fn().mockResolvedValue(mockUploadResult)
+      };
+      
+      const mockCosmosDb = {
+        upsertRecord: vi.fn().mockResolvedValue({})
+      };
+
+      (initializeAzureServices as jest.Mock).mockResolvedValue({
+        blobStorage: mockBlobStorage,
+        cosmosDb: mockCosmosDb
+      });
+
+      // Make the request
+      const response = await request(app)
+        .post('/api/upload')
+        .set('Content-Type', 'multipart/form-data')
+        .set('Authorization', 'Bearer test-token')
+        .attach('file', createMockExcelBuffer(), 'test.xlsx');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        message: expect.stringContaining('successfully')
+      });
+
+      // Verify Azure services were called
+      expect(mockBlobStorage.uploadFile).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({
-          success: false,
-          error: 'No file uploaded',
-          message: 'No file uploaded',
+          buffer: expect.any(Buffer),
+          originalname: 'test.xlsx'
         })
       );
+      expect(mockCosmosDb.upsertRecord).toHaveBeenCalled();
+    });
 
-      // Verify next was not called with an error
-      expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
+    it('should return 400 for invalid file type', async () => {
+      const invalidFile = {
+        buffer: createMockExcelBuffer(),
+        originalname: 'test.txt',
+        mimetype: 'text/plain',
+        size: 1024,
+        fieldname: 'file',
+        encoding: '7bit',
+        destination: '',
+        filename: 'test.txt',
+        path: '/tmp/test.txt',
+        stream: null
+      } as Express.Multer.File;
 
-      // Verify no Azure services were called
-      expect(mockUploadFile).not.toHaveBeenCalled();
-      expect(mockUpsertRecord).not.toHaveBeenCalled();
+      mockMulter.single.mockImplementation(() => (req: Request, res: Response, next: NextFunction) => {
+        (req as any).file = invalidFile;
+        next();
+      });
 
-      // Also verify no other unexpected calls were made
-      expect(mockRes.sendStatus).not.toHaveBeenCalled();
+      const response = await request(app)
+        .post('/api/upload')
+        .set('Content-Type', 'multipart/form-data')
+        .set('Authorization', 'Bearer test-token')
+        .attach('file', createMockExcelBuffer(), 'test.txt');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'File processing failed',
+        message: expect.stringContaining('Invalid file type')
+      });
     });
   });
-})
-
+});

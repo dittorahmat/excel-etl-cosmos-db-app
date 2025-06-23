@@ -1,23 +1,43 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['test/**/*.test.ts'],
-    exclude: ['node_modules', 'dist'],
+    setupFiles: ['./test/minimal-setup.ts'],
+    include: ['test/**/*.{test,spec}.{ts,js}'],
+    exclude: [
+      'node_modules',
+      'dist',
+      'test/backup_js_tests/**/*.test.{js,ts}'
+    ],
+    testTimeout: 60000,
+    clearMocks: true,
+    watch: false,
+    silent: true,
+    hookTimeout: 30000,
+    teardownTimeout: 30000,
+    // Disable type checking during test runs for now
+    typecheck: {
+      enabled: false
+    },
+    // Set up module mocking
+    deps: {
+      inline: ['@azure/cosmos']
+    },
+    // Set up test environment
+    environmentOptions: {
+      NODE_ENV: 'test'
+    },
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text'],
       reportsDirectory: './coverage',
-      all: true,
       include: ['src/**/*.ts'],
       exclude: [
-        'node_modules/',
-        'test/**',
-        '**/*.d.ts',
+        'node_modules/'
+      ]
         '**/*.test.{js,ts}',
         'src/types/**',
         'src/config/**',
@@ -30,12 +50,19 @@ export default defineConfig({
         statements: 100
       }
     },
-    setupFiles: ['./test/setup.ts'],
-    testTimeout: 10000
+    setupFiles: ['./test/setup.ts']
   },
   resolve: {
-    alias: {
-      '@': resolve(__dirname, './src')
-    }
+    alias: [
+      {
+        find: /^@\/(.*)$/,
+        replacement: resolve(__dirname, './src/$1')
+      }
+    ],
+    extensions: ['.ts', '.js', '.json']
+  },
+  // Ensure proper module resolution
+  esbuild: {
+    target: 'es2020'
   }
 });

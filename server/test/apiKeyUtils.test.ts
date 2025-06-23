@@ -44,27 +44,38 @@ describe('API Key Utilities', () => {
 
   describe('safeCompareKeys', () => {
     it('should correctly compare matching keys', () => {
-      const key1 = 'test-key';
-      const key2 = 'test-key';
+      // Use hex-encoded strings that can be properly parsed by Buffer.from(..., 'hex')
+      const key1 = '746573742d6b6579'; // 'test-key' in hex
+      const key2 = '746573742d6b6579'; // 'test-key' in hex
       
       expect(safeCompareKeys(key1, key2)).toBe(true);
     });
 
     it('should correctly detect different keys', () => {
-      const key1 = 'test-key-1';
-      const key2 = 'test-key-2';
+      // Use hex-encoded strings of the same length
+      const key1 = '746573742d6b65792d31'; // 'test-key-1' in hex
+      const key2 = '746573742d6b65792d32'; // 'test-key-2' in hex
       
       expect(safeCompareKeys(key1, key2)).toBe(false);
     });
 
     it('should be timing-safe', () => {
       // This is a basic test - timing attacks are hard to test in unit tests
-      const key1 = 'a'.repeat(100);
-      const key2 = 'b'.repeat(100);
+      // Use valid hex strings of the same length
+      const key1 = '61'.repeat(32); // 'a' repeated 64 times in hex
+      const key2 = '62'.repeat(32); // 'b' repeated 64 times in hex
       
       // Just verify the function doesn't throw and returns a boolean
       expect(() => safeCompareKeys(key1, key2)).not.toThrow();
       expect(safeCompareKeys(key1, key2)).toBe(false);
+    });
+    
+    it('should return false for invalid hex strings', () => {
+      // 'test-key' is not a valid hex string
+      expect(safeCompareKeys('test-key', 'test-key')).toBe(false);
+      
+      // Different length hex strings
+      expect(safeCompareKeys('1234', '12345')).toBe(false);
     });
   });
 

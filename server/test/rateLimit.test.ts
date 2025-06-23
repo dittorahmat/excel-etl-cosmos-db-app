@@ -13,6 +13,16 @@ const advanceTimersByTime = (ms: number) => {
 };
 
 describe('Rate Limiting Middleware', () => {
+  // Mock timers before each test
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  // Restore timers after each test
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   let app: express.Express;
   let testRoute: express.RequestHandler;
   let requestCount = 0;
@@ -118,9 +128,8 @@ describe('Rate Limiting Middleware', () => {
     console.log('3rd request status (should be 429):', response.status);
     expect(response.status).toBe(429);
     
-    // Wait for the window to reset (1.1 seconds to be safe)
-    console.log('Waiting for rate limit window to reset...');
-    await new Promise(resolve => setTimeout(resolve, 1100));
+    // Advance time to reset the window (1.1 seconds)
+    vi.advanceTimersByTime(1100);
     
     // Next request should pass (new window)
     response = await request(app).get('/').set('x-forwarded-for', '192.168.1.10');

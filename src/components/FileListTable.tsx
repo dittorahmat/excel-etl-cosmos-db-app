@@ -29,12 +29,9 @@ export function FileListTable() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
+  const isMounted = useRef(true);
 
-  useEffect(() => {
-    fetchFiles();
-  }, [page]);
-
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/files?page=${page}&pageSize=${pageSize}`);
@@ -44,16 +41,33 @@ export function FileListTable() {
       }
       
       const data = await response.json();
-      setFiles(data.items);
-      setTotalPages(Math.ceil(data.total / pageSize));
-      setError(null);
+      if (isMounted.current) {
+        setFiles(data.items);
+        setTotalPages(Math.ceil(data.total / pageSize));
+        setError(null);
+      }
     } catch (err) {
       console.error('Error fetching files:', err);
-      setError('Failed to load files. Please try again later.');
+      if (isMounted.current) {
+        setError('Failed to load files. Please try again later.');
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    fetchFiles();
+    return () => {
+      isMounted.current = false;
+    };
+  }, [fetchFiles]);
+
+  useEffect(() => {
+    fetchFiles();
+  }, [page, fetchFiles]);
 
   const handleDownload = async (fileId: string, fileName: string) => {
     try {

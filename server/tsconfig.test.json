@@ -1,4 +1,5 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist-test",
     "module": "NodeNext",
@@ -15,15 +16,24 @@
       "@/*": ["src/*"]
     },
     "rootDir": ".",
-    "noEmit": true
+    "noEmit": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "test/**/*.ts",
-    "test/**/*.d.ts"
+    "test/**/*.js",
+    "src/**/*.ts",
+    "src/**/*.js"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "src"
+    "dist-test"
   ]
 }
