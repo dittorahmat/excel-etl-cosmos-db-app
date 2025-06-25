@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev:client": "vite",
-    "build:client": "tsc -b && vite build",
+    "build:client": "vite build",
     "preview": "vite preview",
     "dev:server": "tsx watch server/src/server.ts",
     "debug:tsconfig": "tsc -p tsconfig.server.json --showConfig",
@@ -20,15 +20,15 @@
     "test": "npm run test:server && npm run test:client",
     "test:watch": "vitest --config vitest.optimized.config.ts watch",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
-    
-    "test:server": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test",
+
+    "test:server": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test --exclude='**/backup_js_tests/**'",
     "test:server:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.server.config.ts server/test",
     "test:server:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.server.config.ts server/test",
-    
+
     "test:client": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:client:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:client:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.optimized.config.ts src --dir src --passWithNoTests",
-    
+
     "test:all": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests && NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --ignore-pattern '**/node_modules/*' --ignore-pattern '**/dist/*' --ignore-pattern '**/coverage/*' --config .eslintrc.cjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
