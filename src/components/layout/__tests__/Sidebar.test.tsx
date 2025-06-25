@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, act } from '@testing-library/react';
 import { render } from '../../../test-utils';
@@ -33,7 +32,7 @@ describe('Sidebar', () => {
 
   it('renders menu items', async () => {
     render(<Sidebar mobileOpen={false} onClose={mockOnClose} />);
-    
+
     await act(async () => {
       // Check for main menu items
       expect(await screen.findByText('Dashboard')).toBeInTheDocument();
@@ -46,12 +45,12 @@ describe('Sidebar', () => {
 
   it('renders child menu items when parent is clicked', async () => {
     render(<Sidebar mobileOpen={false} onClose={mockOnClose} />);
-    
+
     // Click on Data Management to expand
     await act(async () => {
       fireEvent.click(await screen.findByText('Data Management'));
     });
-    
+
     // Check if child items are visible
     expect(await screen.findByText('View All Data')).toBeInTheDocument();
     expect(await screen.findByText('Add New')).toBeInTheDocument();
@@ -59,12 +58,12 @@ describe('Sidebar', () => {
 
   it('calls onClose when clicking the close button', async () => {
     render(<Sidebar mobileOpen={true} onClose={mockOnClose} />);
-    
+
     // Click the close button (simulated)
     await act(async () => {
       fireEvent.click(await screen.findByRole('button', { name: /close/i }));
     });
-    
+
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
@@ -79,7 +78,7 @@ describe('Sidebar', () => {
     });
 
     render(<Sidebar mobileOpen={false} onClose={mockOnClose} />);
-    
+
     await act(async () => {
       // Settings should be hidden when not authenticated
       expect(screen.queryByText('Settings')).not.toBeInTheDocument();

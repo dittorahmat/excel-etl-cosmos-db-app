@@ -8,13 +8,13 @@ import { Button } from '../components/ui/button.js';
 import { Loader2, Upload as UploadIcon, Database as DatabaseIcon, BarChart2 as ChartIcon } from 'lucide-react';
 import { FileListTable } from '../components/FileListTable.js';
 import { QueryBuilder } from '../components/QueryBuilder.js';
-import { DataChart } from '../components/DataChart.js';
+import DataChartWithErrorBoundary from '../components/DataChart.js';
 
 interface QueryResultItem {
   // Define the structure of your query result items here
   // For example:
   id: string;
-  [key: string]: unknown;
+  [key: string]: string | number | null | undefined;
 }
 
 interface QueryResult {
@@ -38,12 +38,12 @@ export const DashboardPage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.post('/api/query', query);
       if (!response.ok) {
         throw new Error('Failed to execute query');
       }
-      
+
       const result = await response.json();
       setQueryResult(result);
       setActiveTab('results');
@@ -62,7 +62,7 @@ export const DashboardPage = () => {
       if (!response.ok) {
         throw new Error('Failed to export data');
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -138,10 +138,10 @@ export const DashboardPage = () => {
               <CardTitle>Query Builder</CardTitle>
             </CardHeader>
             <CardContent>
-              <QueryBuilder 
-                onQueryChange={() => {}} 
-                onExecute={handleExecuteQuery} 
-                loading={loading} 
+              <QueryBuilder
+                onQueryChange={() => {}}
+                onExecute={handleExecuteQuery}
+                loading={loading}
               />
             </CardContent>
           </Card>
@@ -152,17 +152,17 @@ export const DashboardPage = () => {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Query Results</CardTitle>
               <div className="space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleExportData('csv')}
                   disabled={!queryResult.items.length}
                 >
                   Export CSV
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleExportData('json')}
                   disabled={!queryResult.items.length}
                 >
@@ -181,10 +181,10 @@ export const DashboardPage = () => {
                   <span className="ml-2">Loading results...</span>
                 </div>
               ) : queryResult.items.length > 0 ? (
-                <DataChart 
-                  data={queryResult.items} 
-                  loading={loading} 
-                  onExport={handleExportData} 
+                <DataChartWithErrorBoundary
+                  data={queryResult.items}
+                  loading={loading}
+                  onExport={handleExportData}
                 />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -199,8 +199,8 @@ export const DashboardPage = () => {
       {error && (
         <div className="fixed bottom-4 right-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md shadow-lg">
           {error}
-          <button 
-            onClick={() => setError(null)} 
+          <button
+            onClick={() => setError(null)}
             className="ml-4 text-red-700 hover:text-red-900"
           >
             ×

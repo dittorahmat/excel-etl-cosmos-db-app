@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { ErrorBoundary } from '../common/ErrorBoundary';
@@ -67,7 +67,7 @@ interface MenuItem {
 /**
  * Sidebar component that provides navigation for the application.
  * Supports nested menu items and responsive design.
- * 
+ *
  * @component
  * @param {SidebarProps} props - The component props
  * @returns {JSX.Element} The rendered Sidebar component
@@ -78,14 +78,14 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { isAuthenticated } = useAuth();
   const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({});
-  
+
   // Close mobile drawer when route changes
   useEffect(() => {
     if (mobileOpen && isMobile) {
       onClose();
     }
   }, [location.pathname, isMobile, mobileOpen, onClose]);
-  
+
   /**
    * Toggle the expanded state of a menu item
    */
@@ -95,15 +95,15 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
       [text]: !prev[text]
     }));
   };
-  
+
   /**
    * Check if a menu item is currently selected
    */
   const isItemSelected = (path: string): boolean => {
-    return location.pathname === path || 
+    return location.pathname === path ||
            (path !== '/' && location.pathname.startsWith(path));
   };
-  
+
   /**
    * Render a single menu item
    */
@@ -111,7 +111,7 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
     if (item.isDivider) {
       return <Divider key={`divider-${index}`} sx={styles.divider} />;
     }
-    
+
     if (item.isHeader) {
       return (
         <ListItem key={item.text} sx={styles.header}>
@@ -119,22 +119,22 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
         </ListItem>
       );
     }
-    
+
     const hasChildren = item.children && item.children.length > 0;
     const isSelected = isItemSelected(item.path);
     const isExpanded = openItems[item.text];
-    
+
     return (
       <ErrorBoundary key={item.path}>
-        <ListItem 
-          disablePadding 
+        <ListItem
+          disablePadding
           sx={{
             ...(isChild ? styles.childItem : {}),
             ...(isSelected ? styles.selectedItem : {})
           }}
         >
-          <ListItemButton 
-            component={RouterLink} 
+          <ListItemButton
+            component={RouterLink}
             to={item.path}
             onClick={() => hasChildren ? handleItemClick(item.text) : undefined}
             sx={styles.listItemButton}
@@ -146,11 +146,11 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
             {hasChildren && (isExpanded ? <ExpandLess /> : <ExpandMore />)}
           </ListItemButton>
         </ListItem>
-        
+
         {hasChildren && (
           <Collapse in={isExpanded} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              {item.children?.map((child, childIndex) => 
+              {item.children?.map((child, childIndex) =>
                 renderMenuItem(child, childIndex, true)
               )}
             </List>
@@ -159,7 +159,7 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
       </ErrorBoundary>
     );
   };
-  
+
   // Styles for the Sidebar component
   const styles = {
     drawer: {
@@ -265,8 +265,8 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
   ];
 
   // Filter menu items based on authentication if needed
-  const filteredMenuItems = isAuthenticated 
-    ? [...menuItems, ...adminMenuItems] 
+  const filteredMenuItems = isAuthenticated
+    ? [...menuItems, ...adminMenuItems]
     : menuItems.filter(item => !item.requiresAuth);
 
   // Render the drawer content
@@ -276,13 +276,13 @@ export const Sidebar = ({ mobileOpen, onClose }: SidebarProps): JSX.Element => {
       <List>
         {filteredMenuItems.map((item, index) => renderMenuItem(item, index))}
       </List>
-      
+
       {/* Optional: Add a collapsible section for settings/account */}
       <Box sx={{ mt: 'auto' }}>
         <Divider />
         <List>
           <ListItem disablePadding>
-            <ListItemButton 
+            <ListItemButton
               component={RouterLink}
               to="/settings"
               sx={styles.listItemButton}

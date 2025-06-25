@@ -1,13 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import type { AzureCosmosDB } from '../types/azure.js';
+import type { TokenPayload } from './auth.js';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
-import { AzureCosmosDB } from '../types/azure.js';
-import { TokenPayload } from './auth.js';
+
+// Enable debug logging in test environment
+const isTest = process.env.NODE_ENV === 'test';
+const debug = isTest ? console.log : () => {};
 
 declare global {
   namespace Express {
     interface Request {
       apiKey?: {
         id: string;
+        userId: string;
         name: string;
       };
     }
@@ -15,16 +20,51 @@ declare global {
 }
 
 /**
+ * Creates an error object with status and message
+ */
+function createError(status: number, message: string, originalError?: Error) {
+  const error = new Error(message) as any;
+  error.status = status;
+  if (originalError) {
+    error.originalError = originalError;
+  }
+  return error;
+}
+
+/**
  * Middleware to validate API key authentication
  * This should be used in conjunction with the Azure AD authentication middleware
  * to support both authentication methods.
+ * @param cosmosDb Azure CosmosDB instance or ApiKeyRepository
+ * @param apiKeyRepository Optional ApiKeyRepository instance (for testing)
  */
-export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
-  const apiKeyRepository = new ApiKeyRepository(cosmosDb);
+export function apiKeyAuth(
+  cosmosDb: AzureCosmosDB | ApiKeyRepository,
+  apiKeyRepository?: ApiKeyRepository
+) {
+  debug('[apiKeyAuth] Creating new middleware instance');
+  
+  // Initialize repository
+  let repository: ApiKeyRepository;
+  try {
+    repository = apiKeyRepository || 
+      (cosmosDb instanceof ApiKeyRepository ? cosmosDb : new ApiKeyRepository(cosmosDb as AzureCosmosDB));
+  } catch (error) {
+    console.error('Failed to initialize ApiKeyRepository:', error);
+    throw new Error('Failed to initialize API key validation service');
+  }
 
   return async (req: Request, res: Response, next: NextFunction) => {
+    debug('[apiKeyAuth] Handling request', { 
+      method: req.method, 
+      path: req.path,
+      hasUser: !!req.user,
+      headers: Object.keys(req.headers)
+    });
+
     // Skip API key validation if user is already authenticated with Azure AD
     if (req.user) {
+      debug('[apiKeyAuth] User already authenticated, skipping API key validation');
       return next();
     }
 
@@ -32,65 +72,95 @@ export function apiKeyAuth(cosmosDb: AzureCosmosDB) {
     const authHeader = req.headers.authorization || '';
     let apiKey: string | undefined;
 
-    // Try to get API key from Authorization header (format: "ApiKey <key>")
-    if (authHeader.startsWith('ApiKey ')) {
-      apiKey = authHeader.split(' ')[1];
+    debug('[apiKeyAuth] Checking for API key', { 
+      hasAuthHeader: !!authHeader,
+      queryParams: Object.keys(req.query)
+    });
+    
+    // Try to get API key from Authorization header (format: "ApiKey <key>" or "apikey <key>")
+    const apiKeyMatch = authHeader.match(/^(?:apikey|ApiKey)\s+(.+)$/i);
+    if (apiKeyMatch) {
+      apiKey = apiKeyMatch[1];
+      debug('[apiKeyAuth] Found API key in Authorization header');
     }
     // Fall back to query parameter
     else if (typeof req.query.api_key === 'string') {
       apiKey = req.query.api_key;
+      debug('[apiKeyAuth] Found API key in query parameter');
     }
 
     if (!apiKey) {
-      console.warn('[apiKeyAuth] No API key provided', { headers: req.headers, query: req.query });
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'API key is required',
-      });
+      const error = createError(401, 'API key is required');
+      debug('[apiKeyAuth] No API key provided');
+      return next(error);
     }
 
     try {
-      // Get user ID from the request (this should be set by a previous middleware)
-      // Get user ID from the request (this should be set by a previous middleware)
-      const userId = (req.user as any)?.oid;
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'Unauthorized',
-          message: 'User context is required for API key validation',
-        });
-      }
-
-      // Validate the API key
-      const { isValid, key } = await apiKeyRepository.validateApiKey({
-        key: apiKey,
-        ipAddress: req.ip,
+      debug('[apiKeyAuth] Validating API key', { 
+        key: apiKey.substring(0, 5) + '...', // Don't log full key
+        ipAddress: req.ip || 'unknown'
       });
 
-      if (!isValid || !key) {
-        console.warn('[apiKeyAuth] Invalid or expired API key', { apiKey });
-        return res.status(403).json({
-          success: false,
-          error: 'Forbidden',
-          message: 'Invalid or expired API key',
+      // Validate the API key
+      debug('[apiKeyAuth] Calling validateApiKey with:', { 
+        keyPrefix: apiKey.substring(0, 5) + '...',
+        ipAddress: req.ip || 'unknown'
+      });
+      
+      const validationResult = await repository.validateApiKey({
+        key: apiKey,
+        ipAddress: req.ip || 'unknown',
+      });
+
+      debug('[apiKeyAuth] validateApiKey result:', { 
+        isValid: validationResult.isValid,
+        keyId: validationResult.key?.id,
+        keyName: validationResult.key?.name,
+        error: validationResult.error,
+        keyPresent: !!validationResult.key,
+        fullResult: JSON.stringify(validationResult, null, 2)
+      });
+
+      if (!validationResult.isValid || !validationResult.key) {
+        // Use the validation error message if available, otherwise fall back to a generic message
+        const errorMessage = validationResult.error || 'Invalid API key';
+        debug('[apiKeyAuth] API key validation failed', { 
+          keyPrefix: apiKey.substring(0, 5) + '...',
+          error: errorMessage,
+          validationResult: {
+            isValid: validationResult.isValid,
+            keyPresent: !!validationResult.key,
+            error: validationResult.error
+          }
         });
+        const error = createError(401, errorMessage);
+        return next(error);
       }
 
       // Attach API key info to the request for use in route handlers
       req.apiKey = {
-        id: String(key.id),
-        name: String(key.name),
+        id: String(validationResult.key.id),
+        userId: String(validationResult.key.userId),
+        name: String(validationResult.key.name),
       };
+      
+      debug('[apiKeyAuth] API key attached to request:', {
+        apiKeyId: req.apiKey.id,
+        userId: req.apiKey.userId,
+        name: req.apiKey.name
+      });
+
+      debug('[apiKeyAuth] API key validated successfully', { 
+        apiKeyId: req.apiKey.id,
+        apiKeyName: req.apiKey.name
+      });
 
       next();
     } catch (error) {
-      console.error('API key validation error:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Internal Server Error',
-        message: 'Failed to validate API key',
-      });
+      const errorMsg = 'API key validation error';
+      console.error(errorMsg, error);
+      const err = createError(500, 'Failed to validate API key', error as Error);
+      next(err);
     }
   };
 }

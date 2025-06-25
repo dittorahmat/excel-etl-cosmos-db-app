@@ -2,7 +2,7 @@
 import { vi } from 'vitest';
 
 export const MsalProvider = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>;
+  return children;
 };
 
 export const useMsal = vi.fn().mockImplementation(() => ({

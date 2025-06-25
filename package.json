@@ -20,15 +20,12 @@
     "test": "npm run test:server && npm run test:client",
     "test:watch": "vitest --config vitest.optimized.config.ts watch",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
-
     "test:server": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test --exclude='**/backup_js_tests/**'",
     "test:server:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.server.config.ts server/test",
     "test:server:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.server.config.ts server/test",
-
     "test:client": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:client:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:client:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.optimized.config.ts src --dir src --passWithNoTests",
-
     "test:all": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests && NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --ignore-pattern '**/node_modules/*' --ignore-pattern '**/dist/*' --ignore-pattern '**/coverage/*' --config .eslintrc.cjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
@@ -87,7 +84,6 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
-    "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/user-event": "^14.5.2",
     "@types/cors": "^2.8.17",
     "@types/express": "4.17.23",

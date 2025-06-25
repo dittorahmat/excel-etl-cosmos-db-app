@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, act } from '@testing-library/react';
 import { render } from '../../../test-utils';
@@ -31,7 +30,7 @@ vi.mock('../Sidebar', () => ({
 describe('MainLayout', () => {
   // Mock useMediaQuery for mobile view
   const mockUseMediaQuery = vi.hoisted(() => vi.fn());
-  
+
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(mockUseMediaQuery).mockReturnValue(false);
@@ -45,7 +44,7 @@ describe('MainLayout', () => {
         </MainLayout>
       );
     });
-    
+
     expect(screen.getByTestId('navbar')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar')).toBeInTheDocument();
     expect(screen.getByText('Test Content')).toBeInTheDocument();
@@ -53,7 +52,7 @@ describe('MainLayout', () => {
 
   it('renders children content', async () => {
     const testContent = 'Main Content';
-    
+
     await act(async () => {
       render(
         <MainLayout>
@@ -61,7 +60,7 @@ describe('MainLayout', () => {
         </MainLayout>
       );
     });
-    
+
     expect(screen.getByText(testContent)).toBeInTheDocument();
   });
 

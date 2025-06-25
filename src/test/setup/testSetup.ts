@@ -1,29 +1,29 @@
-import { vi, beforeAll, afterEach, afterAll } from 'vitest';
+import { vi, afterEach, afterAll } from 'vitest';
 
 // Create a simple in-memory storage implementation
 class MemoryStorage implements Storage {
   private store: Record<string, string> = {};
-  
+
   get length(): number {
     return Object.keys(this.store).length;
   }
-  
+
   clear(): void {
     this.store = {};
   }
-  
+
   key(index: number): string | null {
     return Object.keys(this.store)[index] ?? null;
   }
-  
+
   getItem(key: string): string | null {
     return this.store[key] ?? null;
   }
-  
+
   setItem(key: string, value: string): void {
     this.store[key] = String(value);
   }
-  
+
   removeItem(key: string): void {
     delete this.store[key];
   }

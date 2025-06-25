@@ -1,14 +1,20 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { logger } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
-import type { UploadResponse } from '../types/models.js';
+
+import { logger } from '../utils/logger.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 // Import types and values needed for error handling
 import { MulterError } from 'multer';
+
+// Type imports
+import type { UploadResponse } from '../types/models.js';
 import type { FileTypeError } from '../types/custom.js';
+import type { CosmosRecord } from '../types/azure.js';
+import { initializeAzureServices } from '../config/azure-services.js';
 
 const router = Router();
 
@@ -291,26 +297,34 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>, next: 
           headers: result.headers || [],
         },
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[upload.route] Error in file processing:', error);
 
       // Handle multer errors
-      if ((error as MulterError).code) {
-        if ((error as MulterError).code === 'LIMIT_FILE_SIZE') {
+      if (error && typeof error === 'object' && 'code' in error) {
+        const err = error as { code?: string; message?: string };
+        if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(413).json(
             createErrorResponse(413, 'File too large', `File size exceeds the limit of ${MAX_FILE_SIZE_MB}MB`)
           );
         }
-        if (error.code === 'LIMIT_FILE_COUNT') {
+        if (err.code === 'LIMIT_FILE_COUNT') {
           return res.status(400).json(
             createErrorResponse(400, 'Too many files', 'Only one file can be uploaded at a time')
           );
         }
 
+        const errorMessage = err.message || 'Failed to upload file';
         return res.status(400).json(
-          createErrorResponse(400, 'Upload error', error.message || 'Failed to upload file')
+          createErrorResponse(400, 'Upload error', errorMessage)
         );
       }
+      
+      // Handle other types of errors
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      return res.status(500).json(
+        createErrorResponse(500, 'Server error', errorMessage)
+      );
 
       // Handle file processing errors
       if (error instanceof Error && error.message.includes('unsupported format')) {

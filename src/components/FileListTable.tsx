@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/api.js';
 import {
   Table,
@@ -35,11 +35,11 @@ export function FileListTable() {
     try {
       setLoading(true);
       const response = await api.get(`/api/files?page=${page}&pageSize=${pageSize}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch files');
       }
-      
+
       const data = await response.json();
       if (isMounted.current) {
         setFiles(data.items);
@@ -78,17 +78,17 @@ export function FileListTable() {
         },
         credentials: 'include',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to download file');
       }
-      
+
       // Get the blob from the response
       const blob = await response.blob();
-      
+
       // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
+
       // Create and trigger a download link
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -96,7 +96,7 @@ export function FileListTable() {
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      
+
       // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
@@ -108,14 +108,14 @@ export function FileListTable() {
 
   const handleDelete = async (fileId: string) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
-    
+
     try {
       const response = await api.delete(`/api/files/${fileId}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete file');
       }
-      
+
       // Refresh the file list
       fetchFiles();
     } catch (err) {
@@ -149,7 +149,7 @@ export function FileListTable() {
           {error}
         </div>
       )}
-      
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -178,8 +178,8 @@ export function FileListTable() {
                 </TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    file.status === 'processed' 
-                      ? 'bg-green-100 text-green-800' 
+                    file.status === 'processed'
+                      ? 'bg-green-100 text-green-800'
                       : file.status === 'processing'
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-red-100 text-red-800'
@@ -219,7 +219,7 @@ export function FileListTable() {
           </TableBody>
         </Table>
       </div>
-      
+
       {totalPages > 1 && (
         <div className="flex items-center justify-end space-x-2 py-4">
           <Button

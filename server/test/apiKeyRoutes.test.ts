@@ -1,23 +1,36 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import request from 'supertest';
-import express from 'express';
+import express, { type Express } from 'express';
 import { json } from 'body-parser';
-import { createApiKeyRouter } from '../src/routes/apiKey.route.js';
+import path from 'path';
+
+// Define the auth module path as a relative path
+const authModulePath = '../../src/middleware/auth.js';
+
+// Mock the authentication middleware with inline implementation first
+vi.mock(authModulePath, () => ({
+  authenticateToken: vi.fn((req: any, _res: any, next: any) => {
+    req.user = { oid: 'user-123' };
+    next();
+  }),
+  __esModule: true,
+}));
 
 // Mock the rate limiter middleware
-vi.mock('../src/middleware/rateLimit.js', () => ({
-  authRateLimiter: (_req: any, _res: any, next: any) => next(), // Simple pass-through mock
-}));
-
-// Mock the authentication middleware
-const mockAuthenticateToken = vi.fn((req: any, _res: any, next: any) => {
-  req.user = { oid: 'user-123' };
-  next();
+vi.mock('../src/middleware/rateLimit.js', () => {
+  const rateLimitMock = vi.fn((_options: any) => (_req: any, _res: any, next: any) => next());
+  
+  // Create a mock implementation of createRateLimiter that returns a rate limiter middleware
+  const createRateLimiter = vi.fn().mockImplementation((options: any) => {
+    return (_req: any, _res: any, next: any) => next();
+  });
+  
+  return {
+    rateLimit: rateLimitMock,
+    createRateLimiter: createRateLimiter,
+    __esModule: true
+  };
 });
-
-vi.mock('../src/middleware/auth', () => ({
-  authenticateToken: mockAuthenticateToken,
-}));
 
 // Mock the Azure Cosmos DB client
 vi.mock('../src/config/azure-services', () => ({
@@ -33,6 +46,9 @@ const mockCreateApiKey = vi.fn();
 const mockListApiKeys = vi.fn().mockResolvedValue({ keys: [] });
 const mockRevokeApiKey = vi.fn().mockResolvedValue(true);
 
+// Import the route after setting up all mocks
+const { createApiKeyRouter } = await import('../src/routes/apiKey.route.js');
+
 // Mock the ApiKeyRepository class
 vi.mock('../src/repositories/apiKeyRepository', () => ({
   ApiKeyRepository: vi.fn().mockImplementation(() => ({
@@ -47,15 +63,27 @@ describe('API Key Routes', () => {
   const mockUserId = 'user-123';
   const mockToken = 'mock-jwt-token';
 
-  beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
-
+  // Get the mock implementation of authenticateToken at the module level
+  const setupAuthMock = () => {
+    const authModulePath = path.join(__dirname, '../src/middleware/auth');
+    const authModule = require(authModulePath);
+    const mockAuthenticateToken = vi.mocked(authModule.authenticateToken);
+    
     // Reset the authenticateToken mock
     mockAuthenticateToken.mockImplementation((req: any, _res: any, next: any) => {
       req.user = { oid: mockUserId };
       next();
     });
+    
+    return mockAuthenticateToken;
+  };
+
+  beforeEach(() => {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    // Setup auth mock
+    setupAuthMock();
 
     // Create a new Express app for each test
     app = express();
@@ -227,6 +255,10 @@ describe('API Key Routes', () => {
 
   describe('Authentication', () => {
     it('should require authentication for all routes', async () => {
+      // Get the current mock implementation of authenticateToken
+      const authModule = await import(authModulePath);
+      const mockAuthenticateToken = vi.mocked(authModule.authenticateToken);
+      
       // Override the mock to not set req.user
       mockAuthenticateToken.mockImplementationOnce((_req: any, _res: any, next: any) => {
         // Don't set req.user to simulate unauthenticated request
@@ -245,7 +277,7 @@ describe('API Key Routes', () => {
         message: 'User ID not found',
       });
 
-      // Reset the mock for the next test
+      // Override the mock again for the next test
       mockAuthenticateToken.mockImplementationOnce((_req: any, _res: any, next: any) => {
         // Don't set req.user to simulate unauthenticated request
         next();

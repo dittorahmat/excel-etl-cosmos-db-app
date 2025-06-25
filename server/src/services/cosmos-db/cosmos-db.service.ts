@@ -1,14 +1,14 @@
-import { CosmosClient, Container, Database } from '@azure/cosmos';
-import type { CosmosRecord } from '../../types/azure.js';
+import { CosmosClient } from '@azure/cosmos';
+import type { Container, Database } from '@azure/cosmos';
+import type { CosmosRecord, AzureCosmosDB } from '../../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
-import { AzureCosmosDB } from '../../types/azure.js';
 
 let cosmosClient: CosmosClient | null = null;
 let database: Database | null = null;
 // Container is initialized but not directly used in this file
 // It's kept for potential future use
-const _container: Container | null = null;
+let _container: Container | null = null;
 
 /**
  * Initialize Azure Cosmos DB client
@@ -98,7 +98,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
     },
     query: async <T extends CosmosRecord>(
       query: string,
-      parameters: { name: string; value: unknown }[] = [],
+      parameters: { name: string; value: string | number | boolean | null }[] = [],
       containerName: string = AZURE_CONFIG.cosmos.containerName
     ): Promise<T[]> => {
       if (!database) {
@@ -108,7 +108,10 @@ export function createCosmosDbClient(): AzureCosmosDB {
       const container = database.container(containerName);
       const { resources } = await container.items.query<T>({
         query,
-        parameters,
+        parameters: parameters.map(p => ({
+          name: p.name,
+          value: p.value === undefined ? null : p.value
+        }))
       }).fetchAll();
 
       return resources;

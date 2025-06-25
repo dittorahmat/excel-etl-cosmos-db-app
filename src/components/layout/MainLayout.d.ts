@@ -1,4 +1,16 @@
 import { ReactNode } from 'react';
-export declare const MainLayout: ({ children }: {
+interface MainLayoutProps {
+    /** The content to be rendered inside the layout */
     children: ReactNode;
-}) => import("react/jsx-runtime").JSX.Element;
+}
+/**
+ * MainLayout component that provides the overall structure for the application
+ * including Navbar, Sidebar, and main content area with responsive design.
+ *
+ * @component
+ * @param {MainLayoutProps} props - The component props
+ * @param {ReactNode} props.children - The content to be rendered inside the layout
+ * @returns {JSX.Element} The rendered MainLayout component
+ */
+export declare const MainLayout: ({ children }: MainLayoutProps) => JSX.Element;
+export {};

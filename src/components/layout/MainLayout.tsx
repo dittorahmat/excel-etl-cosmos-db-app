@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { Box, Container, useMediaQuery, useTheme } from '@mui/material';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
@@ -12,7 +12,7 @@ interface MainLayoutProps {
 /**
  * MainLayout component that provides the overall structure for the application
  * including Navbar, Sidebar, and main content area with responsive design.
- * 
+ *
  * @component
  * @param {MainLayoutProps} props - The component props
  * @param {ReactNode} props.children - The content to be rendered inside the layout
@@ -32,7 +32,7 @@ export const MainLayout = ({ children }: MainLayoutProps): JSX.Element => {
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
         <Navbar onMenuClick={isMobile ? handleDrawerToggle : undefined} />
         <Sidebar mobileOpen={mobileOpen} onClose={handleDrawerToggle} />
-        
+
         <Box
           component="main"
           sx={{
@@ -46,9 +46,9 @@ export const MainLayout = ({ children }: MainLayoutProps): JSX.Element => {
             }),
           }}
         >
-          <Container 
-            maxWidth="xl" 
-            sx={{ 
+          <Container
+            maxWidth="xl"
+            sx={{
               py: 2,
               height: '100%',
               display: 'flex',

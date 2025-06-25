@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button.js';
 import { Input } from './ui/input.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.js';
@@ -26,11 +26,11 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
   };
 
   const [availableFields, setAvailableFields] = useState<FieldType[]>([]);
-  const [filters, setFilters] = useState<Filter[]>([{ 
-    id: '1', 
-    field: '', 
-    operator: '=', 
-    value: '' 
+  const [filters, setFilters] = useState<Filter[]>([{
+    id: '1',
+    field: '',
+    operator: '=',
+    value: ''
   }]);
 
   const operators = [
@@ -64,13 +64,13 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
 
   const buildQuery = useCallback((): Record<string, unknown> => {
     const whereClauses = filters
-      .filter((f): f is Required<Filter> => 
+      .filter((f): f is Required<Filter> =>
         Boolean(f.field) && Boolean(f.operator) && f.value !== ''
       )
       .map(f => {
         const fieldType = availableFields.find(af => af.name === f.field)?.type || 'string';
         const value = fieldType === 'number' ? parseFloat(f.value) : f.value;
-        
+
         return {
           [f.field]: {
             [f.operator]: value
@@ -98,12 +98,12 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
 
   const addFilter = (): void => {
     setFilters(prevFilters => [
-      ...prevFilters, 
-      { 
-        id: Date.now().toString(), 
-        field: '', 
-        operator: '=', 
-        value: '' 
+      ...prevFilters,
+      {
+        id: Date.now().toString(),
+        field: '',
+        operator: '=',
+        value: ''
       }
     ]);
   };
@@ -115,9 +115,9 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
   };
 
   const updateFilter = (id: string, field: keyof Filter, value: string): void => {
-    setFilters(prevFilters => 
-      prevFilters.map(filter => 
-        filter.id === id 
+    setFilters(prevFilters =>
+      prevFilters.map(filter =>
+        filter.id === id
           ? { ...filter, [field]: value }
           : filter
       )
@@ -147,7 +147,7 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
       'color': 'color',
       'range': 'range'
     };
-    
+
     return typeMap[fieldType] || 'text';
   };
 
@@ -155,9 +155,9 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
     <div className="space-y-4 p-4 border rounded-lg bg-card">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Query Builder</h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={addFilter}
           disabled={loading}
         >
@@ -165,7 +165,7 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
           Add Filter
         </Button>
       </div>
-      
+
       <div className="space-y-3">
         {filters.map((filter) => (
           <div key={filter.id} className="flex items-center space-x-2">
@@ -227,7 +227,7 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
       </div>
 
       <div className="flex justify-end">
-        <Button 
+        <Button
           onClick={handleExecute}
           disabled={!filters.some(f => f.field && f.operator && f.value !== '') || loading}
         >

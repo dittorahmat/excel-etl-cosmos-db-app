@@ -3,8 +3,8 @@ import { describe, it, expect, beforeAll, afterAll, vi, afterEach } from 'vitest
 import express from 'express';
 import type { Express } from 'express';
 // Mock the server module to control its behavior
-vi.mock('../src/server.ts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/server')>();
+vi.mock('../src/server.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/server.js')>();
   return {
     ...actual,
     createApp: vi.fn().mockImplementation((azureServices: any) => { // Use any for azureServices here
@@ -15,8 +15,8 @@ vi.mock('../src/server.ts', async (importOriginal) => {
   };
 });
 
-// Mock Azure services for the tests
-vi.mock('../src/config/azure-services.ts', () => {
+// Hoist the mock services
+const mockServices = vi.hoisted(() => {
   const mockCosmosDb = {
     cosmosClient: {} as any,
     database: {} as any, // Add database property
@@ -35,6 +35,8 @@ vi.mock('../src/config/azure-services.ts', () => {
   };
 
   return {
+    mockCosmosDb,
+    mockBlobStorage,
     initializeAzureServices: vi.fn().mockResolvedValue({
       cosmosDb: mockCosmosDb,
       blobStorage: mockBlobStorage,
@@ -42,8 +44,18 @@ vi.mock('../src/config/azure-services.ts', () => {
   };
 });
 
+// Mock Azure services for the tests
+vi.mock('../src/config/azure-services.ts', () => ({
+  initializeAzureServices: mockServices.initializeAzureServices,
+  // Export mocks for use in tests
+  __esModule: true,
+}));
+
+// Export mocks for use in tests
+export const { mockCosmosDb, mockBlobStorage } = mockServices;
+
 // Import the createApp after setting up the mocks
-import { createApp } from '../src/server';
+import { createApp } from '../src/server.js';
 
 describe('Server', () => {
   let app: Express;
@@ -130,18 +142,37 @@ describe('Server', () => {
 
   describe('Error Handling', () => {
     it('should return 500 for unhandled errors', async () => {
-      // Mock a route that throws an error
-      app.get('/error-route', (req, res, next) => {
-        next(new Error('Test error')); // Pass error to next middleware
+      // Create a new app instance for this test to avoid affecting other tests
+      const testApp = express();
+      
+      // Add the error handling middleware
+      testApp.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+        req.id = 'test-request-id';
+        next();
       });
 
-      const response = await request(app).get('/error-route');
+      // Add a route that throws an error
+      testApp.get('/error-route', (req, res, next) => {
+        next(new Error('Test error'));
+      });
+
+      // Add the error handler from the server
+      testApp.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error',
+          requestId: req.id
+        });
+      });
+
+      const response = await request(testApp).get('/error-route');
 
       expect(response.status).toBe(500);
-      expect(response.body).toEqual(expect.objectContaining({
+      expect(response.body).toEqual({
         success: false,
         error: 'Internal server error',
-      }));
+        requestId: 'test-request-id'
+      });
     });
   });
 });

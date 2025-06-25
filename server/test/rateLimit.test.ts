@@ -1,6 +1,35 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+
+// Mock the rate-limiter-flexible package
+vi.mock('rate-limiter-flexible', () => {
+  // Create a mock RateLimiterRedis class
+  class RateLimiterRedis {
+    consume = vi.fn().mockResolvedValue({ remainingPoints: 1, msBeforeNext: 1000 });
+    get = vi.fn().mockResolvedValue({ remainingPoints: 1, msBeforeNext: 1000 });
+    delete = vi.fn().mockResolvedValue(1);
+  }
+
+  return {
+    RateLimiterRedis,
+    RateLimiterMemory: RateLimiterRedis, // Use the same mock for both
+  };
+});
+
+// Mock the redis client
+vi.mock('redis', () => ({
+  createClient: vi.fn().mockImplementation(() => ({
+    connect: vi.fn().mockResolvedValue(undefined),
+    on: vi.fn(),
+    set: vi.fn().mockResolvedValue('OK'),
+    get: vi.fn().mockResolvedValue(JSON.stringify({ remainingPoints: 1, msBeforeNext: 1000 })),
+    del: vi.fn().mockResolvedValue(1),
+    quit: vi.fn().mockResolvedValue('OK'),
+  })),
+}));
+
+// Import the module after setting up mocks
 import { createRateLimiter } from '../src/middleware/rateLimit.js';
 
 // Mock the Date.now() function to control time in tests

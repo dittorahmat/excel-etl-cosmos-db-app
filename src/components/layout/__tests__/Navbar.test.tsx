@@ -1,6 +1,5 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { screen, fireEvent, act } from '@testing-library/react';
 import { render } from '../../../test-utils';
 import { Navbar } from '../Navbar';
 
@@ -44,29 +43,29 @@ describe('Navbar', () => {
   });
 
   it('renders without crashing', async () => {
-    const { user } = render(<Navbar />);
+    const { user: _ } = render(<Navbar />);
     await waitForRender(100);
     expect(screen.getByText('Excel ETL App')).toBeInTheDocument();
   });
 
   it('shows sign in button when not authenticated', async () => {
-    const { user } = render(<Navbar />);
+    const { user: _ } = render(<Navbar />);
     await waitForRender(100);
-    
+
     const signInButton = await screen.findByRole('button', { name: /sign in/i });
     expect(signInButton).toBeInTheDocument();
   });
 
   it('calls onMenuClick when menu button is clicked', async () => {
     const mockOnMenuClick = vi.fn();
-    const { user } = render(<Navbar onMenuClick={mockOnMenuClick} />);
+    const { user: _ } = render(<Navbar onMenuClick={mockOnMenuClick} />);
     await waitForRender(100);
-    
+
     const menuButton = await screen.findByRole('button', { name: /menu/i });
     await act(async () => {
       fireEvent.click(menuButton);
     });
-    
+
     await waitForRender(100);
     expect(mockOnMenuClick).toHaveBeenCalledTimes(1);
   });
@@ -83,12 +82,12 @@ describe('Navbar', () => {
       getAccessToken: vi.fn().mockResolvedValue('test-token'),
     });
 
-    const { user } = render(<Navbar />);
+    const { user: _ } = render(<Navbar />);
     await waitForRender(100);
 
     const userName = await screen.findByText(/test user/i);
     const settingsButton = await screen.findByRole('button', { name: /open settings/i });
-    
+
     expect(userName).toBeInTheDocument();
     expect(settingsButton).toBeInTheDocument();
   });
@@ -106,7 +105,7 @@ describe('Navbar', () => {
       getAccessToken: vi.fn().mockResolvedValue('test-token'),
     });
 
-    const { user } = render(<Navbar />);
+    const { user: _ } = render(<Navbar />);
     await waitForRender(100);
 
     // Open the user menu
@@ -114,15 +113,15 @@ describe('Navbar', () => {
     await act(async () => {
       fireEvent.click(settingsButton);
     });
-    
+
     await waitForRender(100);
-    
+
     // Click the logout button
     const logoutButton = await screen.findByRole('menuitem', { name: /logout/i });
     await act(async () => {
       fireEvent.click(logoutButton);
     });
-    
+
     await waitForRender(100);
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });
