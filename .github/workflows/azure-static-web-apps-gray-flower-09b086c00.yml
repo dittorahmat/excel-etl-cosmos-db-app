@@ -44,7 +44,7 @@ jobs:
           VITE_AZURE_AD_REDIRECT_URI: ${{ secrets.VITE_AZURE_AD_REDIRECT_URI }}
 
       - name: Check Deployment Token
-                run: echo "Deployment Token is set: ${DEPLOYMENT_TOKEN}"
+        run: echo "Deployment Token is set: ${DEPLOYMENT_TOKEN}"
 
       - name: Deploy to Azure Static Web Apps
         if: github.event_name == 'push'
