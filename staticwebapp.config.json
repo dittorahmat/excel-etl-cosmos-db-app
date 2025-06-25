@@ -1,33 +1,5 @@
 {
   "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/images/*"]
-  },
-  "mimeTypes": {
-    ".json": "text/json"
-  },
-  "responseOverrides": {
-    "401": {
-      "statusCode": 302,
-      "redirect": "/.auth/login/aad"
-    },
-    "404": "/index.html"
-  },
-  "auth": {
-    "identityProviders": {
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://login.microsoftonline.com/004263f2-caf5-4ca1-8024-41ebc448d7c4/v2.0",
-          "clientIdSettingName": "AZURE_CLIENT_ID",
-          "clientSecretSettingName": "AZURE_CLIENT_SECRET"
-        },
-        "login": {
-          "loginParameters": [
-            "response_type=code id_token",
-            "scope=openid offline_access profile email"
-          ]
-        }
-      }
-    }
+    "rewrite": "/index.html"
   }
 }
