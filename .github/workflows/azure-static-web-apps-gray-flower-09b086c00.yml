@@ -37,7 +37,7 @@ jobs:
         run: git fetch origin main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'npm'
@@ -53,9 +53,6 @@ jobs:
           VITE_AZURE_AD_TENANT_ID: ${{ secrets.VITE_AZURE_AD_TENANT_ID }}
           VITE_AZURE_AD_REDIRECT_URI: ${{ secrets.VITE_AZURE_AD_REDIRECT_URI }}
 
-      # - name: Check Deployment Token
-      #   run: echo "Deployment Token is set: ${{ env.DEPLOYMENT_TOKEN }}"
-
       - name: Deploy to Azure Static Web Apps
         if: github.event_name == 'push'
         uses: Azure/static-web-apps-deploy@v1
@@ -65,5 +62,16 @@ jobs:
           action: 'upload'
           app_location: ${{ env.APP_LOCATION }}
           output_location: ${{ env.OUTPUT_LOCATION }}
-          skip_app_build: true  # We're building in a separate step
-          skip_api_build: true  # No API in this project
+          skip_app_build: true
+          skip_api_build: true
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+          action: "close"
