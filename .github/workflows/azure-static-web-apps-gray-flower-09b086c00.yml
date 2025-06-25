@@ -10,6 +10,19 @@ on:
       - main
   workflow_dispatch:
 
+# Environment variables for the workflow
+env:
+  # Source code locations
+  APP_LOCATION: "/"  # Root of the repository
+  OUTPUT_LOCATION: "dist"  # Built files location
+
+# Required permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  deployments: write
+
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
@@ -21,7 +34,7 @@ jobs:
           submodules: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '20.x'
           cache: 'npm'
@@ -29,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Build Client
+      - name: Build Application
         run: npm run build:client
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
@@ -37,51 +50,16 @@ jobs:
           VITE_AZURE_AD_TENANT_ID: ${{ secrets.VITE_AZURE_AD_TENANT_ID }}
           VITE_AZURE_AD_REDIRECT_URI: ${{ secrets.VITE_AZURE_AD_REDIRECT_URI }}
 
-      # Debug step to check if files exist
-      - name: Check build output
-        run: |
-          echo "Checking if dist folder exists..."
-          ls -la
-          if [ -d "dist" ]; then
-            echo "dist folder exists"
-            ls -la dist/
-          else
-            echo "dist folder does not exist"
-          fi
-
-      # Debug step to check token (first few characters only)
-      - name: Debug token presence
-        run: |
-          if [ -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" ]; then
-            echo "Token is set (length: ${#AZURE_STATIC_WEB_APPS_API_TOKEN})"
-          else
-            echo "Token is NOT set"
-          fi
-        env:
-          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-
-      - name: Build And Deploy
-        if: github.event_name == 'push'
+      - name: Deploy to Azure Static Web Apps
+        # Only run this step on a push event to the main branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: Azure/static-web-apps-deploy@v1
-        env:
-          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          # Make sure you have created this secret in your GitHub repository settings
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_DEPLOYMENT_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "/"
-          output_location: "dist"
-          skip_app_build: true
-          skip_api_build: true
-          production_branch: main
-
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: "close"
+          action: 'upload'
+          app_location: ${{ env.APP_LOCATION }}
+          output_location: ${{ env.OUTPUT_LOCATION }}
+          skip_app_build: true  # We're building in a separate step
+          skip_api_build: true  # No API in this project
