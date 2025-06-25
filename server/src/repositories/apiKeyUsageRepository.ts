@@ -1,8 +1,10 @@
-import { AzureCosmosDB } from '../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Import types from the types index file
-import type { CosmosRecord } from '../types/index.js';
+import type { 
+  AzureCosmosDB, 
+  CosmosRecord 
+} from '../types/azure.js';
 
 /**
  * Represents an API key usage record in Cosmos DB

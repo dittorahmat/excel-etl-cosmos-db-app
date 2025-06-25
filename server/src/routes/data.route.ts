@@ -1,6 +1,9 @@
-import { Router, type Request, type Response } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
+import { CosmosClient } from '@azure/cosmos';
+import type { Container } from '@azure/cosmos';
+
 import { validateToken } from '../middleware/auth.js';
-import { CosmosClient, type Container } from '@azure/cosmos';
 import type { AzureCosmosDB, CosmosRecord } from '../types/custom.js';
 
 // Mock implementation - will be replaced with actual import in production

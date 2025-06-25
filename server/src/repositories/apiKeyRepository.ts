@@ -1,5 +1,5 @@
-import { AzureCosmosDB } from '../types/azure.js';
-import {
+import type { AzureCosmosDB } from '../types/azure.js';
+import type {
   ApiKey,
   CreateApiKeyRequest,
   ApiKeyResponse,
@@ -8,7 +8,8 @@ import {
   ValidateApiKeyParams,
   UpdateApiKeyParams
 } from '../types/apiKey.js';
-import { hashApiKey, generateApiKey, safeCompareKeys } from '../utils/apiKeyUtils.js';
+import { generateApiKey } from '../utils/apiKeyUtils.js';
+import { hashApiKey, compareApiKey } from '../utils/crypto.js';
 
 const CONTAINER_NAME = 'api-keys';
 
@@ -23,9 +24,85 @@ export interface UpdateApiKeyData {
 }
 
 export class ApiKeyRepository {
-  private containerName = 'api-keys';
+  private readonly containerName = 'api-keys';
 
-  constructor(private cosmosDb: AzureCosmosDB) {}
+  constructor(private readonly cosmosDb: AzureCosmosDB) {}
+  
+  /**
+   * Validates an API key
+   * @param params Parameters for validation
+   * @returns Validation result with key information if valid
+   */
+  async validateApiKey(params: { 
+    key: string; 
+    ipAddress?: string 
+  }): Promise<{ 
+    isValid: boolean; 
+    key?: Omit<ApiKey, 'keyHash'>;
+    error?: string 
+  }> {
+    try {
+      const { key, ipAddress } = params;
+      
+      // Basic validation
+      if (!key) {
+        return { isValid: false, error: 'API key is required' };
+      }
+      
+      // Get the container
+      const container = await this.getContainer();
+      
+      // Query for the key (hash the key for lookup)
+      const keyHash = hashApiKey(key);
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.keyHash = @keyHash AND c.isActive = true',
+        parameters: [{ name: '@keyHash', value: keyHash }]
+      };
+      
+      const { resources } = await container.items.query(querySpec).fetchAll();
+      
+      // Check if key exists
+      if (!resources || resources.length === 0) {
+        return { isValid: false, error: 'Invalid API key' };
+      }
+      
+      const apiKey = resources[0] as ApiKey;
+      
+      // Check if key is expired
+      if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
+        return { isValid: false, error: 'API key has expired' };
+      }
+      
+      // Check IP restrictions if any
+      if (ipAddress && apiKey.allowedIps && apiKey.allowedIps.length > 0) {
+        if (!apiKey.allowedIps.includes(ipAddress)) {
+          return { isValid: false, error: 'IP address not allowed' };
+        }
+      }
+      
+      // Update last used timestamp
+      try {
+        await this.update({
+          id: apiKey.id,
+          lastUsedAt: new Date().toISOString(),
+          lastUsedFromIp: ipAddress
+        });
+      } catch (updateError) {
+        console.error('Failed to update last used timestamp:', updateError);
+        // Don't fail the request if we can't update the timestamp
+      }
+      
+      // Don't return the key hash in the response
+      const { keyHash: _, ...keyWithoutHash } = apiKey;
+      return { isValid: true, key: keyWithoutHash };
+    } catch (error) {
+      console.error('Error validating API key:', error);
+      return { 
+        isValid: false, 
+        error: error instanceof Error ? error.message : 'Error validating API key' 
+      };
+    }
+  }
 
   /**
    * Initialize the API keys container
@@ -164,59 +241,6 @@ export class ApiKeyRepository {
     } catch (error) {
       console.error('Failed to list API keys:', error);
       throw new Error('Failed to list API keys');
-    }
-  }
-
-  /**
-   * Validate an API key
-   */
-  async validateApiKey(params: { key: string; ipAddress?: string }): Promise<{ isValid: boolean; key?: Omit<ApiKey, 'keyHash'> }> {
-    const { key, ipAddress } = params;
-    const container = await this.cosmosDb.container(CONTAINER_NAME, '/userId');
-
-    try {
-      const providedKeyHash = hashApiKey(key);
-
-      // Query for the API key directly by its hash
-      // This assumes keyHash is unique across all users, which it should be for security
-      const { resources: keys } = await container.items
-        .query<ApiKey>({
-          query: 'SELECT * FROM c WHERE c.keyHash = @keyHash AND c.isActive = true',
-          parameters: [{ name: '@keyHash', value: providedKeyHash }],
-        })
-        .fetchAll();
-
-      const apiKey = keys[0]; // Assuming keyHash is unique, there should be at most one result
-
-      if (!apiKey) {
-        return { isValid: false };
-      }
-
-      // Check IP restrictions if any are set
-      if (ipAddress && apiKey.allowedIps && apiKey.allowedIps.length > 0) {
-        if (!apiKey.allowedIps.includes(ipAddress)) {
-          return { isValid: false }; // IP doesn't match
-        }
-      }
-
-      // Check if the key is expired
-      if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
-        return { isValid: false }; // Key is expired
-      }
-
-      // Update last used timestamp
-      await container.items.upsert({
-        ...apiKey,
-        lastUsedAt: new Date().toISOString(),
-      });
-
-      // Return the key without the hash
-      const { keyHash: _, ...keyWithoutHash } = apiKey;
-      return { isValid: true, key: keyWithoutHash };
-
-    } catch (error) {
-      console.error('Failed to validate API key:', error);
-      return { isValid: false };
     }
   }
 }

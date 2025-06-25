@@ -4,35 +4,36 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "../dist/server",
-    "rootDir": "./src",
+    "rootDir": ".",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "resolveJsonModule": true,
     "noEmit": false,
-
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
     "typeRoots": [
-      "./src/types",
-      "./node_modules/@types"
-    ]
+      "./node_modules/@types",
+      "./src/types"
+    ],
+    "allowSyntheticDefaultImports": true,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "test/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "test",
-    "**/*.test.ts"
+    "dist"
   ],
+  "references": [],
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"
-  },
-  "references": []
+  }
 }

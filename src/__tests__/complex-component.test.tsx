@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -124,13 +124,13 @@ const ComplexComponent = () => {
     <div>
       <h1 data-testid="title">Complex Component</h1>
       <div data-testid="counter">Counter: {counter}</div>
-      
+
       <div data-testid="items-list">
         {items.map(item => (
           <div key={item.id} data-testid={`item-${item.id}`}>
             <span>{item.name}</span>
             <span data-testid={`value-${item.id}`}>{item.value.toFixed(2)}</span>
-            <button 
+            <button
               data-testid={`select-${item.id}`}
               onClick={() => handleSelect(item.id)}
             >
@@ -138,13 +138,13 @@ const ComplexComponent = () => {
             </button>
             {selectedId === item.id && (
               <div data-testid={`actions-${item.id}`}>
-                <button 
+                <button
                   data-testid={`update-${item.id}`}
                   onClick={() => handleUpdate(item.id, Math.random() * 100)}
                 >
                   Update
                 </button>
-                <button 
+                <button
                   data-testid={`delete-${item.id}`}
                   onClick={() => handleDelete(item.id)}
                 >
@@ -173,62 +173,62 @@ describe('Complex Component', () => {
 
   it('loads and displays items', async () => {
     render(<ComplexComponent />);
-    
+
     // Initial loading state
     expect(screen.getByTestId('loading')).toBeInTheDocument();
-    
+
     // Wait for items to load
     const itemsList = await screen.findByTestId('items-list');
     expect(itemsList).toBeInTheDocument();
-    
+
     // Check if items are rendered
     for (let i = 1; i <= 10; i++) {
       expect(screen.getByTestId(`item-${i}`)).toBeInTheDocument();
     }
-    
+
     // Check counter is incrementing
     const counter = screen.getByTestId('counter');
     expect(counter).toHaveTextContent('Counter: 0');
-    
+
     // Fast-forward timers
     await vi.advanceTimersByTimeAsync(1000);
     expect(counter).toHaveTextContent('Counter: 1');
-    
+
     await vi.advanceTimersByTimeAsync(1000);
     expect(counter).toHaveTextContent('Counter: 2');
   });
 
   it('handles item selection and actions', async () => {
     render(<ComplexComponent />);
-    
+
     // Wait for items to load
     await screen.findByTestId('items-list');
-    
+
     // Select an item
     const selectButton = screen.getByTestId('select-1');
     fireEvent.click(selectButton);
-    
+
     // Check if actions are shown
     expect(screen.getByTestId('actions-1')).toBeInTheDocument();
-    
+
     // Update the item
     const updateButton = screen.getByTestId('update-1');
     fireEvent.click(updateButton);
-    
+
     // Check if update was called
     await waitFor(() => {
       expect(mockApi.updateItem).toHaveBeenCalledTimes(1);
     });
-    
+
     // Delete the item
     const deleteButton = screen.getByTestId('delete-1');
     fireEvent.click(deleteButton);
-    
+
     // Check if delete was called
     await waitFor(() => {
       expect(mockApi.deleteItem).toHaveBeenCalledWith(1);
     });
-    
+
     // Check if item was removed
     await waitFor(() => {
       expect(screen.queryByTestId('item-1')).not.toBeInTheDocument();

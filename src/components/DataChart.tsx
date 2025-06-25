@@ -27,10 +27,6 @@ type ChartDataPoint = Record<string, string | number | null | undefined> & {
   value?: number;
 };
 
-interface ChartDataPoint extends Record<string, string | number | null | undefined> {
-  name?: string;
-  value?: number;
-}
 
 type ExportFormat = 'csv' | 'json';
 
@@ -130,7 +126,7 @@ const DataChart: React.FC<DataChartProps> = ({
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey={yAxis} fill="#8884d8">
-                {data.map((entry, index) => (
+                {data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Bar>
@@ -164,7 +160,7 @@ const DataChart: React.FC<DataChartProps> = ({
                 dataKey={yAxis}
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
-                {data.map((entry, index) => (
+                {data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -212,7 +208,7 @@ const DataChart: React.FC<DataChartProps> = ({
   // Render export buttons
   const renderExportButtons = useCallback(() => {
     if (!onExport) return null;
-    
+
     return (
       <div className="flex space-x-2">
         <Button
@@ -270,7 +266,7 @@ const DataChart: React.FC<DataChartProps> = ({
       );
     }
     // Using default axis values for now
-    return renderChart('name', 'value');
+    return renderChart();
   }, [loading, renderChart]);
 
   return (
@@ -343,7 +339,7 @@ DataChartWithErrorBoundary.displayName = 'DataChartWithErrorBoundary';
 
 /**
  * DataChart - A reusable chart component that supports multiple chart types and data visualization.
- * 
+ *
  * @component
  * @example
  * ```tsx
@@ -357,12 +353,12 @@ DataChartWithErrorBoundary.displayName = 'DataChartWithErrorBoundary';
  *   onExport={(format) => console.log(`Exporting as ${format}`)}
  * />
  * ```
- * 
+ *
  * @param {Object} props - Component props
  * @param {ChartDataPoint[]} props.data - Array of data points to visualize
  * @param {boolean} [props.loading=false] - Whether the component is in a loading state
  * @param {(format: 'csv' | 'json') => void} [props.onExport] - Callback function for export actions
- * 
+ *
  * @returns {JSX.Element} Rendered chart component
  */
 export default DataChartWithErrorBoundary;

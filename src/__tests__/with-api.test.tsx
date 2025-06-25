@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -94,17 +94,17 @@ describe('Component with API calls', () => {
     mockApi.getData.mockResolvedValueOnce({
       items: [{ id: 1, name: 'Test Item' }]
     });
-    
+
     render(<DataFetcher />);
-    
+
     // Initial loading state
     expect(screen.getByTestId('loading')).toBeInTheDocument();
-    
+
     // Wait for data to be loaded and verify content
     await waitFor(() => {
       expect(screen.getByTestId('title')).toHaveTextContent('Data List');
     });
-    
+
     // Verify data is displayed
     expect(screen.getByTestId('data-list')).toBeInTheDocument();
     expect(screen.getByTestId('item-1')).toHaveTextContent('Test Item');
@@ -114,9 +114,9 @@ describe('Component with API calls', () => {
     // Mock API to reject
     const errorMessage = 'API Error';
     mockApi.getData.mockRejectedValueOnce(new Error(errorMessage));
-    
+
     render(<DataFetcher />);
-    
+
     // Wait for error state
     const errorElement = await screen.findByTestId('error');
     expect(errorElement).toHaveTextContent(errorMessage);

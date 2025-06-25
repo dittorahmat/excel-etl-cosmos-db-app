@@ -1,4 +1,4 @@
-import type { Configuration, AccountInfo } from '@azure/msal-browser';
+import type { Configuration } from '@azure/msal-browser';
 
 // Token refresh buffer time (5 minutes before expiration)
 export const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000;

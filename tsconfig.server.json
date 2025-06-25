@@ -24,18 +24,20 @@
     "noEmit": false,
     "noImplicitAny": false,
     "strictNullChecks": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false,
+    "noEmitOnError": false
   },
   "include": [
     "server/src/**/*.ts",
     "server/test/**/*.ts",
-    "server/src/**/*.tsx"
+    "server/src/**/*.tsx",
+    "server/test/**/*.tsx",
+    "server/test/test-types.d.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/__tests__/**"
+    "dist"
   ]
 }

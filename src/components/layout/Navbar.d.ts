@@ -1,5 +1,12 @@
+/**
+ * Navbar component props
+ */
 interface NavbarProps {
+    /** Callback function for menu button click */
     onMenuClick?: () => void;
 }
-export declare const Navbar: ({ onMenuClick }: NavbarProps) => import("react/jsx-runtime").JSX.Element;
+/**
+ * Navbar component that displays the application header with user menu and navigation
+ */
+export declare const Navbar: ({ onMenuClick }: NavbarProps) => JSX.Element;
 export {};

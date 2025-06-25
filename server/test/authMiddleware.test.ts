@@ -161,14 +161,19 @@ describe('Token Validation Middleware', () => {
         roles: ['user'],
       };
 
-      mockRequest.headers = {
-        authorization: 'Bearer valid.token.here',
+      // Create a fresh mock request for this test
+      const testRequest = {
+        ...mockRequest,
+        headers: {
+          ...mockRequest.headers,
+          authorization: 'Bearer valid.token.here',
+        },
       };
 
-      // Mock jwt.verify to simulate valid token
-      vi.mocked(jwt.verify).mockImplementationOnce(((_token: string, _getKey: any, _options: any, callback: any) => {
+      // Mock the JWT verification to return the mock user
+      vi.mocked(jwt.verify).mockImplementationOnce((_token: string, _getKey: any, _options: any, callback: any) => {
         callback(null, mockUser);
-      }) as any);
+      });
 
       // Mock the getSigningKey implementation for this test case
       mockGetSigningKey.mockImplementationOnce((_kid, cb) => {
@@ -179,17 +184,21 @@ describe('Token Validation Middleware', () => {
         });
       });
 
+      // Create a spy for the next function
+      const nextSpy = vi.fn();
+
       // Act
       await validateToken(
-        mockRequest as Request,
+        testRequest as Request,
         mockResponse as Response,
-        nextFunction
+        nextSpy
       );
 
       // Assert
-      expect(mockRequest.user).toEqual(mockUser);
-      expect(nextFunction).toHaveBeenCalled();
+      expect(testRequest.user).toEqual(mockUser);
+      expect(nextSpy).toHaveBeenCalled();
       expect(statusMock).not.toHaveBeenCalled();
+      expect(jsonMock).not.toHaveBeenCalled();
     });
   });
 });

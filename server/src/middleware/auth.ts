@@ -1,5 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { ConfidentialClientApplication } from '@azure/msal-node';
+import type { JwtPayload } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { config } from 'dotenv';
@@ -8,7 +9,7 @@ import { config } from 'dotenv';
 config();
 
 // Type for the token payload
-export interface TokenPayload extends jwt.JwtPayload {
+export interface TokenPayload extends JwtPayload {
   oid?: string;
   name?: string;
   email?: string;

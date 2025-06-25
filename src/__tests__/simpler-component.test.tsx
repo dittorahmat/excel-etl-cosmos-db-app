@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -60,7 +60,7 @@ const SimpleList = () => {
         {items.map(item => (
           <li key={item.id} data-testid={`item-${item.id}`}>
             {item.name}: {item.value.toFixed(2)}
-            <button 
+            <button
               data-testid={`update-${item.id}`}
               onClick={() => handleUpdate(item.id)}
             >
@@ -82,14 +82,14 @@ describe('Simple List Component', () => {
 
   it('loads and displays items', async () => {
     render(<SimpleList />);
-    
+
     // Initial loading state
     expect(screen.getByTestId('loading')).toBeInTheDocument();
-    
+
     // Wait for items to load
     const itemsList = await screen.findByTestId('items-list');
     expect(itemsList).toBeInTheDocument();
-    
+
     // Check if items are rendered
     expect(screen.getByTestId('item-1')).toHaveTextContent('Item 1');
     expect(screen.getByTestId('item-2')).toHaveTextContent('Item 2');
@@ -97,25 +97,25 @@ describe('Simple List Component', () => {
 
   it('updates an item', async () => {
     render(<SimpleList />);
-    
+
     // Wait for items to load
     await screen.findByTestId('items-list');
-    
+
     // Get the initial value
     const initialValue = screen.getByTestId('item-1').textContent;
-    
+
     // Mock the API response
     mockApi.updateItem.mockResolvedValueOnce({ success: true });
-    
+
     // Click update button
     const updateButton = screen.getByTestId('update-1');
     fireEvent.click(updateButton);
-    
+
     // Wait for the update to complete and check the API was called
     await waitFor(() => {
       expect(mockApi.updateItem).toHaveBeenCalledTimes(1);
     });
-    
+
     // The component should re-render with the new value
     await waitFor(() => {
       const updatedText = screen.getByTestId('item-1').textContent;

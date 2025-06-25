@@ -398,6 +398,38 @@ GET /health
 - Application logs are retained for 30 days
 - API key usage data is retained for 90 days by default (configurable via `API_KEY_USAGE_RETENTION_DAYS`)
 
+## Test Configuration
+
+This project uses Vitest for testing with separate configurations for client and server tests.
+
+### Test Configurations
+
+1. **Client Tests** (`vitest.optimized.config.ts`)
+   - Environment: jsdom
+   - Setup: Uses `src/setupTests.simple.ts`
+   - Runs tests in `src/` directory
+   - Optimized for React component testing
+
+2. **Server Tests** (`vitest.server.config.ts`)
+   - Environment: node
+   - Runs tests in `server/test/` directory
+   - Configured for API and integration testing
+   - Excludes backup test files
+
+### Running Tests
+
+- Run all tests: `npm test`
+- Run server tests: `npm run test:server`
+- Run client tests: `npm run test:client`
+- Run tests in watch mode: `npm run test:watch`
+- Generate coverage: `npm run test:coverage`
+
+### Test Structure
+
+- Server tests are in `server/test/`
+- Client tests are co-located with components in `src/`
+- Test files follow the pattern `*.test.ts` or `*.test.tsx`
+
 ## Security
 
 ### API Key Best Practices

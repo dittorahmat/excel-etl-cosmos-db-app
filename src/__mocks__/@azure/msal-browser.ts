@@ -24,7 +24,6 @@ export const PublicClientApplication = vi.fn().mockImplementation(() => ({
     name: 'Test User',
   }]),
   handleRedirectPromise: vi.fn().mockResolvedValue(null),
-  setActiveAccount: vi.fn(),
   getActiveAccount: vi.fn().mockReturnValue({
     homeAccountId: 'test-account-id',
     environment: 'test',
@@ -49,7 +48,6 @@ export const PublicClientApplication = vi.fn().mockImplementation(() => ({
     info: vi.fn(),
     verbose: vi.fn(),
   }),
-  setActiveAccount: vi.fn(),
 }));
 
 export const InteractionRequiredAuthError = class extends Error {
@@ -81,12 +79,10 @@ export const EventType = {
   LOGOUT_START: 'logoutStart',
   LOGOUT_END: 'logoutEnd',
   HANDLE_REDIRECT_START: 'handleRedirectStart',
-  HANDLE_REDIRECT_END: 'handleRedirectEnd',
   ACQUIRE_TOKEN_NETWORK_START: 'acquireTokenFromNetworkStart',
   SSO_SILENT_START: 'ssoSilentStart',
   SSO_SILENT_SUCCESS: 'ssoSilentSuccess',
   SSO_SILENT_FAILURE: 'ssoSilentFailure',
-  HANDLE_REDIRECT_END: 'handleRedirectEnd',
   POPUP_OPENED: 'popupOpened',
   POPUP_CLOSED: 'popupClosed',
   POPUP_BLOCKED: 'popupBlocked',

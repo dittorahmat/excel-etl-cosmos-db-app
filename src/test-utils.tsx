@@ -1,5 +1,4 @@
-import React, { ReactNode } from 'react';
-import { render as rtlRender, RenderOptions } from '@testing-library/react';
+import { render as rtlRender, RenderOptions, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme, StyledEngineProvider } from '@mui/material/styles';
@@ -14,7 +13,7 @@ import { MsalProvider } from '@azure/msal-react';
 const originalError = console.error;
 beforeAll(() => {
   vi.spyOn(console, 'error').mockImplementation((...args) => {
-    if (typeof args[0] === 'string' && 
+    if (typeof args[0] === 'string' &&
         /Warning: An update to .* inside a test was not wrapped in act/.test(args[0])) {
       return;
     }
@@ -34,9 +33,9 @@ type WrapperProps = {
 };
 
 // Wrapper component that includes all necessary providers
-const AllTheProviders = ({ 
-  children, 
-  initialEntries = ['/'] 
+const AllTheProviders = ({
+  children,
+  initialEntries = ['/']
 }: WrapperProps) => {
   return (
     <StyledEngineProvider injectFirst>
@@ -58,13 +57,9 @@ const AllTheProviders = ({
 // Custom render function that wraps components with all necessary providers
 const customRender = (
   ui: React.ReactElement,
-  {
-    initialEntries = ['/'],
-    ...renderOptions
-  }: {
-    initialEntries?: string[];
-  } & Omit<RenderOptions, 'wrapper'> = {}
+  options?: RenderOptions & { initialEntries?: string[] }
 ) => {
+  const { initialEntries = ['/'], wrapper: WrapperComponent, ...renderOptions } = options || {};
   const mockMsalInstance = new PublicClientApplication({
     auth: {
       clientId: 'test-client-id',
@@ -77,7 +72,9 @@ const customRender = (
     },
   });
 
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+
+
+  const DefaultWrapper = ({ children }: { children: React.ReactNode }) => (
     <MsalProvider instance={mockMsalInstance}>
       <AllTheProviders initialEntries={initialEntries}>
         {children}
@@ -85,56 +82,47 @@ const customRender = (
     </MsalProvider>
   );
 
+  // Use the provided WrapperComponent if available, otherwise use the default Wrapper
+  const FinalWrapper = WrapperComponent || DefaultWrapper;
+
   return {
     user: userEvent.setup(),
-    ...rtlRender(ui, { wrapper: Wrapper, ...renderOptions }),
+    ...rtlRender(ui, { wrapper: FinalWrapper, ...renderOptions }),
   };
 };
 
 // Custom cleanup function
 const customCleanup = async () => {
   // Clean up any rendered components
-  const { unmount } = customRender(<div />, { wrapper: AllTheProviders });
-  unmount();
+  // Clean up any rendered components
+  // No need to render a new component just for cleanup, RTL's cleanup is sufficient
 };
 
 // Cleanup function to ensure proper cleanup between tests
-const cleanup = async () => {
+const customTestCleanup = async () => {
   try {
     // First clean up any test-utils specific cleanup
     await customCleanup();
-    
-    // Then clean up RTL
-    rtlCleanup();
-    
+
     // Clear all mocks and reset state
     vi.clearAllMocks();
     vi.resetAllMocks();
     vi.resetModules();
-    
+
     // Clear storage
     localStorage.clear();
     sessionStorage.clear();
-    
+
     // Reset any timers
     vi.useRealTimers();
-    
+
     // Wait for any pending promises to resolve
     await new Promise(resolve => setTimeout(resolve, 0));
-    
+
     // Wait for any pending React updates to complete with act
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 100));
     });
-    
-    // Additional cleanup for React 18
-    if (global.IS_REACT_ACT_ENVIRONMENT) {
-      // @ts-ignore - React 18 internal API
-      if (global.act) {
-        // @ts-ignore
-        await global.act(() => new Promise(resolve => setTimeout(resolve, 0)));
-      }
-    }
   } catch (error) {
     console.error('Error during test cleanup:', error);
   }
@@ -154,4 +142,4 @@ export { userEvent };
 export * from '@testing-library/react';
 
 // Export our custom render method and cleanup
-export { customRender as render, cleanup };
+export { customRender as render, customTestCleanup as cleanup };

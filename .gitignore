@@ -14,6 +14,7 @@ node_modules/
 
 # Build files
 dist/
+dist-node/
 dist-ssr/
 *.local
 bin/
