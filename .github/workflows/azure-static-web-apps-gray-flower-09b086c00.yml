@@ -10,9 +10,23 @@ on:
       - main
   workflow_dispatch:
 
+# Environment variables for the workflow
 env:
+  # Source code locations
+  APP_LOCATION: "/"  # Root of the repository
+  OUTPUT_LOCATION: "dist"  # Built files location
+  
+  # Authentication tokens
   AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+  SWA_CLI_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
   DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+
+# Required permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  deployments: write
 
 jobs:
   build_and_deploy_job:
@@ -51,12 +65,12 @@ jobs:
         if: github.event_name == 'push'
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
-          deployment_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+          azure_static_web_apps_api_token: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          app_location: '/'
-          output_location: 'dist'
-          skip_api_build: true
-          app_build_command: 'npm run build:client'
-          api_build_command: 'echo "Skipping API build"'
+          app_location: ${{ env.APP_LOCATION }}
+          output_location: ${{ env.OUTPUT_LOCATION }}
+          skip_app_build: true  # We're building in a separate step
+          skip_api_build: true  # No API in this project
+          deployment_token: ${{ env.DEPLOYMENT_TOKEN }}
+          verbose: true  # Enable detailed logging
