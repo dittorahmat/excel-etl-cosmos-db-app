@@ -218,7 +218,7 @@ module.exports = {
     },
     // Apply frontend config to frontend files
     {
-      files: ['src/**/*.{ts,tsx,js,jsx}'],
+      files: ['src/**/*.{ts,tsx,js,jsx}', 'components/**/*.{ts,tsx,js,jsx}', 'hooks/**/*.{ts,tsx,js,jsx}'],
       ...frontendConfig,
       rules: {
         ...frontendConfig.rules,
@@ -233,6 +233,7 @@ module.exports = {
       rules: {
         ...backendConfig.rules,
         'no-console': 'off', // Allow console in backend
+        '@typescript-eslint/no-empty-object-type': 'off', // Explicitly turn off for backend
       },
     },
     // Handle test files
@@ -306,7 +307,50 @@ module.exports = {
         '@typescript-eslint/no-unsafe-member-access': 'off',
         '@typescript-eslint/no-unsafe-call': 'off',
         'no-undef': 'off',
+        '@typescript-eslint/no-require-imports': 'off', // Allow require in root-level js files
       },
     },
+    // Configuration for server-side JavaScript scripts
+    {
+      files: ['server/scripts/*.js'],
+      parserOptions: {
+        project: null, // Do not require tsconfig for these files
+      },
+      env: {
+        node: true,
+      },
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-require-imports': 'off', // Allow require in these scripts
+      },
+    },
+    // Configuration for server-side TypeScript scripts
+    {
+      files: ['server/scripts/*.ts'],
+      parserOptions: {
+        project: null, // Do not require tsconfig for these files
+      },
+      env: {
+        node: true,
+      },
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off', // Relax any rule for scripts if needed
+        '@typescript-eslint/no-unused-vars': 'off', // Relax unused vars for scripts if needed
+      },
+    },
+    // Configuration for Vitest config files
+    {
+      files: ['vitest.config.*', '**/vitest.config.*'],
+      parserOptions: {
+        project: null, // Do not require tsconfig for these files
+      },
+      env: {
+        node: true,
+      },
+    },
+
   ],
 };

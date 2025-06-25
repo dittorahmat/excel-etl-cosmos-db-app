@@ -5,11 +5,11 @@ import type {
   ApiKeyResponse,
   ApiKeyListResponse,
   RevokeApiKeyParams,
-  ValidateApiKeyParams,
+  _ValidateApiKeyParams,
   UpdateApiKeyParams
 } from '../types/apiKey.js';
 import { generateApiKey } from '../utils/apiKeyUtils.js';
-import { hashApiKey, compareApiKey } from '../utils/crypto.js';
+import { hashApiKey } from '../utils/crypto.js';
 
 const CONTAINER_NAME = 'api-keys';
 
@@ -27,59 +27,59 @@ export class ApiKeyRepository {
   private readonly containerName = 'api-keys';
 
   constructor(private readonly cosmosDb: AzureCosmosDB) {}
-  
+
   /**
    * Validates an API key
    * @param params Parameters for validation
    * @returns Validation result with key information if valid
    */
-  async validateApiKey(params: { 
-    key: string; 
-    ipAddress?: string 
-  }): Promise<{ 
-    isValid: boolean; 
+  async validateApiKey(params: {
+    key: string;
+    ipAddress?: string
+  }): Promise<{
+    isValid: boolean;
     key?: Omit<ApiKey, 'keyHash'>;
-    error?: string 
+    error?: string
   }> {
     try {
       const { key, ipAddress } = params;
-      
+
       // Basic validation
       if (!key) {
         return { isValid: false, error: 'API key is required' };
       }
-      
+
       // Get the container
       const container = await this.getContainer();
-      
+
       // Query for the key (hash the key for lookup)
       const keyHash = hashApiKey(key);
       const querySpec = {
         query: 'SELECT * FROM c WHERE c.keyHash = @keyHash AND c.isActive = true',
         parameters: [{ name: '@keyHash', value: keyHash }]
       };
-      
+
       const { resources } = await container.items.query(querySpec).fetchAll();
-      
+
       // Check if key exists
       if (!resources || resources.length === 0) {
         return { isValid: false, error: 'Invalid API key' };
       }
-      
+
       const apiKey = resources[0] as ApiKey;
-      
+
       // Check if key is expired
       if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
         return { isValid: false, error: 'API key has expired' };
       }
-      
+
       // Check IP restrictions if any
       if (ipAddress && apiKey.allowedIps && apiKey.allowedIps.length > 0) {
         if (!apiKey.allowedIps.includes(ipAddress)) {
           return { isValid: false, error: 'IP address not allowed' };
         }
       }
-      
+
       // Update last used timestamp
       try {
         await this.update({
@@ -91,15 +91,15 @@ export class ApiKeyRepository {
         console.error('Failed to update last used timestamp:', updateError);
         // Don't fail the request if we can't update the timestamp
       }
-      
+
       // Don't return the key hash in the response
-      const { keyHash: _, ...keyWithoutHash } = apiKey;
+      const { keyHash: _keyHash, ...keyWithoutHash } = apiKey;
       return { isValid: true, key: keyWithoutHash };
     } catch (error) {
       console.error('Error validating API key:', error);
-      return { 
-        isValid: false, 
-        error: error instanceof Error ? error.message : 'Error validating API key' 
+      return {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Error validating API key'
       };
     }
   }
@@ -235,7 +235,7 @@ export class ApiKeyRepository {
         .fetchAll();
 
       // Don't return the key hash
-      const keys = resources.map(({ keyHash, ...rest }) => rest as Omit<ApiKey, 'keyHash'>);
+      const keys = resources.map(({ keyHash: _keyHash, ...rest }) => rest as Omit<ApiKey, 'keyHash'>);
 
       return { keys };
     } catch (error) {

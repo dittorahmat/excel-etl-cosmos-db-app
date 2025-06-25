@@ -57,9 +57,6 @@ const createMsalClient = () => {
   return new ConfidentialClientApplication(msalConfig);
 };
 
-// Initialize MSAL client
-const msalClient = createMsalClient();
-
 // Initialize JWKS client for token validation
 const jwksClientInstance = jwksClient({
   jwksUri: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/discovery/v2.0/keys`,
@@ -138,10 +135,10 @@ export const authenticateToken = (
 
   if (!token) {
     console.warn('[auth] No token provided in Authorization header', { headers: req.headers });
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'Authentication required',
-      message: 'No token provided' 
+      message: 'No token provided'
     });
   }
 
@@ -160,10 +157,10 @@ export const authenticateToken = (
       (err: jwt.VerifyErrors | null, decoded: any) => {
         if (err) {
           console.warn('[auth] Invalid or expired token', { error: err });
-          return res.status(403).json({ 
-            success: false, 
+          return res.status(403).json({
+            success: false,
             error: 'Authentication failed',
-            message: 'Invalid or expired token' 
+            message: 'Invalid or expired token'
           });
         }
         console.info('[auth] Token decoded successfully');

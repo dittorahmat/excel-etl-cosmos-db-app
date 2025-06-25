@@ -42,23 +42,18 @@ export interface AuthenticatedRequest extends Request {
  * @param cosmosDb Azure Cosmos DB instance
  * @returns Express middleware function
  */
-interface AuthMiddlewareDependencies {
-  apiKeyRepository: ApiKeyRepository;
-  apiKeyUsageRepository: ApiKeyUsageRepository;
-}
-
 interface AuthDependencies {
   apiKeyRepository: ApiKeyRepository;
   apiKeyUsageRepository: ApiKeyUsageRepository;
 }
 
 export function requireAuth(deps: AuthDependencies) {
-  const { apiKeyRepository, apiKeyUsageRepository } = deps;
+  const { apiKeyRepository } /*, apiKeyUsageRepository */ = deps;
 
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const startTime = process.hrtime();
     req.startTime = startTime;
-    
+
     const requestId = res.getHeader('X-Request-ID') as string || 'unknown';
     const requestInfo = {
       requestId,
@@ -67,17 +62,17 @@ export function requireAuth(deps: AuthDependencies) {
       ip: req.ip,
       userAgent: req.get('user-agent'),
     };
-    
+
     try {
       // Check for API key in headers or query params
       const apiKey = req.headers['x-api-key'] || req.query.api_key;
-      
+
       if (!apiKey) {
         logger.warn('API key is required', {
           ...requestInfo,
           error: 'API_KEY_MISSING',
         });
-        
+
         return res.status(401).json({
           success: false,
           error: 'Unauthorized',
@@ -99,7 +94,7 @@ export function requireAuth(deps: AuthDependencies) {
           error: 'API_KEY_INVALID',
           apiKeyId: validation.key?.id || 'unknown',
         });
-        
+
         return res.status(403).json({
           success: false,
           error: 'Forbidden',
@@ -139,18 +134,18 @@ export function requireAuth(deps: AuthDependencies) {
         lastUsedFromIp: typeof validation.key.lastUsedFromIp === 'string' ? validation.key.lastUsedFromIp : undefined,
         expiresAt: typeof validation.key.expiresAt === 'string' ? validation.key.expiresAt : undefined
       };
-      
+
       // Log successful authentication
       logger.info('API key authenticated', {
         ...requestInfo,
         apiKeyId: validation.key.id,
       });
-      
+
       // Record API key usage after the response is sent
       res.on('finish', async () => {
         try {
           const [seconds, nanoseconds] = process.hrtime(startTime);
-          const responseTimeMs = (seconds * 1000) + (nanoseconds / 1e6);
+          // const responseTimeMs = (seconds * 1000) + (nanoseconds / 1e6);
           // recordUsage not implemented; skipping
         } catch (error) {
           logger.error('Error recording API key usage', {
@@ -161,14 +156,14 @@ export function requireAuth(deps: AuthDependencies) {
           });
         }
       });
-      
+
       next();
     } catch (error) {
       logger.error('Error in requireAuth', {
         ...requestInfo,
         error: error instanceof Error ? error.message : String(error),
       });
-      
+
       // Don't leak internal errors to the client
       res.status(500).json({
         success: false,
@@ -194,10 +189,10 @@ export function requireRole(roles: string[]) {
         message: 'Authentication required',
       });
     }
-    
+
     const userRoles = req.user.roles || [];
     const hasRequiredRole = roles.some(role => userRoles.includes(role));
-    
+
     if (!hasRequiredRole) {
       return res.status(403).json({
         success: false,
@@ -205,7 +200,7 @@ export function requireRole(roles: string[]) {
         message: 'Insufficient permissions',
       });
     }
-    
+
     next();
   };
 }
@@ -215,18 +210,18 @@ export function requireRole(roles: string[]) {
  */
 export const requireAuthOrApiKey = (deps: AuthDependencies) => {
   const apiKeyAuth = requireAuth(deps);
-  
+
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       // If user is already authenticated via Azure AD, continue
       if (req.user) {
         return next();
       }
-      
+
       // Otherwise, try API key authentication
       return await apiKeyAuth(req, res, next);
     } catch (error) {
-      logger.error('Error in requireAuthOrApiKey', { 
+      logger.error('Error in requireAuthOrApiKey', {
         error: error instanceof Error ? error.message : String(error),
         path: req.path,
         method: req.method,

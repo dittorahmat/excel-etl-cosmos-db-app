@@ -1,13 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response as _Response, NextFunction as _NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import type { RateLimitRequestHandler, Options, Store, ClientRateLimitInfo } from 'express-rate-limit';
-import { IncomingHttpHeaders } from 'http';
+import type { IncomingHttpHeaders } from 'http';
 
-// Define the shape of our internal store entries
-interface RateLimitEntry {
-  totalHits: number;
-  resetTime: number;
-}
 
 // In-memory store for rate limiting (use Redis in production)
 interface RateLimitStoreEntry {
@@ -34,8 +29,8 @@ function createRateLimitEntry(resetTime: number): RateLimitStoreEntry {
 // Clean up old entries periodically to prevent memory leaks
 const cleanupOldEntries = () => {
   const now = Date.now();
-  
-  for (const [store, entries] of rateLimitStores.entries()) {
+
+  for (const [_store, entries] of rateLimitStores.entries()) {
     for (const [key, entry] of entries.entries()) {
       if (now > entry.resetTime) {
         console.log(`Cleaning up expired rate limit entry for key: ${key}`);
@@ -66,9 +61,9 @@ class MemoryStore implements Store {
    */
   async increment(key: string): Promise<ClientRateLimitInfo> {
     const now = Date.now();
-    
+
     let entry = this.store.get(key);
-    
+
     if (!entry || now >= entry.resetTime) {
       // Create a new entry with the current time as the reset time
       const resetTime = now + this.windowMs;
@@ -79,14 +74,14 @@ class MemoryStore implements Store {
       // Increment the hit counter for existing active window
       entry.totalHits += 1;
     }
-    
+
     // Return the ClientRateLimitInfo compatible object
     return {
       totalHits: entry.totalHits,
       resetTime: new Date(entry.resetTime)
     };
   }
-  
+
   /**
    * Method to decrement a client's hit counter.
    */
@@ -96,35 +91,35 @@ class MemoryStore implements Store {
       entry.totalHits -= 1;
     }
   }
-  
+
   /**
    * Method to reset a client's hit counter.
    */
   async resetKey(key: string): Promise<void> {
     this.store.delete(key);
   }
-  
+
   /**
    * For testing: Manually clear the store
    */
   clear(): void {
     this.store.clear();
   }
-  
+
   /**
    * For testing: Get the current state of the store
    */
   getStore() {
     return this.store;
   }
-  
+
   /**
    * Method to get a value from the store.
    */
   async get(key: string): Promise<ClientRateLimitInfo | undefined> {
     const entry = this.store.get(key);
     if (!entry) return undefined;
-    
+
     // Convert our internal store entry to ClientRateLimitInfo
     return {
       totalHits: entry.totalHits,
@@ -132,25 +127,25 @@ class MemoryStore implements Store {
       // Note: resetTimeMs is not part of the ClientRateLimitInfo type
     };
   }
-  
+
   /**
    * Method to set a value in the store.
    */
   async set(key: string, value: ClientRateLimitInfo): Promise<void> {
     // Convert ClientRateLimitInfo to our internal store format
-    const resetTime = value.resetTime instanceof Date ? value.resetTime.getTime() : 
+    const resetTime = value.resetTime instanceof Date ? value.resetTime.getTime() :
                      typeof value.resetTime === 'number' ? value.resetTime :
                      Date.now() + this.windowMs;
-    
+
     const entry: RateLimitStoreEntry = {
       totalHits: value.totalHits,
       resetTime,
       resetTimeMs: resetTime
     };
-    
+
     this.store.set(key, entry);
   }
-  
+
   /**
    * Method to reset all counters in the store.
    */
@@ -173,7 +168,7 @@ interface RateLimiterOptions {
  */
 export function createRateLimiter(options: RateLimiterOptions): RateLimitRequestHandler {
   const windowMs = options.windowMs || 15 * 60 * 1000; // 15 minutes by default
-  
+
   const rateLimitOptions: Partial<Options> = {
     windowMs,
     max: options.max, // limit each IP to X requests per windowMs
@@ -183,7 +178,7 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimitRequest
     keyGenerator: options.keyGenerator || ((req) => {
       // Use API key if available, otherwise use IP
       const headers = req.headers as IncomingHttpHeaders;
-      const apiKey = headers['x-api-key'] || 
+      const apiKey = headers['x-api-key'] ||
                    (req.query && typeof req.query.api_key === 'string' ? req.query.api_key : undefined);
       return apiKey ? `key-${apiKey}` : (req.ip || 'unknown-ip');
     }),
@@ -198,7 +193,7 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimitRequest
     },
 
   };
-  
+
   return rateLimit(rateLimitOptions);
 }
 

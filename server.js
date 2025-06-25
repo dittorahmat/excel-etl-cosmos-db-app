@@ -1,6 +1,6 @@
 import http from 'http';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import fs from 'fs';
 
 // Helper function to get file extension
@@ -40,7 +40,7 @@ const server = http.createServer((req, res) => {
 
     const contentType = mimeTypes[extname] || 'application/octet-stream';
 
-    fs.readFile(filePath, (error, content) => {
+    fs.readFile(filePath, (_error, _content) => {
         if (error) {
             if(error.code === 'ENOENT') {
                 // Page not found

@@ -1,12 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AzureCosmosDB } from '../types/azure.js';
-import type { TokenPayload } from './auth.js';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 
 // Enable debug logging in test environment
 const isTest = process.env.NODE_ENV === 'test';
 const debug = isTest ? console.log : () => {};
 
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -18,6 +18,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 /**
  * Creates an error object with status and message
@@ -43,11 +44,11 @@ export function apiKeyAuth(
   apiKeyRepository?: ApiKeyRepository
 ) {
   debug('[apiKeyAuth] Creating new middleware instance');
-  
+
   // Initialize repository
   let repository: ApiKeyRepository;
   try {
-    repository = apiKeyRepository || 
+    repository = apiKeyRepository ||
       (cosmosDb instanceof ApiKeyRepository ? cosmosDb : new ApiKeyRepository(cosmosDb as AzureCosmosDB));
   } catch (error) {
     console.error('Failed to initialize ApiKeyRepository:', error);
@@ -55,8 +56,8 @@ export function apiKeyAuth(
   }
 
   return async (req: Request, res: Response, next: NextFunction) => {
-    debug('[apiKeyAuth] Handling request', { 
-      method: req.method, 
+    debug('[apiKeyAuth] Handling request', {
+      method: req.method,
       path: req.path,
       hasUser: !!req.user,
       headers: Object.keys(req.headers)
@@ -72,11 +73,11 @@ export function apiKeyAuth(
     const authHeader = req.headers.authorization || '';
     let apiKey: string | undefined;
 
-    debug('[apiKeyAuth] Checking for API key', { 
+    debug('[apiKeyAuth] Checking for API key', {
       hasAuthHeader: !!authHeader,
       queryParams: Object.keys(req.query)
     });
-    
+
     // Try to get API key from Authorization header (format: "ApiKey <key>" or "apikey <key>")
     const apiKeyMatch = authHeader.match(/^(?:apikey|ApiKey)\s+(.+)$/i);
     if (apiKeyMatch) {
@@ -96,23 +97,23 @@ export function apiKeyAuth(
     }
 
     try {
-      debug('[apiKeyAuth] Validating API key', { 
+      debug('[apiKeyAuth] Validating API key', {
         key: apiKey.substring(0, 5) + '...', // Don't log full key
         ipAddress: req.ip || 'unknown'
       });
 
       // Validate the API key
-      debug('[apiKeyAuth] Calling validateApiKey with:', { 
+      debug('[apiKeyAuth] Calling validateApiKey with:', {
         keyPrefix: apiKey.substring(0, 5) + '...',
         ipAddress: req.ip || 'unknown'
       });
-      
+
       const validationResult = await repository.validateApiKey({
         key: apiKey,
         ipAddress: req.ip || 'unknown',
       });
 
-      debug('[apiKeyAuth] validateApiKey result:', { 
+      debug('[apiKeyAuth] validateApiKey result:', {
         isValid: validationResult.isValid,
         keyId: validationResult.key?.id,
         keyName: validationResult.key?.name,
@@ -124,7 +125,7 @@ export function apiKeyAuth(
       if (!validationResult.isValid || !validationResult.key) {
         // Use the validation error message if available, otherwise fall back to a generic message
         const errorMessage = validationResult.error || 'Invalid API key';
-        debug('[apiKeyAuth] API key validation failed', { 
+        debug('[apiKeyAuth] API key validation failed', {
           keyPrefix: apiKey.substring(0, 5) + '...',
           error: errorMessage,
           validationResult: {
@@ -143,14 +144,14 @@ export function apiKeyAuth(
         userId: String(validationResult.key.userId),
         name: String(validationResult.key.name),
       };
-      
+
       debug('[apiKeyAuth] API key attached to request:', {
         apiKeyId: req.apiKey.id,
         userId: req.apiKey.userId,
         name: req.apiKey.name
       });
 
-      debug('[apiKeyAuth] API key validated successfully', { 
+      debug('[apiKeyAuth] API key validated successfully', {
         apiKeyId: req.apiKey.id,
         apiKeyName: req.apiKey.name
       });
