@@ -4,7 +4,7 @@ import type { AccountInfo } from '@azure/msal-browser';
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { msalConfig, loginRequest } from './authConfig';
+import { msalConfig, loginRequest } from './authConfig.custom';
 import { assertMsalConfig, isTokenExpired } from './authUtils';
 
 // Create MSAL instance
@@ -134,24 +134,41 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     setError(null);
     console.log('Initiating login with request:', loginRequest);
+    
     try {
-      const loginResponse = await instance.loginRedirect({
+      // First, try to get token silently to check if user is already authenticated
+      try {
+        const tokenResponse = await instance.acquireTokenSilent({
+          scopes: loginRequest.scopes || []
+        });
+        console.log('Acquired token silently:', tokenResponse);
+        setUser(instance.getAllAccounts()[0] || null);
+        setIsAuthenticated(true);
+        return;
+      } catch (silentError) {
+        console.log('Silent token acquisition failed, proceeding with redirect');
+      }
+
+      // If silent token acquisition fails, proceed with interactive login
+      await instance.loginRedirect({
         ...loginRequest,
         onRedirectNavigate: (url) => {
           console.log('Redirecting to:', url);
           return true;
         }
       });
-      console.log('Login response:', loginResponse);
     } catch (error) {
       const err = error as Error;
-      console.error('Login error details:', {
+      const errorDetails = {
         name: err.name,
         message: err.message,
         stack: err.stack,
-        additionalInfo: (err as any).errorCode || (err as any).errorMessage || 'No additional info'
-      });
-      setError(err);
+        additionalInfo: (err as any).errorCode || (err as any).errorMessage || 'No additional info',
+        timestamp: new Date().toISOString()
+      };
+      
+      console.error('Login error details:', errorDetails);
+      setError(new Error(`Login failed: ${err.message}`));
       throw err;
     } finally {
       setLoading(false);
