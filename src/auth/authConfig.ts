@@ -15,7 +15,12 @@ const azureAdConfig = {
   tenantId: env.VITE_AZURE_TENANT_ID || 'common',
   redirectUri: env.VITE_AZURE_REDIRECT_URI || getOrigin(),
   scopes: (env.VITE_AZURE_SCOPES || 'User.Read openid profile email').split(' '),
+  // Use the tenant-specific endpoint for better security
   authority: `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'common'}`,
+  // Explicitly set the knownAuthorities for the tenant
+  knownAuthorities: [
+    `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'common'}`
+  ]
 };
 
 // Validate required configuration
@@ -39,9 +44,10 @@ export const msalConfig = {
   auth: {
     clientId: azureAdConfig.clientId,
     authority: azureAdConfig.authority,
+    knownAuthorities: azureAdConfig.knownAuthorities,
     redirectUri: azureAdConfig.redirectUri,
     postLogoutRedirectUri: azureAdConfig.redirectUri,
-    navigateToLoginRequestUrl: true,
+    navigateToLoginRequestUrl: false, // Changed to false for better SPA behavior
   },
   cache: {
     cacheLocation: 'sessionStorage',
@@ -80,7 +86,13 @@ export const loginRequest = {
     // Add any additional parameters required by your Azure AD app
     response_type: 'code',
     response_mode: 'fragment',
-    domain_hint: 'organizations' // or 'consumers' for personal accounts
+    domain_hint: 'organizations', // or 'consumers' for personal accounts
+    // Add nonce for security
+    nonce: window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
+  },
+  // Explicitly disable the default token cache
+  tokenQueryParameters: {
+    client_info: '1'
   }
 };
 
