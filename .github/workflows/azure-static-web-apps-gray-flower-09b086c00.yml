@@ -13,8 +13,8 @@ on:
 # Environment variables for the workflow
 env:
   # Source code locations
-  APP_LOCATION: "/"  # Root of the repository
-  OUTPUT_LOCATION: "dist"  # Built files location
+  APP_LOCATION: "dist"  # Only deploy the built files
+  OUTPUT_LOCATION: "."  # Root of the built files
 
 # Required permissions for the workflow
 permissions:

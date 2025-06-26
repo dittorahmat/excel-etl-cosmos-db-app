@@ -14,7 +14,23 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'production' ? false : true,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000, // Increase chunk size warning limit to 1000KB
   },
   server: {
     port: 3000,
