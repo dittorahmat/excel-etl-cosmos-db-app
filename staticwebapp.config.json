@@ -1,5 +1,52 @@
 {
   "navigationFallback": {
-    "rewrite": "/index.html"
+    "rewrite": "/index.html",
+    "exclude": [
+      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}"
+    ]
+  },
+  "mimeTypes": {
+    ".json": "text/json"
+  },
+  "responseOverrides": {
+    "400": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    },
+    "401": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/aad"
+    },
+    "404": "/index.html"
+  },
+  "routes": [
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    }
+  ],
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/common/v2.0",
+          "clientIdSettingName": "VITE_AZURE_CLIENT_ID",
+          "clientSecretSettingName": "VITE_AZURE_CLIENT_SECRET"
+        },
+        "login": {
+          "loginParameters": [
+            "scope=openid profile email"
+          ]
+        }
+      }
+    },
+    "login": {
+      "simpleAuth": false,
+      "logoutEndpoint": "/.auth/logout",
+      "tokenStore": {
+        "enabled": true
+      }
+    }
   }
 }
