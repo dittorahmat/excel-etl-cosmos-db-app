@@ -50,20 +50,20 @@ jobs:
           VITE_AZURE_AD_TENANT_ID: ${{ secrets.VITE_AZURE_AD_TENANT_ID }}
           VITE_AZURE_AD_REDIRECT_URI: ${{ secrets.VITE_AZURE_AD_REDIRECT_URI }}
 
-    - name: List files and sizes at repository root
-      run: |
-        ls -lhA /home/runner/work/excel-etl-cosmos-db-app/excel-etl-cosmos-db-app/
+      - name: List files and sizes at repository root
+        run: |
+          ls -lhA /home/runner/work/excel-etl-cosmos-db-app/excel-etl-cosmos-db-app/
 
-    - name: Deploy to Azure Static Web Apps
-      # Only run this step on a push event to the main branch
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: Azure/static-web-apps-deploy@v1
-      with:
-        # Make sure you have created this secret in your GitHub repository settings
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_DEPLOYMENT_TOKEN }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: 'upload'
-        app_location: ${{ env.APP_LOCATION }}
-        output_location: ${{ env.OUTPUT_LOCATION }}
-        skip_app_build: true  # We're building in a separate step
-        skip_api_build: true  # No API in this project
+      - name: Deploy to Azure Static Web Apps
+        # Only run this step on a push event to the main branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          # Make sure you have created this secret in your GitHub repository settings
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_DEPLOYMENT_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: ${{ env.APP_LOCATION }}
+          output_location: ${{ env.OUTPUT_LOCATION }}
+          skip_app_build: true  # We're building in a separate step
+          skip_api_build: true  # No API in this project
