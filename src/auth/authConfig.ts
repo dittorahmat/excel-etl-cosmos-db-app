@@ -23,6 +23,23 @@ const azureAdConfig = {
   ]
 };
 
+// Log the actual configuration being used
+console.log('Azure AD Configuration:', {
+  clientId: azureAdConfig.clientId ? '***' + azureAdConfig.clientId.slice(-4) : 'MISSING',
+  tenantId: azureAdConfig.tenantId,
+  redirectUri: azureAdConfig.redirectUri,
+  authority: azureAdConfig.authority,
+  scopes: azureAdConfig.scopes,
+  knownAuthorities: azureAdConfig.knownAuthorities,
+  env: {
+    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID ? '***' + String(env.VITE_AZURE_CLIENT_ID).slice(-4) : 'MISSING',
+    VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || 'MISSING',
+    VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || 'MISSING',
+    VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || 'DEFAULT_SCOPES'
+  },
+  location: window.location.href
+});
+
 // Validate required configuration
 if (!azureAdConfig.clientId) {
   console.error('Missing required configuration: VITE_AZURE_CLIENT_ID');

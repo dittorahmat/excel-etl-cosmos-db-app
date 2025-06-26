@@ -45,7 +45,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Get token silently, with refresh if needed
   const getTokenSilently = useCallback(async (): Promise<string | null> => {
     try {
+      console.log('getTokenSilently called with accounts:', accounts);
       if (accounts.length === 0) {
+        console.warn('No active accounts found');
         throw new Error('No active account');
       }
 
@@ -88,56 +90,69 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [accounts, instance]);
 
-  // Check authentication status on mount and when accounts change
+  // Check auth state on mount and account changes
   useEffect(() => {
     const checkAuth = async () => {
-      setLoading(true);
       try {
-        if (accounts.length > 0) {
-          const account = accounts[0];
-          setUser(account);
-          setIsAuthenticated(true);
+        console.log('Initializing MSAL instance');
+        await instance.initialize();
+        console.log('MSAL instance initialized, checking accounts');
+        const accounts = instance.getAllAccounts();
+        console.log('Found accounts:', accounts);
+        setUser(accounts[0] || null);
+        const isAuth = accounts.length > 0;
+        console.log('Setting isAuthenticated to:', isAuth);
+        setIsAuthenticated(isAuth);
 
-          // Pre-fetch token to ensure it's fresh
-          await getTokenSilently();
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
+        if (isAuth) {
+          console.log('User is authenticated, attempting to get token');
+          const token = await getTokenSilently().catch(err => {
+            console.warn('Failed to get token silently:', err);
+            return null;
+          });
+          console.log('Token retrieval result:', token ? 'Success' : 'Failed');
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setError(error instanceof Error ? error : new Error('Authentication check failed'));
-        setIsAuthenticated(false);
-        setUser(null);
+      } catch (err) {
+        const error = err as Error;
+        console.error('Auth check error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          additionalInfo: (error as any).errorCode || (error as any).errorMessage || 'No additional info'
+        });
+        setError(error);
       } finally {
         setLoading(false);
       }
     };
 
     checkAuth();
-  }, [accounts, getTokenSilently]);
+  }, [accounts, getTokenSilently, instance]);
 
   // Handle login
   const login = async () => {
     setLoading(true);
     setError(null);
+    console.log('Initiating login with request:', loginRequest);
     try {
-      const response = await instance.loginPopup(loginRequest);
-      if (response.account) {
-        setUser(response.account);
-        setIsAuthenticated(true);
-
-        // Cache the initial token
-        if (response.accessToken) {
-          const expiresOn = response.expiresOn?.getTime() || Date.now() + 3600000;
-          localStorage.setItem('msalToken', response.accessToken);
-          localStorage.setItem('msalTokenExpiry', expiresOn.toString());
+      const loginResponse = await instance.loginRedirect({
+        ...loginRequest,
+        onRedirectNavigate: (url) => {
+          console.log('Redirecting to:', url);
+          return true;
         }
-      }
+      });
+      console.log('Login response:', loginResponse);
     } catch (error) {
-      console.error('Login failed:', error);
-      setError(error instanceof Error ? error : new Error('Login failed'));
-      throw error;
+      const err = error as Error;
+      console.error('Login error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        additionalInfo: (err as any).errorCode || (err as any).errorMessage || 'No additional info'
+      });
+      setError(err);
+      throw err;
     } finally {
       setLoading(false);
     }
