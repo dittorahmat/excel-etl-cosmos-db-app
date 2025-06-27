@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { Box, Container, useMediaQuery, useTheme } from '@mui/material';
-import { Navbar } from './Navbar';
+import { Navbar } from './Navbar.jsx';
 import { Sidebar } from './Sidebar';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 /**
