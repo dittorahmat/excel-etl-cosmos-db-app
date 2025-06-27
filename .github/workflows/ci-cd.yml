@@ -134,8 +134,8 @@ jobs:
         mkdir -p deployment
         # Copy the built server files from dist/server to deployment
         cp -r dist/server/* deployment/
-        # Copy package.json and package-lock.json from the server directory
-        cp server/package*.json deployment/
+        # Copy package.json from the server directory
+        cp server/package.json deployment/
         # Copy web.config for Azure App Service
         echo '<?xml version="1.0" encoding="utf-8"?>
         <configuration>
@@ -157,7 +157,8 @@ jobs:
             </security>
           </system.webServer>
         </configuration>' > deployment/web.config
-        cd deployment && npm ci --production
+        # Install production dependencies only (no devDependencies)
+        cd deployment && npm install --omit=dev --prefer-offline --no-audit --progress=false
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
