@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import type { ApiKey, ApiKeyRepository, TestRequest } from './apiKeyAuth.middleware.types.js';
 

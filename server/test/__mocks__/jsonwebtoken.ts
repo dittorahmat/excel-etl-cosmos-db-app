@@ -1,7 +1,16 @@
-import { vi } from 'vitest';
+interface JwtPayload {
+  oid: string;
+  name: string;
+  email: string;
+  roles: string[];
+  iss: string;
+  aud: string;
+  iat: number;
+  exp: number;
+}
 
 const jwt = {
-  verify: vi.fn().mockImplementation((token, _getKey, options, callback) => {
+  verify: vi.fn().mockImplementation((token: string, _getKey: any, options: any, callback: (error: Error | null, decoded?: JwtPayload) => void) => {
     // Mock valid token
     if (token === 'valid.token.here') {
       const decoded = {
@@ -20,10 +29,10 @@ const jwt = {
     if (token === 'expired.token.here') {
       const error = new Error('jwt expired');
       (error as any).name = 'TokenExpiredError';
-      return callback(error, null);
+      return callback(error, undefined);
     }
     // Mock invalid token
-    return callback(new Error('invalid token'), null);
+    return callback(new Error('invalid token'), undefined);
   })
 };
 

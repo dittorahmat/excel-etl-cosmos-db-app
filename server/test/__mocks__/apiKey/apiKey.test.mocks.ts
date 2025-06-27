@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import type { Container } from '@azure/cosmos';
 import type { Request, Response, NextFunction } from 'express';
 import type { AzureCosmosDB } from '../../../src/types/azure.js';

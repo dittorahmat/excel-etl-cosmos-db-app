@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+// Vitest globals are available automatically in test files
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { json } from 'body-parser';
@@ -47,7 +47,7 @@ const mockListApiKeys = vi.fn().mockResolvedValue({ keys: [] });
 const mockRevokeApiKey = vi.fn().mockResolvedValue(true);
 
 // Import the route after setting up all mocks
-const { createApiKeyRouter } = await import('../src/routes/apiKey.route.js');
+let createApiKeyRouter: any; // Will be initialized in beforeAll
 
 // Mock the ApiKeyRepository class
 vi.mock('../src/repositories/apiKeyRepository', () => ({
@@ -77,6 +77,12 @@ describe('API Key Routes', () => {
     
     return mockAuthenticateToken;
   };
+
+  beforeAll(async () => {
+    // Import the route after setting up all mocks
+    const module = await import('../src/routes/apiKey.route.js');
+    createApiKeyRouter = module.createApiKeyRouter;
+  });
 
   beforeEach(() => {
     // Reset all mocks

@@ -1,31 +1,8 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
-import { CosmosClient } from '@azure/cosmos';
-import type { Container } from '@azure/cosmos';
+import type { Request, Response, RequestHandler } from 'express';
 
 import { validateToken } from '../middleware/auth.js';
-import type { AzureCosmosDB, CosmosRecord } from '../types/custom.js';
-
-// Mock implementation - will be replaced with actual import in production
-async function _initializeCosmosDB(): Promise<AzureCosmosDB> { 
-  return {
-    cosmosClient: {} as unknown as CosmosClient,
-    database: {} as any,
-    container: async <T extends Record<string, unknown>>(containerName: string, partitionKey: string) => {
-      return {} as unknown as Container;
-    },
-    upsertRecord: async <T extends Record<string, unknown>>(record: T) => record,
-    query: async <T extends CosmosRecord>(query: string, parameters?: { name: string; value: unknown }[]) => {
-      return [] as T[];
-    },
-    getById: async (id: string, containerName?: string, partitionKeyValue?: string) => {
-      return undefined;
-    },
-    deleteRecord: async (id: string, partitionKey: string, containerName?: string) => {
-      // No-op for mock
-    }
-  };
-}
+import { initializeCosmosDB } from '../services/cosmos-db/cosmos-db.service.js';
 
 const router = Router();
 
@@ -178,24 +155,17 @@ function buildQueryFromParams(params: DataQueryParams): {
  */
 router.get(
   '/',
-  validateToken as any, // Temporary type assertion to fix middleware type
+  validateToken as RequestHandler, // Temporary type assertion to fix middleware type
   async (req: Request, res: Response) => {
   try {
-    const db = await _initializeCosmosDB();
+    const db = await initializeCosmosDB();
     const queryParams = req.query as unknown as DataQueryParams;
     
     // Set default limit if not provided
-    const limit = Math.min(parseInt(queryParams.limit || '100', 10), 1000);
+    // const _limit = Math.min(parseInt(queryParams.limit || '100', 10), 1000);
     
     // Build the query from request parameters
     const { query, parameters } = buildQueryFromParams(queryParams);
-    
-    // Execute the query with pagination
-    const _queryOptions = {
-      parameters,
-      maxItemCount: limit,
-      continuationToken: queryParams.continuationToken,
-    };
     
     // Execute the query using our database client
     const queryResult = await db.query(query, parameters);

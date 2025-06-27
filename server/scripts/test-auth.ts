@@ -1,7 +1,7 @@
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { PublicClientApplication, AuthenticationResult } from '@azure/msal-node';
 import axios from 'axios';
-import path from 'path';
+import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 // Load environment variables

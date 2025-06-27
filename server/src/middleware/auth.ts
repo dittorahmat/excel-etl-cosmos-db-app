@@ -1,5 +1,4 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ConfidentialClientApplication } from '@azure/msal-node';
 import type { JwtPayload } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -17,45 +16,7 @@ export interface TokenPayload extends JwtPayload {
   scp?: string;
 }
 
-// MSAL client factory function
-const createMsalClient = () => {
-  // In test environment, return a mock client
-  if (process.env.NODE_ENV === 'test') {
-    return {
-      getTokenCache: () => ({
-        getAccountByHomeId: () => null,
-        getAccountByLocalId: () => null,
-        getAccountByUsername: () => null,
-        getAllAccounts: () => [],
-      }),
-      acquireTokenByClientCredential: async () => ({
-        accessToken: 'mock-access-token',
-        expiresOn: new Date(Date.now() + 3600 * 1000),
-      }),
-    } as unknown as ConfidentialClientApplication;
-  }
 
-  // In production/development, create a real client
-  const msalConfig = {
-    auth: {
-      clientId: process.env.AZURE_CLIENT_ID || '',
-      authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
-      clientSecret: process.env.AZURE_CLIENT_SECRET,
-    },
-    system: {
-      loggerOptions: {
-        loggerCallback: (level: any, message: string, containsPii: boolean) => {
-          if (containsPii) return;
-          console.log(`MSAL ${level}: ${message}`);
-        },
-        piiLoggingEnabled: false,
-        logLevel: 3, // Error
-      },
-    },
-  };
-
-  return new ConfidentialClientApplication(msalConfig);
-};
 
 // Initialize JWKS client for token validation
 const jwksClientInstance = jwksClient({
@@ -105,7 +66,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
     algorithms: ['RS256'] as jwt.Algorithm[],
   };
 
-  jwt.verify(token, getKey as any, validationOptions, (err, decoded) => {
+  jwt.verify(token, getKey as jwt.VerifyCallback, validationOptions, (err, decoded) => {
     if (err) {
       console.error('Token validation error:', err);
       return res.status(401).json({
@@ -154,7 +115,7 @@ export const authenticateToken = (
     jwt.verify(
       token,
       process.env.JWT_SECRET || 'your-secret-key',
-      (err: jwt.VerifyErrors | null, decoded: any) => {
+      (err: jwt.VerifyErrors | null, decoded: TokenPayload | undefined) => {
         if (err) {
           console.warn('[auth] Invalid or expired token', { error: err });
           return res.status(403).json({

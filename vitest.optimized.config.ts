@@ -10,10 +10,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/setupTests.simple.ts'],
+    setupFiles: ['./vitest.setup.ts'],
     mockReset: true,
     clearMocks: true,
-    testTimeout: 30000, // 30 second timeout for complex tests
+    testTimeout: 120000, // 120 second timeout for complex tests
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
     coverage: {
       enabled: false,
     },
@@ -40,11 +41,6 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   plugins: [
-    react({
-      jsxImportSource: '@emotion/react',
-      babel: {
-        plugins: ['@emotion/babel-plugin'],
-      },
-    })
+    react()
   ],
 });

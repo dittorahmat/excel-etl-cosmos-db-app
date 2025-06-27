@@ -30,11 +30,7 @@ export interface AuthenticatedRequest extends Request {
     expiresAt?: string;
   };
   startTime?: [number, number];
-  user?: {
-    oid: string;
-    roles?: string[];
-    [key: string]: any;
-  };
+  user?: import('./auth.js').TokenPayload;
 }
 
 /**
@@ -144,7 +140,7 @@ export function requireAuth(deps: AuthDependencies) {
       // Record API key usage after the response is sent
       res.on('finish', async () => {
         try {
-          const [seconds, nanoseconds] = process.hrtime(startTime);
+          
           // const responseTimeMs = (seconds * 1000) + (nanoseconds / 1e6);
           // recordUsage not implemented; skipping
         } catch (error) {

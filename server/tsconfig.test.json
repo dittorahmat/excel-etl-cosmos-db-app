@@ -5,15 +5,16 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "esModuleInterop": true,
-    "target": "ES2020",
+    "target": "ES2022",
     "sourceMap": true,
-    "types": ["vitest/globals", "node"],
+    "types": ["vitest/globals", "node", "@types/node"],
     "strict": true,
     "composite": false,
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@test/*": ["test/*"]
     },
     "rootDir": ".",
     "noEmit": true,
@@ -23,17 +24,26 @@
     ],
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": false
   },
   "include": [
     "test/**/*.ts",
+    "test/**/*.tsx",
     "test/**/*.js",
     "src/**/*.ts",
-    "src/**/*.js"
+    "src/**/*.tsx",
+    "vitest.config.ts",
+    "vitest.setup.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "dist-test"
+    "dist-test",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }

@@ -1,16 +1,14 @@
-import { describe, it, beforeEach, vi, expect } from 'vitest';
-import type { Mock } from 'vitest';
 import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
 import type { RevokeApiKeyParams } from '../src/types/apiKey.js';
 
 // Mock the Azure Cosmos DB container
 type MockContainer = {
-  item: Mock;
-  read: Mock;
-  upsert: Mock;
+  item: ReturnType<typeof vi.fn>;
+  read: ReturnType<typeof vi.fn>;
+  upsert: ReturnType<typeof vi.fn>;
   items: {
-    query: Mock;
-    fetchAll: Mock;
+    query: ReturnType<typeof vi.fn>;
+    fetchAll: ReturnType<typeof vi.fn>;
   };
 };
 

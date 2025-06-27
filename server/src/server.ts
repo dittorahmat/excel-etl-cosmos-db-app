@@ -1,7 +1,7 @@
+/// <reference types="node" />
 import express, { type Request, type Response, type NextFunction, type Express } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
 import rateLimit from 'express-rate-limit';
@@ -22,7 +22,7 @@ dotenv.config();
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 
 // Port configuration
 const PORT = process.env.PORT || 3000;
@@ -91,13 +91,22 @@ function createApp(azureServices: AzureCosmosDB): Express {
   app.use('/api', apiRateLimit);
 
   // Initialize repositories with Cosmos DB client
-  const _apiKeyRepository = new ApiKeyRepository(azureServices);
-  const _apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
+  
+
+  
+
+  // Initialize repositories with Cosmos DB client
+  const apiKeyRepository = new ApiKeyRepository(azureServices);
+  const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
+
+  // Initialize repositories with Cosmos DB client
+  const apiKeyRepository = new ApiKeyRepository(azureServices);
+  const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
 
   // Setup authentication middleware with required dependencies
   const authMiddleware = requireAuthOrApiKey({
-    apiKeyRepository: _apiKeyRepository,
-    apiKeyUsageRepository: _apiKeyUsageRepository
+    apiKeyRepository: apiKeyRepository,
+    apiKeyUsageRepository: apiKeyUsageRepository
   });
 
   // Apply authentication middleware to specific routes
@@ -216,8 +225,7 @@ async function startServer(port: number | string = PORT): Promise<Server> {
     console.log('Azure services initialized successfully');
 
     // Create Express application
-    const apiKeyRepository = new ApiKeyRepository(cosmosDb);
-    const apiKeyUsageRepository = new ApiKeyUsageRepository(cosmosDb);
+    
 
     logger.info('Repositories initialized');
 

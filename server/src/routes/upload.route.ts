@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
@@ -79,7 +79,7 @@ const processExcelFile = async (
   success: boolean;
   count: number;
   error?: string;
-  data?: any[];
+  data?: Record<string, unknown>[];
   headers?: string[];
   rowCount?: number;
   columnCount?: number;
@@ -115,7 +115,7 @@ const processExcelFile = async (
     const worksheet = workbook.Sheets[firstSheetName];
 
     // Convert to JSON with headers
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, {
+    const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
       header: 1,
       raw: true,
       defval: '',
@@ -136,7 +136,7 @@ const processExcelFile = async (
 
     // Process data rows
     const processedData = dataRows.map((row, index) => {
-      const record: Record<string, any> = {
+      const record: Record<string, unknown> = {
         id: uuidv4(),
         _partitionKey: userId,
         fileName,
@@ -183,7 +183,7 @@ const createErrorResponse = (status: number, error: string, message: string) => 
 });
 
 // Define the route handler function
-const uploadHandler = async (req: Request, res: Response<UploadResponse>, next: NextFunction) => {
+const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
   // Log the start of the upload handler
   console.log('[upload.route] Upload handler started');
 
@@ -320,28 +320,23 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>, next: 
         );
       }
       
-      // Handle other types of errors
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      return res.status(500).json(
-        createErrorResponse(500, 'Server error', errorMessage)
-      );
-
-      // Handle file processing errors
+      // Handle file processing errors for unsupported formats
       if (error instanceof Error && error.message.includes('unsupported format')) {
         return res.status(400).json(
           createErrorResponse(400, 'Invalid file format', 'The file format is not supported')
         );
       }
 
-      // Handle other errors
-      console.error('[upload.route] Unhandled error:', error);
+      // Handle other types of errors
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error('[upload.route] Error processing file:', error);
       return res.status(500).json(
         createErrorResponse(
           500,
-          'Internal server error',
+          'Server error',
           process.env.NODE_ENV === 'development'
-            ? error instanceof Error ? error.message : 'Unknown error'
-            : 'An unexpected error occurred'
+            ? errorMessage
+            : 'An error occurred while processing the file'
         )
       );
     }
@@ -394,7 +389,7 @@ router.post(
 );
 
 // Error handling middleware
-router.use((err: any, req: Request, res: Response<UploadResponse>, next: NextFunction) => {
+router.use((err: Error & { code?: string; statusCode?: number; name?: string }, req: Request, res: Response<UploadResponse>) => {
   routeLogger.error('Upload route error', {
     error: err.message || 'Unknown error',
     stack: err.stack,

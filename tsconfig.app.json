@@ -34,7 +34,10 @@
     "src/**/*.tsx",
     "src/**/*.d.ts",
     "vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vite.config.js",
+    "vitest.config.js",
+    "@/**/*"
   ],
   "exclude": ["node_modules", "dist", "build"]
 }

@@ -1,4 +1,4 @@
-import type { Request, Response as _Response, NextFunction as _NextFunction } from 'express';
+import type { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import type { RateLimitRequestHandler, Options, Store, ClientRateLimitInfo } from 'express-rate-limit';
 import type { IncomingHttpHeaders } from 'http';
@@ -30,7 +30,7 @@ function createRateLimitEntry(resetTime: number): RateLimitStoreEntry {
 const cleanupOldEntries = () => {
   const now = Date.now();
 
-  for (const [_store, entries] of rateLimitStores.entries()) {
+  for (const entries of rateLimitStores.values()) {
     for (const [key, entry] of entries.entries()) {
       if (now > entry.resetTime) {
         console.log(`Cleaning up expired rate limit entry for key: ${key}`);

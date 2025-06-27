@@ -30,7 +30,8 @@
     "vitest.config.*",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "**/*.d.ts"
+    "**/*.d.ts",
+    "vitest.setup.ts"
   ],
   "exclude": [
     "node_modules",

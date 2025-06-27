@@ -6,9 +6,8 @@ import { AZURE_CONFIG } from '../../config/azure-config.js';
 
 let cosmosClient: CosmosClient | null = null;
 let database: Database | null = null;
-// Container is initialized but not directly used in this file
-// It's kept for potential future use
 let _container: Container | null = null;
+
 
 /**
  * Initialize Azure Cosmos DB client

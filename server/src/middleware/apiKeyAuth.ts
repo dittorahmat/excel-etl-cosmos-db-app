@@ -23,8 +23,13 @@ declare global {
 /**
  * Creates an error object with status and message
  */
-function createError(status: number, message: string, originalError?: Error) {
-  const error = new Error(message) as any;
+interface HttpError extends Error {
+  status: number;
+  originalError?: Error;
+}
+
+function createError(status: number, message: string, originalError?: Error): HttpError {
+  const error = new Error(message) as HttpError;
   error.status = status;
   if (originalError) {
     error.originalError = originalError;

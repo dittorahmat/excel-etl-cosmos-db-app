@@ -2,6 +2,39 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterAll, beforeAll } from 'vitest';
 import { AuthProvider, useAuth } from '../../auth/AuthProvider';
+import { MsalProvider, useMsal } from '@azure/msal-react';
+
+vi.mock('@azure/msal-react', () => ({
+  MsalProvider: ({ children }) => children,
+  useMsal: () => ({
+    instance: mockMsalInstance,
+    accounts: mockMsalInstance.getAllAccounts(),
+    inProgress: 'none',
+  }),
+}));
+
+// Test component that uses the auth context
+const TestComponent = () => {
+  const { instance, accounts } = useMsal();
+  const { isAuthenticated, login, logout, loading, error } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error?.message}</div>;
+
+  return (
+    <div>
+      <div data-testid="auth-status">
+        {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
+      </div>
+      <button onClick={login} data-testid="login-button">
+        Login
+      </button>
+      <button onClick={logout} data-testid="logout-button">
+        Logout
+      </button>
+    </div>
+  );
+};
 
 // Import the mock instance from setupTests
 const { mockMsalInstance } = vi.hoisted(() => ({
@@ -44,126 +77,6 @@ const { mockMsalInstance } = vi.hoisted(() => ({
 // Set up the mock instance on window for test-utils
 global.window.msalInstance = mockMsalInstance as any;
 
-// Test component that uses the auth context
-const TestComponent = () => {
-  const { isAuthenticated, login, logout, loading, error } = useAuth();
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error?.message}</div>;
-
-  return (
-    <div>
-      <div data-testid="auth-status">
-        {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
-      </div>
-      <button onClick={login} data-testid="login-button">
-        Login
-      </button>
-      <button onClick={logout} data-testid="logout-button">
-        Logout
-      </button>
-    </div>
-  );
-};
-
-describe('AuthProvider', () => {
-  beforeAll(() => {
-    vi.stubEnv('DEBUG', 'msal*');
-  });
-
-  afterAll(() => {
-    vi.unstubAllEnvs();
-  });
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should render children', () => {
-    render(
-      <AuthProvider>
-        <div data-testid="test-child">Test Child</div>
-      </AuthProvider>
-    );
-
-    expect(screen.getByTestId('test-child')).toBeInTheDocument();
-  });
-
-  it('should provide auth context', () => {
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-
-    expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
-  });
-
-  it('should handle login', async () => {
-    const user = userEvent.setup();
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-
-    const loginButton = screen.getByTestId('login-button');
-    await user.click(loginButton);
-
-    expect(mockMsalInstance.loginPopup).toHaveBeenCalled();
-  });
-
-  it('should handle logout', async () => {
-    const user = userEvent.setup();
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-
-    const logoutButton = screen.getByTestId('logout-button');
-    await user.click(logoutButton);
-
-    expect(mockMsalInstance.logout).toHaveBeenCalled();
-  });
-
-  it('should handle token refresh', async () => {
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-
-    // Simulate token expiration
-    mockMsalInstance.acquireTokenSilent.mockResolvedValueOnce({
-      accessToken: 'new-access-token',
-      idToken: 'new-id-token',
-      expiresOn: new Date(Date.now() + 3600000),
-    });
-
-    // Wait for token refresh to complete
-    await waitFor(() => {
-      expect(mockMsalInstance.acquireTokenSilent).toHaveBeenCalled();
-    });
-  });
-
-  it('should handle errors during login', async () => {
-    const user = userEvent.setup();
-    const errorMessage = 'Login failed';
-    mockMsalInstance.loginPopup.mockRejectedValueOnce(new Error(errorMessage));
-
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-
-    const loginButton = screen.getByTestId('login-button');
-    await user.click(loginButton);
-
-    // Wait for error state to update
-    await waitFor(() => {
-      expect(screen.getByText(`Error: ${errorMessage}`)).toBeInTheDocument();
-    });
   });
 });

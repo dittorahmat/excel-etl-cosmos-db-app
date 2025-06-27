@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../dist-server-scripts",
+    "rootDir": "."
+  },
+  "include": ["./**/*.ts", "./**/*.js"],
+  "exclude": ["node_modules", "dist"]
+}

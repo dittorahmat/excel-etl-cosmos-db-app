@@ -4,16 +4,16 @@ import { body, param } from 'express-validator';
 
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import { validateRequest } from '../middleware/validateRequest.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, TokenPayload } from '../middleware/auth.js';
 import { authRateLimiter } from '../middleware/rateLimit.js';
 
 import type { AzureCosmosDB } from '../types/azure.js';
 import type { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
-import type { AuthenticatedRequest } from '../types/custom.js';
+
 
 // Helper type to properly type async request handlers
-type AsyncRequestHandler<P = {}, ResBody = any, ReqBody = any, ReqQuery = any> = (
-  req: Request<P, ResBody, ReqBody, ReqQuery> & { user?: any },
+type AsyncRequestHandler<P = {}, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> = (
+  req: Request<P, ResBody, ReqBody, ReqQuery> & { user?: TokenPayload },
   res: Response<ResBody>,
   next: NextFunction
 ) => Promise<void>;
@@ -28,21 +28,7 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
   // Apply rate limiting to all API key routes
   router.use(authRateLimiter);
 
-  // Middleware to ensure user is authenticated
-  const requireAuth = (): RequestHandler => {
-    return (req, res, next) => {
-      const authReq = req as AuthenticatedRequest;
-      if (!authReq.user) {
-        res.status(401).json({
-          success: false,
-          error: 'Unauthorized',
-          message: 'Authentication required',
-        });
-        return;
-      }
-      next();
-    };
-  };
+  
 
   /**
    * @route   POST /api/keys
@@ -50,7 +36,7 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
    * @access  Private
    */
   // Create API key route
-  const createApiKeyHandler: AsyncRequestHandler<{}, any, CreateApiKeyRequest> = async (req, res, next) => {
+  const createApiKeyHandler: AsyncRequestHandler<{}, unknown, CreateApiKeyRequest> = async (req, res, next) => {
     try {
       const userId = req.user?.oid;
       if (!userId) {

@@ -1,9 +1,35 @@
 import { ContainerClient } from '@azure/storage-blob';
 import { Container } from '@azure/cosmos';
-import type { Mock } from 'vitest';
-import { vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { randomBytes, createHash, timingSafeEqual } from 'crypto';
+
+// Vitest globals (vi, describe, it, expect, etc.) are available automatically in test files
+// TypeScript types for test utilities
+interface Mock<T = any, Y extends any[] = any> {
+  (...args: Y): T;
+  mock: {
+    calls: Y[];
+    results: Array<{ type: 'return' | 'throw'; value: T }>;
+    instances: any[];
+    implementation?: (...args: Y) => T;
+  };
+  mockImplementation: (fn: (...args: Y) => T) => Mock<T, Y>;
+  mockImplementationOnce: (fn: (...args: Y) => T) => Mock<T, Y>;
+  mockReturnValue: (value: T) => Mock<T, Y>;
+  mockResolvedValue: (value: T) => Mock<Promise<T>, Y>;
+  mockRejectedValue: (value: any) => Mock<Promise<T>, Y>;
+  mockReturnValueOnce: (value: T) => Mock<T, Y>;
+  mockResolvedValueOnce: (value: T) => Mock<Promise<T>, Y>;
+  mockRejectedValueOnce: (value: any) => Mock<Promise<T>, Y>;
+  mockClear: () => void;
+  mockReset: () => void;
+  mockRestore: () => void;
+  mockReturnThis: () => Mock<T, Y>;
+  mockName: (name: string) => Mock<T, Y>;
+  getMockName: () => string;
+  mockCallCount: number;
+  mockResults: Array<{ type: 'return' | 'throw'; value: T }>;
+}
 
 // Mock the crypto module
 vi.mock('crypto', () => {
@@ -103,29 +129,33 @@ export const mockContainerClient = {
   }),
 } as unknown as ContainerClient;
 
+interface Resource {
+  id: string;
+  [key: string]: any;
+}
+
 // Mock CosmosDB container with proper chaining support
-export const createMockCosmosContainer = (initialResources: any[] = []) => {
+export const createMockCosmosContainer = <T extends Resource = Resource>(initialResources: T[] = []) => {
   let resources = [...initialResources];
   
   const mockItems = {
-    query: vi.fn().mockImplementation((query) => {
-      const queryResult = {
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: query?.parameters?.length 
-            ? resources.filter(item => 
-                query.parameters.some((param: any) => 
-                  item[param.name] === param.value ||
-                  item.id === param.value ||
-                  item.userId === param.value
-                )
-              )
-            : resources
-        })
-      };
-      queryResult.fetchAll.mockName('fetchAll');
-      return queryResult;
-    }),
-    create: vi.fn().mockImplementation((item) => {
+    query: vi.fn().mockImplementation((query: { query: string; parameters?: any[] }) => ({
+      fetchAll: vi.fn().mockImplementation(() => {
+        // Simple query matching - in a real test, you'd want to implement proper query parsing
+        if (query.query.includes('WHERE')) {
+          const idMatch = query.query.match(/c\.id = @id/);
+          if (idMatch && query.parameters) {
+            const idParam = query.parameters.find((p: any) => p.name === '@id');
+            if (idParam) {
+              const resource = initialResources.find((r: any) => r.id === idParam.value);
+              return Promise.resolve({ resources: resource ? [resource] : [] });
+            }
+          }
+        }
+        return Promise.resolve({ resources: [...initialResources] });
+      }),
+    })),
+    create: vi.fn().mockImplementation((item: T) => {
       const newItem = { 
         ...item, 
         id: item.id || `mock-id-${Math.random().toString(36).substr(2, 9)}`,
@@ -135,7 +165,7 @@ export const createMockCosmosContainer = (initialResources: any[] = []) => {
       resources.push(newItem);
       return { resource: newItem };
     }),
-    upsert: vi.fn().mockImplementation((item) => {
+    upsert: vi.fn().mockImplementation((item: T) => {
       const existingIndex = resources.findIndex(i => i.id === item.id);
       const updatedItem = { 
         ...item, 
@@ -158,20 +188,20 @@ export const createMockCosmosContainer = (initialResources: any[] = []) => {
   
   return {
     items: mockItems,
-    item: vi.fn().mockImplementation((id, partitionKey) => {
-      const item = resources.find(i => i.id === id);
+    item: vi.fn().mockImplementation((id: string, partitionKey: string) => {
+      const item = resources.find((i: any) => i.id === id);
       return {
         read: vi.fn().mockResolvedValue({ resource: item || null }),
-        replace: vi.fn().mockImplementation((newItem) => {
-          const index = resources.findIndex(i => i.id === id);
+        replace: vi.fn().mockImplementation((newItem: T) => {
+          const index = resources.findIndex((i: any) => i.id === id);
           if (index >= 0) {
-            resources[index] = { ...newItem, id };
+            resources[index] = { ...newItem as any, id };
             return { resource: resources[index] };
           }
           return { resource: null };
         }),
         delete: vi.fn().mockImplementation(() => {
-          const index = resources.findIndex(i => i.id === id);
+          const index = resources.findIndex((i: any) => i.id === id);
           if (index >= 0) {
             resources.splice(index, 1);
             return { statusCode: 204 };
@@ -186,9 +216,14 @@ export const createMockCosmosContainer = (initialResources: any[] = []) => {
 // Create a typed mock container
 export const mockCosmosContainer = createMockCosmosContainer() as unknown as Container;
 
-export interface MockRequest extends Partial<Request> {
+export interface MockRequest extends Omit<Request, 'body' | 'params' | 'query' | 'headers'> {
   file?: Express.Multer.File;
   user?: { oid: string; name?: string; email?: string };
+  body?: any;
+  params?: Record<string, any>;
+  query?: Record<string, any>;
+  headers?: Record<string, any>;
+  [key: string]: any;
 }
 
 export const mockRequest = (body: any = {}, file?: Express.Multer.File): MockRequest => {
@@ -204,14 +239,21 @@ export const mockRequest = (body: any = {}, file?: Express.Multer.File): MockReq
   return req as MockRequest;
 };
 
-export interface MockResponse extends Partial<Response> {
-  status?: (code: number) => Response;
-  sendStatus?: (code: number) => Response;
-  send?: (body: any) => Response;
-  json?: (body: any) => Response;
-  end?: () => Response;
+export type MockResponse = Response & {
+  status: (code: number) => MockResponse;
+  send: (body: any) => MockResponse;
+  json: (body: any) => MockResponse;
+  end: () => MockResponse;
+  statusCode: number;
+  body: any;
+  locals: any;
+  get: (field: string) => string | undefined;
+  set: (field: string, value: string) => void;
+  header: (field: string, value: string) => void;
+  setHeader: (name: string, value: string) => void;
+  getHeader: (name: string) => string | string[] | undefined;
   [key: string]: any;
-}
+};
 
 export const mockResponse = (): MockResponse => {
   const res: Partial<MockResponse> = {};
@@ -221,4 +263,5 @@ export const mockResponse = (): MockResponse => {
   return res as MockResponse;
 };
 
-export const mockNext: NextFunction = vi.fn();
+// Create a mock next function with proper typing
+export const mockNext: NextFunction = vi.fn() as NextFunction;

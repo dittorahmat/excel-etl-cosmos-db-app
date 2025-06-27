@@ -1,7 +1,5 @@
-import { vi } from 'vitest';
-
 // Mock for xlsx library
-export const read = vi.fn().mockImplementation((_buffer, _options) => ({
+export const read = vi.fn().mockImplementation((_buffer: any, _options: any) => ({
   SheetNames: ['Sheet1'],
   Sheets: {
     Sheet1: {
@@ -21,7 +19,7 @@ export const read = vi.fn().mockImplementation((_buffer, _options) => ({
 
 export const utils = {
   decode_range: vi.fn().mockReturnValue({ s: { c: 0, r: 0 }, e: { c: 2, r: 2 } }),
-  encode_cell: vi.fn().mockImplementation(({ c, r }) => {
+  encode_cell: vi.fn().mockImplementation(({ c, r }: { c: number; r: number }) => {
     const col = String.fromCharCode(65 + c); // A, B, C, ...
     return `${col}${r + 1}`;
   }),

@@ -23,7 +23,7 @@
     "test:server": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test --exclude='**/backup_js_tests/**'",
     "test:server:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.server.config.ts server/test",
     "test:server:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.server.config.ts server/test",
-    "test:client": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests",
+    "test:client": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts --passWithNoTests",
     "test:client:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:client:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:all": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests && NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test",
@@ -130,6 +130,7 @@
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
     "vite-tsconfig-paths": "^4.3.2",
-    "vitest": "^1.6.1"
+    "vitest": "^1.6.1",
+    "vitest-sonar-reporter": "^2.0.1"
   }
 }

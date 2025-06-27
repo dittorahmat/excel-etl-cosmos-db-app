@@ -3,10 +3,11 @@ import type {
   CosmosClient, 
   Container, 
   SqlQuerySpec,
-  ContainerRequest
+  ContainerRequest,
+  Database
 } from '@azure/cosmos';
 // Mock types are now defined locally
-import type { Request } from 'express';
+
 
 // Express Multer File type
 export interface MulterFile {
@@ -49,7 +50,7 @@ export interface AzureCosmosDB {
   cosmosClient: CosmosClient;
 
   /** The Cosmos DB database instance */
-  database: any; // Added to align with custom.d.ts
+  database: Database;
 
   /**
    * Get a reference to a Cosmos DB container
@@ -79,7 +80,7 @@ export interface AzureCosmosDB {
    */
   query: <T extends CosmosRecord>(
     query: string,
-    parameters?: { name: string; value: any }[],
+    parameters?: { name: string; value: unknown }[],
     containerName?: string
   ) => Promise<T[]>;
 
@@ -111,8 +112,8 @@ export interface AzureCosmosDB {
 // Mock implementation types
 export interface MockBlobStorage extends AzureBlobStorage {
   _mocks: {
-    upload: any;
-    delete: any;
+    upload: (containerName: string, file: MulterFile) => Promise<{ url: string; name: string; size: number; }>;
+    delete: (containerName: string, fileName: string) => Promise<void>;
   };
 }
 
