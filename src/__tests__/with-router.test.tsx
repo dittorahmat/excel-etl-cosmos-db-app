@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
@@ -49,7 +49,9 @@ const AppWithRouter = () => (
 
 describe('App with Router', () => {
   it('renders home page by default', async () => {
-    await render(<AppWithRouter />);
+    await act(async () => {
+      render(<AppWithRouter />);
+    });
     expect(await screen.findByTestId('home-page')).to.exist;
     expect(screen.getByTestId('home-page').textContent).to.include('Home Page');
   });

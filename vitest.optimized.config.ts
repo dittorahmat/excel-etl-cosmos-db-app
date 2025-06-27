@@ -7,32 +7,27 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  build: {
+    // Disable source maps to reduce memory usage
+    sourcemap: false,
+  },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    mockReset: true,
-    clearMocks: true,
     testTimeout: 120000, // 120 second timeout for complex tests
-    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       enabled: false,
     },
-    cache: false,
-    isolate: false,
-    // Disable file watching and HMR
-    server: {
-      watch: null,
-      hmr: false,
-    },
-    // Disable threads to reduce memory usage
-    threads: false,
-    // Disable source maps
-    sourcemap: false,
     // Disable CSS processing
     css: false,
-    // Disable test file watching
-    watchExclude: ['**/*'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        execArgv: ['--max-old-space-size=2048'],
+      },
+    },
   },
   resolve: {
     alias: {
