@@ -1,5 +1,5 @@
 import { CosmosClient } from '@azure/cosmos';
-import type { Container, Database } from '@azure/cosmos';
+import type { Container, Database, SqlParameter } from '@azure/cosmos';
 import type { CosmosRecord, AzureCosmosDB } from '../../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
@@ -132,10 +132,10 @@ export function createCosmosDbClient(): AzureCosmosDB {
         };
       });
       
-      // Execute the query
+      // Execute the query with properly typed parameters
       const { resources } = await container.items.query<T>({
         query,
-        parameters: queryParams as any // Type assertion needed due to Cosmos DB type definitions
+        parameters: queryParams as SqlParameter[]
       }).fetchAll();
 
       return resources;
