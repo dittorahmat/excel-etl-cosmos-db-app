@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
@@ -35,7 +35,9 @@ const AboutPage = () => _jsx("div", { "data-testid": "about-page", children: "Ab
 const AppWithRouter = () => (_jsx(MemoryRouter, { initialEntries: ['/'], children: _jsxs(Routes, { children: [_jsx(Route, { path: "/", element: _jsx(HomePage, {}) }), _jsx(Route, { path: "/about", element: _jsx(AboutPage, {}) })] }) }));
 describe('App with Router', () => {
     it('renders home page by default', async () => {
-        await render(_jsx(AppWithRouter, {}));
+        await act(async () => {
+            render(_jsx(AppWithRouter, {}));
+        });
         expect(await screen.findByTestId('home-page')).to.exist;
         expect(screen.getByTestId('home-page').textContent).to.include('Home Page');
     });
