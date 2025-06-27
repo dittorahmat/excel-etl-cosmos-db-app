@@ -64,6 +64,9 @@ module.exports = {
       env: {
         browser: true,
       },
+      globals: {
+        console: 'readonly',
+      },
       rules: {
         'react/react-in-jsx-scope': 'off',
         'no-undef': 'off',
@@ -106,6 +109,18 @@ module.exports = {
       },
       rules: {
         '@typescript-eslint/no-var-requires': 'off',
+      },
+    },
+    {
+      files: ['src/**/*.{js,jsx}'],
+      env: {
+        browser: true,
+      },
+      globals: {
+        console: 'readonly',
+      },
+      rules: {
+        'no-undef': 'error',
       },
     },
     {

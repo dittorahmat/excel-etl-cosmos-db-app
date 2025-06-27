@@ -141,12 +141,7 @@ export interface MockCosmosDB extends AzureCosmosDB {
   };
   
   // Database operations
-  database: {
-    id: string;
-    containers: {
-      createIfNotExists: (body: ContainerRequest) => Promise<{ container: Container }>;
-    };
-  };
+  database: Database;
   
   // Container operations
   container: (containerName: string, partitionKey?: string) => Promise<Container>;

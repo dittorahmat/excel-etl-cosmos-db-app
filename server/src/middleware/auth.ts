@@ -66,7 +66,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
     algorithms: ['RS256'] as jwt.Algorithm[],
   };
 
-  jwt.verify(token, getKey as jwt.VerifyCallback, validationOptions, (err, decoded) => {
+  jwt.verify(token, getKey, validationOptions, (err, decoded) => {
     if (err) {
       console.error('Token validation error:', err);
       return res.status(401).json({
@@ -115,7 +115,8 @@ export const authenticateToken = (
     jwt.verify(
       token,
       process.env.JWT_SECRET || 'your-secret-key',
-      (err: jwt.VerifyErrors | null, decoded: TokenPayload | undefined) => {
+      { algorithms: ['HS256'] }, // Add algorithms option
+      (err, decoded) => {
         if (err) {
           console.warn('[auth] Invalid or expired token', { error: err });
           return res.status(403).json({
