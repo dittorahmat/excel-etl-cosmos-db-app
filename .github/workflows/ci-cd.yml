@@ -77,13 +77,22 @@ jobs:
 
 
     - name: Deploy to Azure Static Web App
+      if: secrets.AZURE_STATIC_WEB_APPS_TOKEN != ''
       uses: Azure/static-web-apps-deploy@v1
       with:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: 'upload'
-        app_location: '/'
+        app_location: 'dist'
         output_location: 'dist'
+        skip_deploy_on_missing_secrets: true
+        verbose: true
+
+    - name: Skip deployment (no token)
+      if: secrets.AZURE_STATIC_WEB_APPS_TOKEN == ''
+      run: |
+        echo "Skipping deployment: AZURE_STATIC_WEB_APPS_TOKEN secret not set"
+        echo "To enable deployment, add the AZURE_STATIC_WEB_APPS_TOKEN secret to your repository settings"
 
   deploy-backend:
     name: Deploy Backend
@@ -162,18 +171,38 @@ jobs:
             WEBSITE_NODE_DEFAULT_VERSION=~20 \
             SCM_DO_BUILD_DURING_DEPLOYMENT=false
 
-    - name: Log deployment status to Azure Monitor
-      if: always()
+    - name: Setup deployment monitoring
+      if: always() && secrets.AZURE_WEBAPP_RESOURCE_ID != '' && secrets.AZURE_RESOURCE_GROUP != ''
       uses: Azure/cli@v1.0.0
       with:
         azcliversion: 2.0.72
         inlineScript: |
-          az monitor metrics alert create \
-            --name "DeploymentSuccess" \
+          echo "Setting up deployment monitoring..."
+          
+          # Check if the alert already exists
+          if ! az monitor metrics alert show \
+            --name "DeploymentSuccessAlert" \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --scopes ${{ secrets.AZURE_WEBAPP_RESOURCE_ID }} \
-            --condition "count deployment_http_2xx > 0 where deployment_status == 'Success'" \
-            --description "Track successful deployments" \
-            --evaluation-frequency 5m \
-            --window-size 5m \
-            --severity 0
+            --output none 2>/dev/null; then
+            
+            echo "Creating deployment success alert..."
+            az monitor metrics alert create \
+              --name "DeploymentSuccessAlert" \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --scopes ${{ secrets.AZURE_WEBAPP_RESOURCE_ID }} \
+              --condition "count deployment_http_2xx > 0" \
+              --description "Track successful deployments" \
+              --evaluation-frequency "PT5M" \
+              --window-size "PT5M" \
+              --severity 3 \
+              --auto-mitigate true \
+              --action ""
+          else
+            echo "Deployment success alert already exists, skipping creation."
+          fi
+          
+    - name: Skip monitoring setup (missing secrets)
+      if: always() && (secrets.AZURE_WEBAPP_RESOURCE_ID == '' || secrets.AZURE_RESOURCE_GROUP == '')
+      run: |
+        echo "Skipping monitoring setup: Required secrets not configured"
+        echo "To enable monitoring, ensure AZURE_WEBAPP_RESOURCE_ID and AZURE_RESOURCE_GROUP secrets are set"
