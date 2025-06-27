@@ -105,12 +105,37 @@ export function createCosmosDbClient(): AzureCosmosDB {
       }
 
       const container = database.container(containerName);
+      
+      // Prepare parameters for Cosmos DB query
+      const queryParams = parameters.map(param => {
+        // Convert parameter value to a valid JSON value (string, number, boolean, null)
+        let value = param.value;
+        
+        // Handle different value types
+        if (value === undefined || value === null) {
+          // Convert undefined or null to null for Cosmos DB
+          value = null;
+        } else if (typeof value === 'object') {
+          // Stringify objects and arrays
+          value = JSON.stringify(value);
+        } else if (typeof value !== 'string' && 
+                  typeof value !== 'number' && 
+                  typeof value !== 'boolean') {
+          // Convert any other non-JSON-serializable values to strings
+          value = String(value);
+        }
+        
+        // At this point, value is guaranteed to be string | number | boolean | null
+        return {
+          name: param.name,
+          value: value as string | number | boolean | null
+        };
+      });
+      
+      // Execute the query
       const { resources } = await container.items.query<T>({
         query,
-        parameters: parameters.map(p => ({
-          name: p.name,
-          value: p.value === undefined ? null : (typeof p.value === 'object' && p.value !== null ? JSON.stringify(p.value) : p.value)
-        }))
+        parameters: queryParams as any // Type assertion needed due to Cosmos DB type definitions
       }).fetchAll();
 
       return resources;
