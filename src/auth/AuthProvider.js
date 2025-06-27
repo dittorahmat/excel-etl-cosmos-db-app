@@ -60,7 +60,8 @@ const AuthProvider = ({ children }) => {
         const checkAuth = async () => {
             setLoading(true);
             try {
-                if (accounts.length > 0) {
+                const currentAccounts = instance.getAllAccounts();
+                if (currentAccounts && currentAccounts.length > 0) {
                     const account = accounts[0];
                     setUser(account);
                     setIsAuthenticated(true);

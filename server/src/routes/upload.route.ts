@@ -123,7 +123,7 @@ const processExcelFile = async (
     });
 
     // Extract headers (first row)
-    const headers = jsonData[0] as string[];
+    const headers = jsonData[0] as unknown as string[];
     const dataRows = jsonData.slice(1);
 
     if (dataRows.length === 0) {

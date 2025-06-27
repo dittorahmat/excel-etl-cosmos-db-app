@@ -91,15 +91,6 @@ function createApp(azureServices: AzureCosmosDB): Express {
   app.use('/api', apiRateLimit);
 
   // Initialize repositories with Cosmos DB client
-  
-
-  
-
-  // Initialize repositories with Cosmos DB client
-  const apiKeyRepository = new ApiKeyRepository(azureServices);
-  const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
-
-  // Initialize repositories with Cosmos DB client
   const apiKeyRepository = new ApiKeyRepository(azureServices);
   const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
 

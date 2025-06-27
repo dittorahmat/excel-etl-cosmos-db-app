@@ -53,8 +53,8 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
  * @returns An instance of AzureCosmosDB
  */
 export function createCosmosDbClient(): AzureCosmosDB {
-  if (!cosmosClient) {
-    throw new Error('Cosmos client not initialized. Call initializeCosmosDB first.');
+  if (!cosmosClient || !database) {
+    throw new Error('Cosmos client or database not initialized. Call initializeCosmosDB first.');
   }
 
   return {
@@ -97,7 +97,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
     },
     query: async <T extends CosmosRecord>(
       query: string,
-      parameters: { name: string; value: string | number | boolean | null }[] = [],
+      parameters: { name: string; value: unknown }[] = [],
       containerName: string = AZURE_CONFIG.cosmos.containerName
     ): Promise<T[]> => {
       if (!database) {
@@ -109,7 +109,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
         query,
         parameters: parameters.map(p => ({
           name: p.name,
-          value: p.value === undefined ? null : p.value
+          value: p.value === undefined ? null : p.value as any
         }))
       }).fetchAll();
 
