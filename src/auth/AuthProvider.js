@@ -84,7 +84,7 @@ const AuthProvider = ({ children }) => {
             }
         };
         checkAuth();
-    }, [accounts, getTokenSilently]);
+  }, [accounts, getTokenSilently, instance]);
     // Handle login
     const login = async () => {
         setLoading(true);
