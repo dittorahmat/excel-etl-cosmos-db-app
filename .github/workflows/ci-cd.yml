@@ -132,7 +132,9 @@ jobs:
       working-directory: ./
       run: |
         mkdir -p deployment
-        cp -r server/dist/* deployment/
+        # Copy the built server files from dist/server to deployment
+        cp -r dist/server/* deployment/
+        # Copy package.json and package-lock.json from the server directory
         cp server/package*.json deployment/
         # Copy web.config for Azure App Service
         echo '<?xml version="1.0" encoding="utf-8"?>
