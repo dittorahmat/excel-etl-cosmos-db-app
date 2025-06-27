@@ -3,7 +3,7 @@ import type {
   CosmosClient, 
   Container, 
   SqlQuerySpec,
-  ContainerRequest,
+  
   Database
 } from '@azure/cosmos';
 // Mock types are now defined locally

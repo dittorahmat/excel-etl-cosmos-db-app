@@ -109,7 +109,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
         query,
         parameters: parameters.map(p => ({
           name: p.name,
-          value: p.value === undefined ? null : p.value as any
+          value: p.value === undefined ? null : (typeof p.value === 'object' && p.value !== null ? JSON.stringify(p.value) : p.value)
         }))
       }).fetchAll();
 
