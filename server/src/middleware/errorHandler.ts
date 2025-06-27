@@ -57,7 +57,7 @@ const errorHandler = (
   switch (true) {
     case err.name === 'ValidationError':
       response.error = 'Validation Error';
-      response.details = (err as any).details || {};
+      response.details = err.details || {};
       res.status(400).json(response);
       break;
       

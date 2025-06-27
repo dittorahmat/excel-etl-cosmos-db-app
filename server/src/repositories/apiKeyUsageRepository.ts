@@ -85,7 +85,7 @@ export class ApiKeyUsageRepository {
     try {
       // Calculate time range
       const now = new Date();
-      let fromDate = new Date(now);
+      const fromDate = new Date(now);
       
       switch (timeRange) {
         case '24h':
@@ -126,7 +126,7 @@ export class ApiKeyUsageRepository {
       let totalResponseTime = 0;
       let successCount = 0;
 
-      records.forEach((record: any) => {
+      records.forEach((record: ApiKeyUsageRecord) => {
         // Count by status code
         stats.byStatusCode[record.statusCode] = (stats.byStatusCode[record.statusCode] || 0) + 1;
         

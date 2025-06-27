@@ -1,9 +1,8 @@
 import type { MockCosmosDB, CosmosRecord } from '../../types/azure.js';
 import type { 
-  Container, 
-  ContainerResponse, 
-  Database, 
-  Resource,
+  Container,
+  ContainerResponse,
+  Database,
   SqlQuerySpec,
   ContainerRequest,
   Items,
@@ -17,16 +16,7 @@ import type {
   DiagnosticNode
 } from '../../types/cosmos-mock-types.js';
 
-// Extended type for mock container resource
-// Unused type - keeping for potential future use
-type _MockContainerResource = Resource & {
-  _conflicts: string;
-  _docs: string;
-  _sprocs: string;
-  _triggers: string;
-  _udfs: string;
-  [key: string]: unknown;
-};
+
 
 // In-memory store for mock data
 const mockDataStore: Record<string, Record<string, unknown>> = {};

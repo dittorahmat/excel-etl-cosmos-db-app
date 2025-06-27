@@ -1,9 +1,14 @@
 {
   "files": [],
   "include": [
-    "vite-env.d.ts"
+    "vite-env.d.ts",
+    "server/scripts/**/*.ts",
+    "server/scripts/**/*.js"
   ],
   "compilerOptions": {
+    "module": "NodeNext",
+    "target": "ES2022",
+    "esModuleInterop": true,
     "types": [
       "node",
       "vite/client"

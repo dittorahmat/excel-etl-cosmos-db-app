@@ -1,37 +1,13 @@
-import React from 'react';
-import { MsalProvider, useMsal } from '@azure/msal-react';
 import type { AccountInfo } from '@azure/msal-browser';
-import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { ReactNode } from 'react';
-import { msalConfig, loginRequest } from './authConfig.custom';
-import { assertMsalConfig, isTokenExpired } from './authUtils';
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
+import { useEffect, useState, useCallback } from 'react';
+import { loginRequest } from './authConfig.custom';
+import { isTokenExpired } from './authUtils';
+import { AuthProviderProps } from './auth.types';
+import { useMsal } from '@azure/msal-react';
+import { AuthContext } from './useAuth';
 
-// Create MSAL instance
-export const msalInstance = new PublicClientApplication(
-  assertMsalConfig(msalConfig) ? msalConfig : { auth: { clientId: '' } }
-);
 
-// Auth types and interfaces
-export interface AuthContextType {
-  isAuthenticated: boolean;
-  user: AccountInfo | null;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
-  getAccessToken: () => Promise<string | null>;
-  error: Error | null;
-  loading: boolean;
-}
-
-export interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export interface AuthWrapperProps {
-  children: ReactNode;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
 
 
 
@@ -118,7 +94,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           name: error.name,
           message: error.message,
           stack: error.stack,
-          additionalInfo: (error as any).errorCode || (error as any).errorMessage || 'No additional info'
+          additionalInfo: (error as MsalError).errorCode || (error as MsalError).errorMessage || 'No additional info'
         });
         setError(error);
       } finally {
@@ -145,7 +121,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(instance.getAllAccounts()[0] || null);
         setIsAuthenticated(true);
         return;
-      } catch (silentError) {
+      } catch (_silentError) {
         console.log('Silent token acquisition failed, proceeding with redirect');
       }
 
@@ -163,7 +139,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         name: err.name,
         message: err.message,
         stack: err.stack,
-        additionalInfo: (err as any).errorCode || (err as any).errorMessage || 'No additional info',
+        additionalInfo: (err as MsalError).errorCode || (err as MsalError).errorMessage || 'No additional info',
         timestamp: new Date().toISOString()
       };
       
@@ -223,25 +199,8 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-/**
- * Hook to use the auth context
- * @returns AuthContextType with authentication state and methods
- */
-const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
-/**
- * Wrapper component that provides MSAL and Auth contexts
- */
-const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => (
-  <MsalProvider instance={msalInstance}>
-    <AuthProvider>{children}</AuthProvider>
-  </MsalProvider>
-);
 
-export { AuthProvider, useAuth, AuthWrapper };
+
+
+export default AuthProvider;

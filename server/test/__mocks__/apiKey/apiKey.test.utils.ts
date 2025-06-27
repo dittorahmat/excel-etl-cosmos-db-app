@@ -1,5 +1,4 @@
 import type { Request, Response, NextFunction } from 'express';
-import { vi } from 'vitest';
 import type { ApiKey } from './apiKey.test.types.js';
 
 // Extended Request type for testing

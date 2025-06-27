@@ -1,10 +1,18 @@
-import { vi } from 'vitest';
-import type { Multer } from 'multer';
+import type { Request, Response, NextFunction } from 'express';
+import type { Multer, StorageEngine, Options } from 'multer';
+import { Readable } from 'stream';
+
+// Define a custom type that matches what multer expects for a file stream
+type MulterFileStream = Readable & { destroy?: (error?: Error) => void };
 
 // Create a mock implementation of multer that can be controlled from tests
 const createMulterMock = () => {
+  // Create a mock stream
+  const mockStream = new Readable() as MulterFileStream;
+  mockStream._read = () => {}; // Add _read method to make it a proper Readable
+
   // Default mock file
-  const defaultFile = {
+  const defaultFile: Express.Multer.File = {
     fieldname: 'file',
     originalname: 'test.xlsx',
     encoding: '7bit',
@@ -13,77 +21,110 @@ const createMulterMock = () => {
     size: 1024,
     destination: '',
     filename: 'test.xlsx',
-    path: '/tmp/test.xlsx'
+    path: '/tmp/test.xlsx',
+    stream: mockStream
   };
 
-  // Mock storage
-  const memoryStorage = vi.fn().mockImplementation(() => ({
-    _handleFile: vi.fn((req, file, cb) => {
-      cb(null, defaultFile);
-    }),
-    _removeFile: vi.fn((req, file, cb) => {
-      cb(null);
-    })
-  }));
+  // Mock storage engine
+  const storageEngine: StorageEngine = {
+    _handleFile: (req, file, callback) => {
+      callback(null, { ...defaultFile, ...file });
+    },
+    _removeFile: (req, file, callback) => {
+      callback(null);
+    }
+  };
 
   // Mock single file upload middleware
-  const single = vi.fn().mockImplementation((fieldname) => {
-    return (req: any, res: any, next: any) => {
-      if (req.file === undefined) {
-        // Simulate multer behavior when no file is uploaded
-        req.file = undefined;
-      } else if (req.file === null) {
-        // Simulate multer error when file is invalid
-        const err = new Error('Invalid file type');
-        (err as any).code = 'LIMIT_UNEXPECTED_FILE';
-        return next(err);
-      } else {
-        // Use the provided file or default
-        req.file = { ...defaultFile, ...(req.file || {}) };
+  const single = vi.fn().mockImplementation((fieldname: string) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      // If we have a custom implementation from the test, use it
+      if (single.mock.calls.length > 0 && single.mock.calls[0][0]) {
+        return single.mock.calls[0][0](req, res, next);
       }
+      // Default behavior - attach a file to the request
+      req.file = { ...defaultFile };
       next();
     };
   });
 
-  // Mock instance methods
-  const mockInstance = {
+  // Mock multer instance methods
+  const multerInstance = {
     single,
     array: vi.fn(),
     fields: vi.fn(),
-    any: vi.fn(),
     none: vi.fn(),
-    _mockSingle: single // For test access
+    any: vi.fn(),
   };
 
-  // The main multer mock function
-  const multer = vi.fn().mockImplementation(() => mockInstance) as unknown as typeof Multer & {
-    _mockSingle: typeof single;
+  // Mock multer function
+  const multer = vi.fn().mockImplementation((options?: Options) => {
+    return multerInstance;
+  });
+
+  // Add memoryStorage to multer function
+  (multer as any).memoryStorage = vi.fn().mockReturnValue(storageEngine);
+
+  // Add diskStorage to multer function
+  (multer as any).diskStorage = vi.fn().mockReturnValue(storageEngine);
+
+  // Reset all mocks
+  const resetMocks = () => {
+    single.mockClear();
+    (multer as any).memoryStorage.mockClear();
+    (multer as any).diskStorage.mockClear();
+    Object.values(multerInstance).forEach((fn: any) => {
+      if (typeof fn.mockClear === 'function') {
+        fn.mockClear();
+      }
+    });
   };
 
-  // Add static methods
-  multer.memoryStorage = memoryStorage;
-  
-  // For test access
-  multer._mockSingle = single;
-
-  return {
-    multer,
-    memoryStorage,
+  // Add test utilities to the multer function
+  (multer as any)._test = {
+    resetMocks,
     defaultFile,
-    resetMocks: () => {
-      single.mockClear();
-      memoryStorage.mockClear();
-    }
+    single,
+    storageEngine
+  };
+
+  return multer as unknown as Multer & {
+    _test: {
+      resetMocks: () => void;
+      defaultFile: Express.Multer.File;
+      single: typeof single;
+      storageEngine: StorageEngine;
+    };
   };
 };
 
-// Create and export the mock
-const { multer, resetMocks, defaultFile } = createMulterMock();
+// Create the mock
+const mockMulter = createMulterMock();
 
 // Reset mocks before each test
 beforeEach(() => {
-  resetMocks();
+  mockMulter._test.resetMocks();
 });
 
-export default multer;
-export { defaultFile };
+// Export the mock and test utilities
+export const testUtils = {
+  getDefaultFile: () => {
+    const mockStream = new Readable() as MulterFileStream;
+    mockStream._read = () => {};
+    
+    return {
+      fieldname: 'file',
+      originalname: 'test.xlsx',
+      encoding: '7bit',
+      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('test'),
+      size: 1024,
+      destination: '',
+      filename: 'test.xlsx',
+      path: '/tmp/test.xlsx',
+      stream: mockStream
+    };
+  }
+};
+
+export default mockMulter;

@@ -59,6 +59,18 @@ const styles = {
  * Navbar component that displays the application header with user menu and navigation
  */
 export const Navbar = ({ onMenuClick }) => {
+    // Test IDs for testing
+    const testIds = {
+        menuButton: 'navbar-menu-button',
+        appTitle: 'navbar-app-title',
+        signInButton: 'navbar-signin-button',
+        userMenu: 'navbar-user-menu',
+        userMenuButton: 'navbar-user-menu-button',
+        userMenuProfile: 'navbar-user-menu-profile',
+        userMenuSettings: 'navbar-user-menu-settings',
+        userMenuLogout: 'navbar-user-menu-logout'
+    };
+    
     const { isAuthenticated, user, logout } = useAuth();
     const [anchorEl, setAnchorEl] = useState(null);
     const navigate = useNavigate();
@@ -109,8 +121,128 @@ export const Navbar = ({ onMenuClick }) => {
             .join('')
             .substring(0, 2);
     };
-    return (_jsx(ErrorBoundaryComponent, { children: _jsx(AppBar, { position: "static", sx: styles.appBar, children: _jsxs(Toolbar, { children: [onMenuClick && (_jsx(IconButton, { edge: "start", color: "inherit", "aria-label": "menu", onClick: onMenuClick, sx: styles.menuButton, children: _jsx(MenuIcon, {}) })), _jsx(Typography, { variant: "h6", component: RouterLink, to: "/", sx: styles.title, children: "Excel ETL App" }), isAuthenticated ? (_jsxs(Box, { sx: { display: 'flex', alignItems: 'center' }, children: [_jsx(Tooltip, { title: "Account settings", children: _jsx(IconButton, { onClick: handleProfileMenuOpen, size: "small", sx: { ml: 2 }, "aria-controls": "account-menu", "aria-haspopup": "true", children: userProfile.picture ? (_jsx(Avatar, { alt: userProfile.name || 'User', src: userProfile.picture, sx: { width: 32, height: 32 } })) : (_jsx(Avatar, { sx: { width: 32, height: 32, bgcolor: 'primary.main' }, children: getUserInitials() })) }) }), _jsxs(Menu, { id: "account-menu", anchorEl: anchorEl, open: Boolean(anchorEl), onClose: handleMenuClose, onClick: handleMenuClose, PaperProps: {
+    return (
+        <ErrorBoundaryComponent>
+            <AppBar position="static" sx={styles.appBar}>
+                <Toolbar>
+                    {onMenuClick && (
+                        <IconButton
+                            data-testid={testIds.menuButton}
+                            edge="start"
+                            color="inherit"
+                            aria-label="menu"
+                            onClick={onMenuClick}
+                            sx={styles.menuButton}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                    )}
+                    <Typography
+                        variant="h6"
+                        component={RouterLink}
+                        to="/"
+                        sx={styles.title}
+                        data-testid={testIds.appTitle}
+                    >
+                        Excel ETL App
+                    </Typography>
+                    {isAuthenticated ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Tooltip title="Account settings">
+                                <IconButton
+                                    data-testid={testIds.userMenuButton}
+                                    onClick={handleProfileMenuOpen}
+                                    size="small"
+                                    sx={{ ml: 2 }}
+                                    aria-controls="account-menu"
+                                    aria-haspopup="true"
+                                    aria-label="account settings"
+                                >
+                                    {userProfile.picture ? (
+                                        <Avatar 
+                                            alt={userProfile.name || 'User'} 
+                                            src={userProfile.picture} 
+                                            sx={{ width: 32, height: 32 }} 
+                                        />
+                                    ) : (
+                                        <Avatar 
+                                            sx={{ 
+                                                width: 32, 
+                                                height: 32, 
+                                                bgcolor: 'primary.main' 
+                                            }}
+                                        >
+                                            {getUserInitials()}
+                                        </Avatar>
+                                    )}
+                                </IconButton>
+                            </Tooltip>
+                            <Menu
+                                id="account-menu"
+                                data-testid={testIds.userMenu}
+                                anchorEl={anchorEl}
+                                open={Boolean(anchorEl)}
+                                onClose={handleMenuClose}
+                                onClick={handleMenuClose}
+                                PaperProps={{
                                     elevation: 0,
                                     sx: styles.menuPaper
-                                }, transformOrigin: { horizontal: 'right', vertical: 'top' }, anchorOrigin: { horizontal: 'right', vertical: 'bottom' }, children: [_jsxs(Box, { sx: { px: 2, py: 1 }, children: [_jsx(Typography, { variant: "subtitle1", fontWeight: "medium", children: userProfile.name || 'User' }), _jsx(Typography, { variant: "body2", color: "text.secondary", children: userProfile.email || '' })] }), _jsx(Divider, {}), _jsxs(MenuItem, { onClick: handleProfileClick, children: [_jsx(ListItemIcon, { children: _jsx(Person, { fontSize: "small" }) }), _jsx(ListItemText, { children: "Profile" })] }), _jsxs(MenuItem, { onClick: handleSettingsClick, children: [_jsx(ListItemIcon, { children: _jsx(Settings, { fontSize: "small" }) }), _jsx(ListItemText, { children: "Settings" })] }), _jsx(Divider, {}), _jsxs(MenuItem, { onClick: handleLogout, children: [_jsx(ListItemIcon, { children: _jsx(ExitToApp, { fontSize: "small" }) }), _jsx(ListItemText, { children: "Logout" })] })] })] })) : (_jsx(Button, { color: "inherit", component: RouterLink, to: "/login", sx: { textTransform: 'none' }, children: "Sign In" }))] }) }) }));
+                                }}
+                                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            >
+                                <Box sx={{ px: 2, py: 1 }}>
+                                    <Typography variant="subtitle1" fontWeight="medium">
+                                        {userProfile.name || 'User'}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {userProfile.email || ''}
+                                    </Typography>
+                                </Box>
+                                <Divider />
+                                <MenuItem 
+                                    onClick={handleProfileClick}
+                                    data-testid={testIds.userMenuProfile}
+                                >
+                                    <ListItemIcon>
+                                        <Person fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Profile</ListItemText>
+                                </MenuItem>
+                                <MenuItem 
+                                    onClick={handleSettingsClick}
+                                    data-testid={testIds.userMenuSettings}
+                                >
+                                    <ListItemIcon>
+                                        <Settings fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Settings</ListItemText>
+                                </MenuItem>
+                                <Divider />
+                                <MenuItem 
+                                    onClick={handleLogout}
+                                    data-testid={testIds.userMenuLogout}
+                                >
+                                    <ListItemIcon>
+                                        <ExitToApp fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Logout</ListItemText>
+                                </MenuItem>
+                            </Menu>
+                        </Box>
+                    ) : (
+                        <Button
+                            color="inherit"
+                            component={RouterLink}
+                            to="/login"
+                            sx={{ textTransform: 'none' }}
+                            data-testid={testIds.signInButton}
+                        >
+                            Sign In
+                        </Button>
+                    )}
+                </Toolbar>
+            </AppBar>
+        </ErrorBoundaryComponent>
+    );
 };

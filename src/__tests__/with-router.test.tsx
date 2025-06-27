@@ -48,9 +48,9 @@ const AppWithRouter = () => (
 );
 
 describe('App with Router', () => {
-  it('renders home page by default', () => {
-    render(<AppWithRouter />);
-    expect(screen.getByTestId('home-page')).to.exist;
+  it('renders home page by default', async () => {
+    await render(<AppWithRouter />);
+    expect(await screen.findByTestId('home-page')).to.exist;
     expect(screen.getByTestId('home-page').textContent).to.include('Home Page');
   });
 });

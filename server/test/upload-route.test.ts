@@ -305,8 +305,8 @@ describe('Upload Handler', () => {
       expect(res.json).toHaveBeenCalledWith({
         success: false,
         error: 'No file uploaded',
-        message: 'No file uploaded',
-        code: 'NO_FILE_UPLOADED'
+        message: 'Please provide a file to upload',
+        statusCode: 400
       });
     });
 

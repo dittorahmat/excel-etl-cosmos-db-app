@@ -1,5 +1,3 @@
-import { vi } from 'vitest';
-
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const log = (level: LogLevel, ...args: unknown[]) => {

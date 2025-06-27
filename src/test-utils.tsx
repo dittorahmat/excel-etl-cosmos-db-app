@@ -6,8 +6,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { vi } from 'vitest';
 import { AuthProvider } from './auth/AuthProvider';
-import { PublicClientApplication } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
+
+
 
 // Suppress act() warnings globally
 const originalError = console.error;
@@ -33,20 +34,13 @@ type WrapperProps = {
 };
 
 // Wrapper component that includes all necessary providers
-const AllTheProviders = ({
-  children,
-  initialEntries = ['/']
-}: WrapperProps) => {
+const AllTheProviders = ({ children }) => {
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={theme}>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <AuthProvider>
-            <MemoryRouter initialEntries={initialEntries}>
-              <Routes>
-                <Route path="*" element={children} />
-              </Routes>
-            </MemoryRouter>
+            {children}
           </AuthProvider>
         </LocalizationProvider>
       </ThemeProvider>
@@ -55,11 +49,14 @@ const AllTheProviders = ({
 };
 
 // Custom render function that wraps components with all necessary providers
-const customRender = (
-  ui: React.ReactElement,
-  options?: RenderOptions & { initialEntries?: string[] }
-) => {
-  const { initialEntries = ['/'], wrapper: WrapperComponent, ...renderOptions } = options || {};
+const customRender = (ui, options = {}) => {
+  const { 
+    initialEntries = ['/'], 
+    wrapper: WrapperComponent, 
+    userEventOptions = {},
+    ...renderOptions 
+  } = options;
+
   const mockMsalInstance = new PublicClientApplication({
     auth: {
       clientId: 'test-client-id',
@@ -72,21 +69,21 @@ const customRender = (
     },
   });
 
-
-
-  const DefaultWrapper = ({ children }: { children: React.ReactNode }) => (
+  const DefaultWrapper = ({ children, initialEntries }) => (
     <MsalProvider instance={mockMsalInstance}>
-      <AllTheProviders initialEntries={initialEntries}>
-        {children}
-      </AllTheProviders>
+      <MemoryRouter initialEntries={initialEntries}>
+        <AllTheProviders>
+          {children}
+        </AllTheProviders>
+      </MemoryRouter>
     </MsalProvider>
   );
 
-  // Use the provided WrapperComponent if available, otherwise use the default Wrapper
   const FinalWrapper = WrapperComponent || DefaultWrapper;
-
+  const user = userEvent.setup(userEventOptions);
+  
   return {
-    user: userEvent.setup(),
+    user,
     ...rtlRender(ui, { wrapper: FinalWrapper, ...renderOptions }),
   };
 };

@@ -1,5 +1,3 @@
-import { vi } from 'vitest';
-
 export const ConfidentialClientApplication = vi.fn(() => ({
   acquireTokenByClientCredential: vi.fn().mockResolvedValue({
     accessToken: 'mock-access-token',

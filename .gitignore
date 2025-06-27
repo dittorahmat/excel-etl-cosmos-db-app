@@ -18,6 +18,7 @@ dist-node/
 dist-ssr/
 *.local
 bin/
+coverage/
 
 # Environment variables
 .env

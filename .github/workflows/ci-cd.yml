@@ -10,44 +10,40 @@ env:
   NODE_VERSION: '20'
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   AZURE_STATIC_WEB_APP_NAME: ${{ secrets.AZURE_STATIC_WEB_APP_NAME }}
-  
+
 jobs:
   lint-and-test:
     name: Lint and Test
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Use Node.js ${{ env.NODE_VERSION }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-    
+
     - name: Install dependencies
       working-directory: ./
       run: |
         npm ci --include=dev
         npx tsc --version
         npx eslint --version
-    
-    - name: Lint frontend
+
+    - name: Lint codebase
       working-directory: ./
-      run: npx eslint .
-    
-    - name: Lint backend
-      working-directory: ./
-      run: npx eslint server --ext .ts
-    
+      run: npm run lint
+
     - name: Run frontend tests
       working-directory: ./
       run: npm test
-    
+
     - name: Run backend tests
       working-directory: ./
       run: npm run test:server
-    
+
     - name: Upload test coverage
       uses: codecov/codecov-action@v4
       if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
@@ -61,22 +57,22 @@ jobs:
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Use Node.js ${{ env.NODE_VERSION }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-    
+
     - name: Install dependencies
       run: npm ci
-    
+
     - name: Build frontend
       run: npm run build
-    
+
     - name: Deploy to Azure Static Web App
       uses: Azure/static-web-apps-deploy@v1
       with:
@@ -91,38 +87,77 @@ jobs:
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Use Node.js ${{ env.NODE_VERSION }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-    
+
     - name: Install dependencies
       working-directory: ./
       run: npm ci --production=false
-    
+
     - name: Build backend
       working-directory: ./
       run: npm run build:server
-    
+      env:
+        NODE_ENV: production
+
     - name: Prepare deployment package
       working-directory: ./
       run: |
         mkdir -p deployment
         cp -r server/dist/* deployment/
         cp server/package*.json deployment/
+        # Copy web.config for Azure App Service
+        echo '<?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <system.webServer>
+            <webSocket enabled="false" />
+            <handlers>
+              <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode" />
+            </handlers>
+            <rewrite>
+              <rules>
+                <rule name="DynamicContent">
+                  <match url="/*" />
+                  <action type="Rewrite" url="dist/server.js" />
+                </rule>
+              </rules>
+            </rewrite>
+            <security>
+              <requestFiltering removeServerHeader="true" />
+            </security>
+          </system.webServer>
+        </configuration>' > deployment/web.config
         cd deployment && npm ci --production
-    
+
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
         package: ./deployment
+        startup-command: 'node dist/server.js'
+
+    - name: Configure App Service Settings
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          # Configure CORS for the frontend
+          az webapp cors add -g ${{ secrets.AZURE_RESOURCE_GROUP }} -n ${{ env.AZURE_WEBAPP_NAME }} \
+            --allowed-origins 'https://${{ env.AZURE_STATIC_WEB_APP_NAME }}.azurestaticapps.net'
+
+          # Configure environment variables
+          az webapp config appsettings set -g ${{ secrets.AZURE_RESOURCE_GROUP }} -n ${{ env.AZURE_WEBAPP_NAME }} --settings \
+            PORT=8080 \
+            NODE_ENV=production \
+            WEBSITE_NODE_DEFAULT_VERSION=~20 \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=false
 
     - name: Log deployment status to Azure Monitor
       if: always()
