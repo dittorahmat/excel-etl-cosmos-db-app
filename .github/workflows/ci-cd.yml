@@ -76,8 +76,17 @@ jobs:
         VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
 
+    - name: Check for deployment token
+      id: check_token
+      run: |
+        if [ -n "${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}" ]; then
+          echo "has_token=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_token=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Deploy to Azure Static Web App
-      if: secrets.AZURE_STATIC_WEB_APPS_TOKEN != ''
+      if: steps.check_token.outputs.has_token == 'true'
       uses: Azure/static-web-apps-deploy@v1
       with:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}
@@ -89,7 +98,7 @@ jobs:
         verbose: true
 
     - name: Skip deployment (no token)
-      if: secrets.AZURE_STATIC_WEB_APPS_TOKEN == ''
+      if: steps.check_token.outputs.has_token != 'true'
       run: |
         echo "Skipping deployment: AZURE_STATIC_WEB_APPS_TOKEN secret not set"
         echo "To enable deployment, add the AZURE_STATIC_WEB_APPS_TOKEN secret to your repository settings"
@@ -171,8 +180,17 @@ jobs:
             WEBSITE_NODE_DEFAULT_VERSION=~20 \
             SCM_DO_BUILD_DURING_DEPLOYMENT=false
 
+    - name: Check for monitoring secrets
+      id: check_monitoring_secrets
+      run: |
+        if [ -n "${{ secrets.AZURE_WEBAPP_RESOURCE_ID }}" ] && [ -n "${{ secrets.AZURE_RESOURCE_GROUP }}" ]; then
+          echo "has_secrets=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_secrets=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Setup deployment monitoring
-      if: always() && secrets.AZURE_WEBAPP_RESOURCE_ID != '' && secrets.AZURE_RESOURCE_GROUP != ''
+      if: always() && steps.check_monitoring_secrets.outputs.has_secrets == 'true'
       uses: Azure/cli@v1.0.0
       with:
         azcliversion: 2.0.72
@@ -202,7 +220,7 @@ jobs:
           fi
           
     - name: Skip monitoring setup (missing secrets)
-      if: always() && (secrets.AZURE_WEBAPP_RESOURCE_ID == '' || secrets.AZURE_RESOURCE_GROUP == '')
+      if: always() && steps.check_monitoring_secrets.outputs.has_secrets != 'true'
       run: |
         echo "Skipping monitoring setup: Required secrets not configured"
         echo "To enable monitoring, ensure AZURE_WEBAPP_RESOURCE_ID and AZURE_RESOURCE_GROUP secrets are set"
