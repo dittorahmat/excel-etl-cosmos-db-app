@@ -23,7 +23,7 @@
     "test:server": "NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test --exclude='**/backup_js_tests/**'",
     "test:server:watch": "NODE_OPTIONS=--max-old-space-size=2048 vitest watch -c vitest.server.config.ts server/test",
     "test:server:coverage": "NODE_OPTIONS=--max-old-space-size=2048 vitest run --coverage -c vitest.server.config.ts server/test",
-    "test:client": "NODE_OPTIONS=\"--max-old-space-size=2048 --inspect-brk\" vitest run -c vitest.optimized.config.ts --passWithNoTests",
+    "test:client": "NODE_OPTIONS=\"--max-old-space-size=2048\" vitest run -c vitest.optimized.config.ts --passWithNoTests",
     "test:client:watch": "vitest watch -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:client:coverage": "vitest run --coverage -c vitest.optimized.config.ts src --dir src --passWithNoTests",
     "test:all": "vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests && NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test",
