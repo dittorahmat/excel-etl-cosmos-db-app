@@ -13,9 +13,9 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'iesr-db' }}
-  AZURE_STATIC_WEB_APP_NAME: ${{ vars.AZURE_STATIC_WEB_APP_NAME || '' }}
-  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'IESR-DB' }}
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+  AZURE_STATIC_WEB_APP_NAME: ${{ secrets.AZURE_STATIC_WEB_APP_NAME || '' }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'IESR-DB' }}
 
 jobs:
   lint-and-test:
