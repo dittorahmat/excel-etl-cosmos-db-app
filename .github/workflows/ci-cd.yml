@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write
+  deployments: write
+
 env:
   NODE_VERSION: '20'
-  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-  AZURE_STATIC_WEB_APP_NAME: ${{ secrets.AZURE_STATIC_WEB_APP_NAME }}
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'iesr-db' }}
+  AZURE_STATIC_WEB_APP_NAME: ${{ vars.AZURE_STATIC_WEB_APP_NAME || '' }}
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'IESR-DB' }}
 
 jobs:
   lint-and-test:
@@ -168,31 +174,35 @@ jobs:
         package: ./deployment
         slot-name: production
 
+    - name: Login with publish profile
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+
     - name: Configure App Service Settings
       uses: azure/CLI@v1
       with:
         azcliversion: latest
         inlineScript: |
-          # Login to Azure using publish profile
-          az login --service-principal \
-            --username ${{ secrets.AZURE_CLIENT_ID }} \
-            --password ${{ secrets.AZURE_CLIENT_SECRET }} \
-            --tenant ${{ secrets.AZURE_TENANT_ID }}
-          
-          # Set the active subscription
-          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # Show current subscription info
+          az account show
           
           # Configure CORS for the frontend
-          az webapp cors add -g ${{ env.AZURE_RESOURCE_GROUP }} -n ${{ env.AZURE_WEBAPP_NAME }} \
+          az webapp cors add \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
             --allowed-origins 'https://*.azurestaticapps.net' \
             --verbose
           
           # Configure environment variables
-          az webapp config appsettings set -g ${{ env.AZURE_RESOURCE_GROUP }} -n ${{ env.AZURE_WEBAPP_NAME }} --settings \
-            PORT=8080 \
-            NODE_ENV=production \
-            WEBSITE_NODE_DEFAULT_VERSION=~20 \
-            SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+          az webapp config appsettings set \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --settings \
+              PORT=8080 \
+              NODE_ENV=production \
+              WEBSITE_NODE_DEFAULT_VERSION=~20 \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
             --verbose
 
     - name: Check for monitoring secrets
