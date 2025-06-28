@@ -11,13 +11,9 @@
     ".json": "text/json"
   },
   "responseOverrides": {
-    "400": {
-      "rewrite": "/index.html",
-      "statusCode": 200
-    },
     "401": {
-      "statusCode": 302,
-      "redirect": "/.auth/login/aad?post_login_redirect_uri=/"
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/",
+      "statusCode": 302
     },
     "404": {
       "rewrite": "/index.html",
@@ -27,7 +23,12 @@
   "routes": [
     {
       "route": "/login",
-      "redirect": "/.auth/login/aad",
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/",
+      "statusCode": 302
+    },
+    {
+      "route": "/logout",
+      "redirect": "/.auth/logout?post_logout_redirect_uri=/",
       "statusCode": 302
     },
     {

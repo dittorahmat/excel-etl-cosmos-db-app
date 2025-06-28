@@ -1,35 +1,38 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider.js';
-import { Box, Button, Card, CardContent, Container, Typography, CircularProgress, Alert, Stack, Divider, } from '@mui/material';
+import { Box, Button, Card, CardContent, Container, Typography, CircularProgress, Alert, Stack, Divider } from '@mui/material';
 import { Lock as LockIcon } from '@mui/icons-material';
+
 export const LoginPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { login, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const from = location.state?.from?.pathname || '/';
-    const handleLogin = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            await login();
-            navigate(from, { replace: true });
-        }
-        catch (err) {
-            console.error('Login failed:', err);
-            setError(err instanceof Error ? err.message : 'An error occurred during login');
-        }
-        finally {
-            setLoading(false);
-        }
+
+    // Handle login redirect
+    const handleLogin = () => {
+        setLoading(true);
+        window.location.href = `/.auth/login/aad?post_login_redirect_uri=${encodeURIComponent(window.location.origin + from)}`;
     };
-    if (isAuthenticated) {
-        navigate(from, { replace: true });
-        return null;
-    }
+
+    // Check if user is already authenticated
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const response = await fetch('/.auth/me');
+                const payload = await response.json();
+                if (payload.clientPrincipal) {
+                    navigate(from, { replace: true });
+                }
+            } catch (err) {
+                console.error('Auth check failed:', err);
+            }
+        };
+        
+        checkAuth();
+    }, [navigate, from]);
     return (_jsx(Container, { component: "main", maxWidth: "xs", children: _jsx(Box, { sx: {
                 marginTop: 8,
                 display: 'flex',
