@@ -195,36 +195,17 @@ jobs:
           echo "has_secrets=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Setup deployment monitoring
-      if: always() && steps.check_monitoring_secrets.outputs.has_secrets == 'true'
-      uses: Azure/cli@v1.0.0
-      with:
-        azcliversion: 2.0.72
-        inlineScript: |
-          echo "Setting up deployment monitoring..."
-          
-          # Check if the alert already exists
-          if ! az monitor metrics alert show \
-            --name "DeploymentSuccessAlert" \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --output none 2>/dev/null; then
-            
-            echo "Creating deployment success alert..."
-            az monitor metrics alert create \
-              --name "DeploymentSuccessAlert" \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --scopes ${{ secrets.AZURE_WEBAPP_RESOURCE_ID }} \
-              --condition "count deployment_http_2xx > 0" \
-              --description "Track successful deployments" \
-              --evaluation-frequency "PT5M" \
-              --window-size "PT5M" \
-              --severity 3 \
-              --auto-mitigate true \
-              --action ""
-          else
-            echo "Deployment success alert already exists, skipping creation."
-          fi
-          
+    - name: Document Monitoring Setup
+      run: |
+        echo 'To set up monitoring in Azure Portal:'
+        echo '1. Go to your App Service -> Monitoring -> Alerts'
+        echo '2. Click "New alert rule"'
+        echo '3. Select a metric like "Http 2xx" or "Requests"'
+        echo '4. Set appropriate conditions and actions'
+        echo '5. Review and create the alert'
+        echo 'Note: This step is optional and can be configured in Azure Portal as needed.'
+      if: always()
+
     - name: Skip monitoring setup (missing secrets)
       if: always() && steps.check_monitoring_secrets.outputs.has_secrets != 'true'
       run: |
