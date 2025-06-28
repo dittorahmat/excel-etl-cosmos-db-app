@@ -2,6 +2,8 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
+      "/.auth/*",
+      "/api/*",
       "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}"
     ]
   },
@@ -15,11 +17,19 @@
     },
     "401": {
       "statusCode": 302,
-      "redirect": "/.auth/login/aad"
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/"
     },
-    "404": "/index.html"
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
   },
   "routes": [
+    {
+      "route": "/login",
+      "redirect": "/.auth/login/aad",
+      "statusCode": 302
+    },
     {
       "route": "/*",
       "serve": "/index.html",
@@ -31,22 +41,20 @@
       "azureActiveDirectory": {
         "registration": {
           "openIdIssuer": "https://login.microsoftonline.com/${VITE_AZURE_TENANT_ID}",
-          "clientIdSettingName": "VITE_AZURE_CLIENT_ID",
-          "clientSecretSettingName": "VITE_AZURE_CLIENT_SECRET"
+          "clientIdSettingName": "VITE_AZURE_CLIENT_ID"
         },
         "login": {
           "loginParameters": [
             "scope=openid profile email",
             "response_type=code",
-            "response_mode=query",
-            "domain_hint=${VITE_AZURE_TENANT_ID}"
+            "response_mode=query"
           ]
         }
       }
     },
     "login": {
       "simpleAuth": false,
-      "logoutEndpoint": "/.auth/logout?post_logout_redirect_uri=",
+      "logoutEndpoint": "/.auth/logout?post_logout_redirect_uri=/",
       "tokenStore": {
         "enabled": true
       },
