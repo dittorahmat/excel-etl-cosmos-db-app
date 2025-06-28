@@ -174,32 +174,17 @@ jobs:
         package: ./deployment
         slot-name: production
 
-
-    - name: Configure App Service Settings
-      uses: azure/CLI@v1
-      with:
-        azcliversion: latest
-        inlineScript: |
-          # Show current subscription info
-          az account show
-          
-          # Configure CORS for the frontend
-          az webapp cors add \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --allowed-origins 'https://*.azurestaticapps.net' \
-            --verbose
-          
-          # Configure environment variables
-          az webapp config appsettings set \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --settings \
-              PORT=8080 \
-              NODE_ENV=production \
-              WEBSITE_NODE_DEFAULT_VERSION=~20 \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-            --verbose
+    - name: Document Manual Configuration
+      run: |
+        echo 'After deployment, please configure the following in Azure Portal:'
+        echo '1. Go to your App Service -> Configuration -> Application settings'
+        echo '   - Add/Update these settings:'
+        echo '     - PORT = 8080'
+        echo '     - NODE_ENV = production'
+        echo '     - WEBSITE_NODE_DEFAULT_VERSION = ~20'
+        echo '     - SCM_DO_BUILD_DURING_DEPLOYMENT = false'
+        echo '2. Go to CORS and add allowed origin: https://*.azurestaticapps.net'
+      if: always()
 
     - name: Check for monitoring secrets
       id: check_monitoring_secrets
