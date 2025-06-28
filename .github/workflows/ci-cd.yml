@@ -174,10 +174,6 @@ jobs:
         package: ./deployment
         slot-name: production
 
-    - name: Login with publish profile
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_PUBLISH_PROFILE }}
 
     - name: Configure App Service Settings
       uses: azure/CLI@v1
