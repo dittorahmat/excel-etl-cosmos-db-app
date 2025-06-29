@@ -1,38 +1,23 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { MsalProvider, useMsal } from '@azure/msal-react';
-import { PublicClientApplication, InteractionRequiredAuthError, AccountInfo } from '@azure/msal-browser';
-import React, { createContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { msalConfig, loginRequest } from './authConfig';
-import { assertMsalConfig, isTokenExpired } from './authUtils';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AccountInfo, InteractionRequiredAuthError } from '@azure/msal-browser';
+import { useMsal } from '@azure/msal-react';
+import { AuthContext, AuthProviderProps } from './AuthContext';
+import { loginRequest } from './authConfig';
+import { isTokenExpired } from './authUtils';
 
-// Define types for the auth context
-export interface AuthContextType {
-  isAuthenticated: boolean;
-  user: AccountInfo | null;
-  loading: boolean;
-  error: Error | null;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
-  getTokenSilently: () => Promise<string | null>;
-}
 
-// Create MSAL instance with proper type assertion
-export const msalInstance = new PublicClientApplication(
-  assertMsalConfig(msalConfig) ? msalConfig : { auth: { clientId: '' } }
-) as PublicClientApplication;
 
-// Create context with proper type
-export const AuthContext = createContext<AuthContextType | null>(null);
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
+/**
+ * AuthProvider component that provides authentication context to the application.
+ * Handles both development and production authentication flows.
+ */
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [user, setUser] = useState<AccountInfo | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
     const { instance, accounts } = useMsal();
+
     // Get token silently, with refresh if needed
     const getTokenSilently = useCallback(async () => {
         try {
@@ -210,28 +195,5 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
     return (_jsx(AuthContext.Provider, { value: value, children: children }));
 };
-// Define AuthWrapper props interface
-interface AuthWrapperProps {
-    children: ReactNode;
-}
 
-/**
- * Wrapper component that provides MSAL and Auth contexts
- */
-const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => (
-    _jsx(MsalProvider, { 
-        instance: msalInstance, 
-        children: _jsx(AuthProvider, { children: children }) 
-    })
-);
-
-// Custom hook to use the auth context
-export const useAuth = (): AuthContextType => {
-  const context = React.useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export { AuthProvider, AuthWrapper };
+export { AuthProvider };
