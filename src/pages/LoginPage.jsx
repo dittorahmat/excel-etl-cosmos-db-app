@@ -13,6 +13,24 @@ export const LoginPage = () => {
     // Handle login redirect
     const handleLogin = () => {
         setLoading(true);
+        
+        if (import.meta.env.DEV) {
+            console.log('Running in development mode with mock login');
+            // Mock user for development
+            const mockUser = {
+                clientPrincipal: {
+                    identityProvider: 'dev',
+                    userId: 'dev-user',
+                    userDetails: 'dev@example.com',
+                    userRoles: ['authenticated', 'anonymous']
+                }
+            };
+            localStorage.setItem('mockUser', JSON.stringify(mockUser));
+            navigate(from, { replace: true });
+            return;
+        }
+        
+        // In production, use the real auth flow
         window.location.href = `/.auth/login/aad?post_login_redirect_uri=${encodeURIComponent(window.location.origin + from)}`;
     };
 
@@ -20,7 +38,22 @@ export const LoginPage = () => {
     useEffect(() => {
         const checkAuth = async () => {
             try {
+                // In development, use mock authentication
+                if (import.meta.env.DEV) {
+                    console.log('Running in development mode with mock auth check');
+                    // Check if we have a mock user in localStorage for development
+                    const mockUser = localStorage.getItem('mockUser');
+                    if (mockUser) {
+                        navigate(from, { replace: true });
+                    }
+                    return;
+                }
+                
+                // In production, use the real auth endpoint
                 const response = await fetch('/.auth/me');
+                if (!response.ok) {
+                    throw new Error(`Auth check failed with status: ${response.status}`);
+                }
                 const payload = await response.json();
                 if (payload.clientPrincipal) {
                     navigate(from, { replace: true });

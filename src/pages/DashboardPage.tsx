@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider.js';
+import { useAuth } from '../auth/AuthProvider';
 import { api } from '../utils/api.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button.js';
 import { Loader2, Upload as UploadIcon, Database as DatabaseIcon, BarChart2 as ChartIcon } from 'lucide-react';
 import { FileListTable } from '../components/FileListTable.js';
 import { QueryBuilder } from '../components/QueryBuilder.js';
-import DataChartWithErrorBoundary from '../components/DataChart.js';
+import DataChartWithErrorBoundary from '../components/DataChart.jsx';
 
 interface QueryResultItem {
   // Define the structure of your query result items here

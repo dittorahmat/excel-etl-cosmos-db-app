@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider.js';
+import { useAuth } from '../auth/AuthProvider';
 import { api } from '../utils/api.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
@@ -9,7 +9,7 @@ import { Button } from '../components/ui/button.js';
 import { Loader2, Upload as UploadIcon, Database as DatabaseIcon, BarChart2 as ChartIcon } from 'lucide-react';
 import { FileListTable } from '../components/FileListTable.js';
 import { QueryBuilder } from '../components/QueryBuilder.js';
-import DataChart from '../components/DataChart.js';
+import DataChart from '../components/DataChart.jsx';
 export const DashboardPage = () => {
     const { isAuthenticated } = useAuth();
     const navigate = useNavigate();
