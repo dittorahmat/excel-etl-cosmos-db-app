@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/useAuth';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { type SxProps, type Theme } from '@mui/material';
 import {

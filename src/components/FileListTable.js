@@ -17,7 +17,7 @@ export function FileListTable() {
     const fetchFiles = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get(`/api/files?page=${page}&pageSize=${pageSize}`);
+            const response = await api.get(`/api/data?page=${page}&pageSize=${pageSize}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch files');
             }
@@ -52,7 +52,7 @@ export function FileListTable() {
     const handleDownload = async (fileId, fileName) => {
         try {
             // Use the api instance which uses fetch under the hood
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/files/${fileId}/download`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/data/${fileId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${await getAuthToken()}`,
                 },
@@ -85,7 +85,7 @@ export function FileListTable() {
         if (!window.confirm('Are you sure you want to delete this file?'))
             return;
         try {
-            const response = await api.delete(`/api/files/${fileId}`);
+            const response = await api.delete(`/api/data/${fileId}`);
             if (!response.ok) {
                 throw new Error('Failed to delete file');
             }

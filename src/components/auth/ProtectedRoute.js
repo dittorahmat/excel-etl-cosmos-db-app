@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/useAuth';
 import { CircularProgress, Box, Typography } from '@mui/material';
 export const ProtectedRoute = ({ children, requiredRole }) => {
     const { isAuthenticated, loading, user } = useAuth();

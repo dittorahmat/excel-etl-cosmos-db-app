@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
-import { AuthWrapper, useAuth } from './auth/AuthProvider';
+import { useAuth } from './auth/useAuth';
+import { AuthWrapper } from './auth/AuthWrapper';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.js';
 import { UploadPage } from './pages/UploadPage.js';
@@ -31,11 +32,14 @@ const ProtectedRoute = () => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute: isAuthenticated=', isAuthenticated, 'loading=', loading);
+
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
+    console.log('ProtectedRoute: Not authenticated, redirecting to /login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -44,14 +48,23 @@ const ProtectedRoute = () => {
 
 // Public route that redirects to dashboard if already authenticated
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || '/';
+  const { isAuthenticated, loading } = useAuth();
 
-  if (isAuthenticated) {
-    return <Navigate to={from} replace />;
+  useEffect(() => {
+    console.log('PublicRoute useEffect: isAuthenticated=', isAuthenticated, 'loading=', loading);
+  }, [isAuthenticated, loading]);
+
+  if (loading) {
+    console.log('PublicRoute: Loading...');
+    return <LoadingSpinner />;
   }
 
+  if (isAuthenticated) {
+    console.log('PublicRoute: Authenticated, redirecting to /dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  console.log('PublicRoute: Not authenticated, rendering children.');
   return <>{children}</>;
 };
 

@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
+import { useAuth } from '../auth/useAuth';
 import { api } from '../utils/api.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';

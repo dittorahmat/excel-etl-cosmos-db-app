@@ -1,5 +1,5 @@
 import { Button } from "../ui/button.js"
-import { useAuth } from "../../auth/AuthProvider"
+import { useAuth } from '../../auth/useAuth'
 
 export const LoginButton = () => {
   const { isAuthenticated, login, logout, user } = useAuth();

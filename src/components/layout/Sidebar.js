@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/useAuth';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Toolbar, Box, Collapse, useTheme, useMediaQuery, } from '@mui/material';
 import { Dashboard as DashboardIcon, Upload as UploadIcon, Storage as StorageIcon, Settings as SettingsIcon, ExpandLess, ExpandMore, 

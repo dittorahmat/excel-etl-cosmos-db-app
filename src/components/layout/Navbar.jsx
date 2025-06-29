@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useCallback } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/useAuth';
 // Import the default export from ErrorBoundary
 import ErrorBoundaryComponent from '../common/ErrorBoundary';
 import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Avatar, Box, Divider, ListItemIcon, ListItemText, Tooltip, } from '@mui/material';
