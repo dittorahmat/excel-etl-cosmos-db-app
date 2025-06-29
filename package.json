@@ -29,7 +29,8 @@
     "test:all": "vitest run -c vitest.optimized.config.ts src --dir src --passWithNoTests && NODE_OPTIONS=--max-old-space-size=2048 vitest run -c vitest.server.config.ts server/test",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --ignore-pattern '**/node_modules/*' --ignore-pattern '**/dist/*' --ignore-pattern '**/coverage/*' --config .eslintrc.cjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "dev:swa": "swa start http://localhost:3000 --run \"npm run dev\" --swa-config-location ./staticwebapp.mock.config.json"
   },
   "dependencies": {
     "@azure/cosmos": "^4.4.1",
