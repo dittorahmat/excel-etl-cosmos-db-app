@@ -1,0 +1,65 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}"]
+  },
+  "mimeTypes": {
+    ".json": "text/json"
+  },
+  "responseOverrides": {
+    "401": {
+      "redirect": "/login",
+      "statusCode": 302
+    },
+    "404": {
+      "rewrite": "/index.html"
+    }
+  },
+  "routes": [
+    {
+      "route": "/.auth/me",
+      "methods": ["GET"],
+      "response": {
+        "statusCode": 200,
+        "body": {
+          "clientPrincipal": {
+            "identityProvider": "aad",
+            "userId": "dummy-user-id",
+            "userDetails": "user@example.com",
+            "userRoles": ["authenticated"],
+            "claims": [
+              {
+                "typ": "name",
+                "val": "Test User"
+              },
+              {
+                "typ": "preferred_username",
+                "val": "user@example.com"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "route": "/.auth/login/aad",
+      "redirect": "/",
+      "statusCode": 302
+    },
+    {
+      "route": "/.auth/logout",
+      "redirect": "/login",
+      "statusCode": 302
+    },
+    {
+      "route": "/login",
+      "serve": "/index.html",
+      "statusCode": 200
+    },
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    }
+  ]
+}
