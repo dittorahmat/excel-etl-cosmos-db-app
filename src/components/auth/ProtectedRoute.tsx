@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider.js';
+import { useAuth } from '../../auth/AuthProvider';
 import { CircularProgress, Box, Typography } from '@mui/material';
 
 interface ProtectedRouteProps {

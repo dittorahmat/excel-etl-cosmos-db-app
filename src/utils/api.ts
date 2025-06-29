@@ -1,4 +1,4 @@
-import { msalInstance } from '../auth/AuthProvider.js';
+import { msalInstance } from '../auth/AuthProvider';
 
 // Extended Response type with generic JSON body
 type ApiResponse<T = unknown> = Response & {

@@ -1,4 +1,4 @@
-import { msalInstance } from '../auth/AuthProvider.js';
+import { msalInstance } from '../auth/AuthProvider';
 export const getAuthToken = async () => {
     try {
         const accounts = msalInstance.getAllAccounts();
