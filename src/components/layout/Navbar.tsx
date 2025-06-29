@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthProvider';
+import { useAuth } from '../../auth/useAuth';
 import { AccountInfo } from '@azure/msal-browser';
 // Import the default export from ErrorBoundary
 import ErrorBoundaryComponent from '../common/ErrorBoundary';

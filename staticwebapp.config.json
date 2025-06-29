@@ -11,7 +11,7 @@
   },
   "responseOverrides": {
     "401": {
-      "redirect": "/login",
+      "redirect": "/.auth/login/aad",
       "statusCode": 302
     },
     "404": {
@@ -21,12 +21,13 @@
   "routes": [
     {
       "route": "/login",
-      "serve": "/index.html",
-      "statusCode": 200
+      "redirect": "/.auth/login/aad",
+      "statusCode": 301,
+      "condition": "!Environment.IsDevelopment()"
     },
     {
       "route": "/.auth/*",
-      "statusCode": 404
+      "statusCode": 200
     },
     {
       "route": "/*",

@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
-import { AuthWrapper, useAuth } from './auth/AuthProvider';
+import { useAuth } from './auth/useAuth';
+import { AuthWrapper } from './auth/AuthWrapper';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.js';
 import { UploadPage } from './pages/UploadPage.js';
@@ -21,12 +22,21 @@ const LoadingSpinner = () => (_jsxs("div", { className: "flex items-center justi
 const ProtectedRoute = () => {
     const { isAuthenticated, loading } = useAuth();
     const location = useLocation();
+    
+    // Don't render anything until we've checked auth status
     if (loading) {
         return _jsx(LoadingSpinner, {});
     }
-    if (!isAuthenticated) {
-        return _jsx(Navigate, { to: "/login", state: { from: location }, replace: true });
+    
+    // Only redirect to login if we're not already on the login page
+    if (!isAuthenticated && location.pathname !== '/login') {
+        return _jsx(Navigate, { 
+            to: "/login", 
+            state: { from: location.pathname !== '/login' ? location : '/' }, 
+            replace: true 
+        });
     }
+    
     return _jsx(Outlet, {});
 };
 // Public route that redirects to dashboard if already authenticated
