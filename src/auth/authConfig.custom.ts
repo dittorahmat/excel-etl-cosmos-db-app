@@ -1,45 +1,18 @@
 import { Configuration, LogLevel, BrowserCacheLocation } from '@azure/msal-browser';
 import type { Configuration as NodeConfiguration } from '@azure/msal-node';
 
-// Runtime configuration loaded from public/config.js
-const getRuntimeConfig = () => {
-  if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
-    return (window as any).__APP_CONFIG__;
-  }
-  return {};
-};
-
 // Environment variable helper with type safety
 const getEnv = (key: string, defaultValue: string = ''): string => {
-  // First try getting from runtime config
-  const runtimeConfig = getRuntimeConfig();
-  if (runtimeConfig[key] !== undefined) return runtimeConfig[key];
-  
-  // Then try getting from import.meta.env (Vite)
   const viteValue = import.meta.env[`VITE_${key}`];
   if (viteValue !== undefined) return viteValue;
-  
-  // Then try getting from process.env (Node)
-  const processValue = import.meta.env[`${key}`];
-  if (processValue !== undefined) return processValue;
   
   console.warn(`Environment variable ${key} is not set. Using default value.`);
   return defaultValue;
 };
 
 // Validate required environment variables
-const requiredEnvVars = ['AZURE_CLIENT_ID', 'AZURE_TENANT_ID'] as const;
-const missingVars = requiredEnvVars.filter(varName => !getEnv(varName));
 
-if (missingVars.length > 0) {
-  console.error('Missing required environment variables:', missingVars.join(', '));
-  // Don't throw in production to allow for runtime configuration
-  if (import.meta.env.PROD) {
-    console.warn('Continuing with missing environment variables. This may cause authentication to fail.');
-  } else {
-    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-  }
-}
+
 
 // Azure AD Configuration
 export const msalConfig: Configuration = {
@@ -111,32 +84,13 @@ const logConfig = () => {
   console.log('VITE_AZURE_TENANT_ID:', import.meta.env.VITE_AZURE_TENANT_ID || 'MISSING');
   console.log('VITE_AZURE_REDIRECT_URI:', import.meta.env.VITE_AZURE_REDIRECT_URI || 'MISSING');
   
-  // Log window._env_ if it exists
-  if (typeof window !== 'undefined' && (window as any)._env_) {
-    console.log('Window _env_ object:', (window as any)._env_);
-  }
   
-  console.groupEnd();
   
   console.groupEnd();
 };
 
-// Load the runtime configuration and then log the config
-if (typeof window !== 'undefined') {
-  // Create a script element to load the runtime config
-  const script = document.createElement('script');
-  script.src = '/config.js';
-  script.onload = () => {
-    console.log('Runtime configuration loaded:', (window as any).__APP_CONFIG__);
-    logConfig();
-  };
-  script.onerror = (error) => {
-    console.error('Failed to load runtime configuration:', error);
-    // Try to log config anyway
-    logConfig();
-  };
-  document.head.appendChild(script);
-}
+// Log the configuration on import
+logConfig();
 
 // Export types for better type inference
 export type MsalConfig = Configuration;
@@ -163,6 +117,5 @@ export function validateMsalConfig(config: Configuration): boolean {
 }
 
 // Validate the configuration on import
-if (typeof window !== 'undefined') {
-  validateMsalConfig(msalConfig);
-}
+validateMsalConfig(msalConfig);
+
