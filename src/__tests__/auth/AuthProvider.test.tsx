@@ -1,6 +1,6 @@
 import { render, screen, cleanup } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { AuthProvider } from '../../auth/useAuth';
+import { AuthProvider } from '../../auth/AuthProvider';
 import { MsalProvider } from '@azure/msal-react';
 
 // Set test timeout to 30 seconds to handle async operations

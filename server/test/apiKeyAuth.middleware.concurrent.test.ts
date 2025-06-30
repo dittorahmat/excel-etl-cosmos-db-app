@@ -229,7 +229,7 @@ describe('API Key Authentication Middleware - Concurrent Validation', () => {
     
     // Setup mock to resolve after a delay to simulate processing
     mockValidateApiKey.mockImplementation(
-      (params) => new Promise(resolve => 
+      (params: { key: string }): Promise<ApiKeyValidationResult> => new Promise(resolve => 
         setTimeout(() => {
           if (params.key === 'rate-limited-key') {
             resolve({ isValid: true, key: createMockApiKey('rate-limited-key', 'user-1', 'Rate Limited Key') });

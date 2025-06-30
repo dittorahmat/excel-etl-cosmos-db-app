@@ -13,6 +13,7 @@ export interface ApiKey {
   createdBy: string;
   updatedBy: string;
   allowedIps?: string[];
+  lastUsedFromIp?: string | null;
 }
 
 export interface ApiKeyValidationResult {

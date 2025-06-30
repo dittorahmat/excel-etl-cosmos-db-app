@@ -8,11 +8,7 @@ import type { TestRequest } from './apiKeyAuth.middleware.types.js';
 
 // Mock the ApiKeyRepository
 const mockValidateApiKey = vi.fn();
-vi.mock('../../src/repositories/apiKeyRepository', () => ({
-  ApiKeyRepository: vi.fn().mockImplementation(() => ({
-    validateApiKey: mockValidateApiKey
-  }))
-}));
+
 
 // Set up test environment
 let req: TestRequest;

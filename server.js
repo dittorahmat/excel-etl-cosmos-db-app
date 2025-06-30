@@ -15,7 +15,12 @@ const __dirname = dirname(__filename);
 const server = http.createServer((req, res) => {
     let filePath = '.' + req.url;
     if (filePath === './') {
-        filePath = './test-auth.html';
+        filePath = './dist/index.html'; // Serve the built React app
+    } else if (filePath.startsWith('./dist/')) {
+        // If the path already includes /dist/, use it directly
+    } else {
+        // Otherwise, assume it's a static asset from the build output
+        filePath = './dist' + req.url;
     }
 
     const extname = String(getExtname(filePath)).toLowerCase();

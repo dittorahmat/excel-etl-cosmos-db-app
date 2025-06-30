@@ -20,12 +20,18 @@ import type { AzureCosmosDB, AuthenticatedRequest } from './types/custom.js';
 // Load environment variables from .env file
 dotenv.config();
 
+// Debug log environment variables
+console.log('Environment variables:');
+console.log('AZURE_COSMOS_ENDPOINT:', process.env.AZURE_COSMOS_ENDPOINT ? '***' : 'Not set');
+console.log('AZURE_COSMOS_KEY:', process.env.AZURE_COSMOS_KEY ? '***' : 'Not set');
+console.log('AZURE_COSMOS_DATABASE:', process.env.AZURE_COSMOS_DATABASE || 'Not set');
+console.log('AZURE_COSMOS_CONTAINER:', process.env.AZURE_COSMOS_CONTAINER || 'Not set');
+
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 
-
 // Port configuration
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 /**
  * Create and configure the Express application
@@ -100,14 +106,19 @@ function createApp(azureServices: AzureCosmosDB): Express {
     apiKeyUsageRepository: apiKeyUsageRepository
   });
 
-  // Apply authentication middleware to specific routes
-  const protectedRoutes = ['/api/keys', '/api/upload', '/api/data'];
-  protectedRoutes.forEach(route => {
-    app.use(route, (req: Request, res: Response, next: NextFunction) => {
-          // Use type assertion to bypass TypeScript type checking for the middleware
-      return (authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(req, res, next);
+  // Conditionally apply authentication middleware
+  const authEnabled = process.env.AUTH_ENABLED === 'true';
+  if (authEnabled) {
+    const protectedRoutes = ['/api/keys', '/api/upload', '/api/data'];
+    protectedRoutes.forEach(route => {
+      app.use(route, (req: Request, res: Response, next: NextFunction) => {
+        // Use type assertion to bypass TypeScript type checking for the middleware
+        return (authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(req, res, next);
+      });
     });
-  });
+  } else {
+    logger.warn('Authentication is disabled. All API routes are unprotected.');
+  }
 
   // Routes with proper typing
   app.use('/api/keys', createApiKeyRouter(azureServices));
