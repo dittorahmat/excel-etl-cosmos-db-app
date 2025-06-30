@@ -15,8 +15,22 @@ let _container: Container | null = null;
  */
 export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
   if (!cosmosClient) {
-    const endpoint = AZURE_CONFIG.cosmos.endpoint;
-    const key = AZURE_CONFIG.cosmos.key;
+    let endpoint = AZURE_CONFIG.cosmos.endpoint;
+    let key = AZURE_CONFIG.cosmos.key;
+
+    if (!endpoint || !key) {
+      const connectionString = AZURE_CONFIG.cosmos.connectionString;
+      if (connectionString) {
+        const parts = connectionString.split(';');
+        for (const part of parts) {
+          if (part.startsWith('AccountEndpoint=')) {
+            endpoint = part.substring('AccountEndpoint='.length);
+          } else if (part.startsWith('AccountKey=')) {
+            key = part.substring('AccountKey='.length);
+          }
+        }
+      }
+    }
 
     if (!endpoint || !key) {
       throw new Error('Azure Cosmos DB endpoint and key must be configured');

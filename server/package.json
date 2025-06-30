@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node ../dist/server/src/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run --config ../vitest.server.config.ts",
     "test:watch": "vitest watch --config ../vitest.server.config.ts",

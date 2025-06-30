@@ -26,21 +26,43 @@ export function initializeBlobStorage(): void {
  * @returns Promise that resolves to the initialized AzureBlobStorage instance
  */
 export async function initializeBlobStorageAsync(): Promise<AzureBlobStorage> {
+  console.log('Initializing Blob Storage...');
+  console.log('Storage connection string:', AZURE_CONFIG.storage.connectionString ? '***' : 'Not set');
+  console.log('Container name:', AZURE_CONFIG.storage.containerName);
+  
   if (!blobServiceClient) {
     const connectionString = AZURE_CONFIG.storage.connectionString;
     
     if (!connectionString) {
+      console.error('Azure Storage connection string is not configured');
       throw new Error('Azure Storage connection string is not configured');
     }
 
-    blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-    containerClient = blobServiceClient.getContainerClient(AZURE_CONFIG.storage.containerName);
-    
-    // Create container if it doesn't exist
     try {
-      await containerClient.createIfNotExists();
+      console.log('Creating BlobServiceClient...');
+      blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+      console.log('BlobServiceClient created successfully');
+      
+      containerClient = blobServiceClient.getContainerClient(AZURE_CONFIG.storage.containerName);
+      console.log('Container client created for container:', AZURE_CONFIG.storage.containerName);
+      
+      // Create container if it doesn't exist
+      console.log('Creating container if it does not exist...');
+      const createContainerResponse = await containerClient.createIfNotExists();
+      console.log('Container operation result:', createContainerResponse.succeeded ? 'Success' : 'Failed');
+      
+      if (!createContainerResponse.succeeded) {
+        console.warn('Container may already exist or there was an issue creating it');
+      }
     } catch (error) {
-      console.error('Error creating container:', error);
+      console.error('Error initializing Blob Storage:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
       throw error;
     }
   }

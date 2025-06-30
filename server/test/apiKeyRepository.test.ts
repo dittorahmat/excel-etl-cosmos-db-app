@@ -122,7 +122,7 @@ const mockAzureCosmosDB: AzureCosmosDB = {
 vi.mock('../src/utils/apiKeyUtils.js', () => ({
   generateApiKey: vi.fn().mockResolvedValue('test-api-key'),
   hashApiKey: vi.fn().mockImplementation((key) => `hashed-${key}`),
-  safeCompareKeys: vi.fn().mockImplementation((a, b) => a === b),
+  safeCompareKeys: vi.fn().mockImplementation((a: string, b: string) => a === b),
   isValidApiKeyFormat: vi.fn().mockReturnValue(true),
   generateApiKeyId: vi.fn().mockReturnValue('key-123')
 }));

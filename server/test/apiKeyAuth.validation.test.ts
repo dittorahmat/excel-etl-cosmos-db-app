@@ -65,7 +65,7 @@ vi.mock('../../src/repositories/apiKeyRepository.js', () => ({
 }));
 
 // Import the actual implementation after setting up mocks
-import { ApiKeyRepository } from '../../src/repositories/apiKeyRepository.js';
+import { ApiKeyRepository } from '../../src/repositories/apiKeyRepository';
 
 // Create a test repository instance
 const testRepository = new ApiKeyRepository(mockCosmosDb);

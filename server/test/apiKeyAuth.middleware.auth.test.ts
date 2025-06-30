@@ -76,7 +76,7 @@ describe('API Key Authentication Middleware - Authentication Flow', () => {
     // Setup default request, response, and next function
     req = createMockRequest() as TestRequest;
     res = createMockResponse() as Response;
-    next = createNextFunction();
+    next = createNextFunction() as MockedFunction<NextFunction>;
     
     // Setup default mock implementation
     testRepository = new ApiKeyRepository(mockCosmosDb);

@@ -48,7 +48,7 @@ describe('API Key Revocation', () => {
         })
       })),
       read: vi.fn(),
-      upsert: vi.fn().mockImplementation((item) => ({ 
+      upsert: vi.fn().mockImplementation((item: any) => ({ 
         resource: { ...item } 
       })),
       items: {
