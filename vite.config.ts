@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -6,7 +6,12 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current directory.
+  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
   plugins: [react()],
   resolve: {
     alias: {
@@ -43,7 +48,13 @@ export default defineConfig({
       },
     },
   },
-  define: {
-    'process.env': {}
-  },
-})
+    define: {
+      'process.env': {},
+      // Explicitly expose environment variables to the client
+      'import.meta.env.VITE_AZURE_CLIENT_ID': JSON.stringify(env.VITE_AZURE_CLIENT_ID),
+      'import.meta.env.VITE_AZURE_TENANT_ID': JSON.stringify(env.VITE_AZURE_TENANT_ID),
+      'import.meta.env.VITE_AZURE_REDIRECT_URI': JSON.stringify(env.VITE_AZURE_REDIRECT_URI || '/.auth/login/aad/callback'),
+      'import.meta.env.VITE_AZURE_SCOPES': JSON.stringify(env.VITE_AZURE_SCOPES || 'User.Read openid profile email')
+    },
+  };
+});

@@ -3,12 +3,22 @@ import type { Configuration as NodeConfiguration } from '@azure/msal-node';
 
 // Environment variable helper with type safety
 const getEnv = (key: string, defaultValue: string = ''): string => {
-  const value = import.meta.env[`VITE_${key}`];
-  if (value === undefined) {
-    console.warn(`Environment variable VITE_${key} is not set. Using default value.`);
-    return defaultValue;
+  // First try getting from import.meta.env (Vite)
+  const viteValue = import.meta.env[`VITE_${key}`];
+  if (viteValue !== undefined) return viteValue;
+  
+  // Then try getting from process.env (Node)
+  const processValue = import.meta.env[`${key}`];
+  if (processValue !== undefined) return processValue;
+  
+  // If in production, try to get from window._env_ (injected by Azure Static Web Apps)
+  if (import.meta.env.PROD && typeof window !== 'undefined' && (window as any)._env_) {
+    const windowValue = (window as any)._env_[key];
+    if (windowValue !== undefined) return windowValue;
   }
-  return value;
+  
+  console.warn(`Environment variable ${key} is not set. Using default value.`);
+  return defaultValue;
 };
 
 // Validate required environment variables
@@ -33,12 +43,11 @@ export const msalConfig: Configuration = {
     redirectUri: getEnv('AZURE_REDIRECT_URI', window.location.origin),
     postLogoutRedirectUri: getEnv('AZURE_REDIRECT_URI', window.location.origin),
     navigateToLoginRequestUrl: false,
-    knownAuthorities: (
-      getEnv('AZURE_TENANT_ID') 
-        ? [`https://login.microsoftonline.com/${getEnv('AZURE_TENANT_ID')}`] 
-        : []
-    ),
-    protocolMode: 'OIDC',
+    knownAuthorities: [
+      // For Azure AD v2.0, use the tenant ID if available, otherwise use common
+      `https://login.microsoftonline.com/${getEnv('AZURE_TENANT_ID', 'common')}`
+    ] as string[],
+    protocolMode: 'AAD',
   },
   cache: {
     cacheLocation: BrowserCacheLocation.SessionStorage,
@@ -84,12 +93,23 @@ const logConfig = () => {
   console.log('Client ID:', maskedClientId);
   console.log('Authority:', msalConfig.auth.authority);
   console.log('Redirect URI:', msalConfig.auth.redirectUri);
+  console.log('Post Logout Redirect URI:', msalConfig.auth.postLogoutRedirectUri);
+  console.log('Known Authorities:', msalConfig.auth.knownAuthorities);
   console.log('Scopes:', loginRequest.scopes);
   
   console.group('Environment Variables');
-  console.log('VITE_AZURE_CLIENT_ID:', getEnv('AZURE_CLIENT_ID') ? '***' + getEnv('AZURE_CLIENT_ID').slice(-4) : 'MISSING');
-  console.log('VITE_AZURE_TENANT_ID:', getEnv('AZURE_TENANT_ID', 'common'));
-  console.log('VITE_AZURE_REDIRECT_URI:', getEnv('AZURE_REDIRECT_URI', 'DEFAULT_REDIRECT'));
+  console.log('AZURE_CLIENT_ID:', getEnv('AZURE_CLIENT_ID') ? '***' + getEnv('AZURE_CLIENT_ID').slice(-4) : 'MISSING');
+  console.log('AZURE_TENANT_ID:', getEnv('AZURE_TENANT_ID', 'common'));
+  console.log('AZURE_REDIRECT_URI:', getEnv('AZURE_REDIRECT_URI', 'DEFAULT_REDIRECT'));
+  console.log('VITE_AZURE_CLIENT_ID:', import.meta.env.VITE_AZURE_CLIENT_ID ? '***' + String(import.meta.env.VITE_AZURE_CLIENT_ID).slice(-4) : 'MISSING');
+  console.log('VITE_AZURE_TENANT_ID:', import.meta.env.VITE_AZURE_TENANT_ID || 'MISSING');
+  console.log('VITE_AZURE_REDIRECT_URI:', import.meta.env.VITE_AZURE_REDIRECT_URI || 'MISSING');
+  
+  // Log window._env_ if it exists
+  if (typeof window !== 'undefined' && (window as any)._env_) {
+    console.log('Window _env_ object:', (window as any)._env_);
+  }
+  
   console.groupEnd();
   
   console.groupEnd();
