@@ -20,7 +20,10 @@
   },
   "routes": [
     {
-      "route": "/login",
+      "route": "/config.js",
+      "serve": "/config.js",
+      "statusCode": 200
+    },
       "redirect": "/.auth/login/aad",
       "statusCode": 301,
       "condition": "!Environment.IsDevelopment()"
