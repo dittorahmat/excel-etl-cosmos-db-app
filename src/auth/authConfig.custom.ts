@@ -1,21 +1,27 @@
 import { Configuration, LogLevel, BrowserCacheLocation } from '@azure/msal-browser';
 import type { Configuration as NodeConfiguration } from '@azure/msal-node';
 
+// Runtime configuration loaded from public/config.js
+const getRuntimeConfig = () => {
+  if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
+    return (window as any).__APP_CONFIG__;
+  }
+  return {};
+};
+
 // Environment variable helper with type safety
 const getEnv = (key: string, defaultValue: string = ''): string => {
-  // First try getting from import.meta.env (Vite)
+  // First try getting from runtime config
+  const runtimeConfig = getRuntimeConfig();
+  if (runtimeConfig[key] !== undefined) return runtimeConfig[key];
+  
+  // Then try getting from import.meta.env (Vite)
   const viteValue = import.meta.env[`VITE_${key}`];
   if (viteValue !== undefined) return viteValue;
   
   // Then try getting from process.env (Node)
   const processValue = import.meta.env[`${key}`];
   if (processValue !== undefined) return processValue;
-  
-  // If in production, try to get from window._env_ (injected by Azure Static Web Apps)
-  if (import.meta.env.PROD && typeof window !== 'undefined' && (window as any)._env_) {
-    const windowValue = (window as any)._env_[key];
-    if (windowValue !== undefined) return windowValue;
-  }
   
   console.warn(`Environment variable ${key} is not set. Using default value.`);
   return defaultValue;
@@ -115,9 +121,21 @@ const logConfig = () => {
   console.groupEnd();
 };
 
-// Log configuration on import
+// Load the runtime configuration and then log the config
 if (typeof window !== 'undefined') {
-  logConfig();
+  // Create a script element to load the runtime config
+  const script = document.createElement('script');
+  script.src = '/config.js';
+  script.onload = () => {
+    console.log('Runtime configuration loaded:', (window as any).__APP_CONFIG__);
+    logConfig();
+  };
+  script.onerror = (error) => {
+    console.error('Failed to load runtime configuration:', error);
+    // Try to log config anyway
+    logConfig();
+  };
+  document.head.appendChild(script);
 }
 
 // Export types for better type inference
