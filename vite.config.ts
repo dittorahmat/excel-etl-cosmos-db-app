@@ -2,7 +2,6 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { promises as fs } from 'fs';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,15 +39,30 @@ export default defineConfig(({ mode }) => {
   const configContent = `// This file is auto-generated during build
 window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
   
-  // Write to both public and dist directories to ensure it's included in the build
-  const configPath = path.join(publicDir, 'config.js');
+  // Ensure the public directory exists
+if (!existsSync(publicDir)) {
+  mkdirSync(publicDir, { recursive: true });
+}
+
+// Always write config.js to the public directory
+const configPath = path.join(publicDir, 'config.js');
+writeFileSync(configPath, configContent);
+console.log('Runtime config written to:', configPath);
+
+// Verify the file was written
+if (!existsSync(configPath)) {
+  throw new Error('Failed to write config.js to public directory');
+}
+
+// In production, also write to dist directory
+if (mode === 'production') {
+  if (!existsSync(distDir)) {
+    mkdirSync(distDir, { recursive: true });
+  }
   const distConfigPath = path.join(distDir, 'config.js');
-  
-  writeFileSync(configPath, configContent);
   writeFileSync(distConfigPath, configContent);
-  
-  console.log('Runtime config written to:', configPath);
   console.log('Runtime config written to:', distConfigPath);
+}
   
   return {
     // Configure the base public path
@@ -67,12 +81,14 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
       assetsDir: '.',
       sourcemap: process.env.NODE_ENV === 'production' ? false : true,
       minify: 'terser',
+      emptyOutDir: true,
+      copyPublicDir: true,
+      chunkSizeWarningLimit: 1000, // Increase chunk size warning limit (in kbs)
       terserOptions: {
         compress: {
           drop_console: process.env.NODE_ENV === 'production',
         },
       },
-      chunkSizeWarningLimit: 1000, // Increase chunk size warning limit (in kbs)
       rollupOptions: {
         // Ensure config.js is included in the build
         input: {
@@ -83,11 +99,24 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
             react: ['react', 'react-dom', 'react-router-dom'],
             ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
           },
+          // Ensure config.js is copied to the root
+          entryFileNames: '[name].[hash].js',
+          chunkFileNames: '[name].[hash].js',
+          assetFileNames: '[name].[ext]',
         },
       },
       // Copy config.js to the root of the output directory
       assetsInlineLimit: 0, // Ensure all assets are copied as files
       copyPublicDir: true, // Ensure public directory is copied
+      // Ensure config.js is copied to the root
+      emptyOutDir: true,
+      // Copy the config.js file to the root of the output directory
+      // This is a workaround for Azure Static Web Apps
+      // that doesn't serve files from subdirectories correctly
+      // without additional configuration
+      rollupOutputOptions: {
+        assetFileNames: '[name].[ext]',
+      },
     },
     server: {
       port: 3000,
