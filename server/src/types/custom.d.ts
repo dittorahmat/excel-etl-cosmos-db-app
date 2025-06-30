@@ -1,14 +1,15 @@
 import type { Request } from 'express';
 import type { Container, CosmosClient } from '@azure/cosmos';
+import type { ApiKey } from './apiKey.js';
+import type { TokenPayload } from '../middleware/auth.js';
 
 declare global {
   namespace Express {
     interface Request {
       id?: string;
-      user?: {
-        oid?: string;
-        [key: string]: any;
-      };
+      user?: TokenPayload;
+      apiKey?: Omit<ApiKey, 'keyHash'>;
+      startTime?: [number, number];
     }
   }
 }
@@ -93,12 +94,7 @@ export interface AzureCosmosDB {
   ) => Promise<void>;
 }
 
-export interface AuthenticatedRequest extends Request {
-  user: {
-    oid: string;
-    [key: string]: any;
-  };
-}
+
 
 export interface MulterError extends Error {
   code?: string;

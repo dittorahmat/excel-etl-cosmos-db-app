@@ -6,19 +6,7 @@ import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 const isTest = process.env.NODE_ENV === 'test';
 const debug = isTest ? console.log : () => {};
 
-/* eslint-disable @typescript-eslint/no-namespace */
-declare global {
-  namespace Express {
-    interface Request {
-      apiKey?: {
-        id: string;
-        userId: string;
-        name: string;
-      };
-    }
-  }
-}
-/* eslint-enable @typescript-eslint/no-namespace */
+
 
 /**
  * Creates an error object with status and message
@@ -144,11 +132,7 @@ export function apiKeyAuth(
       }
 
       // Attach API key info to the request for use in route handlers
-      req.apiKey = {
-        id: String(validationResult.key.id),
-        userId: String(validationResult.key.userId),
-        name: String(validationResult.key.name),
-      };
+      req.apiKey = validationResult.key;
 
       debug('[apiKeyAuth] API key attached to request:', {
         apiKeyId: req.apiKey.id,

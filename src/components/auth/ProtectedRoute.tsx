@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/useAuth';
-import { CircularProgress, Box, Typography } from '@mui/material';
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -20,18 +20,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        flexDirection="column"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <CircularProgress />
-        <Typography variant="body1" mt={2}>
-          Authenticating...
-        </Typography>
-      </Box>
+      <div className="flex flex-col justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="mt-2">Authenticating...</p>
+      </div>
     );
   }
 
@@ -47,20 +39,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
     if (!userRoles.includes(requiredRole)) {
       return (
-        <Box
-          display="flex"
-          flexDirection="column"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="100vh"
-        >
-          <Typography variant="h5" color="error">
-            Unauthorized Access
-          </Typography>
-          <Typography variant="body1" mt={2}>
-            You don't have permission to access this page.
-          </Typography>
-        </Box>
+        <div className="flex flex-col justify-center items-center min-h-screen">
+          <h1 className="text-2xl font-bold text-red-600">Unauthorized Access</h1>
+          <p className="mt-2">You don't have permission to access this page.</p>
+        </div>
       );
     }
   }

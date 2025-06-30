@@ -2,36 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from '../repositories/apiKeyUsageRepository.js';
 import { logger } from '../utils/logger.js';
+import type { ApiKey } from '../types/apiKey.js';
 
 // Define the API key interface
-export interface ApiKey {
-  id: string;
-  userId: string;
-  name: string;
-  keyHash: string;
-  isActive: boolean;
-  lastUsedAt?: string;
-  lastUsedFromIp?: string;
-  createdAt: string;
-  expiresAt?: string;
-  allowedIps?: string[];
-  description?: string;
-}
 
-export interface AuthenticatedRequest extends Request {
-  apiKey?: {
-    id: string;
-    userId: string;
-    name: string;
-    isActive: boolean;
-    lastUsedAt?: string;
-    lastUsedFromIp?: string;
-    createdAt: string;
-    expiresAt?: string;
-  };
-  startTime?: [number, number];
-  user?: import('./auth.js').TokenPayload;
-}
 
 /**
  * Middleware to require API key authentication
@@ -46,7 +20,7 @@ interface AuthDependencies {
 export function requireAuth(deps: AuthDependencies) {
   const { apiKeyRepository } /*, apiKeyUsageRepository */ = deps;
 
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const startTime = process.hrtime();
     req.startTime = startTime;
 
@@ -112,24 +86,11 @@ export function requireAuth(deps: AuthDependencies) {
       }
 
       // Attach API key info to request for use in route handlers
-      if (!validation.key ||
-        typeof validation.key.id !== 'string' ||
-        typeof validation.key.userId !== 'string' ||
-        typeof validation.key.name !== 'string' ||
-        typeof validation.key.isActive !== 'boolean' ||
-        typeof validation.key.createdAt !== 'string') {
+      if (!validation.key) {
         return next(new Error('Invalid key'));
       }
-      req.apiKey = {
-        id: validation.key.id as string,
-        userId: validation.key.userId as string,
-        name: validation.key.name as string,
-        isActive: validation.key.isActive as boolean,
-        createdAt: validation.key.createdAt as string,
-        lastUsedAt: typeof validation.key.lastUsedAt === 'string' ? validation.key.lastUsedAt : undefined,
-        lastUsedFromIp: typeof validation.key.lastUsedFromIp === 'string' ? validation.key.lastUsedFromIp : undefined,
-        expiresAt: typeof validation.key.expiresAt === 'string' ? validation.key.expiresAt : undefined
-      };
+      (req as Request).apiKey = validation.key;
+      
 
       // Log successful authentication
       logger.info('API key authenticated', {
@@ -177,7 +138,7 @@ export function requireAuth(deps: AuthDependencies) {
  * @returns Express middleware function
  */
 export function requireRole(roles: string[]) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -207,7 +168,7 @@ export function requireRole(roles: string[]) {
 export const requireAuthOrApiKey = (deps: AuthDependencies) => {
   const apiKeyAuth = requireAuth(deps);
 
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // If user is already authenticated via Azure AD, continue
       if (req.user) {

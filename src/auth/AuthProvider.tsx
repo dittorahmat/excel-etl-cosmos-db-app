@@ -19,113 +19,13 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { instance, accounts } = useMsal();
     const authCheckComplete = useRef(false);
 
-    useEffect(() => {
-        const checkAuthentication = async () => {
-            if (authCheckComplete.current) {
-                console.log('AuthProvider: checkAuthentication skipped, already complete.');
-                return;
-            }
-
-            console.log('AuthProvider: Starting authentication check...');
-            try {
-                if (import.meta.env.DEV) {
-                    const mockUser = localStorage.getItem('mockUser');
-                    if (mockUser) {
-                        const parsedUser = JSON.parse(mockUser);
-                        console.log('AuthProvider: DEV mode - Mock user found:', parsedUser.username);
-                        setUser(parsedUser);
-                        setIsAuthenticated(true);
-                        console.log('AuthProvider: DEV mode - isAuthenticated set to TRUE after mock user found.');
-                    } else {
-                        console.log('AuthProvider: DEV mode - No mock user found.');
-                        setIsAuthenticated(false);
-                        console.log('AuthProvider: DEV mode - isAuthenticated set to FALSE after no mock user found.');
-                    }
-                } else {
-                    // Production flow: Check MSAL accounts
-                    const currentAccounts = instance.getAllAccounts();
-                    if (currentAccounts.length > 0) {
-                        const account = currentAccounts[0];
-                        console.log('AuthProvider: PROD mode - MSAL account found:', account.username);
-                        setUser(account);
-                        setIsAuthenticated(true);
-                    } else {
-                        console.log('AuthProvider: PROD mode - No MSAL account found.');
-                        setIsAuthenticated(false);
-                    }
-                }
-            } catch (err) {
-                console.error('AuthProvider: Authentication check failed:', err);
-                setError(err instanceof Error ? err : new Error('Authentication error'));
-                setIsAuthenticated(false);
-            } finally {
-                setLoading(false);
-                authCheckComplete.current = true;
-            }
-        };
-
-        
-
-        // Add MSAL event listener for production flow
-        let callbackId: string | null = null;
-        if (!import.meta.env.DEV) {
-            callbackId = instance.addEventCallback((message) => {
-                console.log('MSAL Event:', message.eventType);
-                switch (message.eventType) {
-                    case EventType.LOGIN_SUCCESS:
-                    case EventType.ACQUIRE_TOKEN_SUCCESS: {
-                        const account = instance.getActiveAccount() || instance.getAllAccounts()[0];
-                        if (account) {
-                            console.log('MSAL login/acquire token success:', account);
-                            setUser(account);
-                            setIsAuthenticated(true);
-                        }
-                        break;
-                    }
-                    case EventType.LOGOUT_SUCCESS:
-                        console.log('MSAL logout success');
-                        setUser(null);
-                        setIsAuthenticated(false);
-                        localStorage.removeItem('msalToken');
-                        localStorage.removeItem('msalTokenExpiry');
-                        break;
-                    case EventType.LOGIN_FAILURE:
-                        console.error('MSAL login failed:', message.error);
-                        setUser(null);
-                        setIsAuthenticated(false);
-                        setError(message.error);
-                        break;
-                    default:
-                        break;
-                }
-            });
-        }
-
-        // Listen for storage changes to react to mock user changes
-        const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === 'mockUser' && import.meta.env.DEV) {
-                console.log('AuthProvider: Storage event for mockUser detected, re-checking auth.');
-                checkAuthentication();
-            }
-        };
-        window.addEventListener('storage', handleStorageChange);
-
-        checkAuthentication();
-
-        return () => {
-            if (callbackId) {
-                instance.removeEventCallback(callbackId);
-            }
-            window.removeEventListener('storage', handleStorageChange);
-        };
-    }, [instance, accounts]);
-
     // Get token silently, with refresh if needed
     const getTokenSilently = useCallback(async (): Promise<string | null> => {
         try {
             if (import.meta.env.DEV) {
-                // In development, return a mock token
-                return 'dev-mock-token';
+                // In development, return a mock token that looks like a JWT
+                // This is a placeholder and should not be used for actual security.
+                return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
             }
 
             if (accounts.length === 0) {
@@ -174,71 +74,109 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.error('Token acquisition failed:', error);
             throw error;
         }
-    }, [accounts, instance]);
+    }, [instance, accounts]);
 
     // Check authentication status on mount and when accounts change
     useEffect(() => {
         const checkAuth = async () => {
-            // In production, we'll use Azure Static Web Apps authentication
-            if (process.env.NODE_ENV !== 'development') {
-                try {
-                    const response = await fetch('/.auth/me');
-                    if (response.ok) {
-                        const authData = await response.json();
-                        if (authData.clientPrincipal) {
-                            setUser({
-                                homeAccountId: authData.clientPrincipal.userId,
-                                environment: 'login.microsoftonline.com',
-                                tenantId: 'common',
-                                username: authData.clientPrincipal.userDetails,
-                                localAccountId: authData.clientPrincipal.userId,
-                                name: authData.clientPrincipal.userDetails,
-                                idTokenClaims: {
-                                    name: authData.clientPrincipal.userDetails,
-                                    preferred_username: authData.clientPrincipal.userDetails,
-                                    oid: authData.clientPrincipal.userId,
-                                    tid: 'common'
-                                }
-                            } as AccountInfo);
-                            setIsAuthenticated(true);
-                            setLoading(false);
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Auth check failed:', error);
-                }
-                
-                // If we get here, we're not authenticated in production
-                setIsAuthenticated(false);
-                setUser(null);
-                setLoading(false);
+            if (authCheckComplete.current) {
+                console.log('AuthProvider: checkAuthentication skipped, already complete.');
                 return;
             }
-            
-            // Development mode - use MSAL
+
+            console.log('AuthProvider: Starting authentication check...');
             try {
-                if (accounts.length > 0) {
-                    const account = accounts[0];
-                    setUser(account);
-                    setIsAuthenticated(true);
-                    // Get a token to verify it's still valid
-                    await getTokenSilently();
+                if (import.meta.env.DEV) {
+                    const mockUser = localStorage.getItem('mockUser');
+                    if (mockUser) {
+                        const parsedUser = JSON.parse(mockUser);
+                        console.log('AuthProvider: DEV mode - Mock user found:', parsedUser.username);
+                        setUser(parsedUser);
+                        setIsAuthenticated(true);
+                        console.log('AuthProvider: DEV mode - isAuthenticated set to TRUE after mock user found.');
+                    } else {
+                        console.log('AuthProvider: DEV mode - No mock user found.');
+                        setIsAuthenticated(false);
+                        console.log('AuthProvider: DEV mode - isAuthenticated set to FALSE after no mock user found.');
+                    }
                 } else {
-                    setIsAuthenticated(false);
-                    setUser(null);
+                    // Production flow: Check Azure Static Web Apps authentication first
+                    try {
+                        const response = await fetch('/.auth/me');
+                        if (response.ok) {
+                            const authData = await response.json();
+                            if (authData.clientPrincipal) {
+                                setUser({
+                                    homeAccountId: authData.clientPrincipal.userId,
+                                    environment: 'login.microsoftonline.com',
+                                    tenantId: 'common',
+                                    username: authData.clientPrincipal.userDetails,
+                                    localAccountId: authData.clientPrincipal.userId,
+                                    name: authData.clientPrincipal.userDetails,
+                                    idTokenClaims: {
+                                        name: authData.clientPrincipal.userDetails,
+                                        preferred_username: authData.clientPrincipal.userDetails,
+                                        oid: authData.clientPrincipal.userId,
+                                        tid: 'common'
+                                    }
+                                } as AccountInfo);
+                                setIsAuthenticated(true);
+                                setLoading(false);
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Auth check failed (Azure Static Web Apps):', error);
+                    }
+
+                    // Fallback to MSAL accounts if AWA auth not found
+                    const currentAccounts = instance.getAllAccounts();
+                    if (currentAccounts.length > 0) {
+                        const account = currentAccounts[0];
+                        console.log('AuthProvider: PROD mode - MSAL account found:', account.username);
+                        setUser(account);
+                        setIsAuthenticated(true);
+                        // Get a token to verify it's still valid
+                        await getTokenSilently();
+                    } else {
+                        console.log('AuthProvider: PROD mode - No MSAL account found.');
+                        setIsAuthenticated(false);
+                    }
                 }
-            } catch (error) {
-                console.error('Auth check failed:', error);
+            } catch (err) {
+                console.error('AuthProvider: Authentication check failed:', err);
+                setError(err instanceof Error ? err : new Error('Authentication error'));
                 setIsAuthenticated(false);
-                setUser(null);
             } finally {
                 setLoading(false);
+                authCheckComplete.current = true;
             }
         };
-        
+
         checkAuth();
-    }, [accounts, getTokenSilently, instance]);
+    }, [instance, accounts, getTokenSilently]);
+
+    // Add event listeners for MSAL account changes
+    useEffect(() => {
+        const callbackId = instance.addEventCallback((message) => {
+            console.log('MSAL Event:', message.eventType);
+            if (message.eventType === EventType.LOGIN_SUCCESS || 
+                message.eventType === EventType.LOGOUT_SUCCESS || 
+                message.eventType === EventType.ACQUIRE_TOKEN_SUCCESS) {
+                window.location.reload();
+            }
+        });
+
+        return () => {
+            if (callbackId) {
+                instance.removeEventCallback(callbackId);
+            }
+        };
+    }, [instance]);
+
+    
+
+    
 
     // Handle login
     const login = useCallback(async () => {

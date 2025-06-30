@@ -1,12 +1,12 @@
 import { render as rtlRender, RenderOptions, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme, StyledEngineProvider } from '@mui/material/styles';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+
+
 import { vi } from 'vitest';
 import { AuthProvider } from './auth/AuthProvider';
 import { MsalProvider } from '@azure/msal-react';
+import { PublicClientApplication } from '@azure/msal-browser';
 
 
 
@@ -26,7 +26,7 @@ afterAll(() => {
   vi.restoreAllMocks();
 });
 
-const theme = createTheme();
+
 
 type WrapperProps = {
   children: React.ReactNode;
@@ -36,15 +36,9 @@ type WrapperProps = {
 // Wrapper component that includes all necessary providers
 const AllTheProviders = ({ children }) => {
   return (
-    <StyledEngineProvider injectFirst>
-      <ThemeProvider theme={theme}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </LocalizationProvider>
-      </ThemeProvider>
-    </StyledEngineProvider>
+    <AuthProvider>
+      {children}
+    </AuthProvider>
   );
 };
 

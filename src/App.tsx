@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
-import { LoginPage } from './pages/LoginPage.jsx';
-import { DashboardPage } from './pages/DashboardPage.js';
-import { UploadPage } from './pages/UploadPage.js';
-import { MainLayout } from './components/layout/MainLayout.js';
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { UploadPage } from './pages/UploadPage';
+import { MainLayout } from './components/layout/MainLayout';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 

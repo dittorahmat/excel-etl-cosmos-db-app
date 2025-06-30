@@ -52,10 +52,10 @@ export class ApiKeyRepository {
       const container = await this.getContainer();
 
       // Query for the key (hash the key for lookup)
-      const keyHash = hashApiKey(key);
+      const hashedKey = hashApiKey(key);
       const querySpec = {
-        query: 'SELECT * FROM c WHERE c.keyHash = @keyHash AND c.isActive = true',
-        parameters: [{ name: '@keyHash', value: keyHash }]
+        query: 'SELECT * FROM c WHERE c.keyHash = @hashedKey AND c.isActive = true',
+        parameters: [{ name: '@hashedKey', value: hashedKey }]
       };
 
       const { resources } = await container.items.query(querySpec).fetchAll();
@@ -92,7 +92,7 @@ export class ApiKeyRepository {
       }
 
       // Don't return the key hash in the response
-      const { ...keyWithoutHash } = apiKey;
+      const { keyHash: _keyHash, ...keyWithoutHash } = apiKey;
       return { isValid: true, key: keyWithoutHash };
     } catch (error) {
       console.error('Error validating API key:', error);

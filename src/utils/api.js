@@ -1,23 +1,90 @@
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
 import { msalInstance } from '../auth/msalInstance';
 export const getAuthToken = async () => {
     try {
+        // In development, return a mock token
+        if (import.meta.env.DEV) {
+            console.log('Using development mock token');
+            return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+        }
+
+        // In production, get the real token
         const accounts = msalInstance.getAllAccounts();
-        if (accounts.length === 0)
+        if (accounts.length === 0) {
+            console.log('No accounts found');
             return null;
+        }
+        
         const silentRequest = {
             scopes: ['User.Read'],
             account: accounts[0],
+            forceRefresh: false // Don't force refresh to avoid unnecessary token requests
         };
+        
+        console.log('Acquiring token silently...');
         const response = await msalInstance.acquireTokenSilent(silentRequest);
-        return response.accessToken;
-    }
-    catch (error) {
-        console.error('Failed to acquire token silently', error);
+        
+        if (response && response.accessToken) {
+            console.log('Successfully acquired access token');
+            return response.accessToken;
+        }
+        
+        console.warn('No access token in response');
+        return null;
+    } catch (error) {
+        console.error('Failed to acquire token silently:', error);
+        
+        // If silent token acquisition fails, try to get a token interactively
+        if (error instanceof InteractionRequiredAuthError) {
+            try {
+                console.log('Interactive token acquisition required');
+                const response = await msalInstance.acquireTokenPopup({
+                    scopes: ['User.Read']
+                });
+                return response?.accessToken || null;
+            } catch (popupError) {
+                console.error('Interactive token acquisition failed:', popupError);
+            }
+        }
+        
         return null;
     }
 };
+// Check if authentication is required
+const isAuthRequired = async () => {
+    // If we're in production, always require auth unless explicitly disabled
+    if (!import.meta.env.DEV) {
+        return true;
+    }
+
+    // In development, check the auth status endpoint
+    try {
+        // Use a timeout to prevent hanging if the server is not available
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 second timeout
+        
+        const response = await fetch('/api/auth/status', {
+            signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
+        
+        if (!response.ok) {
+            console.warn('Auth status check failed, defaulting to no auth');
+            return false;
+        }
+        
+        const data = await response.json();
+        return data.authRequired !== false;
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.warn('Auth status check failed:', error.message);
+        } else {
+            console.warn('Auth status check timed out, defaulting to no auth');
+        }
+        return false; // Default to no auth if we can't check
+    }
+};
+
 export const authFetch = async (url, options = {}) => {
-    const token = await getAuthToken();
     const headers = new Headers(options.headers);
     
     // Only set Content-Type to application/json if it's not a FormData object
@@ -26,10 +93,30 @@ export const authFetch = async (url, options = {}) => {
         headers.append('Content-Type', 'application/json');
     }
     
-    // In development, use mock API key if no token is available
-     if (token) {
-        // In production or if we have a token, use it
-        headers.append('Authorization', `Bearer ${token}`);
+    // Only add auth header if authentication is required
+    const authRequired = await isAuthRequired();
+    if (authRequired) {
+        try {
+            const token = await getAuthToken();
+            if (token) {
+                headers.set('Authorization', `Bearer ${token}`);
+            } else if (import.meta.env.DEV) {
+                console.warn('No auth token available, but auth is required. Using mock token for development.');
+                const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+                headers.set('Authorization', `Bearer ${mockToken}`);
+            } else {
+                throw new Error('Authentication required but no token available');
+            }
+        } catch (error) {
+            console.error('Error during authentication:', error);
+            // In development, continue without auth to avoid breaking the dev experience
+            if (!import.meta.env.DEV) {
+                throw error;
+            }
+            console.warn('Continuing without authentication in development mode');
+        }
+    } else {
+        console.log('Authentication not required, skipping token check');
     }
     
     // Ensure we don't have double slashes in the URL

@@ -61,12 +61,7 @@
     <testCase name="server/test/apiKeyRevocation.test.ts - API Key Revocation - revokeApiKey - should handle already revoked keys" duration="0" />
   </file>
   <file path="server/test/apiKeyRoutes.test.ts">
-    <testCase name="server/test/apiKeyRoutes.test.ts - API Key Routes - POST /api/keys - should create a new API key" duration="0" />
-    <testCase name="server/test/apiKeyRoutes.test.ts - API Key Routes - POST /api/keys - should validate request body" duration="0" />
-    <testCase name="server/test/apiKeyRoutes.test.ts - API Key Routes - GET /api/keys - should list API keys for the current user" duration="0" />
-    <testCase name="server/test/apiKeyRoutes.test.ts - API Key Routes - DELETE /api/keys/:keyId - should revoke an API key" duration="0" />
-    <testCase name="server/test/apiKeyRoutes.test.ts - API Key Routes - DELETE /api/keys/:keyId - should return 404 if key not found" duration="0" />
-    <testCase name="server/test/apiKeyRoutes.test.ts - API Key Routes - Authentication - should require authentication for all routes" duration="0" />
+
   </file>
   <file path="server/test/apiKeyUtils.test.ts">
     <testCase name="server/test/apiKeyUtils.test.ts - API Key Utilities - generateApiKey - should generate a base64 URL-safe string" duration="0" />

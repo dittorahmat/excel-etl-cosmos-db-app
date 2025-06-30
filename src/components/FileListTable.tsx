@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getAuthToken } from '../utils/api.js';
+import { api, getAuthToken } from '../utils/api';
 import {
   Table,
   TableBody,
@@ -7,9 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from './ui/table.js';
-import { Button } from './ui/button.js';
-import { api } from '../utils/api.js';
+} from './ui/table';
+import { Button } from './ui/button';
 import { format } from 'date-fns';
 import { FileText, Download, Trash2, Loader2 } from 'lucide-react';
 
@@ -31,10 +30,19 @@ export function FileListTable() {
   const pageSize = 10;
   const isMounted = useRef(true);
 
+  interface ApiResponse<T> {
+    items: T[];
+    count: number;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }
+
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/files?page=${page}&pageSize=${pageSize}`);
+      const response = await api.get<ApiResponse<FileData>>(`/api/data?page=${page}&pageSize=${pageSize}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch files');
@@ -42,8 +50,8 @@ export function FileListTable() {
 
       const data = await response.json();
       if (isMounted.current) {
-        setFiles(data.items);
-        setTotalPages(Math.ceil(data.total / pageSize));
+        setFiles(data.items || []);
+        setTotalPages(data.totalPages || 1);
         setError(null);
       }
     } catch (err) {
