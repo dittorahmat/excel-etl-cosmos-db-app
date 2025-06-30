@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { writeFileSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -10,6 +11,23 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
+  
+  // Create a config file that will be loaded at runtime
+  const envConfig = {
+    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID || '',
+    VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || '',
+    VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || '',
+    VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
+    MODE: mode,
+    PROD: mode === 'production',
+    DEV: mode !== 'production'
+  };
+
+  // Write the config to a file that will be loaded at runtime
+  writeFileSync(
+    path.resolve(__dirname, 'public/config.js'),
+    `window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)}`
+  );
   
   return {
   plugins: [react()],
@@ -50,11 +68,10 @@ export default defineConfig(({ mode }) => {
   },
     define: {
       'process.env': {},
-      // Explicitly expose environment variables to the client
-      'import.meta.env.VITE_AZURE_CLIENT_ID': JSON.stringify(env.VITE_AZURE_CLIENT_ID),
-      'import.meta.env.VITE_AZURE_TENANT_ID': JSON.stringify(env.VITE_AZURE_TENANT_ID),
-      'import.meta.env.VITE_AZURE_REDIRECT_URI': JSON.stringify(env.VITE_AZURE_REDIRECT_URI || '/.auth/login/aad/callback'),
-      'import.meta.env.VITE_AZURE_SCOPES': JSON.stringify(env.VITE_AZURE_SCOPES || 'User.Read openid profile email')
+      // Use the runtime config instead of build-time environment variables
+      'import.meta.env.MODE': JSON.stringify(mode),
+      'import.meta.env.PROD': mode === 'production',
+      'import.meta.env.DEV': mode !== 'production',
     },
   };
 });
