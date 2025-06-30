@@ -5,35 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IESR Excel Cosmos DB Dashboard & API</title>
-    <!-- Load runtime configuration before any other scripts -->
-    <script>
-      // This script will be replaced by the actual config during build
-      window.__APP_CONFIG__ = {};
-      
-      // Function to load the main application after config is loaded
-      function loadApp() {
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = '/src/main.tsx';
-        document.body.appendChild(script);
-      }
-      
-      // Load the runtime config first
-      const configScript = document.createElement('script');
-      configScript.src = '/config.js';
-      configScript.onload = function() {
-        console.log('Runtime configuration loaded:', window.__APP_CONFIG__);
-        loadApp();
-      };
-      configScript.onerror = function() {
-        console.warn('Failed to load runtime configuration. Using defaults.');
-        loadApp();
-      };
-      document.head.appendChild(configScript);
-    </script>
+    <!-- Load the runtime config first -->
+    <script src="/config.js"></script>
   </head>
   <body>
     <div id="root"></div>
-    <!-- Main script is loaded by the script above after config is loaded -->
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
