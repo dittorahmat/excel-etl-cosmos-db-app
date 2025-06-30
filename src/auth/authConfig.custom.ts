@@ -1,12 +1,35 @@
 import { Configuration, LogLevel, BrowserCacheLocation } from '@azure/msal-browser';
 import type { Configuration as NodeConfiguration } from '@azure/msal-node';
 
-// Environment variable helper with type safety
+// Environment variable helper with type safety and better error reporting
 const getEnv = (key: string, defaultValue: string = ''): string => {
+  // Try to get from Vite environment variables
   const viteValue = import.meta.env[`VITE_${key}`];
-  if (viteValue !== undefined) return viteValue;
+  if (viteValue !== undefined && viteValue !== '') {
+    return viteValue;
+  }
   
-  console.warn(`Environment variable ${key} is not set. Using default value.`);
+  // Try to get from window.__APP_CONFIG__ (runtime config)
+  if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
+    const runtimeValue = (window as any).__APP_CONFIG__[`VITE_${key}`];
+    if (runtimeValue !== undefined && runtimeValue !== '') {
+      return runtimeValue;
+    }
+  }
+  
+  // Try to get from process.env (for Node.js environment during SSR)
+  const processValue = import.meta.env[`${key}`];
+  if (processValue !== undefined && processValue !== '') {
+    return processValue;
+  }
+  
+  // Log a warning if we're in development mode
+  if (import.meta.env.DEV) {
+    console.warn(`Environment variable VITE_${key} is not set. Using default value.`);
+  } else {
+    console.error(`Environment variable VITE_${key} is not set in production!`);
+  }
+  
   return defaultValue;
 };
 
@@ -89,8 +112,21 @@ const logConfig = () => {
   console.groupEnd();
 };
 
-// Log the configuration on import
-logConfig();
+// Log the configuration on import in development
+if (import.meta.env.DEV) {
+  logConfig();
+}
+
+// Log the current environment
+console.log('Current environment:', import.meta.env.MODE);
+console.log('Is production?', import.meta.env.PROD);
+
+// Log the runtime config if available
+if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
+  console.log('Runtime config loaded:', (window as any).__APP_CONFIG__);
+} else {
+  console.warn('Runtime config (window.__APP_CONFIG__) is not available');
+}
 
 // Export types for better type inference
 export type MsalConfig = Configuration;

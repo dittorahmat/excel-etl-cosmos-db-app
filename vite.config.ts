@@ -2,8 +2,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs/promises';
-import { existsSync, mkdirSync } from 'fs';
+import { promises as fs } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,12 +30,25 @@ export default defineConfig(({ mode }) => {
     mkdirSync(publicDir, { recursive: true });
   }
 
+  // Ensure the dist directory exists
+  const distDir = path.resolve(__dirname, 'dist');
+  if (!existsSync(distDir)) {
+    mkdirSync(distDir, { recursive: true });
+  }
+
   // Write the config to a file that will be loaded at runtime
-  fs.writeFile(
-    path.join(publicDir, 'config.js'),
-    `// This file is auto-generated during build
-window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`
-  ).catch(console.error);
+  const configContent = `// This file is auto-generated during build
+window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
+  
+  // Write to both public and dist directories to ensure it's included in the build
+  const configPath = path.join(publicDir, 'config.js');
+  const distConfigPath = path.join(distDir, 'config.js');
+  
+  writeFileSync(configPath, configContent);
+  writeFileSync(distConfigPath, configContent);
+  
+  console.log('Runtime config written to:', configPath);
+  console.log('Runtime config written to:', distConfigPath);
   
   return {
     // Configure the base public path
@@ -72,6 +85,9 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`
           },
         },
       },
+      // Copy config.js to the root of the output directory
+      assetsInlineLimit: 0, // Ensure all assets are copied as files
+      copyPublicDir: true, // Ensure public directory is copied
     },
     server: {
       port: 3000,
