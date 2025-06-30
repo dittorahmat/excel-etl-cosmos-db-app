@@ -2,7 +2,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { writeFileSync } from 'fs';
+import fs from 'fs/promises';
+import { existsSync, mkdirSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,49 +24,66 @@ export default defineConfig(({ mode }) => {
     DEV: mode !== 'production'
   };
 
+  // Ensure public directory exists
+  const publicDir = path.resolve(__dirname, 'public');
+  if (!existsSync(publicDir)) {
+    mkdirSync(publicDir, { recursive: true });
+  }
+
   // Write the config to a file that will be loaded at runtime
-  writeFileSync(
-    path.resolve(__dirname, 'public/config.js'),
-    `window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)}`
-  );
+  fs.writeFile(
+    path.join(publicDir, 'config.js'),
+    `// This file is auto-generated during build
+window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`
+  ).catch(console.error);
   
   return {
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  build: {
-    sourcemap: process.env.NODE_ENV === 'production' ? false : true,
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
+    // Configure the base public path
+    base: '/',
+    // Ensure public files are copied to the output directory
+    publicDir: 'public',
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
       },
     },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
+    // Configure the build output
+    build: {
+      outDir: 'dist',
+      assetsDir: '.',
+      sourcemap: process.env.NODE_ENV === 'production' ? false : true,
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: process.env.NODE_ENV === 'production',
+        },
+      },
+      chunkSizeWarningLimit: 1000, // Increase chunk size warning limit (in kbs)
+      rollupOptions: {
+        // Ensure config.js is included in the build
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+        },
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
+          },
         },
       },
     },
-    chunkSizeWarningLimit: 1000, // Increase chunk size warning limit to 1000KB
-  },
-  server: {
-    port: 3000,
-    open: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+    server: {
+      port: 3000,
+      open: true,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          rewrite: (pathStr: string) => pathStr.replace(/^\/api/, ''),
+        },
       },
     },
-  },
     define: {
       'process.env': {},
       // Use the runtime config instead of build-time environment variables
