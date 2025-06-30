@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from '../repositories/apiKeyUsageRepository.js';
 import { logger } from '../utils/logger.js';
-import type { ApiKey } from '../types/apiKey.js';
+
 
 // Define the API key interface
 
