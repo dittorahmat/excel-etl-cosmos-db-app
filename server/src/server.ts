@@ -9,13 +9,14 @@ import { initializeAzureServices } from './config/azure-services.js';
 import uploadRoute from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
+import authRoute from './routes/auth.route.js';
 import { validateToken } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
 import { logger, LogContext } from './utils/logger.js';
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
-import type { AzureCosmosDB, AuthenticatedRequest } from './types/custom.js';
+import type { AzureCosmosDB } from './types/custom.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -106,24 +107,39 @@ function createApp(azureServices: AzureCosmosDB): Express {
     apiKeyUsageRepository: apiKeyUsageRepository
   });
 
-  // Conditionally apply authentication middleware
+  // Check if authentication is enabled
   const authEnabled = process.env.AUTH_ENABLED === 'true';
+  
+  // Public routes (no authentication required)
+  app.use('/api/auth', authRoute);
+  
+  // Apply authentication middleware to protected routes if enabled
   if (authEnabled) {
-    const protectedRoutes = ['/api/keys', '/api/upload', '/api/data'];
-    protectedRoutes.forEach(route => {
-      app.use(route, (req: Request, res: Response, next: NextFunction) => {
-        // Use type assertion to bypass TypeScript type checking for the middleware
-        return (authMiddleware as (req: Request, res: Response, next: NextFunction) => void)(req, res, next);
-      });
-    });
+    logger.info('Authentication is ENABLED. Protecting API routes.');
+    
+    // Apply auth middleware to protected routes
+    app.use('/api/keys', 
+      authMiddleware, 
+      createApiKeyRouter(azureServices)
+    );
+    
+    app.use('/api/upload', 
+      authMiddleware, 
+      uploadRoute
+    );
+    
+    app.use('/api/data', 
+      authMiddleware, 
+      dataRoute
+    );
   } else {
-    logger.warn('Authentication is disabled. All API routes are unprotected.');
+    logger.warn('Authentication is DISABLED. All API routes are UNPROTECTED.');
+    
+    // Register routes without authentication middleware
+    app.use('/api/keys', createApiKeyRouter(azureServices));
+    app.use('/api/upload', uploadRoute);
+    app.use('/api/data', dataRoute);
   }
-
-  // Routes with proper typing
-  app.use('/api/keys', createApiKeyRouter(azureServices));
-  app.use('/api/upload', uploadRoute);
-  app.use('/api/data', dataRoute);
 
   // Request logging middleware
   app.use((req: Request & { id?: string }, res, next) => {
@@ -145,14 +161,13 @@ function createApp(azureServices: AzureCosmosDB): Express {
     // Log response finish
     res.on('finish', () => {
       const duration = Date.now() - start;
-      const authReq = req as unknown as AuthenticatedRequest;
       const logContext: LogContext = {
         requestId: req.id || 'unknown',
         method: req.method,
         path: req.path,
         status: res.statusCode,
         duration,
-        userId: authReq.user?.oid || 'anonymous',
+        userId: req.user?.oid || 'anonymous',
       };
 
       if (res.statusCode >= 400) {
@@ -181,7 +196,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
       url: req.originalUrl,
       statusCode: 500,
       ip: req.ip,
-      userId: (req as AuthenticatedRequest).user?.oid || 'anonymous',
+      userId: req.user?.oid || 'anonymous',
       error: err.message,
       stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
     };

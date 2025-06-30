@@ -17,14 +17,13 @@ export function FileListTable() {
     const fetchFiles = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get(`/api/data?page=${page}&pageSize=${pageSize}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch files');
-            }
-            const data = await response.json();
+            // Use the correct pagination parameters expected by the server
+            // The api.get() already parses the JSON response
+            const data = await api.get(`/api/data?page=${page}&limit=${pageSize}`);
+            
             if (isMounted.current) {
-                setFiles(data.items);
-                setTotalPages(Math.ceil(data.total / pageSize));
+                setFiles(Array.isArray(data?.items) ? data.items : []);
+                setTotalPages(data?.totalPages || 1);
                 setError(null);
             }
         }
