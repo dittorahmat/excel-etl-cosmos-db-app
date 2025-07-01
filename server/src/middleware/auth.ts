@@ -111,6 +111,12 @@ export const authenticateToken = (
   res: Response,
   next: NextFunction
 ) => {
+  // Skip authentication if disabled
+  if (process.env.AUTH_ENABLED === 'false') {
+    console.log('[auth] Authentication is disabled, skipping token validation');
+    return next();
+  }
+  
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 

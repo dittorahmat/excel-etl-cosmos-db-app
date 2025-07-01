@@ -29,9 +29,15 @@
     "vite.config.*",
     "vitest.config.*",
     "**/*.test.ts",
+    "**/*.test.tsx",
     "**/*.spec.ts",
+    "**/*.spec.tsx",
     "**/*.d.ts",
-    "vitest.setup.ts"
+    "vitest.setup.ts",
+    "server/test/**/*.ts",
+    "server/test/**/*.tsx",
+    "server/test/__mocks__/**/*.ts",
+    "server/test/__mocks__/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

@@ -6,10 +6,15 @@ import { fileURLToPath } from 'url';
 import { Server } from 'http';
 import rateLimit from 'express-rate-limit';
 import { initializeAzureServices } from './config/azure-services.js';
-import uploadRoute from './routes/upload.route.js';
+// Import v1 routes
+import { uploadRoute } from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
-import { createApiKeyRouter } from './routes/apiKey.route.js';
 import authRoute from './routes/auth.route.js';
+import { createApiKeyRouter } from './routes/apiKey.route.js';
+
+// Import v2 routes
+import { uploadRouterV2 } from './routes/v2/upload.route.js';
+import { queryRouterV2 } from './routes/v2/query.route.js';
 import { validateToken } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
@@ -135,10 +140,27 @@ function createApp(azureServices: AzureCosmosDB): Express {
   } else {
     logger.warn('Authentication is DISABLED. All API routes are UNPROTECTED.');
     
-    // Register routes without authentication middleware
-    app.use('/api/keys', createApiKeyRouter(azureServices));
+    // API v1 routes (legacy)
+    const apiKeyRouter = createApiKeyRouter(azureServices);
+    app.use('/api/keys', apiKeyRouter);
     app.use('/api/upload', uploadRoute);
     app.use('/api/data', dataRoute);
+    app.use('/api/auth', authRoute);
+    app.use('/api', apiKeyRouter);
+
+    // API v2 routes
+    app.use('/api/v2/imports', uploadRouterV2);
+    app.use('/api/v2', queryRouterV2);
+    
+    // Redirect root to API docs or health check
+    app.get('/', (_req, res) => {
+      res.redirect('/api/v2/health');
+    });
+    
+    // Health check endpoints
+    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+    app.get('/api/health', (_req, res) => res.json({ status: 'ok', version: 'v1' }));
+    app.get('/api/v2/health', (_req, res) => res.json({ status: 'ok', version: 'v2' }));
   }
 
   // Request logging middleware

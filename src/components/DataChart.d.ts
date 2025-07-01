@@ -1,14 +1,47 @@
-type ChartDataPoint = Record<string, string | number | null | undefined> & {
-    name?: string;
-    value?: number;
-};
+import type { ComponentType } from 'react';
+
+type Primitive = string | number | boolean | null | undefined;
+type NestedObject = { [key: string]: Primitive | NestedObject | Primitive[] | NestedObject[] };
+
+type ChartType = 'bar' | 'line' | 'pie' | 'table';
 type ExportFormat = 'csv' | 'json';
-interface DataChartProps {
-    data: ChartDataPoint[];
-    loading?: boolean;
-    onExport?: (format: ExportFormat) => void;
+
+/**
+ * Represents a single data point in the chart
+ */
+interface ChartDataPoint extends NestedObject {
+  /** Display name for the data point */
+  name?: string;
+  /** Numeric value for the data point */
+  value?: number | string | boolean | Date;
+  /** Unique identifier for the data point */
+  id?: string | number;
 }
-declare const DataChartWithErrorBoundary: React.FC<DataChartProps>;
+
+/**
+ * Props for the DataChart component
+ */
+interface DataChartProps {
+  /** Array of data points to visualize */
+  data: ChartDataPoint[];
+  /** Whether the component is in a loading state */
+  loading?: boolean;
+  /** Callback function for export actions */
+  onExport?: (format: ExportFormat) => void;
+  /** Available fields for axis mapping */
+  availableFields?: string[];
+  /** Default field to use for X-axis */
+  defaultXAxis?: string;
+  /** Default field to use for Y-axis */
+  defaultYAxis?: string;
+  /** Callback when field mappings change */
+  onFieldMappingChange?: (mapping: { xAxis?: string; yAxis?: string }) => void;
+  /** Current X-axis field */
+  xAxis?: string;
+  /** Current Y-axis field */
+  yAxis?: string;
+}
+
 /**
  * DataChart - A reusable chart component that supports multiple chart types and data visualization.
  *
@@ -23,14 +56,16 @@ declare const DataChartWithErrorBoundary: React.FC<DataChartProps>;
  *   ]}
  *   loading={false}
  *   onExport={(format) => console.log(`Exporting as ${format}`)}
+ *   availableFields={['name', 'value']}
+ *   defaultXAxis="name"
+ *   defaultYAxis="value"
+ *   onFieldMappingChange={(mapping) => console.log('Field mapping changed:', mapping)}
  * />
  * ```
  *
- * @param {Object} props - Component props
- * @param {ChartDataPoint[]} props.data - Array of data points to visualize
- * @param {boolean} [props.loading=false] - Whether the component is in a loading state
- * @param {(format: 'csv' | 'json') => void} [props.onExport] - Callback function for export actions
- *
+ * @param {DataChartProps} props - Component props
  * @returns {JSX.Element} Rendered chart component
  */
-export default DataChartWithErrorBoundary;
+declare const DataChart: React.FC<DataChartProps>;
+
+export default DataChart;

@@ -269,9 +269,10 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
       }
 
       // Save metadata to Cosmos DB
+      let record: CosmosRecord | null = null;
       try {
         console.log('[upload.route] Preparing to save metadata to Cosmos DB');
-        const record: CosmosRecord = {
+        record = {
           id: uuidv4(),
           userId,
           fileName: req.file.originalname,
@@ -286,10 +287,11 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
         };
 
         // Log the complete record before saving
+        const headers = Array.isArray(record.headers) ? record.headers : [];
         console.log('[upload.route] Record to be saved:', JSON.stringify({
           ...record,
           // Don't log potentially large arrays in production
-          headers: process.env.NODE_ENV === 'development' ? record.headers : `[${record.headers?.length} headers]`,
+          headers: process.env.NODE_ENV === 'development' ? headers : `[${headers.length} headers]`,
           // Add any additional debug info
           containerName,
           userId,
@@ -314,13 +316,20 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
           statusCode: dbError.statusCode,
           details: dbError.details || 'No additional details',
           stack: process.env.NODE_ENV === 'development' ? dbError.stack : undefined,
-          record: {
-            id: record?.id,
-            userId: record?.userId,
-            fileName: record?.fileName,
+          record: record ? {
+            id: record.id,
+            userId: record.userId,
+            fileName: record.fileName,
             containerName,
-            hasPartitionKey: !!record?._partitionKey,
-            partitionKeyValue: record?._partitionKey
+            hasPartitionKey: !!record._partitionKey,
+            partitionKeyValue: record._partitionKey
+          } : {
+            id: 'unknown',
+            userId: 'unknown',
+            fileName: 'unknown',
+            containerName,
+            hasPartitionKey: false,
+            partitionKeyValue: 'unknown'
           }
         });
         // Continue even if DB save fails, as the file was already uploaded
@@ -412,7 +421,7 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
 const authRequired = process.env.AUTH_ENABLED === 'true';
 
 // Define the upload route with conditional authentication
-const uploadRoute = router.post(
+router.post(
   '/',
   // Only apply authentication if required
   ...(authRequired ? [authenticateToken] : []),
@@ -475,5 +484,4 @@ router.use((err: Error & { code?: string; statusCode?: number; name?: string }, 
   });
 });
 
-export { uploadHandler, processExcelFile };
-export default router;
+export { uploadHandler, processExcelFile, router as uploadRoute };

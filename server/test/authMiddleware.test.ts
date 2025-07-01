@@ -90,6 +90,7 @@ describe('Token Validation Middleware', () => {
       // Assert
       expect(statusMock).toHaveBeenCalledWith(401);
       expect(jsonMock).toHaveBeenCalledWith({
+        success: false,
         error: 'Unauthorized',
         message: 'No token provided',
       });
@@ -117,6 +118,7 @@ describe('Token Validation Middleware', () => {
       // Assert
       expect(statusMock).toHaveBeenCalledWith(401);
       expect(jsonMock).toHaveBeenCalledWith({
+        success: false,
         error: 'Unauthorized',
         message: 'Invalid or expired token',
       });
@@ -146,6 +148,7 @@ describe('Token Validation Middleware', () => {
       // Assert
       expect(statusMock).toHaveBeenCalledWith(401);
       expect(jsonMock).toHaveBeenCalledWith({
+        success: false,
         error: 'Unauthorized',
         message: 'Invalid or expired token',
       });

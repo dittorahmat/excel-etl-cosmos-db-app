@@ -12,13 +12,28 @@ import { Button } from './ui/button';
 import { format } from 'date-fns';
 import { FileText, Download, Trash2, Loader2 } from 'lucide-react';
 
-interface FileData {
+interface ImportMetadata {
+  id: string;
+  originalFilename: string;
+  fileSize: number;
+  mimeType: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  recordCount: number;
+  processedCount: number;
+  errorCount: number;
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface FileData extends Omit<ImportMetadata, 'originalFilename' | 'fileSize' | 'createdAt'> {
   id: string;
   name: string;
   size: number;
   uploadedAt: string;
-  status: 'processed' | 'processing' | 'error';
-  recordCount?: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  recordCount: number;
 }
 
 export function FileListTable() {
@@ -30,42 +45,39 @@ export function FileListTable() {
   const pageSize = 10;
   const isMounted = useRef(true);
 
-  interface ApiResponse<T> {
-    items: T[];
-    count: number;
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  }
+  
 
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get<ApiResponse<FileData>>(`/api/data?page=${page}&pageSize=${pageSize}`);
+      const response = await api.get<{ items: ImportMetadata[]; total: number; page: number; pageSize: number; totalPages: number }>(
+        `/api/v2/imports?page=${page}&pageSize=${pageSize}&sort=-createdAt`
+      );
       
-      // Clone the response to read it multiple times if needed
-      const responseClone = response.clone();
-      
-      // First, try to parse as JSON
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        // If JSON parsing fails, try to get the text
-        const errorText = await responseClone.text();
-        console.error('Failed to parse response as JSON:', errorText);
-        throw new Error('Invalid response from server');
-      }
-
       if (!response.ok) {
-        // Handle error response
-        const errorMessage = data?.message || 'Failed to fetch files';
-        throw new Error(errorMessage);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to fetch imports');
       }
+      
+      const data = await response.json();
       
       if (isMounted.current) {
-        setFiles(data.items || []);
+        // Map the API response to our FileData interface
+        const mappedFiles: FileData[] = data.items.map((item: ImportMetadata) => ({
+          id: item.id,
+          name: item.originalFilename,
+          size: item.fileSize,
+          uploadedAt: item.createdAt,
+          status: item.status,
+          recordCount: item.recordCount,
+          processedCount: item.processedCount,
+          errorCount: item.errorCount,
+          updatedAt: item.updatedAt,
+          error: item.error,
+          metadata: item.metadata
+        }));
+        
+        setFiles(mappedFiles);
         setTotalPages(data.totalPages || 1);
         setError(null);
       }
@@ -95,7 +107,7 @@ export function FileListTable() {
   const handleDownload = async (fileId: string, fileName: string) => {
     try {
       // Use the api instance which uses fetch under the hood
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/files/${fileId}/download`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v2/imports/${fileId}/download`, {
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
         },
@@ -103,11 +115,22 @@ export function FileListTable() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to download file');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download file');
       }
 
       // Get the blob from the response
       const blob = await response.blob();
+      
+      // Get the filename from the content-disposition header or use the provided filename
+      let downloadFileName = fileName;
+      const contentDisposition = response.headers.get('content-disposition');
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (fileNameMatch && fileNameMatch[1]) {
+          downloadFileName = fileNameMatch[1];
+        }
+      }
 
       // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
@@ -116,7 +139,7 @@ export function FileListTable() {
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = fileName;
+      a.download = downloadFileName;
       document.body.appendChild(a);
       a.click();
 
@@ -130,20 +153,21 @@ export function FileListTable() {
   };
 
   const handleDelete = async (fileId: string) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) return;
+    if (!window.confirm('Are you sure you want to delete this import and all its data? This action cannot be undone.')) return;
 
     try {
-      const response = await api.delete(`/api/files/${fileId}`);
+      const response = await api.delete(`/api/v2/imports/${fileId}`);
 
       if (!response.ok) {
-        throw new Error('Failed to delete file');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to delete import');
       }
 
       // Refresh the file list
       fetchFiles();
     } catch (err) {
-      console.error('Error deleting file:', err);
-      setError('Failed to delete file');
+      console.error('Error deleting import:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete import');
     }
   };
 
@@ -195,19 +219,33 @@ export function FileListTable() {
                   </div>
                 </TableCell>
                 <TableCell>{formatFileSize(file.size)}</TableCell>
-                <TableCell>{file.recordCount || '-'}</TableCell>
+                <TableCell>
+                  {file.status === 'completed' ? (
+                    <span className="font-medium">{file.processedCount.toLocaleString()}</span>
+                  ) : file.status === 'processing' ? (
+                    <span className="text-blue-600">Processing {file.processedCount.toLocaleString()} of {file.recordCount.toLocaleString()}</span>
+                  ) : (
+                    <span>{file.recordCount.toLocaleString()}</span>
+                  )}
+                  {file.errorCount > 0 && (
+                    <span className="ml-1 text-red-600">({file.errorCount} errors)</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   {format(new Date(file.uploadedAt), 'MMM d, yyyy HH:mm')}
                 </TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    file.status === 'processed'
+                    file.status === 'completed'
                       ? 'bg-green-100 text-green-800'
-                      : file.status === 'processing'
+                      : file.status === 'processing' || file.status === 'pending'
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-red-100 text-red-800'
                   }`}>
                     {file.status}
+                    {file.errorCount > 0 && (
+                      <span className="ml-1 text-xs opacity-75">({file.errorCount} errors)</span>
+                    )}
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
@@ -215,7 +253,7 @@ export function FileListTable() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDownload(file.id, file.name)}
-                    disabled={file.status !== 'processed'}
+                    disabled={file.status !== 'completed'}
                   >
                     <Download className="h-4 w-4 mr-1" />
                     Download
