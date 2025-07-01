@@ -210,16 +210,22 @@ describe('API Key Authentication Middleware - Concurrent Validation', () => {
     expect(result2.err).toBeUndefined();
     
     // Verify each request got the correct API key attached
-    expect(result1.apiKey).toEqual({
+    expect(result1.apiKey).toMatchObject({
       id: mockApiKey1.id,
       userId: mockApiKey1.userId,
-      name: mockApiKey1.name
+      name: mockApiKey1.name,
+      isActive: true,
+      keyHash: expect.any(String),
+      createdAt: expect.any(String)
     });
     
-    expect(result2.apiKey).toEqual({
+    expect(result2.apiKey).toMatchObject({
       id: mockApiKey2.id,
       userId: mockApiKey2.userId,
-      name: mockApiKey2.name
+      name: mockApiKey2.name,
+      isActive: true,
+      keyHash: expect.any(String),
+      createdAt: expect.any(String)
     });
   }, 10000); // Increased timeout for concurrent test
 
@@ -277,7 +283,10 @@ describe('API Key Authentication Middleware - Concurrent Validation', () => {
         expect(result.apiKey).toMatchObject({
           id: mockApiKey.id,
           userId: mockApiKey.userId,
-          name: mockApiKey.name
+          name: mockApiKey.name,
+          isActive: true,
+          keyHash: expect.any(String),
+          createdAt: expect.any(String)
         });
       }
     });

@@ -55,10 +55,10 @@ const createMockCosmosDb = () => {
         return {
           isValid: true,
           key: {
-            id: 'test-key-id',
-            userId: 'test-user-id',
+            id: params.key === 'valid-header-key' ? 'key-1' : 'key-2',
+            userId: params.key === 'valid-header-key' ? 'user-1' : 'user-2',
             keyHash: 'mocked-hash-value',
-            name: 'Test Key',
+            name: params.key === 'valid-header-key' ? 'Key 1' : 'Key 2',
             isActive: true,
             createdAt: new Date().toISOString(),
             allowedIps: params.ipAddress ? [params.ipAddress] : []
@@ -176,17 +176,18 @@ mockValidateApiKey.mockImplementation(async (params: { key: string; ipAddress?: 
     return { isValid: false, error: 'API key is required' };
   }
   
-  if (params.key === 'valid-header-key' || params.key === 'valid-query-key') {
+  if (params.key === 'test-key' || params.key === 'rate-limited-key') {
+    const isRateLimited = params.key === 'rate-limited-key';
     return {
       isValid: true,
       key: {
-        id: 'test-key-id',
-        userId: 'test-user',
-        name: 'Test Key',
+        id: isRateLimited ? 'rate-limited-key' : 'test-key-id',
+        userId: isRateLimited ? 'user-1' : 'test-user-id',
+        keyHash: 'mocked-hash-value',
+        name: isRateLimited ? 'Rate Limited Key' : 'Test API Key',
         isActive: true,
         createdAt: new Date().toISOString(),
-        lastUsedAt: null,
-        allowedIps: ['*']
+        allowedIps: []
       }
     };
   }

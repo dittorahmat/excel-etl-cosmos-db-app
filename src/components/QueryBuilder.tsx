@@ -1,102 +1,211 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Button } from './ui/button.js';
-import { Input } from './ui/input.js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.js';
-import { api } from '../utils/api.js';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { api } from '../utils/api';
 import { Loader2, Plus, X } from 'lucide-react';
-// Format is not used, so we can remove this import
 
-interface QueryBuilderProps {
-  onQueryChange: (query: Record<string, unknown>) => void;
-  onExecute: (query: Record<string, unknown>) => void;
-  loading?: boolean;
+type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+
+interface FieldDefinition {
+  name: string;
+  type: FieldType;
+  path?: string;
+  description?: string;
+  example?: unknown;
 }
 
-export function QueryBuilder({ onQueryChange, onExecute, loading = false }: QueryBuilderProps) {
-  type Filter = {
-    id: string;
-    field: string;
-    operator: string;
-    value: string;
-  };
+interface Operator {
+  value: string;
+  label: string;
+  inputType?: 'text' | 'number' | 'date' | 'checkbox' | 'select';
+  needsSecondValue?: boolean;
+}
 
-  type FieldType = {
-    name: string;
-    type: string;
-  };
+interface FilterCondition {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+  value2?: string;
+}
 
-  const [availableFields, setAvailableFields] = useState<FieldType[]>([]);
-  const [filters, setFilters] = useState<Filter[]>([{
-    id: '1',
-    field: '',
-    operator: '=',
-    value: ''
-  }]);
+interface QueryBuilderProps {
+  fields?: FieldDefinition[];
+  onQueryChange?: (query: Record<string, unknown>) => void;
+  onExecute: (query: Record<string, unknown>) => void;
+  loading?: boolean;
+  autoLoadFields?: boolean;
+  fieldsEndpoint?: string;
+}
 
-  const operators = [
-    { value: '=', label: 'equals' },
-    { value: '!=', label: 'not equals' },
-    { value: '>', label: 'greater than' },
-    { value: '>=', label: 'greater than or equal' },
-    { value: '<', label: 'less than' },
-    { value: '<=', label: 'less than or equal' },
-    { value: 'contains', label: 'contains' },
-    { value: 'startsWith', label: 'starts with' },
-    { value: 'endsWith', label: 'ends with' },
-  ];
+const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
+  string: [
+    { value: '=', label: 'equals', inputType: 'text' },
+    { value: '!=', label: 'not equals', inputType: 'text' },
+    { value: 'contains', label: 'contains', inputType: 'text' },
+    { value: '!contains', label: 'not contains', inputType: 'text' },
+    { value: 'startsWith', label: 'starts with', inputType: 'text' },
+    { value: 'endsWith', label: 'ends with', inputType: 'text' },
+    { value: 'empty', label: 'is empty' },
+    { value: '!empty', label: 'is not empty' },
+  ],
+  number: [
+    { value: '=', label: 'equals', inputType: 'number' },
+    { value: '!=', label: 'not equals', inputType: 'number' },
+    { value: '>', label: 'greater than', inputType: 'number' },
+    { value: '>=', label: 'greater than or equal', inputType: 'number' },
+    { value: '<', label: 'less than', inputType: 'number' },
+    { value: '<=', label: 'less than or equal', inputType: 'number' },
+    { value: 'between', label: 'is between', inputType: 'number', needsSecondValue: true },
+    { value: 'empty', label: 'is empty' },
+  ],
+  boolean: [
+    { value: '=', label: 'is', inputType: 'select' },
+  ],
+  date: [
+    { value: '=', label: 'is', inputType: 'date' },
+    { value: '!=', label: 'is not', inputType: 'date' },
+    { value: '>', label: 'after', inputType: 'date' },
+    { value: '<', label: 'before', inputType: 'date' },
+    { value: 'between', label: 'is between', inputType: 'date', needsSecondValue: true },
+  ],
+  array: [
+    { value: 'includes', label: 'includes', inputType: 'text' },
+    { value: '!includes', label: 'excludes', inputType: 'text' },
+    { value: 'empty', label: 'is empty' },
+    { value: '!empty', label: 'is not empty' },
+  ],
+  object: [
+    { value: 'exists', label: 'exists' },
+    { value: '!exists', label: 'does not exist' },
+  ],
+};
+
+
+
+export function QueryBuilder({
+  fields: initialFields = [],
+  onQueryChange,
+  onExecute,
+  loading = false,
+}: QueryBuilderProps) {
+  const [availableFields, setAvailableFields] = useState<FieldDefinition[]>(initialFields);
+  const [filters, setFilters] = useState<FilterCondition[]>([{ id: '1', field: '', operator: '=', value: '' }]);
+  
 
   useEffect(() => {
-    // Load available fields from the server
     const loadFields = async () => {
+      if (initialFields.length > 0) {
+        setAvailableFields(initialFields);
+        return;
+      }
+
+      setLoadingFields(true);
       try {
-        const response = await api.get('/api/fields');
+        const response = await api.get('/api/v2/fields');
         if (response.ok) {
           const data = await response.json();
-          setAvailableFields(data.fields || []);
+          const fields = (data.fields || []).map((field: string) => ({
+            name: field,
+            type: 'string' as FieldType, // Default type, will be refined based on data
+          }));
+          setAvailableFields(fields);
         }
       } catch (error) {
         console.error('Error loading fields:', error);
+      } finally {
+        setLoadingFields(false);
       }
     };
 
     loadFields();
-  }, []);
+  }, [initialFields]);
 
   const buildQuery = useCallback((): Record<string, unknown> => {
-    const whereClauses = filters
-      .filter((f): f is Required<Filter> =>
-        Boolean(f.field) && Boolean(f.operator) && f.value !== ''
-      )
+    const conditions = filters
+      .filter((f): f is Required<FilterCondition> => Boolean(f.field) && Boolean(f.operator) && f.value !== '')
       .map(f => {
         const fieldType = availableFields.find(af => af.name === f.field)?.type || 'string';
-        const value = fieldType === 'number' ? parseFloat(f.value) : f.value;
+        let value: unknown = f.value;
+        
+        // Convert value based on field type
+        switch (fieldType) {
+          case 'number':
+            value = parseFloat(f.value);
+            if (f.operator === 'between' && f.value2) {
+              return {
+                [f.field]: {
+                  $gte: value,
+                  $lte: parseFloat(f.value2)
+                }
+              };
+            }
+            break;
+          case 'date':
+            value = new Date(f.value).toISOString();
+            if (f.operator === 'between' && f.value2) {
+              return {
+                [f.field]: {
+                  $gte: value,
+                  $lte: new Date(f.value2).toISOString()
+                }
+              };
+            }
+            break;
+          case 'boolean':
+            value = f.value === 'true';
+            break;
+          default:
+            // For string and other types
+            if (f.operator === 'contains') {
+              return { [f.field]: { $regex: f.value, $options: 'i' } };
+            } else if (f.operator === '!contains') {
+              return { [f.field]: { $not: { $regex: f.value, $options: 'i' } } };
+            } else if (f.operator === 'startsWith') {
+              return { [f.field]: { $regex: `^${f.value}`, $options: 'i' } };
+            } else if (f.operator === 'endsWith') {
+              return { [f.field]: { $regex: `${f.value}$`, $options: 'i' } };
+            } else if (f.operator === 'empty') {
+              return { [f.field]: { $in: [null, ''] } };
+            } else if (f.operator === '!empty') {
+              return { [f.field]: { $nin: [null, ''] } };
+            }
+        }
 
-        return {
-          [f.field]: {
-            [f.operator]: value
-          }
+        // Default operator mapping
+        const operatorMap: Record<string, string> = {
+          '=': '$eq',
+          '!=': '$ne',
+          '>': '$gt',
+          '>=': '$gte',
+          '<': '$lt',
+          '<=': '$lte',
+          'between': '$between'
         };
+
+        const mongoOperator = operatorMap[f.operator] || f.operator;
+        return { [f.field]: { [mongoOperator]: value } };
       });
 
-    if (whereClauses.length === 0) {
+    if (conditions.length === 0) {
       return {};
     }
 
-    if (whereClauses.length === 1) {
-      return whereClauses[0];
+    if (conditions.length === 1) {
+      return conditions[0];
     }
 
-    return {
-      and: whereClauses
-    };
+    return { $and: conditions };
   }, [filters, availableFields]);
 
   useEffect(() => {
-    // Notify parent component about query changes
-    onQueryChange(buildQuery());
+    if (onQueryChange) {
+      onQueryChange(buildQuery());
+    }
   }, [buildQuery, onQueryChange]);
 
-  const addFilter = (): void => {
+  const addFilter = useCallback((): void => {
     setFilters(prevFilters => [
       ...prevFilters,
       {
@@ -106,139 +215,140 @@ export function QueryBuilder({ onQueryChange, onExecute, loading = false }: Quer
         value: ''
       }
     ]);
-  };
+  }, []);
 
-  const removeFilter = (id: string): void => {
+  const removeFilter = useCallback((id: string): void => {
     if (filters.length <= 1) return;
-    const newFilters = filters.filter(filter => filter.id !== id);
-    setFilters(newFilters);
-  };
+    setFilters(prevFilters => prevFilters.filter(filter => filter.id !== id));
+  }, [filters.length]);
 
-  const updateFilter = (id: string, field: keyof Filter, value: string): void => {
-    setFilters(prevFilters =>
-      prevFilters.map(filter =>
-        filter.id === id
-          ? { ...filter, [field]: value }
-          : filter
-      )
-    );
-  };
+  const updateFilter = useCallback((id: string, field: keyof FilterCondition, value: string) => {
+    setFilters(prevFilters => prevFilters.map(f =>
+      f.id === id ? { ...f, [field]: value } : f
+    ));
+  }, []);
 
-  const handleExecute = (): void => {
+  // Remove value2 handler (inline in JSX instead)
+
+
+  const handleExecute = useCallback(() => {
     onExecute(buildQuery());
-  };
+  }, [onExecute, buildQuery]);
 
-  const getFieldType = (fieldName: string) => {
+  const getFieldType = (fieldName: string): FieldType => {
+    // Try to determine field type from available fields first
     const field = availableFields.find(f => f.name === fieldName);
-    return field ? field.type : 'string';
+    if (field?.type) return field.type;
+    
+    // Fallback to type inference from field name
+    const lowerName = fieldName.toLowerCase();
+    if (['id', 'count', 'total', 'amount', 'price', 'quantity'].some(k => lowerName.includes(k))) {
+      return 'number';
+    }
+    if (['date', 'time', 'created', 'updated', 'timestamp'].some(k => lowerName.includes(k))) {
+      return 'date';
+    }
+    if (['is_', 'has_', 'can_', 'should_'].some(prefix => lowerName.startsWith(prefix))) {
+      return 'boolean';
+    }
+    return 'string';
   };
 
-  const getInputType = (fieldType: string): React.HTMLInputTypeAttribute => {
-    const typeMap: Record<string, React.HTMLInputTypeAttribute> = {
-      'number': 'number',
-      'date': 'date',
-      'datetime': 'datetime-local',
-      'time': 'time',
-      'email': 'email',
-      'url': 'url',
-      'tel': 'tel',
-      'password': 'password',
-      'search': 'search',
-      'color': 'color',
-      'range': 'range'
-    };
-
-    return typeMap[fieldType] || 'text';
+  const getInputType = (fieldName: string): 'text' | 'number' | 'date' => {
+    const fieldType = getFieldType(fieldName);
+    switch (fieldType) {
+      case 'number':
+        return 'number';
+      case 'date':
+        return 'date';
+      case 'boolean':
+        return 'text'; // Handled by select input
+      default:
+        return 'text';
+    }
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-card">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Query Builder</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={addFilter}
-          disabled={loading}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Filter
+    <div className="space-y-4">
+      <div className="space-y-2">
+        {filters.map((filter: FilterCondition) => {
+          const fieldType = getFieldType(filter.field);
+          const showValue2 = filter.operator === 'between';
+          const inputType = getInputType(filter.field);
+          const operators = OPERATORS_BY_TYPE[fieldType] || [];
+
+          return (
+            <div key={filter.id} className="flex items-center gap-2">
+              {/* Field selector */}
+              <Select value={filter.field} onValueChange={(val: string) => updateFilter(filter.id, 'field', val)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Field" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableFields.map((f: FieldDefinition) => (
+                    <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Operator selector */}
+              <Select value={filter.operator} onValueChange={(val: string) => updateFilter(filter.id, 'operator', val)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Operator" />
+                </SelectTrigger>
+                <SelectContent>
+                  {operators.map((op: Operator) => (
+                    <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Value input(s) */}
+              {['empty', '!empty', 'exists', '!exists'].includes(filter.operator) ? null : (
+                <>
+                  {fieldType === 'boolean' ? (
+                    <Select value={filter.value} onValueChange={(val: string) => updateFilter(filter.id, 'value', val)}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue placeholder="Value" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">True</SelectItem>
+                        <SelectItem value="false">False</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      type={inputType}
+                      value={filter.value}
+                      onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
+                      placeholder="Value"
+                      className="flex-1"
+                    />
+                  )}
+                  {showValue2 && (
+                    <Input
+                      type={inputType}
+                      value={filter.value2 || ''}
+                      onChange={(e) => updateFilter(filter.id, 'value2', e.target.value)}
+                      placeholder="and..."
+                      className="flex-1"
+                    />
+                  )}
+                </>
+              )}
+              {/* Remove button */}
+              <Button variant="ghost" size="icon" onClick={() => removeFilter(filter.id)} disabled={filters.length <= 1}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={addFilter} disabled={loading}>
+          <Plus className="w-4 h-4 mr-1" /> Add Filter
         </Button>
-      </div>
-
-      <div className="space-y-3">
-        {filters.map((filter) => (
-          <div key={filter.id} className="flex items-center space-x-2">
-            <Select
-              value={filter.field}
-              onValueChange={(value) => updateFilter(filter.id, 'field', value)}
-              disabled={loading}
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select field" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableFields.map((field) => (
-                  <SelectItem key={field.name} value={field.name}>
-                    {field.name} ({field.type})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filter.operator}
-              onValueChange={(value) => updateFilter(filter.id, 'operator', value)}
-              disabled={!filter.field || loading}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Operator" />
-              </SelectTrigger>
-              <SelectContent>
-                {operators.map((op) => (
-                  <SelectItem key={op.value} value={op.value}>
-                    {op.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {filter.field && (
-              <Input
-                type={getInputType(getFieldType(filter.field))}
-                value={filter.value}
-                onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
-                placeholder="Value"
-                disabled={loading}
-                className="flex-1"
-              />
-            )}
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => removeFilter(filter.id)}
-              disabled={filters.length <= 1 || loading}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex justify-end">
-        <Button
-          onClick={handleExecute}
-          disabled={!filters.some(f => f.field && f.operator && f.value !== '') || loading}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Executing...
-            </>
-          ) : (
-            'Execute Query'
-          )}
+        <Button type="button" onClick={handleExecute} disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+          Execute
         </Button>
       </div>
     </div>

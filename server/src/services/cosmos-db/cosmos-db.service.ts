@@ -4,6 +4,15 @@ import type { CosmosRecord, AzureCosmosDB } from '../../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
 
+type CosmosResponse<T> = T & {
+  id: string;
+  _etag?: string;
+  _ts?: number;
+  _rid?: string;
+  _self?: string;
+  _attachments?: string;
+};
+
 let cosmosClient: CosmosClient | null = null;
 let database: Database | null = null;
 let _container: Container | null = null;
@@ -91,7 +100,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
     upsertRecord: async <T extends CosmosRecord>(
       record: T,
       containerName: string = AZURE_CONFIG.cosmos.containerName
-    ): Promise<T> => {
+    ): Promise<CosmosResponse<T>> => {
       const startTime = Date.now();
       const recordId = record.id || 'new-record';
       const operationId = `op_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -181,7 +190,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
         
         let resource, statusCode, requestCharge, activityId;
         try {
-          const response = await container.items.upsert<T>(recordToUpsert);
+          const response = await container.items.upsert(recordToUpsert);
           resource = response.resource;
           statusCode = response.statusCode;
           requestCharge = response.requestCharge;
@@ -247,7 +256,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
           }
         });
 
-        return resource;
+        return resource as unknown as CosmosResponse<T>;
       } catch (error) {
         const errorId = uuidv4();
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -349,7 +358,7 @@ export function createCosmosDbClient(): AzureCosmosDB {
       try {
         const container = database.container(containerName);
         const { resource } = await container.item(id, partitionKey).read<T>();
-        return resource;
+        return resource as unknown as CosmosResponse<T>;
       } catch (error) {
         if (error && typeof error === 'object' && 'code' in error && error.code === 404) {
           return undefined;

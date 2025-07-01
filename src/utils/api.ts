@@ -133,7 +133,7 @@ export const authFetch = async <T = unknown>(
   }
   
   // Get base URL from environment and ensure it doesn't end with a slash
-  let baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
   
   // Clean the URL path by removing leading/trailing slashes
   const cleanPath = url.replace(/^\/+|\/+$/g, '');
