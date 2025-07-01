@@ -41,7 +41,21 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
   return {
     base: '/',
     publicDir: 'public',
-    plugins: [react()],
+    plugins: [
+      react(),
+      // Plugin to ensure config.js is copied to the dist directory
+      {
+        name: 'copy-config',
+        closeBundle() {
+          const destPath = path.join(__dirname, 'dist/config.js');
+          if (!existsSync(path.dirname(destPath))) {
+            mkdirSync(path.dirname(destPath), { recursive: true });
+          }
+          writeFileSync(destPath, configContent);
+          console.log('Config file written to dist directory:', destPath);
+        }
+      }
+    ],
     build: {
       outDir: 'dist',
       assetsDir: '.',
@@ -52,7 +66,6 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
       assetsInlineLimit: 0, // Ensure all assets are copied as files
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
-        // Ensure config.js is included in the build output
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
@@ -61,25 +74,12 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
             react: ['react', 'react-dom', 'react-router-dom'],
             ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
           },
+          // Preserve the exact filename for config.js
           entryFileNames: '[name].[hash].js',
           chunkFileNames: '[name].[hash].js',
-          assetFileNames: '[name].[ext]',
-        },
-      },
-      // Copy config.js to dist after build
-      writeBundle: {
-        async handler() {
-          const distDir = path.resolve(__dirname, 'dist');
-          if (!existsSync(distDir)) {
-            mkdirSync(distDir, { recursive: true });
-          }
-          const distConfigPath = path.join(distDir, 'config.js');
-          writeFileSync(distConfigPath, configContent);
-          console.log('Config file copied to dist directory:', distConfigPath);
-          
-          // Verify the file was written
-          if (!existsSync(distConfigPath)) {
-            throw new Error('Failed to write config.js to dist directory');
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name === 'config.js') return 'config.js';
+            return 'assets/[name].[hash][ext]';
           }
         }
       },
