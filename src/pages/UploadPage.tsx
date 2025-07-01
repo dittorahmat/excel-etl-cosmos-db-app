@@ -4,6 +4,7 @@ import { useToast } from '../components/ui/use-toast';
 import { ToastAction } from '../components/ui/toast';
 import { Upload as UploadIcon, FileCheck } from 'lucide-react';
 import { Card } from '../components/ui/card';
+import { api, getAuthToken } from '../utils/api';
 
 export function UploadPage() {
   console.log('Rendering UploadPage component');
@@ -26,32 +27,27 @@ export function UploadPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-
-      const xhr = new XMLHttpRequest();
       
-      // Set up progress tracking
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(progress);
-        }
-      });
-
-      const response = await new Promise<Response>((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(new Response(xhr.response, {
-              status: xhr.status,
-              statusText: xhr.statusText,
-            }));
-          } else {
-            reject(new Error(xhr.statusText || 'Upload failed'));
+      // Get the auth token manually to verify it's available
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token available. Please sign in again.');
+      }
+      
+      // Use the authenticated API client
+      const response = await api.post('/api/upload', formData, {
+        // Don't set Content-Type header - let the browser set it with the correct boundary
+        // The API client will automatically add the Authorization header
+        onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & { 
+          lengthComputable: boolean; 
+          loaded: number; 
+          total: number 
+        }) => {
+          if (progressEvent.lengthComputable) {
+            const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            setUploadProgress(progress);
           }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.open('POST', '/api/upload');
-        xhr.responseType = 'json';
-        xhr.send(formData);
+        },
       });
 
       if (!response.ok) {

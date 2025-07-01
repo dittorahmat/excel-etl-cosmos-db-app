@@ -41,10 +41,14 @@ const getKey = (header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) => {
   });
 };
 
+// Development mock token for testing
+const DEV_MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+
 // Middleware to validate JWT tokens
 export const validateToken = (req: Request, res: Response, next: NextFunction) => {
   // Skip authentication if disabled
   if (process.env.AUTH_ENABLED === 'false') {
+    console.log('Authentication is disabled, skipping token validation');
     return next();
   }
 
@@ -52,6 +56,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
+      success: false,
       error: 'Unauthorized',
       message: 'No token provided',
     });
@@ -59,7 +64,21 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
 
   const token = authHeader.split(' ')[1];
 
-  // Verify the token
+  // In development, accept the mock token
+  if (process.env.NODE_ENV === 'development' && token === DEV_MOCK_TOKEN) {
+    console.log('Development mode: Using mock token');
+    req.user = {
+      sub: '1234567890',
+      name: 'Dev User',
+      email: 'dev@example.com',
+      roles: ['admin'],
+      iat: Math.floor(Date.now() / 1000) - 30, // 30 seconds ago
+      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+    };
+    return next();
+  }
+
+  // Verify the token in production
   const validationOptions = {
     audience: process.env.AZURE_CLIENT_ID,
     issuer: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0`,
@@ -70,6 +89,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
     if (err) {
       console.error('Token validation error:', err);
       return res.status(401).json({
+        success: false,
         error: 'Unauthorized',
         message: 'Invalid or expired token',
       });

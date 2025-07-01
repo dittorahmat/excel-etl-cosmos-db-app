@@ -21,9 +21,13 @@ export interface MulterFile {
 
 
 // Base type for all Cosmos DB records
-export type CosmosRecord = Record<string, unknown> & {
+export interface CosmosRecord {
   id: string;
-};
+  _partitionKey?: string;
+  documentType?: string;
+  userId?: string;
+  [key: string]: unknown;
+}
 
 /**
  * Interface for interacting with Azure Blob Storage

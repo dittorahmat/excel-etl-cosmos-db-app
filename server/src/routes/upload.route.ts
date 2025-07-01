@@ -196,17 +196,25 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
       );
     }
 
-    // Log file processing start
+    // Log file processing start with additional context
     console.log('[upload.route] Processing file:', {
       fileName: req.file.originalname,
       size: req.file.size,
-      mimetype: req.file.mimetype
+      mimetype: req.file.mimetype,
+      bufferLength: req.file.buffer?.length || 0,
+      fieldname: req.file.fieldname,
+      encoding: req.file.encoding,
+      timestamp: new Date().toISOString(),
+      requestId: req.id || 'unknown',
+      userAgent: req.headers['user-agent']
     });
 
-    // Get user ID from the authenticated request
-    const userId = req.user?.oid;
-    if (!userId) {
-      console.warn('[upload.route] No user ID found in request');
+    // Get user ID from the authenticated request or use a default for unauthenticated uploads
+    const authRequired = process.env.AUTH_ENABLED === 'true';
+    const userId = req.user?.oid || 'anonymous';
+    
+    if (authRequired && !req.user?.oid) {
+      console.warn('[upload.route] Authentication required but no user ID found in request');
       return res.status(401).json(
         createErrorResponse(401, 'Authentication required', 'User not authenticated')
       );
@@ -262,12 +270,12 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
 
       // Save metadata to Cosmos DB
       try {
-        console.log('[upload.route] Saving metadata to Cosmos DB');
+        console.log('[upload.route] Preparing to save metadata to Cosmos DB');
         const record: CosmosRecord = {
           id: uuidv4(),
           userId,
           fileName: req.file.originalname,
-          blobUrl: blobUrl, // Use blobUrl instead of fileUrl
+          blobUrl: blobUrl,
           uploadDate: new Date().toISOString(),
           status: 'completed',
           documentType: 'excelRecord',
@@ -277,10 +285,44 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
           _partitionKey: userId,
         };
 
-        await cosmosDb.upsertRecord(record, containerName);
-        console.log('[upload.route] Metadata saved to Cosmos DB');
-      } catch (dbError) {
-        console.error('[upload.route] Error saving to Cosmos DB:', dbError);
+        // Log the complete record before saving
+        console.log('[upload.route] Record to be saved:', JSON.stringify({
+          ...record,
+          // Don't log potentially large arrays in production
+          headers: process.env.NODE_ENV === 'development' ? record.headers : `[${record.headers?.length} headers]`,
+          // Add any additional debug info
+          containerName,
+          userId,
+          timestamp: new Date().toISOString()
+        }, null, 2));
+
+        console.log(`[upload.route] Attempting to save record to container: ${containerName}`);
+        console.log(`[upload.route] Using partition key: ${record._partitionKey}`);
+        
+        // Save the record
+        const savedRecord = await cosmosDb.upsertRecord(record, containerName);
+        
+        console.log('[upload.route] Metadata successfully saved to Cosmos DB:', {
+          id: savedRecord?.id,
+          etag: (savedRecord as any)?._etag,
+          timestamp: new Date().toISOString()
+        });
+      } catch (dbError: any) {
+        console.error('[upload.route] Error saving to Cosmos DB:', {
+          message: dbError.message,
+          code: dbError.code,
+          statusCode: dbError.statusCode,
+          details: dbError.details || 'No additional details',
+          stack: process.env.NODE_ENV === 'development' ? dbError.stack : undefined,
+          record: {
+            id: record?.id,
+            userId: record?.userId,
+            fileName: record?.fileName,
+            containerName,
+            hasPartitionKey: !!record?._partitionKey,
+            partitionKeyValue: record?._partitionKey
+          }
+        });
         // Continue even if DB save fails, as the file was already uploaded
       }
 
@@ -366,10 +408,14 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
   }
 };
 
-// Define the upload route
-router.post(
+// Determine if authentication is required
+const authRequired = process.env.AUTH_ENABLED === 'true';
+
+// Define the upload route with conditional authentication
+const uploadRoute = router.post(
   '/',
-  authenticateToken,
+  // Only apply authentication if required
+  ...(authRequired ? [authenticateToken] : []),
   upload.single('file'),
   (req, res, next) => {
     try {

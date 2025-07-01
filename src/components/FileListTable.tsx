@@ -43,12 +43,27 @@ export function FileListTable() {
     try {
       setLoading(true);
       const response = await api.get<ApiResponse<FileData>>(`/api/data?page=${page}&pageSize=${pageSize}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch files');
+      
+      // Clone the response to read it multiple times if needed
+      const responseClone = response.clone();
+      
+      // First, try to parse as JSON
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, try to get the text
+        const errorText = await responseClone.text();
+        console.error('Failed to parse response as JSON:', errorText);
+        throw new Error('Invalid response from server');
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        // Handle error response
+        const errorMessage = data?.message || 'Failed to fetch files';
+        throw new Error(errorMessage);
+      }
+      
       if (isMounted.current) {
         setFiles(data.items || []);
         setTotalPages(data.totalPages || 1);
