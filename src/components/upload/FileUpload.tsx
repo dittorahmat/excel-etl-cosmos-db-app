@@ -138,17 +138,31 @@ export function FileUpload({
               {(file.size / 1024 / 1024).toFixed(2)} MB
             </p>
           </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemoveFile();
-            }}
-            disabled={isUploading || isUploadingLocal}
-            className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpload();
+              }}
+              disabled={isUploading || isUploadingLocal}
+              className="px-3 py-1 h-8 text-xs"
+            >
+              {isUploading || isUploadingLocal ? 'Uploading...' : 'Upload'}
+            </Button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveFile();
+              }}
+              disabled={isUploading || isUploadingLocal}
+              className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       ) : (
         <div className="text-center">
@@ -165,20 +179,7 @@ export function FileUpload({
         </div>
       )}
       
-      {file && !isUploading && !isUploadingLocal && (
-        <Button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleUpload();
-          }}
-          disabled={!file || isUploading || isUploadingLocal}
-          className="mt-4"
-        >
-          <UploadIcon className="mr-2 h-4 w-4" />
-          Upload File
-        </Button>
-      )}
+
       
       {error && (
         <p className="text-sm text-destructive mt-2 text-center">

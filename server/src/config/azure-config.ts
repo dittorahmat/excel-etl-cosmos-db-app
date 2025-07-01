@@ -15,7 +15,8 @@ export const AZURE_CONFIG = {
     key: process.env.AZURE_COSMOS_KEY || '',
     databaseName: process.env.AZURE_COSMOSDB_DATABASE || 'excel-upload-db',
     containerName: process.env.AZURE_COSMOSDB_CONTAINER || 'excel-records',
-    partitionKey: process.env.AZURE_COSMOS_PARTITION_KEY || '/userId',
+    // Use the environment variable if set, otherwise default to '/id' to match the .env file
+    partitionKey: process.env.AZURE_COSMOS_PARTITION_KEY || '/id',
   } as const,
 } as const;
 

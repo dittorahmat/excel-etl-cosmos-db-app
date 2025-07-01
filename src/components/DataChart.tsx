@@ -76,7 +76,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
   return null;
 };
 
-const DataChart: React.FC<DataChartProps> = ({
+export const DataChart: React.FC<DataChartProps> = ({
   data = [],
   loading = false,
   onExport,

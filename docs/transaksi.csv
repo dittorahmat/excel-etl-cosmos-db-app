@@ -1,0 +1,6 @@
+id_transaksi,waktu_transaksi,id_pelanggan,nama_pelanggan,id_produk,nama_produk,kategori_produk,jumlah,harga_satuan,total_harga,metode_pembayaran,status_transaksi
+TX001,2025-07-01T10:00:00Z,CUST001,Andi Susanto,PROD01,Laptop Pro,Elektronik,1,15000000,15000000,Kartu Kredit,Selesai
+TX002,2025-07-01T10:05:00Z,CUST002,Budi Hartono,PROD02,Mouse Gaming,Aksesoris Komputer,2,750000,1500000,Transfer Bank,Selesai
+TX003,2025-07-01T10:15:00Z,CUST003,Citra Lestari,PROD03,Keyboard Mekanikal,Aksesoris Komputer,1,1200000,1200000,GoPay,Selesai
+TX004,2025-07-01T11:20:00Z,CUST001,Andi Susanto,PROD04,Monitor 24 inch,Elektronik,1,3500000,3500000,Kartu Kredit,Diproses
+TX005,2025-07-01T11:30:00Z,CUST004,Dewi Anggraini,PROD05,Webcam HD,Aksesoris Komputer,1,850000,850000,OVO,Selesai
