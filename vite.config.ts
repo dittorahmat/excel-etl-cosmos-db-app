@@ -108,7 +108,22 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
         '/api': {
           target: 'http://localhost:3001',
           changeOrigin: true,
-          rewrite: (pathStr: string) => pathStr.replace(/^\/api/, ''),
+          secure: false,
+          ws: true,
+          rewrite: (pathStr: string) => {
+            // Remove the leading /api from the path
+            const newPath = pathStr.replace(/^\/api/, '');
+            console.log(`Proxying ${pathStr} to ${newPath}`);
+            return newPath;
+          },
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
+              console.error('Proxy error:', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('Proxying request to:', req.url);
+            });
+          }
         },
       },
     },

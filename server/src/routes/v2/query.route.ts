@@ -239,16 +239,75 @@ async function getImportMetadata(req: Request, res: Response) {
   }
 }
 
+/**
+ * List all imports with pagination
+ */
+async function listImports(req: Request, res: Response) {
+  try {
+    const { page = '1', pageSize = '10' } = req.query;
+    const pageNum = parseInt(page as string, 10) || 1;
+    const pageSizeNum = parseInt(pageSize as string, 10) || 10;
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const cosmosDb = await getOrInitializeCosmosDB();
+    const container = await cosmosDb.container('excel-records', '/_partitionKey');
+    
+    // Query for import metadata (documents where id starts with 'import_')
+    const query = {
+      query: 'SELECT * FROM c WHERE STARTSWITH(c.id, @prefix) ORDER BY c.processedAt DESC OFFSET @offset LIMIT @limit',
+      parameters: [
+        { name: '@prefix', value: 'import_' },
+        { name: '@offset', value: offset },
+        { name: '@limit', value: pageSizeNum }
+      ]
+    };
+    
+    // Get total count of imports
+    const countQuery = {
+      query: 'SELECT VALUE COUNT(1) FROM c WHERE STARTSWITH(c.id, @prefix)',
+      parameters: [{ name: '@prefix', value: 'import_' }]
+    };
+    
+    const { resources: items } = await container.items.query(query).fetchAll();
+    const { resources: [totalCount] } = await container.items.query(countQuery).fetchAll();
+    
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / pageSizeNum);
+    
+    return res.status(200).json({
+      success: true,
+      items,
+      pagination: {
+        page: pageNum,
+        pageSize: pageSizeNum,
+        total: totalCount,
+        totalPages,
+        hasNextPage: pageNum < totalPages,
+        hasPreviousPage: pageNum > 1
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to list imports', { error });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to list imports',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
 // Apply authentication middleware if enabled
 const authRequired = process.env.AUTH_ENABLED === 'true';
 
 // Define routes
 if (authRequired) {
+  router.get('/imports', authenticateToken, listImports);
   router.get('/imports/:importId', authenticateToken, getImportMetadata);
   router.get('/imports/:importId/rows', authenticateToken, queryImportRows);
   router.get('/query', authenticateToken, queryAllRows);
 } else {
   // In development, allow queries without authentication
+  router.get('/imports', listImports);
   router.get('/imports/:importId', getImportMetadata);
   router.get('/imports/:importId/rows', queryImportRows);
   router.get('/query', queryAllRows);

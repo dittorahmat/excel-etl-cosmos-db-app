@@ -15,6 +15,7 @@ import { createApiKeyRouter } from './routes/apiKey.route.js';
 // Import v2 routes
 import { uploadRouterV2 } from './routes/v2/upload.route.js';
 import { queryRouterV2 } from './routes/v2/query.route.js';
+import fieldsRoute from './routes/fields.route.js';
 import { validateToken } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
@@ -84,23 +85,49 @@ function createApp(azureServices: AzureCosmosDB): Express {
   });
 
   // Rate limit configuration
-  const apiRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again after 15 minutes',
-    keyGenerator: (req: Request) => {
-      return req.ip || 'unknown-ip';
-    },
-    handler: (req: Request, res: Response) => {
-      res.status(429).json({
-        error: 'Too many requests',
-        message: 'Too many requests from this IP, please try again after 15 minutes',
-      });
-    },
-  });
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Skip rate limiting entirely in development
+  if (!isDevelopment) {
+    const apiRateLimit = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes in production
+      max: 100, // Limit each IP to 100 requests per windowMs
+      message: 'Too many requests from this IP, please try again after 15 minutes',
+      keyGenerator: (req: Request) => {
+        return req.ip || 'unknown-ip';
+      },
+      handler: (req: Request, res: Response) => {
+        res.setHeader('Retry-After', '900'); // 15 minutes
+        res.status(429).json({
+          success: false,
+          error: 'Too many requests',
+          message: 'Too many requests from this IP, please try again after 15 minutes',
+          retryAfter: 900,
+        });
+      },
+      // Skip rate limiting for health check endpoints
+      skip: (req: Request) => {
+        const skipPaths = ['/api/health', '/api/auth/status'];
+        return skipPaths.some(path => req.path.startsWith(path));
+      }
+    });
 
-  // Apply rate limiting to all API routes
-  app.use('/api', apiRateLimit);
+    // Apply rate limiting to all API routes in production
+    app.use('/api', (req, res, next) => {
+      if (req.path.startsWith('/api/auth/status')) {
+        return next();
+      }
+      return apiRateLimit(req, res, next);
+    });
+  } else {
+    // In development, log that rate limiting is disabled
+    app.use((req, res, next) => {
+      if (req.path.startsWith('/api/')) {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Rate limiting disabled in development`);
+      }
+      next();
+    });
+  }
 
   // Initialize repositories with Cosmos DB client
   const apiKeyRepository = new ApiKeyRepository(azureServices);
@@ -151,6 +178,9 @@ function createApp(azureServices: AzureCosmosDB): Express {
     // API v2 routes
     app.use('/api/v2/imports', uploadRouterV2);
     app.use('/api/v2', queryRouterV2);
+    
+    // Fields endpoint (used by dashboard)
+    app.use('/api/fields', fieldsRoute);
     
     // Redirect root to API docs or health check
     app.get('/', (_req, res) => {

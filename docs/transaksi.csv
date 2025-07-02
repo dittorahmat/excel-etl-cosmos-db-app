@@ -4,3 +4,8 @@ TX002,2025-07-01T10:05:00Z,CUST002,Budi Hartono,PROD02,Mouse Gaming,Aksesoris Ko
 TX003,2025-07-01T10:15:00Z,CUST003,Citra Lestari,PROD03,Keyboard Mekanikal,Aksesoris Komputer,1,1200000,1200000,GoPay,Selesai
 TX004,2025-07-01T11:20:00Z,CUST001,Andi Susanto,PROD04,Monitor 24 inch,Elektronik,1,3500000,3500000,Kartu Kredit,Diproses
 TX005,2025-07-01T11:30:00Z,CUST004,Dewi Anggraini,PROD05,Webcam HD,Aksesoris Komputer,1,850000,850000,OVO,Selesai
+TX006,2025-07-01T12:00:00Z,CUST005,Eko Prasetyo,PROD06,External Hard Drive 1TB,Penyimpanan Data,1,950000,950000,Transfer Bank,Selesai
+TX007,2025-07-01T12:15:00Z,CUST002,Budi Hartono,PROD01,Laptop Pro,Elektronik,1,15000000,15000000,Kartu Kredit,Selesai
+TX008,2025-07-01T12:30:00Z,CUST006,Fani Rahmawati,PROD07,Printer All-in-One,Elektronik,1,2500000,2500000,GoPay,Diproses
+TX009,2025-07-01T12:45:00Z,CUST003,Citra Lestari,PROD08,Headset Wireless,Aksesoris Komputer,1,1100000,1100000,OVO,Selesai
+TX010,2025-07-01T13:00:00Z,CUST001,Andi Susanto,PROD02,Mouse Gaming,Aksesoris Komputer,1,750000,750000,Kartu Kredit,Selesai

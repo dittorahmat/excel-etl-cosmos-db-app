@@ -1,31 +1,36 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import multer from 'multer';
+import type { TokenPayload } from '../src/middleware/auth';
 
-// Hoist all mocks to ensure they're available when needed
-const {
-  mockMemoryStorage,
-  mockSingleMiddleware,
-  mockMulter,
-  mockXLSX
-} = vi.hoisted(() => {
-  // Create mock memory storage
+declare global {
+  namespace Express {
+    interface Request {
+      user?: TokenPayload;
+      file?: Express.Multer.File;
+    }
+  }
+}
+
+// Mock multer
+vi.mock('multer', () => {
   const memoryStorage = {
     _handleFile: vi.fn(),
     _removeFile: vi.fn()
   };
 
-  // Create mock single middleware
-  const singleMiddleware = vi.fn().mockImplementation((req: any, _res: any, next: any) => {
-    // Default to no file - individual tests will override this as needed
-    req.file = undefined;
-    next();
+  const single = vi.fn().mockImplementation((_fieldname: string) => {
+    return (req: Request, _res: Response, next: NextFunction) => {
+      // Default to no file - individual tests will override this as needed
+      req.file = undefined;
+      next();
+    };
   });
 
-  // Create mock multer
   const multer = vi.fn().mockImplementation(() => ({
-    single: vi.fn().mockReturnValue(singleMiddleware),
+    single,
     array: vi.fn(),
     fields: vi.fn(),
     any: vi.fn(),
@@ -33,33 +38,30 @@ const {
     memoryStorage: vi.fn().mockReturnValue(memoryStorage)
   }));
 
-  // Add memoryStorage as a static property
+  // Add static properties
   (multer as any).memoryStorage = vi.fn().mockReturnValue(memoryStorage);
-
-  // Mock xlsx
-  const xlsx = {
-    read: vi.fn().mockReturnValue({
-      SheetNames: ['Sheet1'],
-      Sheets: { Sheet1: { A1: { v: 'Header' }, A2: { v: 'Value' } } }
-    })
+  (multer as any).MulterError = class MulterError extends Error {
+    code: string;
+    field?: string;
+    
+    constructor(code: string, field?: string) {
+      super(code);
+      this.code = code;
+      this.field = field;
+      this.name = 'MulterError';
+    }
   };
 
-  return {
-    mockMemoryStorage: memoryStorage,
-    mockSingleMiddleware: singleMiddleware,
-    mockMulter: multer,
-    mockXLSX: xlsx
-  };
+  return multer;
 });
 
-// Set up the mocks before any imports
-vi.mock('multer', () => ({
-  __esModule: true,
-  default: mockMulter,
-  memoryStorage: vi.fn().mockReturnValue(mockMemoryStorage)
+// Mock xlsx
+vi.mock('xlsx', () => ({
+  read: vi.fn().mockReturnValue({
+    SheetNames: ['Sheet1'],
+    Sheets: { Sheet1: { A1: { v: 'Header' }, A2: { v: 'Value' } } }
+  })
 }));
-
-vi.mock('xlsx', () => mockXLSX);
 
 // Mock Azure services
 vi.mock('../../src/services/azure', () => ({
@@ -86,25 +88,18 @@ vi.mock('../../src/utils/logger.js', () => ({
   }
 }));
 
-// Create mock functions
-const mockProcessExcelFile = vi.fn();
-const mockUploadHandler = vi.fn();
-
-// Mock the upload route module
-vi.mock('../../src/routes/upload.route.js', () => ({
-  __esModule: true,
-  processExcelFile: mockProcessExcelFile,
-  uploadHandler: mockUploadHandler
-}));
-
 // Import the actual types after mocks are set up
-import type { UploadResponse } from '../src/types/models.js';
+import type { UploadResponse } from '../src/types/models';
 import * as XLSX from 'xlsx';
-import * as uploadRoute from '../src/routes/upload.route.js';
+import { uploadHandler } from '../src/routes/upload.route';
+
+// Mock the upload handler for testing
+const mockUploadHandler = vi.fn(uploadHandler);
+const mockProcessExcelFile = vi.fn();
 
 // Mock the auth middleware to automatically authenticate
 vi.mock('../../src/middleware/auth.js', () => ({
-  authenticateToken: (req: any, _res: any, next: any) => {
+  authenticateToken: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { id: 'test-user-id', oid: 'test-user-oid' }; // Simulate authenticated user
     next();
   }
@@ -149,134 +144,38 @@ const createMockNext = () => vi.fn();
 
 describe('Upload Handler', () => {
   let app: Express;
+  let upload: ReturnType<typeof multer>;
 
-  beforeEach(() => {
+  beforeAll(() => {
+    // Set up multer with memory storage for testing
+    const storage = multer.memoryStorage();
+    upload = multer({ storage });
+  });
+
+  beforeEach(async () => {
     // Reset all mocks before each test
     vi.clearAllMocks();
-
-    // Reset the mock multer implementation
-    mockMulter.mockImplementation(() => ({
-      single: vi.fn().mockImplementation(() => (req: any, _res: any, next: any) => {
-        req.file = undefined; // Default to no file
-        next();
-      }),
-      array: vi.fn(),
-      fields: vi.fn(),
-      any: vi.fn(),
-      none: vi.fn(),
-      memoryStorage: vi.fn().mockReturnValue({
-        _handleFile: vi.fn(),
-        _removeFile: vi.fn(),
-      })
-    }));
-
-    // Reset all mocks
-    vi.clearAllMocks();
-
-    // Set up default mocks
-    mockProcessExcelFile.mockResolvedValue({
-      success: true,
-      count: 1,
-      data: [],
-      headers: [],
-      rowCount: 1,
-      columnCount: 1
-    });
-
-    // Setup the upload handler mock
-    mockUploadHandler.mockImplementation(async (req: any, res: any, next: any) => {
-      // Create a mock response object with chainable methods
-      const mockRes = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn().mockReturnThis(),
-        send: vi.fn().mockReturnThis()
-      };
-
-      // Call the actual handler with the mock response
-      try {
-        // Check for authentication first
-        if (!req.user) {
-          res.status(401).json({
-            success: false,
-            error: 'Unauthorized: No authorization token was found',
-            message: 'Unauthorized: No authorization token was found',
-            code: 'UNAUTHORIZED'
-          });
-          return;
-        }
-
-        if (!req.file) {
-          res.status(400).json({
-            success: false,
-            error: 'No file uploaded',
-            message: 'No file uploaded',
-            code: 'NO_FILE_UPLOADED'
-          });
-          return;
-        }
-
-        // Check file type
-        const allowedMimeTypes = [
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'application/vnd.ms-excel',
-          'text/csv'
-        ];
-
-        if (!allowedMimeTypes.includes(req.file.mimetype)) {
-          res.status(400).json({
-            success: false,
-            error: 'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.',
-            message: 'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.',
-            code: 'INVALID_FILE_TYPE'
-          });
-          return;
-        }
-
-        // Process the file
-        try {
-          const result = await mockProcessExcelFile(
-            req.file.buffer,
-            req.file.originalname,
-            req.user.oid,
-            'test-batch-id'
-          );
-
-          if (!result.success) {
-            res.status(500).json({
-              success: false,
-              error: result.error || 'Failed to process file',
-              message: result.message || 'Failed to process file',
-              stack: result.stack
-            });
-            return;
-          }
-
-          res.status(200).json({
-            success: true,
-            message: 'File processed successfully',
-            filename: req.file.originalname,
-            count: result.count,
-            data: result.data || [],
-            headers: result.headers || [],
-            rowCount: result.rowCount || 0,
-            columnCount: result.columnCount || 0
-          });
-        } catch (error: any) {
-          res.status(500).json({
-            success: false,
-            error: error.message,
-            message: error.message,
-            stack: error.stack
-          });
-        }
-      } catch (error) {
-        // Handle any synchronous errors
-        res.status(500).json({
-          success: false,
-          error: 'Internal server error',
-          message: 'An unexpected error occurred'
-        });
-      }
+    
+    // Reset module cache to ensure fresh imports
+    vi.resetModules();
+    
+    // Create a new Express app for each test
+    app = express();
+    app.use(express.json());
+    
+    // Set up the upload route with our mock handler
+    const uploadRouter = express.Router();
+    uploadRouter.post('/', upload.single('file'), mockUploadHandler);
+    app.use('/api/upload', uploadRouter);
+    
+    // Error handling middleware
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error('Error in test app:', err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Internal server error',
+        ...(err.code && { code: err.code })
+      });
     });
   });
 
@@ -290,15 +189,93 @@ describe('Upload Handler', () => {
     vi.restoreAllMocks();
   });
 
-  describe('uploadHandler', () => {
+  describe('POST /api/upload', () => {
     it('should return 400 if no file is uploaded', async () => {
+      // Arrange
+      const mockFile = createMockFile();
+      
+      // Mock multer to simulate no file uploaded
+      const multerMock = vi.spyOn(multer, 'memoryStorage').mockImplementation(() => ({
+        _handleFile: vi.fn(),
+        _removeFile: vi.fn()
+      }));
+      
+      // Mock the single() method to not set req.file
+      const singleMock = vi.fn().mockImplementation((_fieldname: string) => {
+        return (req: Request, _res: Response, next: NextFunction) => {
+          req.file = undefined;
+          next();
+        };
+      });
+      
+      // Mock the multer instance
+      const multerInstance = multer({
+        storage: multer.memoryStorage()
+      });
+      
+      const singleSpy = vi.spyOn(multerInstance, 'single').mockImplementation(singleMock);
+      
+      // Create a test app with our mocked multer
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use((req: Request, _res: Response, next: NextFunction) => {
+        req.user = { id: 'test-user-id', oid: 'test-user-oid' };
+        next();
+      });
+      
+      // Add the route with our mocked multer
+      testApp.post('/api/upload', 
+        multerInstance.single('file'),
+        (req: Request, res: Response) => {
+          if (!req.file) {
+            return res.status(400).json({
+              success: false,
+              error: 'No file uploaded',
+              message: 'Please upload a file'
+            });
+          }
+          res.status(200).json({ success: true });
+        }
+      );
+      
+      // Error handling
+      testApp.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        console.error('Error in test app:', err);
+        res.status(err.status || 500).json({
+          success: false,
+          error: err.message || 'Internal server error',
+          ...(err.code && { code: err.code })
+        });
+      });
+      
+      // Act
+      const response = await request(testApp)
+        .post('/api/upload')
+        .set('Content-Type', 'multipart/form-data')
+        .expect(400);
+
+      // Assert
+      expect(response.body).toEqual({
+        success: false,
+        error: 'No file uploaded',
+        message: 'Please upload a file'
+      });
+      
+      // Verify our mock was called
+      expect(singleSpy).toHaveBeenCalledWith('file');
+      
+      // Clean up
+      multerMock.mockRestore();
+      singleSpy.mockRestore();
+    });
+
+    it('should return 400 if no file is uploaded (direct test)', async () => {
       // Arrange
       const req = createMockRequest(undefined);
       const res = createMockResponse();
-      const next = createMockNext();
 
       // Act
-      await mockUploadHandler(req, res, next);
+      await uploadHandler(req, res);
 
       // Assert
       expect(res.status).toHaveBeenCalledWith(400);
@@ -319,10 +296,9 @@ describe('Upload Handler', () => {
 
       const req = createMockRequest(testFile);
       const res = createMockResponse();
-      const next = createMockNext();
 
       // Act
-      await mockUploadHandler(req, res, next);
+      await uploadHandler(req, res);
 
       // Assert
       expect(res.status).toHaveBeenCalledWith(400);
@@ -339,13 +315,12 @@ describe('Upload Handler', () => {
       const testFile = createMockFile();
       const req = createMockRequest(testFile);
       const res = createMockResponse();
-      const next = createMockNext();
 
       // Mock processExcelFile to throw an error
       mockProcessExcelFile.mockRejectedValueOnce(new Error('Test error'));
 
       // Act
-      await mockUploadHandler(req, res, next);
+      await uploadHandler(req, res);
 
       // Assert
       expect(res.status).toHaveBeenCalledWith(500);
@@ -362,7 +337,6 @@ describe('Upload Handler', () => {
       const testFile = createMockFile();
       const req = createMockRequest(testFile);
       const res = createMockResponse();
-      const next = createMockNext();
 
       // Mock processExcelFile to return success
       mockProcessExcelFile.mockResolvedValueOnce({
@@ -375,7 +349,7 @@ describe('Upload Handler', () => {
       });
 
       // Act
-      await mockUploadHandler(req, res, next);
+      await uploadHandler(req, res);
 
       // Assert
       expect(res.status).toHaveBeenCalledWith(200);
@@ -396,7 +370,6 @@ describe('Upload Handler', () => {
       const testFile = createMockFile();
       const req = createMockRequest(testFile);
       const res = createMockResponse();
-      const next = createMockNext();
 
       // Mock processExcelFile to return success
       mockProcessExcelFile.mockResolvedValueOnce({
@@ -409,7 +382,7 @@ describe('Upload Handler', () => {
       });
 
       // Act
-      await mockUploadHandler(req, res, next);
+      await uploadHandler(req, res);
 
       // Assert
       expect(mockProcessExcelFile).toHaveBeenCalledWith(
@@ -432,10 +405,9 @@ describe('Upload Handler', () => {
       };
 
       const res = createMockResponse();
-      const next = createMockNext();
 
       // Act
-      await mockUploadHandler(req, res, next);
+      await uploadHandler(req, res);
 
       // Assert
       expect(res.status).toHaveBeenCalledWith(401);
