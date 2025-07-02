@@ -1,0 +1,9 @@
+id_produk,nama_produk,kategori_produk,stok_awal,stok_terjual,stok_akhir,harga_satuan
+PROD01,Laptop Pro,Elektronik,20,1,19,15000000
+PROD02,Mouse Gaming,Aksesoris Komputer,100,2,98,750000
+PROD03,Keyboard Mekanikal,Aksesoris Komputer,75,1,74,1200000
+PROD04,Monitor 24 inch,Elektronik,50,1,49,3500000
+PROD05,Webcam HD,Aksesoris Komputer,80,1,79,850000
+PROD06,External Hard Drive 1TB,Penyimpanan Data,120,0,120,950000
+PROD07,Printer All-in-One,Elektronik,40,0,40,2500000
+PROD08,Headset Wireless,Aksesoris Komputer,90,0,90,1100000

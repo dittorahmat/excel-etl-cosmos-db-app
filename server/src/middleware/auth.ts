@@ -49,6 +49,15 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
   // Skip authentication if disabled
   if (process.env.AUTH_ENABLED === 'false') {
     console.log('Authentication is disabled, skipping token validation');
+    // Add a mock user in development when auth is disabled
+    if (process.env.NODE_ENV === 'development') {
+      req.user = {
+        oid: 'dev-user',
+        name: 'Development User',
+        email: 'dev@example.com',
+        roles: ['admin'],
+      };
+    }
     return next();
   }
 
@@ -103,7 +112,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
 
 /**
  * Middleware to authenticate JWT token
- * Returns 401 if no token is provided
+ * Returns 401 if no token is provided and AUTH_ENABLED is true
  * Returns 403 if token is invalid or expired
  */
 export const authenticateToken = (
