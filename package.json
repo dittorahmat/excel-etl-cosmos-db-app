@@ -10,7 +10,7 @@
     "dev:client": "vite",
     "generate:config": "node scripts/generate-config.js",
     "prebuild:client": "npm run generate:config",
-    "build:client": "npm run generate:config && vite build",
+    "build:client": "npm run generate:config && npx vite build",
     "postbuild:client": "cp public/config.js dist/ 2>/dev/null || :",
     "preview": "vite preview",
     "dev:server": "NODE_ENV=development dotenv -e server/.env tsx watch server/src/server.ts",
