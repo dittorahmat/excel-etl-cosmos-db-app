@@ -3,13 +3,21 @@ import type { Configuration as NodeConfiguration } from '@azure/msal-node';
 
 // Environment variable helper with type safety and better error reporting
 const getEnv = (key: string, defaultValue: string = ''): string => {
+  // Try to get from window.__AZURE_ENV__ (injected by Vite)
+  if (typeof window !== 'undefined' && (window as any).__AZURE_ENV__) {
+    const azureEnvValue = (window as any).__AZURE_ENV__[`VITE_${key}`];
+    if (azureEnvValue !== undefined && azureEnvValue !== '') {
+      return azureEnvValue;
+    }
+  }
+
   // Try to get from Vite environment variables
   const viteValue = import.meta.env[`VITE_${key}`];
   if (viteValue !== undefined && viteValue !== '') {
     return viteValue;
   }
   
-  // Try to get from window.__APP_CONFIG__ (runtime config)
+  // Try to get from window.__APP_CONFIG__ (legacy runtime config)
   if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
     const runtimeValue = (window as any).__APP_CONFIG__[`VITE_${key}`];
     if (runtimeValue !== undefined && runtimeValue !== '') {
@@ -122,8 +130,8 @@ console.log('Current environment:', import.meta.env.MODE);
 console.log('Is production?', import.meta.env.PROD);
 
 // Log the runtime config if available
-if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
-  console.log('Runtime config loaded:', (window as any).__APP_CONFIG__);
+if (typeof window !== 'undefined' && (window as Window & typeof globalThis).__APP_CONFIG__) {
+  console.log('Runtime config loaded:', (window as Window & typeof globalThis).__APP_CONFIG__);
 } else {
   console.warn('Runtime config (window.__APP_CONFIG__) is not available');
 }

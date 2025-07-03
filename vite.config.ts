@@ -4,6 +4,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
+// This will be replaced by Azure Static Web Apps with actual values
+const azureEnv = {
+  VITE_AZURE_TENANT_ID: process.env.VITE_AZURE_TENANT_ID || '',
+  VITE_AZURE_CLIENT_ID: process.env.VITE_AZURE_CLIENT_ID || '',
+  VITE_AZURE_REDIRECT_URI: process.env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000',
+  VITE_AZURE_SCOPES: process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email'
+};
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
@@ -38,21 +46,27 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
   writeFileSync(configPath, configContent);
   console.log('Config file written to public directory:', configPath);
 
+  // Create a script tag with the environment variables
+  const envScript = `
+    <script>
+      // Injected by Vite build
+      window.__AZURE_ENV__ = ${JSON.stringify(envConfig, null, 2)};
+    </script>
+  `;
+
   return {
     base: '/',
     publicDir: 'public',
     plugins: [
       react(),
-      // Plugin to ensure config.js is copied to the dist directory
+      // Plugin to inject environment variables into HTML
       {
-        name: 'copy-config',
-        closeBundle() {
-          const destPath = path.join(__dirname, 'dist/config.js');
-          if (!existsSync(path.dirname(destPath))) {
-            mkdirSync(path.dirname(destPath), { recursive: true });
-          }
-          writeFileSync(destPath, configContent);
-          console.log('Config file written to dist directory:', destPath);
+        name: 'html-transform',
+        transformIndexHtml(html) {
+          return html.replace(
+            '<head>',
+            `<head>${envScript}`
+          );
         }
       }
     ],
