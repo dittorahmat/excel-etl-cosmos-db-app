@@ -124,9 +124,9 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
     },
     
     // @ts-expect-error - This is a temporary workaround for the AzureCosmosDB interface
-    _getPartitionKeyValue: (document: Record<string, any>): string => {
+    _getPartitionKeyValue: (document: Record<string, unknown>): string => {
       if (AZURE_CONFIG.cosmos.partitionKey === '/_partitionKey') {
-        return document._partitionKey || 'default';
+        return (document._partitionKey as string) || 'default';
       }
       
       const partitionKeyPath = AZURE_CONFIG.cosmos.partitionKey.startsWith('/') 
@@ -134,11 +134,11 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         : AZURE_CONFIG.cosmos.partitionKey;
       
       const keys = partitionKeyPath.split('.');
-      let value: any = document;
+      let value: unknown = document;
       
       for (const key of keys) {
         if (value && typeof value === 'object' && key in value) {
-          value = value[key];
+          value = (value as Record<string, unknown>)[key];
         } else {
           logger.warn(`Partition key path '${partitionKeyPath}' not found in document, using 'default'`, {
             documentId: document.id,
