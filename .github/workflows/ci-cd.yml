@@ -166,7 +166,7 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: 'upload'
         app_location: 'dist'  # Location of the built files
-        output_location: '.'  # Root of the built files
+        output_location: ''  # Root of the built files
         skip_app_build: true  # We already built the app
         skip_api_build: true  # No API in this project
         skip_deploy_on_missing_secrets: true
