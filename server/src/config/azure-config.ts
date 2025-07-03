@@ -3,20 +3,25 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Helper function to get environment variable with fallback
+const getEnvVar = (key: string, fallback: string = ''): string => {
+  // Try with AZURE_ prefix first, then without
+  return process.env[`AZURE_${key}`] || process.env[key] || fallback;
+};
+
 // Azure service configuration
 export const AZURE_CONFIG = {
   storage: {
-    connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
-    containerName: process.env.AZURE_STORAGE_CONTAINER || 'excel-uploads',
+    connectionString: getEnvVar('STORAGE_CONNECTION_STRING'),
+    containerName: getEnvVar('STORAGE_CONTAINER', 'excel-uploads'),
   } as const,
   cosmos: {
-    connectionString: process.env.AZURE_COSMOS_CONNECTION_STRING || '',
-    endpoint: process.env.AZURE_COSMOS_ENDPOINT || '',
-    key: process.env.AZURE_COSMOS_KEY || '',
-    databaseName: process.env.AZURE_COSMOSDB_DATABASE || 'excel-upload-db',
-    containerName: process.env.AZURE_COSMOSDB_CONTAINER || 'excel-records',
-    // Use the environment variable if set, otherwise default to '/id' to match the .env file
-    partitionKey: process.env.AZURE_COSMOS_PARTITION_KEY || '/id',
+    connectionString: getEnvVar('COSMOS_CONNECTION_STRING'),
+    endpoint: getEnvVar('COSMOS_ENDPOINT'),
+    key: getEnvVar('COSMOS_KEY'),
+    databaseName: getEnvVar('COSMOS_DATABASE', 'excel-upload-db'),
+    containerName: getEnvVar('COSMOS_CONTAINER', 'excel-records'),
+    partitionKey: getEnvVar('COSMOS_PARTITION_KEY', '/id'),
   } as const,
 } as const;
 
