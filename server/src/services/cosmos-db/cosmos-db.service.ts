@@ -22,20 +22,38 @@ let database: Database | null = null;
  */
 export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
   if (!cosmosClient) {
+    // Log the raw environment variables for debugging
+    console.log('Environment variables in initializeCosmosDB:');
+    console.log('- process.env.AZURE_COSMOS_ENDPOINT:', process.env.AZURE_COSMOS_ENDPOINT ? '***' : 'Not set');
+    console.log('- process.env.COSMOS_ENDPOINT:', process.env.COSMOS_ENDPOINT ? '***' : 'Not set');
+    console.log('- process.env.AZURE_COSMOS_KEY:', process.env.AZURE_COSMOS_KEY ? '***' : 'Not set');
+    console.log('- process.env.COSMOS_KEY:', process.env.COSMOS_KEY ? '***' : 'Not set');
+    
     let endpoint = AZURE_CONFIG.cosmos.endpoint;
     let key = AZURE_CONFIG.cosmos.key;
+    
+    console.log('AZURE_CONFIG.cosmos values:');
+    console.log('- endpoint:', endpoint ? '***' : 'Not set');
+    console.log('- key:', key ? '***' : 'Not set');
+    console.log('- connectionString:', AZURE_CONFIG.cosmos.connectionString ? '***' : 'Not set');
 
     if (!endpoint || !key) {
       const connectionString = AZURE_CONFIG.cosmos.connectionString;
+      console.log('Checking connection string for credentials...');
       if (connectionString) {
+        console.log('Connection string found, parsing...');
         const parts = connectionString.split(';');
         for (const part of parts) {
           if (part.startsWith('AccountEndpoint=')) {
             endpoint = part.substring('AccountEndpoint='.length);
+            console.log('Found endpoint in connection string');
           } else if (part.startsWith('AccountKey=')) {
             key = part.substring('AccountKey='.length);
+            console.log('Found key in connection string');
           }
         }
+      } else {
+        console.log('No connection string available');
       }
     }
 
