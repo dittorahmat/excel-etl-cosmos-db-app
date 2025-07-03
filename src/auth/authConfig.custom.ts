@@ -1,11 +1,19 @@
 import { Configuration, LogLevel, BrowserCacheLocation } from '@azure/msal-browser';
 import type { Configuration as NodeConfiguration } from '@azure/msal-node';
 
+// Define the shape of the window.__AZURE_ENV__ and window.__APP_CONFIG__ objects
+declare global {
+  interface Window {
+    __AZURE_ENV__?: Record<string, string>;
+    __APP_CONFIG__?: Record<string, string>;
+  }
+}
+
 // Environment variable helper with type safety and better error reporting
 const getEnv = (key: string, defaultValue: string = ''): string => {
   // Try to get from window.__AZURE_ENV__ (injected by Vite)
-  if (typeof window !== 'undefined' && (window as any).__AZURE_ENV__) {
-    const azureEnvValue = (window as any).__AZURE_ENV__[`VITE_${key}`];
+  if (typeof window !== 'undefined' && window.__AZURE_ENV__) {
+    const azureEnvValue = window.__AZURE_ENV__[`VITE_${key}`];
     if (azureEnvValue !== undefined && azureEnvValue !== '') {
       return azureEnvValue;
     }
@@ -18,8 +26,8 @@ const getEnv = (key: string, defaultValue: string = ''): string => {
   }
   
   // Try to get from window.__APP_CONFIG__ (legacy runtime config)
-  if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
-    const runtimeValue = (window as any).__APP_CONFIG__[`VITE_${key}`];
+  if (typeof window !== 'undefined' && window.__APP_CONFIG__) {
+    const runtimeValue = window.__APP_CONFIG__[`VITE_${key}`];
     if (runtimeValue !== undefined && runtimeValue !== '') {
       return runtimeValue;
     }

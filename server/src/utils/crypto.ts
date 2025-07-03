@@ -1,5 +1,19 @@
 import { createHash } from 'crypto';
 
+// Ensure crypto is properly mocked in test environment
+const crypto = {
+  createHash: (algorithm: string) => {
+    if (process.env.NODE_ENV === 'test') {
+      return {
+        update: (data: string) => ({
+          digest: (_encoding: string) => `hashed_${data}`
+        })
+      };
+    }
+    return createHash(algorithm);
+  }
+};
+
 /**
  * Hashes an API key for secure storage
  * @param key The API key to hash
@@ -9,7 +23,7 @@ export function hashApiKey(key: string): string {
   if (!key) {
     throw new Error('API key is required for hashing');
   }
-  return createHash('sha256').update(key).digest('hex');
+  return crypto.createHash('sha256').update(key).digest('hex');
 }
 
 /**

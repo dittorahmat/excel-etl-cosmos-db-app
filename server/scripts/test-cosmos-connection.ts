@@ -24,16 +24,12 @@ async function runTest() {
     console.log(`Message: ${result.message}`);
     
     console.log('\n=== Connection Details ===');
-    console.log(`Database: ${result.details.databaseName}`);
-    console.log(`Container: ${result.details.containerName}`);
-    console.log(`Connected: ${result.details.isConnected}`);
-    console.log(`Container Exists: ${result.details.containerExists}`);
-    console.log(`Configured Partition Key: ${result.details.partitionKey}`);
-    console.log(`Container Partition Key: ${result.details.containerPartitionKey || 'N/A'}`);
+    console.log(`Database: ${result.database}`);
+    console.log(`Container: ${result.container || 'Not specified'}`);
     
-    if (result.details.error) {
+    if (result.error) {
       console.log('\n=== Error ===');
-      console.log(result.details.error);
+      console.log(result.error);
     }
     
     if (!result.success) {

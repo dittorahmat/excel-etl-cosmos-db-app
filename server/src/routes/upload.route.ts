@@ -184,13 +184,36 @@ const createErrorResponse = (status: number, error: string, message: string) => 
 
 // Define the route handler function
 const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
-  // Log the start of the upload handler
-  console.log('[upload.route] Upload handler started');
+  // Log the start of the upload handler with request details
+  console.log('[upload.route] Upload handler started', {
+    method: req.method,
+    url: req.url,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'content-length': req.headers['content-length'],
+      'user-agent': req.headers['user-agent']
+    },
+    hasFile: !!req.file,
+    fileInfo: req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      bufferLength: req.file.buffer?.length,
+      fieldname: req.file.fieldname
+    } : undefined,
+    user: req.user ? { id: req.user.oid } : 'no user',
+    authRequired: process.env.AUTH_ENABLED === 'true',
+    timestamp: new Date().toISOString()
+  });
 
   try {
     // Check if file exists in the request
     if (!req.file) {
-      console.warn('[upload.route] No file uploaded');
+      console.warn('[upload.route] No file uploaded. Request details:', {
+        body: req.body,
+        files: req.files || undefined,
+        headers: req.headers
+      });
       return res.status(400).json(
         createErrorResponse(400, 'No file uploaded', 'Please provide a file to upload')
       );
@@ -209,9 +232,18 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
       userAgent: req.headers['user-agent']
     });
 
+    // Log authentication status
+    console.log('[upload.route] Authentication status:', {
+      authRequired: process.env.AUTH_ENABLED === 'true',
+      hasUser: !!req.user,
+      userId: req.user?.oid || 'anonymous'
+    });
+
     // Get user ID from the authenticated request or use a default for unauthenticated uploads
     const authRequired = process.env.AUTH_ENABLED === 'true';
     const userId = req.user?.oid || 'anonymous';
+    
+    console.log('[upload.route] Auth check:', { authRequired, hasUserOid: !!req.user?.oid, userId });
     
     if (authRequired && !req.user?.oid) {
       console.warn('[upload.route] Authentication required but no user ID found in request');
@@ -222,6 +254,8 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
 
     // Initialize Azure services
     const containerName = process.env.AZURE_STORAGE_CONTAINER || 'excel-uploads';
+    console.log('[upload.route] Initializing Azure services with container:', containerName);
+    
     let blobStorage, cosmosDb;
 
     try {
@@ -306,10 +340,18 @@ const uploadHandler = async (req: Request, res: Response<UploadResponse>) => {
         
         console.log('[upload.route] Metadata successfully saved to Cosmos DB:', {
           id: savedRecord?.id,
-          etag: (savedRecord as any)?._etag,
+          etag: (savedRecord as { _etag?: string })?._etag,
           timestamp: new Date().toISOString()
         });
-      } catch (dbError: any) {
+      } catch (error: unknown) {
+        // Create a type-safe way to access error properties
+        const dbError = error as Error & {
+          code?: string | number;
+          statusCode?: number;
+          details?: string;
+          stack?: string;
+        };
+        
         console.error('[upload.route] Error saving to Cosmos DB:', {
           message: dbError.message,
           code: dbError.code,
@@ -465,7 +507,9 @@ router.use((err: Error & { code?: string; statusCode?: number; name?: string }, 
     });
   }
 
-  if (err.name === 'FileTypeError' || err.code === 'INVALID_FILE_TYPE') {
+  // Type assertion for the error object to include the code property
+  const fileError = err as Error & { code?: string };
+  if (fileError.name === 'FileTypeError' || fileError.code === 'INVALID_FILE_TYPE') {
     return res.status(400).json({
       success: false,
       message: err.message || 'Invalid file type', // Add message property

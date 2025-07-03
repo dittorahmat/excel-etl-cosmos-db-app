@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import { fileParserService } from '../file-parser/file-parser.service.js';
-import { getOrInitializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
+import { initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
 import type { CosmosRecord } from '../../types/azure.js';
 
 
@@ -44,6 +44,7 @@ export class IngestionService {
   private logger = logger.child({ module: 'ingestion-service' });
   private readonly metadataContainerName = 'excel-records';
   private readonly dataContainerName = 'excel-records';
+  private readonly metadataPartitionKey = 'imports';
 
   /**
    * Process and import a file into Cosmos DB
@@ -149,21 +150,32 @@ export class IngestionService {
    */
   private async saveImportMetadata(metadata: ImportMetadata): Promise<void> {
     try {
-      const cosmosDb = await getOrInitializeCosmosDB();
+      const cosmosDb = await initializeCosmosDB();
       const record = {
         ...metadata,
         id: `import_${metadata.id}`, // Prefix to distinguish from row documents
-        _partitionKey: `import_${metadata.id}`, // Use import ID as partition key
+        _partitionKey: this.metadataPartitionKey, // Use fixed partition key for metadata
       };
       
-      this.logger.debug('Saving import metadata', { record });
+      this.logger.debug('Saving import metadata', { 
+        importId: metadata.id,
+        container: this.metadataContainerName,
+        record: {
+          ...record,
+          // Don't log the entire file content
+          fileBuffer: '[Buffer]',
+        }
+      });
       
-      const result = await cosmosDb.upsertRecord<ImportMetadata>(record);
+      const result = await cosmosDb.upsertRecord<ImportMetadata>(
+        record,
+        this.metadataContainerName
+      );
       
       this.logger.debug('Import metadata saved', { 
         importId: metadata.id,
-        etag: result.etag,
-        statusCode: result.statusCode 
+        etag: result._etag,
+        partitionKey: this.metadataPartitionKey
       });
     } catch (error) {
       this.logger.error('Failed to save import metadata', {
@@ -178,17 +190,30 @@ export class IngestionService {
    * Save rows to Cosmos DB in batches
    */
   private async saveRows(rows: RowData[]): Promise<void> {
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      this.logger.debug('No rows to save');
+      return;
+    }
 
     const BATCH_SIZE = 100; // Cosmos DB batch limit
-    const cosmosDb = await getOrInitializeCosmosDB();
+    const cosmosDb = await initializeCosmosDB();
     const importId = rows[0]?._importId;
 
     if (!importId) {
-      throw new Error('No import ID found in row data');
+      const error = new Error('No import ID found in row data');
+      this.logger.error('Missing import ID in row data', { 
+        firstRow: JSON.stringify(rows[0], null, 2),
+        error: error.message 
+      });
+      throw error;
     }
 
-    this.logger.debug(`Saving ${rows.length} rows for import ${importId}`);
+    this.logger.info(`Starting to save ${rows.length} rows for import ${importId}`, {
+      importId,
+      container: this.dataContainerName,
+      batchCount: Math.ceil(rows.length / BATCH_SIZE),
+      firstRowKeys: rows[0] ? Object.keys(rows[0]) : []
+    });
 
     try {
       // Process rows in batches
@@ -204,30 +229,91 @@ export class IngestionService {
               id: `row_${row._importId}_${row._rowNumber}`,
               _partitionKey: `import_${row._importId}`, // Match the import's partition key
               _rowId: row._rowNumber, // Store row number for easier querying
+              documentType: 'excel-row', // Add document type for easier querying
             };
             
-            return cosmosDb.upsertRecord<RowData>(record);
+            // Log the row being processed
+            const rowLogData = {
+              rowId: record.id,
+              partitionKey: record._partitionKey,
+              importId: row._importId,
+              rowNumber: row._rowNumber,
+              keys: Object.keys(record)
+            };
+            this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId}`, rowLogData);
+            
+            // Execute the upsert operation
+            return cosmosDb.upsertRecord<RowData>(record).then(result => {
+              this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
+                rowId: record.id,
+                statusCode: result.statusCode,
+                etag: result.etag
+              });
+              return result;
+            });
           })
         );
 
         // Log any failed operations
         const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
         if (failed.length > 0) {
+          const errorDetails = failed.map((f, idx) => {
+            const errorInfo = f.reason instanceof Error 
+              ? {
+                  message: f.reason.message,
+                  stack: f.reason.stack,
+                  name: f.reason.name,
+                  code: (f.reason as Error & { code?: string }).code
+                }
+              : { message: String(f.reason) };
+            
+            return {
+              index: idx,
+              error: errorInfo
+            };
+          });
+          
           this.logger.error(`Failed to save ${failed.length} rows in batch ${i / BATCH_SIZE + 1}`, {
             importId,
-            errors: failed.map(f => f.reason)
+            batchIndex: i / BATCH_SIZE + 1,
+            totalBatches: Math.ceil(rows.length / BATCH_SIZE),
+            failedCount: failed.length,
+            successCount: results.length - failed.length,
+            errors: errorDetails,
+            sampleError: errorDetails[0] // Include first error as sample
           });
-          throw new Error(`Failed to save ${failed.length} rows in batch ${i / BATCH_SIZE + 1}`);
+          
+          throw new Error(`Failed to save ${failed.length} rows in batch ${i / BATCH_SIZE + 1}: ${errorDetails[0]?.error?.message || 'Unknown error'}`);
         }
 
-        this.logger.debug(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(rows.length / BATCH_SIZE)}`, {
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
+      const batchEnd = Math.min(i + BATCH_SIZE, rows.length);
+      
+      this.logger.info(`Processed batch ${batchNumber} of ${totalBatches}`, {
+        importId,
+        batchNumber,
+        totalBatches,
+        batchStart: i + 1,
+        batchEnd,
+        batchSize: batch.length,
+        totalRows: rows.length,
+        success: batch.length - failed.length,
+        failed: failed.length,
+        progress: `${((i + BATCH_SIZE) / rows.length * 100).toFixed(1)}%`
+      });
+      
+      // Log memory usage for large imports
+      if (rows.length > 1000) {
+        const used = process.memoryUsage();
+        this.logger.debug(`Memory usage after batch ${batchNumber}`, {
           importId,
-          batchStart: i + 1,
-          batchEnd: Math.min(i + BATCH_SIZE, rows.length),
-          totalRows: rows.length,
-          success: batch.length - failed.length,
-          failed: failed.length
+          rss: `${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB`,
+          heapTotal: `${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB`,
+          heapUsed: `${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB`,
+          external: used.external ? `${Math.round(used.external / 1024 / 1024 * 100) / 100} MB` : 'N/A'
         });
+      }
       }
     } catch (error) {
       this.logger.error('Failed to save rows to Cosmos DB', {
@@ -243,13 +329,32 @@ export class IngestionService {
    */
   async getImport(importId: string): Promise<ImportMetadata | null> {
     try {
-      const cosmosDb = await getOrInitializeCosmosDB();
-      const container = await cosmosDb.container(this.metadataContainerName, '/_partitionKey');
+      const cosmosDb = await initializeCosmosDB();
+      const query = 'SELECT * FROM c WHERE c.id = @id AND c._partitionKey = @partitionKey';
+      const parameters = [
+        { name: '@id', value: `import_${importId}` },
+        { name: '@partitionKey', value: this.metadataPartitionKey }
+      ];
       
-      const { resource } = await container.item(`import_${importId}`, 'imports').read<ImportMetadata>();
-      return resource || null;
-    } catch (error: any) {
-      if (error.code === 404) {
+      const result = await cosmosDb.query<ImportMetadata>(
+        query,
+        parameters,
+        this.metadataContainerName
+      );
+      
+      const metadata = result[0] || null;
+      
+      this.logger.debug('Retrieved import metadata', {
+        importId,
+        found: !!metadata,
+        container: this.metadataContainerName,
+        partitionKey: this.metadataPartitionKey
+      });
+      
+      return metadata;
+    } catch (error: unknown) {
+      const typedError = error as { code?: number };
+      if (typedError.code === 404) {
         return null;
       }
       this.logger.error('Failed to get import metadata', { importId, error });
@@ -270,54 +375,61 @@ export class IngestionService {
     status?: ImportMetadata['status'];
   } = {}): Promise<{ items: ImportMetadata[]; total: number }> {
     try {
-      const cosmosDb = await getOrInitializeCosmosDB();
-      const querySpec = {
-        query: 'SELECT * FROM c WHERE c._partitionKey = @partitionKey',
-        parameters: [
-          { name: '@partitionKey', value: 'imports' }
-        ]
-      };
+      const cosmosDb = await initializeCosmosDB();
+      const queryParts = ['SELECT * FROM c WHERE c._partitionKey = @partitionKey'];
+      const parameters: { name: string; value: unknown }[] = [
+        { name: '@partitionKey', value: this.metadataPartitionKey },
+      ];
 
       if (status) {
-        querySpec.query += ' AND c.status = @status';
-        querySpec.parameters.push({ name: '@status', value: status });
+        queryParts.push('AND c.status = @status');
+        parameters.push({ name: '@status', value: status });
       }
 
-      querySpec.query += ' ORDER BY c.processedAt DESC OFFSET @offset LIMIT @limit';
-      querySpec.parameters.push(
-        { name: '@offset', value: offset.toString() },
-        { name: '@limit', value: limit.toString() }
+      // Build base query
+      const baseQuery = queryParts.join(' ');
+      
+      // Get total count using a subquery to ensure valid CosmosRecord type
+      const countQuery = `SELECT VALUE { id: 'count', count: COUNT(1) } FROM (${baseQuery})`;
+      const countResult = await cosmosDb.query<{ id: string; count: number }>(
+        countQuery, 
+        parameters,
+        this.metadataContainerName
       );
-
-      const metadataContainer = await cosmosDb.container(this.metadataContainerName, '/_partitionKey');
-      const { resources: items } = await metadataContainer.items
-        .query<ImportMetadata>(querySpec)
-        .fetchAll();
-
-      // Get total count
-      const countQuery = {
-        query: 'SELECT VALUE COUNT(1) FROM c WHERE c._partitionKey = @partitionKey',
-        parameters: [
-          { name: '@partitionKey', value: 'imports' }
-        ]
-      };
-
-      if (status) {
-        countQuery.query += ' AND c.status = @status';
-        countQuery.parameters.push({ name: '@status', value: status });
-      }
-
-      const countContainer = await cosmosDb.container(this.metadataContainerName, '/_partitionKey');
-      const { resources: countResult } = await countContainer.items
-        .query<number>(countQuery)
-        .fetchAll();
-
-      return {
-        items,
-        total: countResult[0] || 0,
-      };
+      
+      const total = countResult[0]?.count || 0;
+      
+      // Get paginated results
+      const paginatedQuery = `${baseQuery} ORDER BY c.processedAt DESC OFFSET @offset LIMIT @limit`;
+      const paginatedParams = [
+        ...parameters,
+        { name: '@offset', value: offset },
+        { name: '@limit', value: limit }
+      ];
+      
+      const items = await cosmosDb.query<ImportMetadata>(
+        paginatedQuery, 
+        paginatedParams,
+        this.metadataContainerName
+      );
+      
+      this.logger.debug('Listed imports', {
+        count: items.length,
+        total,
+        limit,
+        offset,
+        status,
+        container: this.metadataContainerName,
+        partitionKey: this.metadataPartitionKey
+      });
+      
+      return { items, total };
     } catch (error) {
-      this.logger.error('Failed to list imports', { error });
+      this.logger.error('Failed to list imports', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        container: this.metadataContainerName,
+        partitionKey: this.metadataPartitionKey
+      });
       throw new Error(`Failed to list imports: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

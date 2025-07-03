@@ -50,29 +50,20 @@ export function FileListTable() {
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get<{ items: ImportMetadata[]; total: number; page: number; pageSize: number; totalPages: number }>(
+      const data = await api.get<{ items: ImportMetadata[]; total: number; page: number; pageSize: number; totalPages: number }>(
         `/api/v2/imports?page=${page}&pageSize=${pageSize}&sort=-createdAt`
       );
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to fetch imports');
-      }
-      
-      const data = await response.json();
-      
-      if (isMounted.current) {
-        // Map the API response to our FileData interface
-        const mappedFiles: FileData[] = data.items.map((item: ImportMetadata) => ({
+      const mappedFiles: FileData[] = data.items.map((item: ImportMetadata) => ({
           id: item.id,
-          name: item.originalFilename,
+          name: item.fileName,
           size: item.fileSize,
-          uploadedAt: item.createdAt,
+          uploadedAt: item.processedAt || item.lastUpdated || item.createdAt,
           status: item.status,
-          recordCount: item.recordCount,
-          processedCount: item.processedCount,
-          errorCount: item.errorCount,
-          updatedAt: item.updatedAt,
+          recordCount: item.totalRows,
+          processedCount: item.validRows,
+          errorCount: item.errorRows,
+          updatedAt: item.lastUpdated || item.updatedAt,
           error: item.error,
           metadata: item.metadata
         }));
@@ -80,8 +71,7 @@ export function FileListTable() {
         setFiles(mappedFiles);
         setTotalPages(data.totalPages || 1);
         setError(null);
-      }
-    } catch (err) {
+      } catch (err) {
       console.error('Error fetching files:', err);
       if (isMounted.current) {
         setError('Failed to load files. Please try again later.');

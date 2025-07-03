@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    typecheck: {
+      include: ['**/*.test.ts'],
+    },
     
     include: ['**/server/test/**/*.test.{js,ts}'],
     exclude: [
@@ -81,7 +84,9 @@ export default defineConfig({
           include: [
             'vitest',
             'vitest-mock-extended',
-            'uuid',
+            
+            
+            'crypto',
             'express',
             'multer',
             'xlsx',
@@ -97,9 +102,11 @@ export default defineConfig({
         'server/src',
         'server/test'
       ]
-    }
+    },
+    
+    
   },
-  
+
   resolve: {
     alias: [
       {

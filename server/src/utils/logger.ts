@@ -187,5 +187,6 @@ export interface LogContext {
   userId?: string;
   error?: Error | string;
   stack?: string;
+  
   [key: string]: unknown;
 }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
@@ -168,7 +168,7 @@ router.get('/health', (_req, res) => {
 });
 
 // Error handling middleware
-router.use((err: any, _req: Request, res: Response, _next: any) => {
+router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   // Handle multer errors
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -188,7 +188,8 @@ router.use((err: any, _req: Request, res: Response, _next: any) => {
   }
 
   // Handle file type errors
-  if (err.name === 'FileTypeError' || err.code === 'INVALID_FILE_TYPE') {
+  const typedError = err as Error & { code?: string };
+  if (typedError.name === 'FileTypeError' || typedError.code === 'INVALID_FILE_TYPE') {
     return res.status(400).json(
       createErrorResponse(
         400,

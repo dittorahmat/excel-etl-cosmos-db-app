@@ -68,7 +68,7 @@ export function apiKeyAuth(
 
     debug('[apiKeyAuth] Checking for API key', {
       hasAuthHeader: !!authHeader,
-      queryParams: Object.keys(req.query)
+      queryParams: Object.keys(req.query || {})
     });
 
     // Try to get API key from Authorization header (format: "ApiKey <key>" or "apikey <key>")

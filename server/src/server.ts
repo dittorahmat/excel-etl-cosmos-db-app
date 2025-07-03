@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
+import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { initializeAzureServices } from './config/azure-services.js';
 // Import v1 routes
@@ -20,12 +21,16 @@ import { validateToken } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
 import { logger, LogContext } from './utils/logger.js';
+import { authRateLimiter } from './middleware/rateLimit.js';
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
 import type { AzureCosmosDB } from './types/custom.js';
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Environment flags - prefix with _ to indicate it's used in middleware
+
 
 // Debug log environment variables
 console.log('Environment variables:');
@@ -39,6 +44,12 @@ const __filename = fileURLToPath(import.meta.url);
 
 // Port configuration
 const PORT = process.env.PORT || 3001;
+
+// Server instance
+let server: Server | null = null;
+let app: Express | null = null;
+
+
 
 /**
  * Create and configure the Express application
@@ -85,49 +96,45 @@ function createApp(azureServices: AzureCosmosDB): Express {
   });
 
   // Rate limit configuration
-  const isDevelopment = process.env.NODE_ENV === 'development';
   
-  // Skip rate limiting entirely in development
-  if (!isDevelopment) {
-    const apiRateLimit = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes in production
-      max: 100, // Limit each IP to 100 requests per windowMs
-      message: 'Too many requests from this IP, please try again after 15 minutes',
-      keyGenerator: (req: Request) => {
-        return req.ip || 'unknown-ip';
-      },
-      handler: (req: Request, res: Response) => {
-        res.setHeader('Retry-After', '900'); // 15 minutes
-        res.status(429).json({
-          success: false,
-          error: 'Too many requests',
-          message: 'Too many requests from this IP, please try again after 15 minutes',
-          retryAfter: 900,
-        });
-      },
-      // Skip rate limiting for health check endpoints
-      skip: (req: Request) => {
-        const skipPaths = ['/api/health', '/api/auth/status'];
-        return skipPaths.some(path => req.path.startsWith(path));
-      }
-    });
+  const apiRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes in production
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    keyGenerator: (req: Request) => {
+      return req.ip || 'unknown-ip';
+    },
+    handler: (req: Request, res: Response) => {
+      res.setHeader('Retry-After', '900'); // 15 minutes
+      res.status(429).json({
+        success: false,
+        error: 'Too many requests',
+        message: 'Too many requests from this IP, please try again after 15 minutes',
+        retryAfter: 900,
+      });
+    },
+    // Skip rate limiting for health check endpoints
+    skip: (req: Request) => {
+      const skipPaths = ['/api/health', '/api/auth/status'];
+      return skipPaths.some(path => req.path.startsWith(path));
+    }
+  });
 
-    // Apply rate limiting to all API routes in production
-    app.use('/api', (req, res, next) => {
-      if (req.path.startsWith('/api/auth/status')) {
-        return next();
-      }
-      return apiRateLimit(req, res, next);
-    });
-  } else {
-    // In development, log that rate limiting is disabled
-    app.use((req, res, next) => {
+  // Apply rate limiting to all API routes, but skip in development
+  app.use('/api', (req, res, next) => {
+    
+    if (process.env.NODE_ENV === 'development') {
       if (req.path.startsWith('/api/')) {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Rate limiting disabled in development`);
       }
-      next();
-    });
-  }
+      return next();
+    }
+
+    if (req.path.startsWith('/api/auth/status')) {
+      return next();
+    }
+    return apiRateLimit(req, res, next);
+  });
 
   // Initialize repositories with Cosmos DB client
   const apiKeyRepository = new ApiKeyRepository(azureServices);
@@ -143,11 +150,18 @@ function createApp(azureServices: AzureCosmosDB): Express {
   const authEnabled = process.env.AUTH_ENABLED === 'true';
   
   // Public routes (no authentication required)
-  app.use('/api/auth', authRoute);
+  // Register auth route with conditional rate limiting
   
-  // Apply authentication middleware to protected routes if enabled
+
+  // Public routes (no authentication required)
   if (authEnabled) {
     logger.info('Authentication is ENABLED. Protecting API routes.');
+    // Apply auth rate limiting if authentication is enabled and not in development
+    if (!(process.env.NODE_ENV === 'development')) {
+      app.use('/api/auth', authRateLimiter, authRoute);
+    } else {
+      app.use('/api/auth', authRoute);
+    }
     
     // Apply auth middleware to protected routes
     app.use('/api/keys', 
@@ -166,32 +180,39 @@ function createApp(azureServices: AzureCosmosDB): Express {
     );
   } else {
     logger.warn('Authentication is DISABLED. All API routes are UNPROTECTED.');
+    app.use('/api/auth', authRoute); // Always allow auth route without rate limiting if auth is disabled
     
     // API v1 routes (legacy)
     const apiKeyRouter = createApiKeyRouter(azureServices);
     app.use('/api/keys', apiKeyRouter);
     app.use('/api/upload', uploadRoute);
     app.use('/api/data', dataRoute);
-    app.use('/api/auth', authRoute);
     app.use('/api', apiKeyRouter);
-
-    // API v2 routes
-    app.use('/api/v2/imports', uploadRouterV2);
-    app.use('/api/v2', queryRouterV2);
-    
-    // Fields endpoint (used by dashboard)
-    app.use('/api/fields', fieldsRoute);
-    
-    // Redirect root to API docs or health check
-    app.get('/', (_req, res) => {
-      res.redirect('/api/v2/health');
-    });
-    
-    // Health check endpoints
-    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-    app.get('/api/health', (_req, res) => res.json({ status: 'ok', version: 'v1' }));
-    app.get('/api/v2/health', (_req, res) => res.json({ status: 'ok', version: 'v2' }));
   }
+
+  // Register auth route with conditional rate limiting
+  if (authEnabled && !(process.env.NODE_ENV === 'development')) {
+    app.use('/api/auth', authRateLimiter, authRoute);
+  } else {
+    app.use('/api/auth', authRoute);
+  }
+
+  // API v2 routes
+  app.use('/api/v2/imports', uploadRouterV2);
+  app.use('/api/v2', queryRouterV2);
+  
+  // Fields endpoint (used by dashboard)
+  app.use('/api/fields', fieldsRoute);
+  
+  // Redirect root to API docs or health check
+  app.get('/', (_req, res) => {
+    res.redirect('/api/v2/health');
+  });
+  
+  // Health check endpoints
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/api/health', (_req, res) => res.json({ status: 'ok', version: 'v1' }));
+  app.get('/api/v2/health', (_req, res) => res.json({ status: 'ok', version: 'v2' }));
 
   // Request logging middleware
   app.use((req: Request & { id?: string }, res, next) => {
@@ -249,8 +270,11 @@ function createApp(azureServices: AzureCosmosDB): Express {
       statusCode: 500,
       ip: req.ip,
       userId: req.user?.oid || 'anonymous',
-      error: err.message,
-      stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
+      error: {
+        message: err.message,
+        stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
+        name: err.name,
+      },
     };
 
     logger.error('Unhandled error', logContext);
@@ -272,16 +296,12 @@ function createApp(azureServices: AzureCosmosDB): Express {
       message: 'The requested resource was not found.',
     });
   });
-
   return app;
 }
 
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
-// Server instance
-let server: Server;
-let app: Express;
 
 /**
  * Start the Express server
@@ -300,14 +320,18 @@ async function startServer(port: number | string = PORT): Promise<Server> {
 
     // Create Express app with initialized services
     app = createApp(cosmosDb);
-
     // Start the HTTP server
+    const expressApp = app; // Create a local constant to help TypeScript with type narrowing
+    if (!expressApp) {
+      throw new Error('Express app not initialized');
+    }
+    
     return new Promise((resolve, reject) => {
-      const httpServer = app.listen(port, () => {
+      const httpServer = expressApp.listen(port, () => {
         logger.info(`🚀 Server ready at http://localhost:${port}`);
         resolve(httpServer);
       });
-
+      
       httpServer.on('error', (error: NodeJS.ErrnoException) => {
         if (error.syscall !== 'listen') {
           logger.error('Server error:', error);
@@ -317,15 +341,20 @@ async function startServer(port: number | string = PORT): Promise<Server> {
 
         // Handle specific listen errors with friendly messages
         switch (error.code) {
-          case 'EACCES':
-            logger.error(`Port ${port} requires elevated privileges`);
-            process.exit(1);
+          case 'EACCES': {
+            const eaccessError = new Error(`Port ${port} requires elevated privileges`);
+            logger.error(eaccessError.message);
+            reject(eaccessError);
             break;
-          case 'EADDRINUSE':
-            logger.error(`Port ${port} is already in use`);
-            process.exit(1);
+          }
+          case 'EADDRINUSE': {
+            const eaddrinuseError = new Error(`Port ${port} is already in use`);
+            logger.error(eaddrinuseError.message);
+            reject(eaddrinuseError);
             break;
+          }
           default:
+            logger.error('Server error:', error);
             reject(error);
         }
       });

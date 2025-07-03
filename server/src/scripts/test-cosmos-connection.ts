@@ -12,14 +12,7 @@ console.log(`- AZURE_COSMOS_DATABASE: ${process.env.AZURE_COSMOS_DATABASE || 'No
 console.log(`- AZURE_COSMOS_CONTAINER: ${process.env.AZURE_COSMOS_CONTAINER || 'Not set'}`);
 
 // Import the function after setting up environment variables
-let testCosmosConnection: any;
-try {
-  const module = await import('../services/cosmos-db/cosmos-db.service.js');
-  testCosmosConnection = module.testCosmosConnection;
-} catch (error) {
-  console.error('Failed to import testCosmosConnection:', error);
-  process.exit(1);
-}
+import { testCosmosConnection } from '../services/cosmos-db/cosmos-db.service.js';
 
 // Get the current module's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -78,16 +71,15 @@ async function runTest() {
     console.log(`Message: ${result.message}`);
     
     console.log('\n=== Connection Details ===');
-    console.log(`Database: ${result.details.databaseName}`);
-    console.log(`Container: ${result.details.containerName}`);
-    console.log(`Connected: ${result.details.isConnected}`);
-    console.log(`Container Exists: ${result.details.containerExists}`);
-    console.log(`Configured Partition Key: ${result.details.partitionKey}`);
-    console.log(`Container Partition Key: ${result.details.containerPartitionKey || 'N/A'}`);
+    console.log(`Database: ${result.database || 'N/A'}`);
+    console.log(`Container: ${result.container || 'N/A'}`);
     
-    if (result.details.error) {
+    if ('error' in result) {
       console.log('\n=== Error ===');
-      console.log(result.details.error);
+      console.log(`Error: ${result.error}`);
+      if (result.endpoint) {
+        console.log(`Endpoint: ${result.endpoint}`);
+      }
     }
     
     if (!result.success) {
