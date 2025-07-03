@@ -166,13 +166,7 @@ jobs:
         app_location: '/'
         output_location: 'dist'
         skip_app_build: false
-        verbose: true
-        # Skip deployment if no token is provided
-        skip_deploy_on_missing_secrets: true
-        # Pass environment variables to the build process
         app_build_command: 'npm run build:client'
-        # Ensure the build process has access to environment variables
-        env: production
       # Pass environment variables to the build step
       env:
         # Azure deployment token (tries both possible names)
@@ -182,11 +176,9 @@ jobs:
         VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
         VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
         VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
-        # Force Vite to use production mode for the build
+        # Force production mode
         NODE_ENV: production
         VITE_MODE: production
-        # Enable debug logging
-        DEBUG: 'vite:config'
 
     - name: Skip deployment (no token)
       if: steps.check_token.outputs.has_token != 'true'
