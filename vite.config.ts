@@ -4,32 +4,39 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
-// This will be replaced by Azure Static Web Apps with actual values
-const azureEnv = {
-  VITE_AZURE_TENANT_ID: process.env.VITE_AZURE_TENANT_ID || '',
-  VITE_AZURE_CLIENT_ID: process.env.VITE_AZURE_CLIENT_ID || '',
-  VITE_AZURE_REDIRECT_URI: process.env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000',
-  VITE_AZURE_SCOPES: process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email'
+// Load environment variables from .env file and process.env
+const loadEnvVars = (mode: string) => {
+  // Load all environment variables from .env files and process.env
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  // Use environment variables with fallbacks
+  return {
+    VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || process.env.VITE_AZURE_TENANT_ID || '',
+    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID || process.env.VITE_AZURE_CLIENT_ID || '',
+    VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || process.env.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net',
+    VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
+  };
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, process.cwd(), '');
+  // Load all environment variables
+  const envVars = loadEnvVars(mode);
   
   // Create a config file that will be loaded at runtime
   const envConfig = {
-    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID || '',
-    VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || '',
-    VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000',
-    VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
+    ...envVars,
     MODE: mode,
     PROD: mode === 'production',
     DEV: mode !== 'production'
   };
+  
+  // Log the environment variables for debugging (only in development)
+  if (mode === 'development') {
+    console.log('Environment variables:', JSON.stringify(envVars, null, 2));
+  }
 
   // Generate config content
   const configContent = `// This file is auto-generated during build
