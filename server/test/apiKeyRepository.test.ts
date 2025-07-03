@@ -56,7 +56,7 @@ describe('ApiKeyRepository', () => {
       items: {
         query: vi.fn().mockReturnThis(),
         create: vi.fn().mockReturnThis(),
-        upsert: vi.fn(),
+        upsert: vi.fn().mockResolvedValue({ resource: {} }),
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
         read: vi.fn(),
         replace: vi.fn()

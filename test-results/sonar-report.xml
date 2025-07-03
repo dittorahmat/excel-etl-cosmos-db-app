@@ -1,115 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testExecutions version="1">
   <file path="server/test/apiKeyAuth.integration.test.ts">
-    <testCase name="API Key Authentication Integration - should return 401 if no API key is provided" duration="97" />
-    <testCase name="API Key Authentication Integration - should return 401 for invalid API key format" duration="48" />
-    <testCase name="API Key Authentication Integration - should return 200 for valid API key in header" duration="50" />
+    <testCase name="API Key Authentication Integration - should return 401 if no API key is provided" duration="87" />
+    <testCase name="API Key Authentication Integration - should return 401 for invalid API key format" duration="29" />
+    <testCase name="API Key Authentication Integration - should return 200 for valid API key in header" duration="26" />
     <testCase name="API Key Authentication Integration - should return 401 for revoked API key" duration="20" />
-    <testCase name="API Key Authentication Integration - should return 401 for invalid IP address" duration="30" />
-    <testCase name="API Key Authentication Integration - should return 401 for non-existent API key" duration="19" />
+    <testCase name="API Key Authentication Integration - should return 401 for invalid IP address" duration="16" />
+    <testCase name="API Key Authentication Integration - should return 401 for non-existent API key" duration="14" />
   </file>
   <file path="server/test/apiKeyAuth.middleware.auth.test.ts">
-    <testCase name="API Key Authentication Middleware - Authentication Flow - should skip API key validation if user is already authenticated" duration="13" />
-    <testCase name="API Key Authentication Middleware - Authentication Flow - should attach API key info to request when validation succeeds" duration="12" />
-    <testCase name="API Key Authentication Middleware - Authentication Flow - should call next with error when API key validation fails" duration="14" />
-    <testCase name="API Key Authentication Middleware - Authentication Flow - should handle IP address restrictions" duration="10" />
+    <testCase name="API Key Authentication Middleware - Authentication Flow - should skip API key validation if user is already authenticated" duration="15" />
+    <testCase name="API Key Authentication Middleware - Authentication Flow - should attach API key info to request when validation succeeds" duration="11" />
+    <testCase name="API Key Authentication Middleware - Authentication Flow - should call next with error when API key validation fails" duration="15" />
+    <testCase name="API Key Authentication Middleware - Authentication Flow - should handle IP address restrictions" duration="12" />
   </file>
   <file path="server/test/apiKeyAuth.middleware.basic.test.ts">
-    <testCase name="API Key Authentication Middleware - Basic Validation - should call next with error if no API key is provided" duration="22" />
+    <testCase name="API Key Authentication Middleware - Basic Validation - should call next with error if no API key is provided" duration="20" />
     <testCase name="API Key Authentication Middleware - Basic Validation - should validate API key from Authorization header" duration="15" />
-    <testCase name="API Key Authentication Middleware - Basic Validation - should validate API key from query parameter" duration="21" />
-    <testCase name="API Key Authentication Middleware - Basic Validation - should prioritize Authorization header over query parameter" duration="19" />
+    <testCase name="API Key Authentication Middleware - Basic Validation - should validate API key from query parameter" duration="11" />
+    <testCase name="API Key Authentication Middleware - Basic Validation - should prioritize Authorization header over query parameter" duration="8" />
   </file>
   <file path="server/test/apiKeyAuth.middleware.concurrent.test.ts">
-    <testCase name="API Key Authentication Middleware - Concurrent Validation - should handle concurrent API key validations" duration="30" />
-    <testCase name="API Key Authentication Middleware - Concurrent Validation - should handle concurrent validation with rate limiting" duration="12" />
+    <testCase name="API Key Authentication Middleware - Concurrent Validation - should handle concurrent API key validations" duration="22" />
+    <testCase name="API Key Authentication Middleware - Concurrent Validation - should handle concurrent validation with rate limiting" duration="19" />
   </file>
   <file path="server/test/apiKeyAuth.middleware.error.test.ts">
-    <testCase name="API Key Authentication Middleware - Error Handling - should handle repository validation errors" duration="28" />
-    <testCase name="API Key Authentication Middleware - Error Handling - should handle invalid API key format in header" duration="5" />
-    <testCase name="API Key Authentication Middleware - Error Handling - should handle empty API key in header" duration="4" />
-    <testCase name="API Key Authentication Middleware - Error Handling - should handle invalid API key in query parameter" duration="5" />
-    <testCase name="API Key Authentication Middleware - Error Handling - should handle expired API key" duration="7" />
-    <testCase name="API Key Authentication Middleware - Error Handling - should handle inactive API key" duration="15" />
+    <testCase name="API Key Authentication Middleware - Error Handling - should handle repository validation errors" duration="22" />
+    <testCase name="API Key Authentication Middleware - Error Handling - should handle invalid API key format in header" duration="8" />
+    <testCase name="API Key Authentication Middleware - Error Handling - should handle empty API key in header" duration="11" />
+    <testCase name="API Key Authentication Middleware - Error Handling - should handle invalid API key in query parameter" duration="11" />
+    <testCase name="API Key Authentication Middleware - Error Handling - should handle expired API key" duration="16" />
+    <testCase name="API Key Authentication Middleware - Error Handling - should handle inactive API key" duration="7" />
   </file>
   <file path="server/test/apiKeyAuth.validation.test.ts">
-    <testCase name="API key validation with IP restrictions - should reject empty API key" duration="13" />
-    <testCase name="API key validation with IP restrictions - should reject invalid API key format" duration="6" />
-    <testCase name="API key validation with IP restrictions - should reject non-existent API key" duration="6" />
+    <testCase name="API key validation with IP restrictions - should reject empty API key" duration="10" />
+    <testCase name="API key validation with IP restrictions - should reject invalid API key format" duration="3" />
+    <testCase name="API key validation with IP restrictions - should reject non-existent API key" duration="2" />
     <testCase name="API key validation with IP restrictions - should reject revoked API key" duration="3" />
     <testCase name="API key validation with IP restrictions - should validate active API key" duration="6" />
-    <testCase name="API key validation with IP restrictions - should reject request from unauthorized IP" duration="8" />
-    <testCase name="API key validation with IP restrictions - should allow request from authorized IP" duration="11" />
+    <testCase name="API key validation with IP restrictions - should reject request from unauthorized IP" duration="3" />
+    <testCase name="API key validation with IP restrictions - should allow request from authorized IP" duration="3" />
   </file>
   <file path="server/test/apiKeyRepository.test.ts">
-    <testCase name="ApiKeyRepository - createApiKey - should create a new API key" duration="19" />
-    <testCase name="ApiKeyRepository - update - should update an existing API key" duration="14" />
-    <testCase name="ApiKeyRepository - revokeApiKey - should revoke an existing API key" duration="4" />
-    <testCase name="ApiKeyRepository - validateApiKey - should validate a correct API key" duration="31" />
-    <testCase name="ApiKeyRepository - validateApiKey - should respect IP restrictions" duration="5" />
+    <testCase name="ApiKeyRepository - createApiKey - should create a new API key" duration="15" />
+    <testCase name="ApiKeyRepository - update - should update an existing API key" duration="10" />
+    <testCase name="ApiKeyRepository - revokeApiKey - should revoke an existing API key" duration="6" />
+    <testCase name="ApiKeyRepository - validateApiKey - should validate a correct API key" duration="32" />
+    <testCase name="ApiKeyRepository - validateApiKey - should respect IP restrictions" duration="4" />
   </file>
   <file path="server/test/apiKeyRevocation.test.ts">
-    <testCase name="API Key Revocation - revokeApiKey - should successfully revoke an active API key" duration="58" />
-    <testCase name="API Key Revocation - revokeApiKey - should return false when key is not found" duration="6" />
+    <testCase name="API Key Revocation - revokeApiKey - should successfully revoke an active API key" duration="19" />
+    <testCase name="API Key Revocation - revokeApiKey - should return false when key is not found" duration="3" />
     <testCase name="API Key Revocation - revokeApiKey - should return false when user does not own the key" duration="2" />
-    <testCase name="API Key Revocation - revokeApiKey - should handle errors during key revocation" duration="7" />
-    <testCase name="API Key Revocation - revokeApiKey - should handle already revoked keys" duration="21" />
+    <testCase name="API Key Revocation - revokeApiKey - should handle errors during key revocation" duration="4" />
+    <testCase name="API Key Revocation - revokeApiKey - should handle already revoked keys" duration="9" />
   </file>
   <file path="server/test/apiKeyRoutes.test.ts">
-    <testCase name="API Key Routes - should have tests" duration="18" />
+    <testCase name="API Key Routes - should have tests" duration="5" />
   </file>
   <file path="server/test/authMiddleware.test.ts">
-    <testCase name="Token Validation Middleware - validateToken - should call next() when AUTH_ENABLED is false" duration="11" />
-    <testCase name="Token Validation Middleware - validateToken - should return 401 when no token is provided" duration="10" />
-    <testCase name="Token Validation Middleware - validateToken - should return 401 when token is invalid" duration="38" />
-    <testCase name="Token Validation Middleware - validateToken - should return 401 when token is expired" duration="10" />
+    <testCase name="Token Validation Middleware - validateToken - should call next() when AUTH_ENABLED is false" duration="9" />
+    <testCase name="Token Validation Middleware - validateToken - should return 401 when no token is provided" duration="7" />
+    <testCase name="Token Validation Middleware - validateToken - should return 401 when token is invalid" duration="25" />
+    <testCase name="Token Validation Middleware - validateToken - should return 401 when token is expired" duration="5" />
     <testCase name="Token Validation Middleware - validateToken - should set req.user and call next() when token is valid" duration="3" />
   </file>
   <file path="server/test/data.test.ts">
-    <testCase name="Data API - should return data with status 200 when authenticated" duration="118" />
-    <testCase name="Data API - should filter data by date range" duration="16" />
-    <testCase name="Data API - should filter data by category" duration="9" />
-    <testCase name="Data API - should limit results when limit parameter is provided" duration="14" />
+    <testCase name="Data API - should return data with status 200 when authenticated" duration="102" />
+    <testCase name="Data API - should filter data by date range" duration="21" />
+    <testCase name="Data API - should filter data by category" duration="10" />
+    <testCase name="Data API - should limit results when limit parameter is provided" duration="13" />
   </file>
   <file path="server/test/excelParser.test.ts">
-    <testCase name="Excel Parser - processExcelFile - should successfully process a valid Excel file" duration="22" />
-    <testCase name="Excel Parser - processExcelFile - should handle empty Excel files" duration="4" />
+    <testCase name="Excel Parser - processExcelFile - should successfully process a valid Excel file" duration="18" />
+    <testCase name="Excel Parser - processExcelFile - should handle empty Excel files" duration="3" />
     <testCase name="Excel Parser - processExcelFile - should handle parsing errors" duration="42" />
-    <testCase name="Excel Parser - processExcelFile - should handle record processing errors gracefully" duration="6" />
+    <testCase name="Excel Parser - processExcelFile - should handle record processing errors gracefully" duration="5" />
   </file>
   <file path="server/test/rateLimit.test.ts">
-    <testCase name="Rate Limiting Middleware - should allow requests under the limit" duration="161" />
-    <testCase name="Rate Limiting Middleware - should block requests over the limit" duration="57" />
-    <testCase name="Rate Limiting Middleware - should reset the counter after the window expires" duration="40" />
-    <testCase name="Rate Limiting Middleware - should use API key as the rate limit key when available" duration="38" />
-    <testCase name="Rate Limiting Middleware - should skip rate limiting when skip function returns true" duration="34" />
+    <testCase name="Rate Limiting Middleware - should allow requests under the limit" duration="146" />
+    <testCase name="Rate Limiting Middleware - should block requests over the limit" duration="43" />
+    <testCase name="Rate Limiting Middleware - should reset the counter after the window expires" duration="32" />
+    <testCase name="Rate Limiting Middleware - should use API key as the rate limit key when available" duration="45" />
+    <testCase name="Rate Limiting Middleware - should skip rate limiting when skip function returns true" duration="44" />
   </file>
   <file path="server/test/sanity.test.ts">
-    <testCase name="Sanity Test - should pass a basic test" duration="15" />
-    <testCase name="Sanity Test - should have access to global test utilities" duration="7" />
-    <testCase name="Sanity Test - should have access to Node.js globals" duration="1" />
-    <testCase name="Sanity Test - should have access to test environment variables" duration="4" />
+    <testCase name="Sanity Test - should pass a basic test" duration="7" />
+    <testCase name="Sanity Test - should have access to global test utilities" duration="2" />
+    <testCase name="Sanity Test - should have access to Node.js globals" duration="2" />
+    <testCase name="Sanity Test - should have access to test environment variables" duration="1" />
   </file>
   <file path="server/test/server.test.ts">
-    <testCase name="Server - Health Check - should return 200 and status ok for /health endpoint" duration="172" />
-    <testCase name="Server - Health Check - should include environment information in the response" duration="28" />
-    <testCase name="Server - 404 Handler - should return 404 for non-existent routes" duration="78" />
-    <testCase name="Server - 404 Handler - should handle various HTTP methods for non-existent routes" duration="93" />
-    <testCase name="Server - Error Handling - should return 500 for unhandled errors" duration="14" />
+    <testCase name="Server - Health Check - should return 200 and status ok for /health endpoint" duration="73" />
+    <testCase name="Server - Health Check - should include environment information in the response" duration="9" />
+    <testCase name="Server - 404 Handler - should return 404 for non-existent routes" duration="13" />
+    <testCase name="Server - 404 Handler - should handle various HTTP methods for non-existent routes" duration="44" />
+    <testCase name="Server - Error Handling - should return 500 for unhandled errors" duration="7" />
   </file>
   <file path="server/test/type-tests/global-types.test.ts">
-    <testCase name="Global Type Definitions - should have Node.js globals available" duration="28" />
-    <testCase name="Global Type Definitions - should have test globals available" duration="5" />
-    <testCase name="Global Type Definitions - should have proper DOM types in frontend files" duration="3" />
+    <testCase name="Global Type Definitions - should have Node.js globals available" duration="5" />
+    <testCase name="Global Type Definitions - should have test globals available" duration="1" />
+    <testCase name="Global Type Definitions - should have proper DOM types in frontend files" duration="1" />
   </file>
   <file path="server/test/upload-route.test.ts">
-    <testCase name="Upload Handler - File Upload Tests - should return 400 if no file is uploaded" duration="21" />
-    <testCase name="Upload Handler - File Upload Tests - should return 400 if user is not authenticated" duration="4" />
-    <testCase name="Upload Handler - File Upload Tests - should process a valid file upload" duration="26" />
-    <testCase name="Upload Handler - File Upload Tests - should return 400 if file processing fails" duration="2" />
+    <testCase name="Upload Handler - File Upload Tests - should return 400 if no file is uploaded" duration="12" />
+    <testCase name="Upload Handler - File Upload Tests - should return 400 if user is not authenticated" duration="2" />
+    <testCase name="Upload Handler - File Upload Tests - should process a valid file upload" duration="16" />
+    <testCase name="Upload Handler - File Upload Tests - should return 400 if file processing fails" duration="3" />
   </file>
   <file path="server/test/upload.test.ts">
-    <testCase name="Upload Handler - should return 400 if no file is uploaded" duration="46" />
+    <testCase name="Upload Handler - should return 400 if no file is uploaded" duration="14" />
     <testCase name="Upload Handler - should return 200 and process the file when a valid file is uploaded" duration="3" />
   </file>
 </testExecutions>
