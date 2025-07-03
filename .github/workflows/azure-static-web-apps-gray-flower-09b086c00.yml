@@ -166,7 +166,8 @@ jobs:
         app_location: '/'
         output_location: 'dist'
         skip_app_build: false
-        app_build_command: 'npm run build:client'
+        # Install Vite globally and then run the build
+        app_build_command: 'npm install -g vite && npm run build:client'
       # Pass environment variables to the build step
       env:
         # Azure deployment token (tries both possible names)
