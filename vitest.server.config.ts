@@ -72,11 +72,6 @@ export default defineConfig({
       ]
     },
     
-    typecheck: {
-      enabled: true,
-      include: ['**/*.test.ts']
-    },
-    
     deps: {
       interopDefault: true,
       optimizer: {

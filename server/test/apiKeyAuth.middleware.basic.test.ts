@@ -53,6 +53,12 @@ describe('API Key Authentication Middleware - Basic Validation', () => {
     // Setup default mock implementation
     testRepository = new ApiKeyRepository(mockCosmosDb);
     vi.spyOn(testRepository, 'validateApiKey').mockImplementation(mockValidateApiKey);
+    
+    // Add a default mock implementation for validateApiKey
+    mockValidateApiKey.mockResolvedValue({
+      isValid: true,
+      key: createTestApiKey({ id: 'test-key-123' }),
+    });
   });
 
   afterEach(() => {
@@ -127,3 +133,4 @@ describe('API Key Authentication Middleware - Basic Validation', () => {
     });
   });
 });
+
