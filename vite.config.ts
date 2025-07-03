@@ -9,6 +9,16 @@ const loadEnvVars = (mode: string) => {
   // Load all environment variables from .env files and process.env
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Log environment variables in development for debugging
+  if (mode === 'development') {
+    console.log('Loaded environment variables:', {
+      VITE_AZURE_TENANT_ID: !!env.VITE_AZURE_TENANT_ID,
+      VITE_AZURE_CLIENT_ID: !!env.VITE_AZURE_CLIENT_ID,
+      VITE_AZURE_REDIRECT_URI: !!env.VITE_AZURE_REDIRECT_URI,
+      VITE_AZURE_SCOPES: !!env.VITE_AZURE_SCOPES,
+    });
+  }
+  
   // Use environment variables with fallbacks
   return {
     VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || process.env.VITE_AZURE_TENANT_ID || '',
@@ -141,7 +151,7 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
             proxy.on('error', (err, _req, _res) => {
               console.error('Proxy error:', err);
             });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
+            proxy.on('proxyReq', (_proxyReq, req, _res) => {
               console.log('Proxying request to:', req.url);
             });
           }

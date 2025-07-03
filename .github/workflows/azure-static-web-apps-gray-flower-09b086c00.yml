@@ -177,11 +177,16 @@ jobs:
       env:
         # Azure deployment token (tries both possible names)
         DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
-        # Application environment variables
+        # Application environment variables - these will be available at build time
         VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
         VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
         VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
         VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
+        # Force Vite to use production mode for the build
+        NODE_ENV: production
+        VITE_MODE: production
+        # Enable debug logging
+        DEBUG: 'vite:config'
 
     - name: Skip deployment (no token)
       if: steps.check_token.outputs.has_token != 'true'
