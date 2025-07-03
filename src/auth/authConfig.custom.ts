@@ -11,21 +11,13 @@ declare global {
 
 // Environment variable helper with type safety and better error reporting
 const getEnv = (key: string, defaultValue: string = ''): string => {
-  // Try to get from window.__AZURE_ENV__ (injected by Vite)
-  if (typeof window !== 'undefined' && window.__AZURE_ENV__) {
-    const azureEnvValue = window.__AZURE_ENV__[`VITE_${key}`];
-    if (azureEnvValue !== undefined && azureEnvValue !== '') {
-      return azureEnvValue;
-    }
-  }
-
-  // Try to get from Vite environment variables
+  // 1. First try Vite environment variables (injected at build time from GitHub Secrets)
   const viteValue = import.meta.env[`VITE_${key}`];
   if (viteValue !== undefined && viteValue !== '') {
     return viteValue;
   }
-  
-  // Try to get from window.__APP_CONFIG__ (legacy runtime config)
+
+  // 2. Try to get from window.__APP_CONFIG__ (injected by our runtime config)
   if (typeof window !== 'undefined' && window.__APP_CONFIG__) {
     const runtimeValue = window.__APP_CONFIG__[`VITE_${key}`];
     if (runtimeValue !== undefined && runtimeValue !== '') {
@@ -33,7 +25,15 @@ const getEnv = (key: string, defaultValue: string = ''): string => {
     }
   }
   
-  // Try to get from process.env (for Node.js environment during SSR)
+  // 3. Try to get from window.__AZURE_ENV__ (legacy Azure SWA injection)
+  if (typeof window !== 'undefined' && window.__AZURE_ENV__) {
+    const azureEnvValue = window.__AZURE_ENV__[`VITE_${key}`];
+    if (azureEnvValue !== undefined && azureEnvValue !== '') {
+      return azureEnvValue;
+    }
+  }
+  
+  // 4. Try direct access (for Node.js environment during SSR)
   const processValue = import.meta.env[`${key}`];
   if (processValue !== undefined && processValue !== '') {
     return processValue;
@@ -43,7 +43,11 @@ const getEnv = (key: string, defaultValue: string = ''): string => {
   if (import.meta.env.DEV) {
     console.warn(`Environment variable VITE_${key} is not set. Using default value.`);
   } else {
+    // In production, log to the server if possible
     console.error(`Environment variable VITE_${key} is not set in production!`);
+    // Also log the current environment for debugging
+    console.log('Current environment:', import.meta.env.MODE);
+    console.log('Available environment variables:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
   }
   
   return defaultValue;
