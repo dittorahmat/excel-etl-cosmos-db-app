@@ -225,7 +225,12 @@ describe('ApiKeyRepository', () => {
       mockContainer.items = {
         query: vi.fn().mockReturnValue({
           fetchAll: mockFetchAll
-        })
+        }),
+        upsert: vi.fn().mockResolvedValue({ resource: {} }), // Add upsert mock here
+        create: vi.fn(),
+        fetchAll: vi.fn(),
+        read: vi.fn(),
+        replace: vi.fn()
       };
       
       // Call the method under test
