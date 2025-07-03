@@ -95,15 +95,49 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
       emptyOutDir: true,
       copyPublicDir: true,
       assetsInlineLimit: 0, // Ensure all assets are copied as files
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom', 'react-router-dom'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('@azure/cosmos')) {
+                return 'vendor-azure-cosmos';
+              }
+              if (id.includes('xlsx')) {
+                return 'vendor-xlsx';
+              }
+              if (id.includes('uuid')) {
+                return 'vendor-uuid';
+              }
+              if (id.includes('date-fns')) {
+                return 'vendor-date-fns';
+              }
+              if (id.includes('recharts')) {
+                return 'vendor-recharts';
+              }
+              if (id.includes('cors') || id.includes('express') || id.includes('helmet') || id.includes('multer')) {
+                return 'vendor-server';
+              }
+              if (id.includes('@radix-ui')) {
+                return 'vendor-radix-ui';
+              }
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('msal')) {
+                return 'vendor-msal';
+              }
+              if (id.includes('axios')) {
+                return 'vendor-axios';
+              }
+              if (id.includes('lodash')) {
+                return 'vendor-lodash';
+              }
+              return 'vendor';
+            }
           },
           // Preserve the exact filename for config.js
           entryFileNames: '[name].[hash].js',
