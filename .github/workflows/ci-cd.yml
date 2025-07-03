@@ -52,17 +52,34 @@ jobs:
     - name: Run Cosmos DB connection test
       working-directory: ./
       env:
-        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
-        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
-        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
-        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        # Use connection string instead of separate variables for better reliability
+        AZURE_COSMOS_CONNECTION_STRING: ${{ secrets.AZURE_COSMOS_CONNECTION_STRING }}
+        # Fallback to individual variables if connection string is not available
+        AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
       run: |
-        echo "Testing Cosmos DB connection with environment variables:"
-        echo "- COSMOS_ENDPOINT: ${COSMOS_ENDPOINT:0:20}..."
-        echo "- COSMOS_DATABASE: $COSMOS_DATABASE"
-        echo "- COSMOS_CONTAINER: $COSMOS_CONTAINER"
-        echo "- COSMOS_KEY: ${COSMOS_KEY:0:5}..."
-        npx tsx server/scripts/test-cosmos-connection.ts
+        echo "Testing Cosmos DB connection..."
+        echo "- AZURE_COSMOS_CONNECTION_STRING: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
+        echo "- AZURE_COSMOS_ENDPOINT: ${AZURE_COSMOS_ENDPOINT:0:20}..."
+        echo "- AZURE_COSMOS_DATABASE: ${AZURE_COSMOS_DATABASE:-Not set}"
+        echo "- AZURE_COSMOS_CONTAINER: ${AZURE_COSMOS_CONTAINER:-Not set}"
+        echo "- AZURE_COSMOS_KEY: ${AZURE_COSMOS_KEY:+set (hidden for security)}"
+        
+        # Verify required environment variables
+        if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_ENDPOINT" ]; then
+          echo "::error::Either AZURE_COSMOS_CONNECTION_STRING or AZURE_COSMOS_ENDPOINT must be set"
+          exit 1
+        fi
+        
+        if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_KEY" ]; then
+          echo "::error::AZURE_COSMOS_KEY must be set when using AZURE_COSMOS_ENDPOINT"
+          exit 1
+        fi
+        
+        # Run the test script with debugging
+        NODE_DEBUG=cosmos* npx tsx server/scripts/test-cosmos-connection.ts
 
     - name: Lint codebase
       working-directory: ./
