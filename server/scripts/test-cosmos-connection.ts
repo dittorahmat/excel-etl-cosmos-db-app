@@ -10,13 +10,29 @@ const __dirname = dirname(__filename);
 // Load environment variables from the server's .env file
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+// Log environment variables for debugging
+console.log('Environment variables loaded from:', path.resolve(__dirname, '../.env'));
+console.log('COSMOS_ENDPOINT:', process.env.COSMOS_ENDPOINT ? '***' : 'Not set');
+console.log('COSMOS_DATABASE:', process.env.COSMOS_DATABASE || 'Not set');
+console.log('COSMOS_CONTAINER:', process.env.COSMOS_CONTAINER || 'Not set');
+
 async function runTest() {
   console.log('Starting Cosmos DB connection test...');
   
   try {
-    // Use dynamic import to avoid TypeScript module resolution issues
-    const { testCosmosConnection } = await import('../src/services/cosmos-db/cosmos-db.service.js');
+    // Import from the built JavaScript file
+    const modulePath = path.resolve(__dirname, '../../dist/server/src/services/cosmos-db/cosmos-db.service.js');
+    console.log(`Importing from: ${modulePath}`);
     
+    // Dynamic import with error handling
+    const module = await import(modulePath);
+    const { testCosmosConnection } = module;
+    
+    if (typeof testCosmosConnection !== 'function') {
+      throw new Error('testCosmosConnection is not a function. Exported members: ' + Object.keys(module).join(', '));
+    }
+    
+    console.log('Calling testCosmosConnection...');
     const result = await testCosmosConnection();
     
     console.log('\n=== Test Results ===');
@@ -24,7 +40,7 @@ async function runTest() {
     console.log(`Message: ${result.message}`);
     
     console.log('\n=== Connection Details ===');
-    console.log(`Database: ${result.database}`);
+    console.log(`Database: ${result.database || 'Not specified'}`);
     console.log(`Container: ${result.container || 'Not specified'}`);
     
     if (result.error) {

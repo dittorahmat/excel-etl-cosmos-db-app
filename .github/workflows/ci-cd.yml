@@ -38,6 +38,21 @@ jobs:
         npx tsc --version
         npx eslint --version
 
+    - name: Build server
+      working-directory: ./
+      run: npm run build:server
+
+    - name: Verify build output
+      working-directory: ./
+      run: |
+        echo "Build output structure:"
+        find dist -type f | sort
+        echo "\nCosmos DB service file exists: $(ls -la dist/server/src/services/cosmos-db/cosmos-db.service.js 2>/dev/null && echo 'Yes' || echo 'No')"
+
+    - name: Run Cosmos DB connection test
+      working-directory: ./
+      run: npx tsx server/scripts/test-cosmos-connection.ts
+
     - name: Lint codebase
       working-directory: ./
       run: npm run lint
