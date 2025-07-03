@@ -126,10 +126,18 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
-
-    - name: Install dependencies
-      run: npm ci
       
+    - name: Debug: Check Vite installation
+      run: |
+        echo "Node version: $(node -v)"
+        echo "NPM version: $(npm -v)"
+        echo "Vite version in package.json: $(jq -r '.devDependencies.vite // .dependencies.vite // "Not found"' package.json)"
+        echo "Vite binary location: $(which vite || echo 'Not installed globally')"
+        echo "Vite version (local): $(npx vite --version || echo 'Not found in node_modules/.bin')"
+        echo "Listing node_modules/vite:"
+        ls -la node_modules/vite || echo 'Vite not found in node_modules'
+        echo "\nFull dependency tree for vite:"
+        npm list vite || echo 'Vite not found in dependency tree'
     - name: Generate config
       run: npm run generate:config
       
@@ -167,7 +175,7 @@ jobs:
         output_location: 'dist'
         skip_app_build: false
         # Use custom build script that ensures Vite is installed locally
-        app_build_command: './azure-build.sh'
+        app_build_command: 'npm run build:client'
       # Pass environment variables to the build step
       env:
         # Azure deployment token (tries both possible names)
