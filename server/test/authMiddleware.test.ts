@@ -9,18 +9,26 @@ vi.mock('jsonwebtoken', () => ({
   },
 }));
 
-// Create mock functions after mocks are set up
-const mockGetSigningKey = vi.fn();
-
-vi.mock('jwks-rsa', () => ({
-  default: vi.fn(() => ({
-    getSigningKey: () => mockGetSigningKey,
-  })),
-}));
-
 // Import after mocks are set up
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
+
+// Create mock functions after mocks are set up
+vi.mock('jwks-rsa', () => ({
+  __esModule: true,
+  default: vi.fn(() => ({
+    getSigningKey: vi.fn().mockImplementation((_kid, cb) => {
+      cb(null, {
+        getPublicKey: () => 'public-key',
+        rsaPublicKey: 'public-key',
+        publicKey: 'public-key'
+      });
+    }),
+  })),
+}));
+
+
+
 
 // Mock environment variables
 process.env.AZURE_TENANT_ID = 'test-tenant-id';
@@ -179,13 +187,13 @@ describe('Token Validation Middleware', () => {
       });
 
       // Mock the getSigningKey implementation for this test case
-      mockGetSigningKey.mockImplementationOnce((_kid, cb) => {
-        cb(null, {
-          getPublicKey: () => 'public-key',
-          rsaPublicKey: 'public-key',
-          publicKey: 'public-key'
-        });
-      });
+      // mockGetSigningKey.mockImplementationOnce((_kid, cb) => {
+      //   cb(null, {
+      //     getPublicKey: () => 'public-key',
+      //     rsaPublicKey: 'public-key',
+      //     publicKey: 'public-key'
+      //   });
+      // });
 
       // Create a spy for the next function
       const nextSpy = vi.fn();

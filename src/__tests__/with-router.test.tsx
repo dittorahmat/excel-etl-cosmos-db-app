@@ -3,6 +3,7 @@ import React from 'react';
 import { act } from 'react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Mock MSAL
