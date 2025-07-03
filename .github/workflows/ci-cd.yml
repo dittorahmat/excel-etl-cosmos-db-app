@@ -51,7 +51,18 @@ jobs:
 
     - name: Run Cosmos DB connection test
       working-directory: ./
-      run: npx tsx server/scripts/test-cosmos-connection.ts
+      env:
+        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
+        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+      run: |
+        echo "Testing Cosmos DB connection with environment variables:"
+        echo "- COSMOS_ENDPOINT: ${COSMOS_ENDPOINT:0:20}..."
+        echo "- COSMOS_DATABASE: $COSMOS_DATABASE"
+        echo "- COSMOS_CONTAINER: $COSMOS_CONTAINER"
+        echo "- COSMOS_KEY: ${COSMOS_KEY:0:5}..."
+        npx tsx server/scripts/test-cosmos-connection.ts
 
     - name: Lint codebase
       working-directory: ./
