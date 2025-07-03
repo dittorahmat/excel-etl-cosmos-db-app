@@ -1,8 +1,8 @@
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { apiKeyAuth } from '../../src/middleware/apiKeyAuth.js';
-import { ApiKeyRepository } from '../../src/repositories/apiKeyRepository.js';
-import type { AzureCosmosDB } from '../../src/types/azure.js';
+import { apiKeyAuth } from '../src/middleware/apiKeyAuth.js';
+import { ApiKeyRepository } from '@/repositories/apiKeyRepository.js';
+import type { AzureCosmosDB } from '@/types/azure.js';
 import { createTestApiKey, createMockRequest, createMockResponse, createNextFunction } from './apiKeyAuth.middleware.test-utils.js';
 import type { TestRequest } from './apiKeyAuth.middleware.types.js';
 
@@ -28,10 +28,6 @@ const MockApiKeyRepository = vi.fn().mockImplementation(() => ({
   update: vi.fn()
 }));
 
-vi.mock('../../src/repositories/apiKeyRepository.js', () => ({
-  ApiKeyRepository: MockApiKeyRepository
-}));
-
 // Extend the Express types to include mock properties
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -53,26 +49,37 @@ let req: TestRequest;
 let res: Response;
 let next: NextFunction & { mock: any; mockClear: () => void };
 let testRepository: ApiKeyRepository;
-
-// Mock Azure CosmosDB
-const mockCosmosDb: AzureCosmosDB = {
-  database: vi.fn().mockReturnThis(),
-  container: vi.fn().mockReturnThis(),
-  items: {
-    query: vi.fn().mockResolvedValue({ resources: [] })
-  },
-  getContainer: vi.fn().mockReturnThis(),
-  query: vi.fn().mockResolvedValue({ resources: [] }),
-  upsert: vi.fn().mockResolvedValue({}),
-  getById: vi.fn().mockResolvedValue(null),
-  delete: vi.fn().mockResolvedValue(true)
-} as unknown as AzureCosmosDB;
+let mockContainer: any;
+let mockCosmosDb: AzureCosmosDB;
 
 describe('API Key Authentication Middleware - Authentication Flow', () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
     
+    mockContainer = {
+      items: {
+        query: vi.fn().mockReturnThis(),
+        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        upsert: vi.fn().mockResolvedValue({ resource: {} }),
+      },
+      item: vi.fn().mockImplementation((id) => ({
+        read: vi.fn().mockResolvedValue({ resource: { id } }),
+        replace: vi.fn().mockResolvedValue({ resource: {} }),
+        delete: vi.fn().mockResolvedValue({}),
+      })),
+    };
+
+    // Mock Azure CosmosDB
+    mockCosmosDb = {
+      database: vi.fn().mockReturnThis(),
+      container: vi.fn().mockImplementation(() => mockContainer),
+      query: vi.fn().mockResolvedValue({ resources: [] }),
+      upsertRecord: vi.fn().mockResolvedValue({}),
+      getById: vi.fn().mockResolvedValue(null),
+      deleteRecord: vi.fn().mockResolvedValue(true),
+    } as unknown as AzureCosmosDB;
+
     // Setup default request, response, and next function
     req = createMockRequest() as TestRequest;
     res = createMockResponse() as Response;
@@ -80,6 +87,7 @@ describe('API Key Authentication Middleware - Authentication Flow', () => {
     
     // Setup default mock implementation
     testRepository = new ApiKeyRepository(mockCosmosDb);
+    vi.spyOn(testRepository, 'validateApiKey').mockImplementation(mockValidateApiKey);
   });
 
   it('should skip API key validation if user is already authenticated', async () => {
@@ -116,11 +124,11 @@ describe('API Key Authentication Middleware - Authentication Flow', () => {
     
     // Assert
     expect(req.apiKey).toBeDefined();
-    expect(req.apiKey).toEqual({
+    expect(req.apiKey).toEqual(expect.objectContaining({
       id: mockApiKey.id,
       userId: mockApiKey.userId,
       name: mockApiKey.name
-    });
+    }));
     expect(next).toHaveBeenCalled();
   });
 

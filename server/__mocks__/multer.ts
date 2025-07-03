@@ -38,7 +38,7 @@ const createMockMulter = () => {
 
   const fn = vi.fn(() => ({
     single,
-    memoryStorage: vi.fn().mockReturnValue({})
+    memoryStorage: vi.fn().mockReturnValue(mockMemoryStorage())
   }));
 
   // Add static methods
@@ -46,6 +46,18 @@ const createMockMulter = () => {
   
   mockFn.memoryStorage = vi.fn().mockReturnValue(mockMemoryStorage());
   
+  // Mock MulterError
+  (mockFn as any).MulterError = class MulterError extends Error {
+    code: string;
+    field?: string;
+    constructor(code: string, field?: string) {
+      super(code);
+      this.code = code;
+      this.field = field;
+      this.name = 'MulterError';
+    }
+  };
+
   return mockFn;
 };
 

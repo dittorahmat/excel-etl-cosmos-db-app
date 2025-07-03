@@ -92,6 +92,7 @@ export function QueryBuilder({
 }: QueryBuilderProps) {
   const [availableFields, setAvailableFields] = useState<FieldDefinition[]>(initialFields);
   const [filters, setFilters] = useState<FilterCondition[]>([{ id: '1', field: '', operator: '=', value: '' }]);
+  const [, setLoadingFields] = useState(false);
   
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export function QueryBuilder({
 
       setLoadingFields(true);
       try {
-        const response = await api.get('/api/v2/fields');
+        const response = await api.get('/api/fields');
         if (response.ok) {
           const data = await response.json();
           const fields = (data.fields || []).map((field: string) => ({

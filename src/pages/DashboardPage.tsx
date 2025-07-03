@@ -98,7 +98,7 @@ export const DashboardPage: React.FC = () => {
         };
 
         // Serialize queryParams into the URL
-        const url = '/api/query' + (Object.keys(queryParams).length > 0
+        const url = '/api/v2/query' + (Object.keys(queryParams).length > 0
           ? '?' + new URLSearchParams(Object.entries(queryParams).reduce((acc, [key, value]) => {
               if (value === undefined) return acc;
               if (Array.isArray(value)) {

@@ -33,59 +33,15 @@ interface Mock<T = any, Y extends any[] = any> {
 
 // Mock the crypto module
 vi.mock('crypto', () => {
-  // Create a mock hash function that can be chained
-  const createMockHash = (algorithm?: string) => {
-    let data: string | Buffer = '';
-    
-    const mockHash = {
-      update: vi.fn().mockImplementation(function(this: any, chunk: string | Buffer, inputEncoding?: string) {
-        // Convert chunk to string if it's a Buffer
-        let chunkStr: string;
-        if (Buffer.isBuffer(chunk)) {
-          chunkStr = chunk.toString('utf8');
-        } else if (typeof chunk === 'string') {
-          chunkStr = inputEncoding ? Buffer.from(chunk, inputEncoding as BufferEncoding).toString('utf8') : chunk;
-        } else {
-          chunkStr = String(chunk);
-        }
-        data += chunkStr;
-        return this; // Return this for chaining
-      }),
-      digest: vi.fn().mockImplementation(function(this: any, encoding: string = 'hex') {
-        // Return a predictable hash based on the input data and algorithm
-        const hash = `mocked-${algorithm || 'hash'}-${data}`;
-        return encoding === 'hex' ? hash : Buffer.from(hash);
-      })
-    };
-    
-    // Ensure methods return the mockHash object for chaining
-    mockHash.update.mockReturnValue(mockHash);
-    return mockHash;
+  const mockHash = {
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn(() => 'mocked-hash-value'),
   };
 
-  const actualCrypto = vi.importActual('crypto');
-
   return {
-    ...actualCrypto,
+    createHash: vi.fn(() => mockHash),
     randomBytes: vi.fn().mockImplementation((size: number) => {
-      // Return a predictable buffer for testing
       return Buffer.alloc(size, 'a');
-    }),
-    createHash: vi.fn().mockImplementation((algorithm: string) => {
-      const mock = createMockHash(algorithm);
-      // Special handling for sha256 used in hashApiKey
-      if (algorithm === 'sha256') {
-        mock.digest = vi.fn().mockImplementation(function(this: any, encoding: string = 'hex') {
-          // For sha256, return a predictable hash based on the input
-          const data = this.update.mock.calls
-            .map(([chunk]: [string | Buffer]) => 
-              Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk)
-            )
-            .join('');
-          return `hashed-${data}`;
-        });
-      }
-      return mock;
     }),
     timingSafeEqual: vi.fn().mockImplementation((a: Buffer, b: Buffer) => {
       if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) return false;

@@ -1,23 +1,21 @@
 import { msalInstance } from '../auth/msalInstance';
 import { InteractionRequiredAuthError, AccountInfo } from '@azure/msal-browser';
 
-// Rate limiting configuration
-const _RATE_LIMIT_RETRY_ATTEMPTS = 3;
-const _RATE_LIMIT_INITIAL_DELAY = 1000; // 1 second
-const _RATE_LIMIT_MAX_DELAY = 10000; // 10 seconds
-const _RATE_LIMIT_RETRY_CODES = [429, 502, 503, 504];
+// Interface for error response data
+interface ErrorResponseData {
+  message?: string;
+  [key: string]: unknown;
+}
 
-// Cache for tokens to reduce authentication requests
+// Rate limiting configuration
+const _RATE_LIMIT_RETRY_ATTEMPTS = import.meta.env.DEV ? 0 : 3;
+
+// Token cache to store tokens in memory
 let tokenCache: { [key: string]: { token: string | null; expiresAt: number } } = {};
 const TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Track rate limits per endpoint
 const rateLimitState: { [key: string]: { lastRequest: number; retryAfter: number } } = {};
-
-// Extended Response type with generic JSON body
-type ApiResponse<T = unknown> = Response & {
-  json(): Promise<T>;
-};
 
 const getCacheKey = (account: AccountInfo): string => {
   return `${account.homeAccountId}-${account.tenantId}`;
@@ -126,64 +124,12 @@ const prepareBody = (body: RequestBody): BodyInit | null | undefined => {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const _calculateRetryDelay = (attempt: number): number => {
-  // Exponential backoff with jitter
-  const baseDelay = Math.min(1000 * Math.pow(2, attempt), 30000);
-  const jitter = Math.random() * 1000;
-  return baseDelay + jitter;
-};
-
 export const authFetch = async <T = unknown>(
   url: string, 
   options: RequestOptions = {},
   attempt = 1
-): Promise<ApiResponse<T>> => {
+): Promise<T> => {
   const headers = new Headers(options.headers);
-  
-  // Only set Content-Type to application/json if it's not a FormData object
-  // and Content-Type is not already set
-  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.append('Content-Type', 'application/json');
-  }
-  
-  // Check rate limiting for this endpoint
-  const endpoint = new URL(url, import.meta.env.VITE_API_BASE_URL || '').pathname;
-  const now = Date.now();
-  const rateLimit = rateLimitState[endpoint];
-  
-  if (rateLimit && now < rateLimit.lastRequest + rateLimit.retryAfter) {
-    const waitTime = rateLimit.lastRequest + rateLimit.retryAfter - now;
-    console.log(`Rate limited on ${endpoint}, waiting ${waitTime}ms before retry`);
-    await sleep(waitTime);
-  }
-  
-  // Check if authentication is required (only on first attempt to avoid extra requests)
-  if (attempt === 1) {
-    try {
-      const authStatusResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/status`);
-      if (authStatusResponse.ok) {
-        const authStatus = await authStatusResponse.json();
-        const authRequired = authStatus.authRequired !== false;
-        
-        if (authRequired) {
-          const token = await getAuthToken();
-          if (token) {
-            headers.set('Authorization', `Bearer ${token}`);
-          } else if (import.meta.env.DEV) {
-            console.log('Using development mock token');
-            const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-            headers.set('Authorization', `Bearer ${mockToken}`);
-          } else {
-            throw new Error('Authentication required but no valid token available');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking authentication status:', error);
-      // If we can't check the auth status, assume authentication is required
-      console.warn('Could not determine if authentication is required, proceeding without token');
-    }
-  }
   
   // Get base URL from environment and ensure it doesn't end with a slash
   const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
@@ -215,9 +161,54 @@ export const authFetch = async <T = unknown>(
   
   // For development, use the full URL to ensure proper routing through the dev server
   const requestUrl = import.meta.env.DEV ? fullUrl : fullUrl;
+
+  // Check rate limiting for this endpoint
+  const endpoint = new URL(url, import.meta.env.VITE_API_BASE_URL || '').pathname;
+  const now = Date.now();
+  const rateLimit = rateLimitState[endpoint];
+  
+  if (rateLimit && now < rateLimit.lastRequest + rateLimit.retryAfter) {
+    const waitTime = rateLimit.lastRequest + rateLimit.retryAfter - now;
+    console.log(`Rate limited on ${endpoint}, waiting ${waitTime}ms before retry`);
+    await sleep(waitTime);
+  }
+
+  // Only set Content-Type to application/json if it's not a FormData object
+  // and Content-Type is not already set
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.append('Content-Type', 'application/json');
+  }
+  
+  // Check if authentication is required (only on first attempt to avoid extra requests)
+  if (attempt === 1) {
+    try {
+      const authStatusResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/status`);
+      if (authStatusResponse.ok) {
+        const authStatus = await authStatusResponse.json();
+        const authRequired = authStatus.authRequired !== false;
+        
+        if (authRequired) {
+          const token = await getAuthToken();
+          if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+          } else if (import.meta.env.DEV) {
+            console.log('Using development mock token');
+            const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+            headers.set('Authorization', `Bearer ${mockToken}`);
+          } else {
+            throw new Error('Authentication required but no valid token available');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking authentication status:', error);
+      // If we can't check the auth status, assume authentication is required
+      console.warn('Could not determine if authentication is required, proceeding without token');
+    }
+  }
   
   // If it's a file upload with progress tracking
-  const { onUploadProgress, ...fetchOptions } = options;
+  const { onUploadProgress, ..._fetchOptions } = options;
   
   if (onUploadProgress) {
     if (!(options.body instanceof FormData)) {
@@ -230,9 +221,10 @@ export const authFetch = async <T = unknown>(
       xhr.open(options.method || 'POST', requestUrl, true);
       
       // Set headers
-      headers.forEach((value, key) => {
-        xhr.setRequestHeader(key, value);
-      });
+      const _xhrHeaders = new Headers(options.headers as HeadersInit);
+      if (token) {
+        _xhrHeaders.set('Authorization', `Bearer ${token}`);
+      }
       
       // Progress event handling
       xhr.upload.onprogress = (event: ProgressEvent<EventTarget> & { 
@@ -246,61 +238,35 @@ export const authFetch = async <T = unknown>(
       };
       
       xhr.onload = () => {
-        // Clone the response text to avoid 'already read' errors
         const responseText = xhr.responseText;
-        
-        // Create a new response with the cloned text
-        const response = new Response(responseText, {
-          status: xhr.status,
-          statusText: xhr.statusText,
-          headers: new Headers({
-            'Content-Type': xhr.getResponseHeader('Content-Type') || 'application/json'
-          })
-        }) as ApiResponse<T>;
-        
-        // Add json method to the response
-        response.json = async () => {
-          try {
-            if (!responseText) return Promise.resolve({});
-            return JSON.parse(responseText);
-          } catch (error) {
-            console.error('Error parsing JSON response:', error);
-            return Promise.reject(new Error('Invalid JSON response'));
-          }
-        };
-        
-        // Handle non-2xx responses
+        const contentType = xhr.getResponseHeader('Content-Type') || 'application/json';
+
         if (!xhr.status.toString().startsWith('2')) {
-          let errorMessage = `Request failed with status ${xhr.status}`;
+          let errorData: ErrorResponseData = { message: xhr.statusText };
           try {
-            const errorData = responseText ? JSON.parse(responseText) : {};
-            errorMessage = errorData.message || errorMessage;
-          } catch (_) { /* Ignore JSON parse errors */ }
-          
-          interface ApiError extends Error {
-            status?: number;
-            response?: unknown;
+            const jsonData = JSON.parse(responseText);
+            if (typeof jsonData === 'object' && jsonData !== null) {
+              errorData = { ...jsonData };
+            }
+          } catch (e) {
+            console.debug('Error parsing error response:', e);
           }
-          
-          const error = new Error(errorMessage) as ApiError;
-          error.status = xhr.status;
-          error.response = response;
-          
-          const errorDetails: Record<string, unknown> = {
-            name: error.name,
-            message: error.message,
-            status: error.status,
-          };
-          
-          if (error.stack) {
-            errorDetails.stack = error.stack;
-          }
-          
-          console.error('Request failed:', error);
-          console.error('Error details:', errorDetails);
+
+          const error = new Error(errorData.message || 'Request failed');
+          (error as { status?: number }).status = xhr.status;
+          (error as { response?: ErrorResponseData }).response = errorData;
           reject(error);
         } else {
-          resolve(response);
+          try {
+            if (responseText && contentType.includes('application/json')) {
+              resolve(JSON.parse(responseText));
+            } else {
+              resolve({} as T); // Resolve with empty object for non-JSON success
+            }
+          } catch (error) {
+            console.error('Error parsing JSON response:', error);
+            reject(new Error('Invalid JSON response'));
+          }
         }
       };
       
@@ -312,58 +278,97 @@ export const authFetch = async <T = unknown>(
     });
   }
 
-  // Regular fetch for non-upload requests
-  try {
-    // fetchOptions already extracted above
-    const body = prepareBody(options.body);
-    
-    const response = await fetch(requestUrl, {
-      ...fetchOptions,
-      body,
-      headers,
-      credentials: 'include' // Important for cookies/auth
-    } as RequestInit);
-    
-    // Check if response is JSON before trying to parse it
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const data = await response.json();
+  // Regular fetch for non-upload requests with retry logic
+  for (let i = 0; i <= _RATE_LIMIT_RETRY_ATTEMPTS; i++) {
+    // This will be set to true if we should attempt a retry
+    let shouldRetry = false;
+    try {
+      const body = prepareBody(options.body);
+      const token = await getAuthToken();
+      
+      const response = await fetch(url, {
+        method: options.method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...options.headers,
+        },
+        body: body as BodyInit
+      });
+      
       if (!response.ok) {
-        const error = new Error(data.message || 'Request failed');
-        (error as { response?: Response }).response = response;
+        // Handle rate limiting
+        if (response.status === 429 || response.status === 503) {
+          const retryAfter = response.headers.get('Retry-After');
+          const baseDelay = 1000; // 1 second base delay
+          const maxDelay = 10000; // 10 seconds max delay
+          const retryDelay = retryAfter 
+            ? parseInt(retryAfter, 10) * 1000 
+            : baseDelay * Math.pow(2, i);
+
+          if (i < _RATE_LIMIT_RETRY_ATTEMPTS) {
+            await sleep(Math.min(retryDelay, maxDelay));
+            shouldRetry = true;
+            break; // Break out of the try block to retry
+          }
+        }
+
+        let errorData: ErrorResponseData = { message: response.statusText };
+        try {
+          const jsonData = await response.json();
+          if (typeof jsonData === 'object' && jsonData !== null) {
+            errorData = { ...jsonData };
+          }
+        } catch (e) {
+          console.debug('Error parsing error response:', e);
+        }
+
+        const error = new Error(errorData.message || 'Request failed');
+        (error as { status?: number }).status = response.status;
+        (error as { response?: ErrorResponseData }).response = errorData;
         throw error;
       }
-      return response as ApiResponse<T>;
-    } else if (!response.ok) {
-      const text = await response.text();
-      const error = new Error(`Request failed with status ${response.status}: ${text}`);
-      (error as { response?: Response }).response = response;
-      throw error;
+      
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else {
+        return {} as T; // Return empty object for successful non-JSON responses
+      }
+    } catch (error) {
+      // Only log and retry if this wasn't a rate limit error we already handled
+      if (!shouldRetry) {
+        console.error('API request failed:', error);
+        if (i === _RATE_LIMIT_RETRY_ATTEMPTS) {
+          throw error;
+        }
+        // Wait before retrying
+        await sleep(1000 * (i + 1));
+      }
     }
-    
-    return response as ApiResponse<T>;
-  } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
   }
+  
+  // This should never be reached because we throw an error when max retries are exceeded
+  // But TypeScript needs a return statement here
+  throw new Error(`Request failed after ${_RATE_LIMIT_RETRY_ATTEMPTS + 1} attempts.`);
 };
 
 interface ApiClient {
-  get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'body' | 'method'>) => Promise<ApiResponse<T>>;
+  get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'body' | 'method'>) => Promise<T>;
   post: <T = unknown, D = unknown>(
     endpoint: string, 
     data?: D, 
     options?: Omit<RequestOptions, 'body' | 'method'>
-  ) => Promise<ApiResponse<T>>;
+  ) => Promise<T>;
   put: <T = unknown, D = unknown>(
     endpoint: string, 
     data?: D, 
     options?: Omit<RequestOptions, 'body' | 'method'>
-  ) => Promise<ApiResponse<T>>;
+  ) => Promise<T>;
   delete: <T = unknown>(
     endpoint: string, 
     options?: Omit<RequestOptions, 'body' | 'method'>
-  ) => Promise<ApiResponse<T>>;
+  ) => Promise<T>;
 }
 
 // Clear token cache on page unload to ensure fresh tokens on next load

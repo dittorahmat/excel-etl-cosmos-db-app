@@ -30,17 +30,18 @@ export const createTestApiKey = (overrides: Partial<ApiKey> = {}) => ({
 
 // Create a mock request
 export function createMockRequest(overrides: Partial<TestRequest> = {}): TestRequest {
-  // Create a minimal mock request with only the properties we need for testing
   const mockRequest: any = {
     headers: {},
     query: {},
     body: {},
     ip: '192.168.1.1',
-    // Add other properties that might be needed
     ...overrides,
   };
 
-  // Add any missing required methods with no-op implementations
+  if (!mockRequest.query) {
+    mockRequest.query = {};
+  }
+
   const requiredMethods = [
     'get', 'header', 'accepts', 'acceptsCharsets', 'acceptsEncodings',
     'acceptsLanguages', 'range', 'param', 'is', 'getHeader', 'acceptsLanguage'
@@ -52,9 +53,7 @@ export function createMockRequest(overrides: Partial<TestRequest> = {}): TestReq
     }
   });
 
-  // Ensure headers and query are always objects
   if (!mockRequest.headers) mockRequest.headers = {};
-  if (!mockRequest.query) mockRequest.query = {};
   if (!mockRequest.ip) mockRequest.ip = '192.168.1.1';
 
   return mockRequest as TestRequest;

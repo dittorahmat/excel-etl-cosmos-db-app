@@ -13,7 +13,7 @@
     "build:client": "vite build",
     "postbuild:client": "cp public/config.js dist/ 2>/dev/null || :",
     "preview": "vite preview",
-    "dev:server": "dotenv -e .env tsx watch server/src/server.ts",
+    "dev:server": "NODE_ENV=development dotenv -e server/.env tsx watch server/src/server.ts",
     "debug:tsconfig": "tsc -p tsconfig.server.json --showConfig",
     "build:server": "tsc -p tsconfig.server.json --skipLibCheck --skipDefaultLibCheck --noEmit false",
     "start:server": "node dist/server/server.js",

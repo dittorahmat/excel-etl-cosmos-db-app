@@ -3,7 +3,7 @@ export { initializeBlobStorage, initializeBlobStorageAsync, getOrInitializeBlobS
 export { initializeMockBlobStorage } from './blob-storage/mock-blob-storage.js';
 
 // Cosmos DB
-export { initializeCosmosDB, createCosmosDbClient, getOrInitializeCosmosDB } from './cosmos-db/cosmos-db.service.js';
+export { initializeCosmosDB, getOrInitializeCosmosDB } from './cosmos-db/cosmos-db.service.js';
 export { initializeMockCosmosDB } from './cosmos-db/mock-cosmos-db.js';
 
 export type { AzureBlobStorage } from '../types/azure.js';

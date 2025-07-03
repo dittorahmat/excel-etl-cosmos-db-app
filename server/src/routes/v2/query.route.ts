@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { logger } from '../../utils/logger.js';
 import { authenticateToken } from '../../middleware/auth.js';
+import type { SqlParameter } from '@azure/cosmos';
 import { getOrInitializeCosmosDB } from '../../services/cosmos-db/cosmos-db.service.js';
 
 const router = Router();
@@ -10,7 +11,7 @@ const router = Router();
 // Query parameter schema for validation
 const queryParamsSchema = z.object({
   // Filtering
-  filter: z.record(z.any()).optional(),
+  filter: z.record(z.string(), z.unknown()).optional(),
   
   // Pagination
   limit: z.coerce.number().int().positive().max(1000).default(100),
@@ -36,7 +37,7 @@ function buildCosmosQuery(params: QueryParams, importId?: string) {
   
   // Start with a base query
   let query = 'SELECT';
-  const parameters: { name: string; value: any }[] = [];
+  const parameters: SqlParameter[] = [];
   
   // Field selection
   if (fields) {
@@ -57,20 +58,29 @@ function buildCosmosQuery(params: QueryParams, importId?: string) {
   
   if (importId) {
     whereClauses.push('c._importId = @importId');
-    parameters.push({ name: '@importId', value: importId });
+    parameters.push({ name: '@importId', value: importId } as SqlParameter);
   }
   
   // Add filter conditions
   Object.entries(filter).forEach(([key, value], index) => {
     const paramName = `@param${index}`;
     whereClauses.push(`c["${key}"] = ${paramName}`);
-    parameters.push({ name: paramName, value });
+    // Ensure value is a valid JSON value (string, number, boolean, null, or array/object of these)
+    if (value !== undefined && value !== null) {
+      parameters.push({ 
+        name: paramName, 
+        value: value as unknown
+      } as SqlParameter);
+    }
   });
   
   // Add full-text search if provided
   if (q) {
     whereClauses.push('CONTAINS(c._search, @searchTerm)');
-    parameters.push({ name: '@searchTerm', value: q.toLowerCase() });
+    parameters.push({ 
+      name: '@searchTerm', 
+      value: q.toLowerCase() 
+    } as SqlParameter);
   }
   
   // Combine WHERE clauses

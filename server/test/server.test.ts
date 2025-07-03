@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, vi, afterEach } from 'vitest
 import express from 'express';
 import type { Express } from 'express';
 // Mock the server module to control its behavior
+import { v4 as uuidv4 } from 'uuid';
 vi.mock('../src/server.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/server.js')>();
   return {

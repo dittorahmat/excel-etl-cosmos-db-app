@@ -143,7 +143,7 @@ export const DataChart: React.FC<DataChartProps> = ({
   // Get nested value by dot notation
   const getNestedValue = useCallback((obj: Record<string, unknown>, path: string): unknown => {
     return path.split('.').reduce(
-      (acc, key) => (acc && typeof acc === 'object' && key in acc ? (acc as any)[key] : undefined),
+      (acc, key) => (acc && typeof acc === 'object' && key in acc ? (acc as Record<string, unknown>)[key] : undefined),
       obj
     );
   }, []);

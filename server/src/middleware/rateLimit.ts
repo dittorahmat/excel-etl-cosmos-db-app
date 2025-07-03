@@ -207,7 +207,7 @@ export const defaultRateLimiter: RateLimitRequestHandler = createRateLimiter({
 // Stricter rate limiter for authentication endpoints
 export const authRateLimiter: RateLimitRequestHandler = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // limit to 10 requests per hour
+  max: process.env.NODE_ENV === 'development' ? 999999 : 10, // Very high limit in development
   message: 'Too many login attempts, please try again after an hour.',
   // Skip rate limiting for requests with valid API keys
   skip: (req) => {
@@ -215,3 +215,5 @@ export const authRateLimiter: RateLimitRequestHandler = createRateLimiter({
     return !!headers['x-api-key'] || !!req.query.api_key;
   },
 });
+
+
