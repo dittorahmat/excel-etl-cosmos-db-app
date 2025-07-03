@@ -124,29 +124,18 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Build frontend
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Generate config
+      run: npm run generate:config
+      
+    - name: Verify environment setup
       run: |
-        # Print environment variables for debugging (without values)
-        echo "VITE_API_BASE_URL is set: $([ -z "$VITE_API_BASE_URL" ] && echo 'No' || echo 'Yes')"
-        echo "VITE_AZURE_CLIENT_ID is set: $([ -z "$VITE_AZURE_CLIENT_ID" ] && echo 'No' || echo 'Yes')"
-        echo "VITE_AZURE_TENANT_ID is set: $([ -z "$VITE_AZURE_TENANT_ID" ] && echo 'No' || echo 'Yes')"
-        echo "VITE_AZURE_REDIRECT_URI is set: $([ -z "$VITE_AZURE_REDIRECT_URI" ] && echo 'No' || echo 'Yes')"
-        
-        # Build the application
-        npm run build:client
-        
-        # Verify the build output
-        echo "\n=== Build output directory contents ==="
-        ls -la dist/
-        
-        # Verify config.js exists and show its content (without sensitive data)
-        if [ -f "dist/config.js" ]; then
-          echo "\n=== config.js exists ==="
-          head -n 5 dist/config.js || true
-        else
-          echo "\n=== ERROR: config.js not found in dist/ ==="
-          exit 1
-        fi
+        echo "Build will use these environment variables from Azure:"
+        echo "- VITE_AZURE_CLIENT_ID: $([ -z "$VITE_AZURE_CLIENT_ID" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
+        echo "- VITE_AZURE_TENANT_ID: $([ -z "$VITE_AZURE_TENANT_ID" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
+        echo "- VITE_AZURE_REDIRECT_URI: $([ -z "$VITE_AZURE_REDIRECT_URI" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
       
 
     - name: Check for deployment token
@@ -165,9 +154,9 @@ jobs:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: 'upload'
-        app_location: 'dist'  # Location of the built files
-        output_location: ''  # Root of the built files
-        skip_app_build: true  # We already built the app
+        app_location: '.'  # Root of the frontend source code
+        output_location: 'dist'  # Vite's default output directory
+        skip_app_build: false  # Let Azure handle the build to inject env vars
         skip_api_build: true  # No API in this project
         skip_deploy_on_missing_secrets: true
         verbose: true
