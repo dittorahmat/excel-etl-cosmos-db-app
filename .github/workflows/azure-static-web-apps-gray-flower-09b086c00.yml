@@ -107,8 +107,11 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     
-    # Add environment variables that will be available to all steps
+    # Environment variables for the entire job
     env:
+      NODE_ENV: production
+      VITE_MODE: production
+      # Application environment variables
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
       VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
       VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
@@ -124,10 +127,17 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    - name: Install dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    - name: Install Node.js dependencies
+      working-directory: ./
       run: npm ci
-      
+
     - name: Debug: Check Vite installation
+      working-directory: ./
       run: |
         echo "Node version: $(node -v)"
         echo "NPM version: $(npm -v)"
@@ -136,10 +146,12 @@ jobs:
         echo "Vite version (local): $(npx vite --version || echo 'Not found in node_modules/.bin')"
         echo "Listing node_modules/vite:"
         ls -la node_modules/vite || echo 'Vite not found in node_modules'
-        echo "\nFull dependency tree for vite:"
+        echo -e "\nFull dependency tree for vite:"
         npm list vite || echo 'Vite not found in dependency tree'
+
     - name: Generate config
-      run: npm run generate:config
+      working-directory: ./
+      run: npm run generate:config || { echo 'Failed to generate config'; exit 1; }
       
     - name: Verify environment setup
       run: |
@@ -176,18 +188,9 @@ jobs:
         skip_app_build: false
         # Use custom build script that ensures Vite is installed locally
         app_build_command: 'npm run build:client'
-      # Pass environment variables to the build step
+      # Pass deployment token to the build step
       env:
-        # Azure deployment token (tries both possible names)
         DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
-        # Application environment variables - these will be available at build time
-        VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
-        VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
-        VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
-        VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
-        # Force production mode
-        NODE_ENV: production
-        VITE_MODE: production
 
     - name: Skip deployment (no token)
       if: steps.check_token.outputs.has_token != 'true'
@@ -216,9 +219,7 @@ jobs:
 
     - name: Build backend
       working-directory: ./
-      run: npm run build:server
-      env:
-        NODE_ENV: production
+      run: npm run build:server || { echo 'Backend build failed'; exit 1; }
 
     - name: Prepare deployment package
       working-directory: ./
@@ -228,13 +229,13 @@ jobs:
         cp -r dist/server/* deployment/
         # Copy package.json from the server directory
         cp server/package.json deployment/
-        # Copy web.config for Azure App Service
+        # Copy web.config for Azure App Service with correct path
         echo '<?xml version="1.0" encoding="utf-8"?>
         <configuration>
           <system.webServer>
             <webSocket enabled="false" />
             <handlers>
-              <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode" />
+              <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
             </handlers>
             <rewrite>
               <rules>
