@@ -1,0 +1,7 @@
+---
+rules:
+  line-length: disable
+  trailing-spaces: disable
+  truthy: disable
+  document-start: disable
+  comments-indentation: disable

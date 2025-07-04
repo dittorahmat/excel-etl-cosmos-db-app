@@ -5,7 +5,7 @@ set -e
 echo "Starting Azure build process..."
 
 # Install dependencies using npm ci for a clean install
-npm ci
+NODE_ENV=development npm ci
 
 # Run the main build script defined in package.json
 npm run build

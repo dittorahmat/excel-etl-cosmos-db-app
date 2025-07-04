@@ -52,21 +52,33 @@ jobs:
     - name: Run Cosmos DB connection test
       working-directory: ./
       env:
+        # Use connection string instead of separate variables for better reliability
         AZURE_COSMOS_CONNECTION_STRING: ${{ secrets.AZURE_COSMOS_CONNECTION_STRING }}
+        # Fallback to individual variables if connection string is not available
         AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
         AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
         AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
         AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
       run: |
         echo "Testing Cosmos DB connection..."
+        echo "- AZURE_COSMOS_CONNECTION_STRING: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
+        echo "- AZURE_COSMOS_ENDPOINT: ${AZURE_COSMOS_ENDPOINT:0:20}..."
+        echo "- AZURE_COSMOS_DATABASE: ${AZURE_COSMOS_DATABASE:-Not set}"
+        echo "- AZURE_COSMOS_CONTAINER: ${AZURE_COSMOS_CONTAINER:-Not set}"
+        echo "- AZURE_COSMOS_KEY: ${AZURE_COSMOS_KEY:+set (hidden for security)}"
+
+        # Verify required environment variables
         if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_ENDPOINT" ]; then
           echo "::error::Either AZURE_COSMOS_CONNECTION_STRING or AZURE_COSMOS_ENDPOINT must be set"
           exit 1
         fi
+
         if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_KEY" ]; then
           echo "::error::AZURE_COSMOS_KEY must be set when using AZURE_COSMOS_ENDPOINT"
           exit 1
         fi
+
+        # Run the test script with debugging
         NODE_DEBUG=cosmos* npx tsx server/scripts/test-cosmos-connection.ts
 
     - name: Lint codebase
@@ -94,9 +106,86 @@ jobs:
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+
+    # Add environment variables that will be available to all steps
+    env:
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+      VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+      VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
+      VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
+
     steps:
-      - name: Minimal Step
-        run: echo "Minimal frontend deployment step"
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Generate config
+      run: npm run generate:config
+
+    - name: Verify environment setup
+      run: |
+        echo "Build will use these environment variables from Azure:"
+        echo "- VITE_AZURE_CLIENT_ID: $([ -z "$VITE_AZURE_CLIENT_ID" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
+        echo "- VITE_AZURE_TENANT_ID: $([ -z "$VITE_AZURE_TENANT_ID" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
+        echo "- VITE_AZURE_REDIRECT_URI: $([ -z "$VITE_AZURE_REDIRECT_URI" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
+
+
+    - name: Check for deployment token
+      id: check_token
+      run: |
+        # Check for either token using GitHub Actions syntax
+        if [[ -n "${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}" || -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}" ]]; then
+          echo "has_token=true" >> $GITHUB_OUTPUT
+          echo "token_found=true" >> $GITHUB_STATE
+          echo "Token found in GitHub Secrets"
+        else
+          echo "::warning::No deployment token found. Please add AZURE_STATIC_WEB_APPS_TOKEN or AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 to GitHub Secrets"
+          echo "has_token=false" >> $GITHUB_OUTPUT
+          echo "token_found=false" >> $GITHUB_STATE
+        fi
+
+    - name: Build and Deploy to Azure Static Web App
+      id: builddeploy
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        # Try both possible token names, with fallback to empty string
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 || '' }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: 'upload'
+        app_location: '/'
+        output_location: 'dist'
+        skip_app_build: false
+        # Use custom build script that ensures Vite is installed locally
+        app_build_command: './azure-build.sh'
+      # Pass environment variables to the build step
+      env:
+        # Azure deployment token (tries both possible names)
+        DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+        # Application environment variables - these will be available at build time
+        VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+        VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+        VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
+        VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
+        # Force production mode
+        NODE_ENV: production
+        VITE_MODE: production
+
+    - name: Skip deployment (no token)
+      if: steps.check_token.outputs.has_token != 'true'
+      run: |
+        echo "Skipping deployment: AZURE_STATIC_WEB_APPS_TOKEN secret not set"
+        echo "To enable deployment, add the AZURE_STATIC_WEB_APPS_TOKEN secret to your repository settings"
 
   deploy-backend:
     name: Deploy Backend
@@ -119,21 +208,25 @@ jobs:
 
     - name: Build backend
       working-directory: ./
-      run: npm run build:server || { echo 'Backend build failed'; exit 1; }
+      run: npm run build:server
+      env:
+        NODE_ENV: production
 
     - name: Prepare deployment package
       working-directory: ./
       run: |
         mkdir -p deployment
+        # Copy the built server files from dist/server to deployment
         cp -r dist/server/* deployment/
+        # Copy package.json from the server directory
         cp server/package.json deployment/
-        cat <<EOF > deployment/web.config
-        <?xml version="1.0" encoding="utf-8"?>
+        # Copy web.config for Azure App Service
+        echo '<?xml version="1.0" encoding="utf-8"?>
         <configuration>
           <system.webServer>
             <webSocket enabled="false" />
             <handlers>
-              <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
+              <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode" />
             </handlers>
             <rewrite>
               <rules>
@@ -147,8 +240,8 @@ jobs:
               <requestFiltering removeServerHeader="true" />
             </security>
           </system.webServer>
-        </configuration>
-        EOF
+        </configuration>' > deployment/web.config
+        # Install production dependencies only (no devDependencies)
         cd deployment && npm install --omit=dev --prefer-offline --no-audit --progress=false
 
     - name: Deploy to Azure Web App
@@ -160,7 +253,6 @@ jobs:
         slot-name: production
 
     - name: Document Manual Configuration
-      if: always()
       run: |
         echo 'After deployment, please configure the following in Azure Portal:'
         echo '1. Go to your App Service -> Configuration -> Application settings'
@@ -170,6 +262,7 @@ jobs:
         echo '     - WEBSITE_NODE_DEFAULT_VERSION = ~20'
         echo '     - SCM_DO_BUILD_DURING_DEPLOYMENT = false'
         echo '2. Go to CORS and add allowed origin: https://*.azurestaticapps.net'
+      if: always()
 
     - name: Check for monitoring secrets
       id: check_monitoring_secrets
@@ -181,7 +274,6 @@ jobs:
         fi
 
     - name: Document Monitoring Setup
-      if: always()
       run: |
         echo 'To set up monitoring in Azure Portal:'
         echo '1. Go to your App Service -> Monitoring -> Alerts'
@@ -190,8 +282,10 @@ jobs:
         echo '4. Set appropriate conditions and actions'
         echo '5. Review and create the alert'
         echo 'Note: This step is optional and can be configured in Azure Portal as needed.'
+      if: always()
 
     - name: Skip monitoring setup (missing secrets)
       if: always() && steps.check_monitoring_secrets.outputs.has_secrets != 'true'
       run: |
         echo "Skipping monitoring setup: Required secrets not configured"
+        echo "To enable monitoring, ensure AZURE_WEBAPP_RESOURCE_ID and AZURE_RESOURCE_GROUP secrets are set"
