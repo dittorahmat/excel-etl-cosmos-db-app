@@ -141,51 +141,26 @@ jobs:
         echo "- VITE_AZURE_REDIRECT_URI: $([ -z "$VITE_AZURE_REDIRECT_URI" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
 
 
-    - name: Check for deployment token
-      id: check_token
-      run: |
-        # Check for either token using GitHub Actions syntax
-        if [[ -n "${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}" || -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}" ]]; then
-          echo "has_token=true" >> $GITHUB_OUTPUT
-          echo "token_found=true" >> $GITHUB_STATE
-          echo "Token found in GitHub Secrets"
-        else
-          echo "::warning::No deployment token found. Please add AZURE_STATIC_WEB_APPS_TOKEN or AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 to GitHub Secrets"
-          echo "has_token=false" >> $GITHUB_OUTPUT
-          echo "token_found=false" >> $GITHUB_STATE
-        fi
-
     - name: Build and Deploy to Azure Static Web App
       id: builddeploy
+      if: github.ref == 'refs/heads/main' && (secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00)
       uses: Azure/static-web-apps-deploy@v1
       with:
-        # Try both possible token names, with fallback to empty string
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 || '' }}
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: 'upload'
         app_location: '/'
         output_location: 'dist'
         skip_app_build: false
-        # Use custom build script that ensures Vite is installed locally
         app_build_command: './azure-build.sh'
-      # Pass environment variables to the build step
       env:
-        # Azure deployment token (tries both possible names)
         DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
-        # Application environment variables - these will be available at build time
         VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
         VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
         VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
         VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
-        # Force production mode
         NODE_ENV: production
         VITE_MODE: production
-
-    - name: Skip deployment (no token)
-      if: steps.check_token.outputs.has_token != 'true'
-      run: |
-        echo "Skipping deployment: AZURE_STATIC_WEB_APPS_TOKEN secret not set"
-        echo "To enable deployment, add the AZURE_STATIC_WEB_APPS_TOKEN secret to your repository settings"
 
   deploy-backend:
     name: Deploy Backend
