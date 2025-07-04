@@ -141,6 +141,24 @@ jobs:
         echo "- VITE_AZURE_REDIRECT_URI: $([ -z "$VITE_AZURE_REDIRECT_URI" ] && echo 'Will use Azure Portal setting' || echo 'Set in workflow')"
 
 
+    - name: Create .env.production file
+      run: |
+        cat << 'EOF' > .env.production
+        VITE_AZURE_TENANT_ID=${{ secrets.VITE_AZURE_TENANT_ID }}
+        VITE_AZURE_CLIENT_ID=${{ secrets.VITE_AZURE_CLIENT_ID }}
+        VITE_AZURE_REDIRECT_URI=${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
+        VITE_AZURE_SCOPES=${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
+        VITE_MODE=production
+        VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+        EOF
+
+    - name: Verify .env.production file
+      run: |
+        echo "Environment file contents:"
+        cat .env.production
+        echo -e "\nChecking if .env.production exists:"
+        ls -la .env.production
+
     - name: Build and Deploy to Azure Static Web App
       id: builddeploy
       if: github.ref == 'refs/heads/main'
