@@ -80,9 +80,14 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
       await database.containers.createIfNotExists({
         id: AZURE_CONFIG.cosmos.containerName,
         partitionKey: {
-          paths: [AZURE_CONFIG.cosmos.partitionKey],
+          paths: ['/_partitionKey'],  // Explicitly set to use _partitionKey
           version: 2
         },
+      });
+      
+      logger.info('Cosmos DB container configured', {
+        container: AZURE_CONFIG.cosmos.containerName,
+        partitionKeyPath: '/_partitionKey'
       });
 
       logger.info('Successfully connected to Cosmos DB', {

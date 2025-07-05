@@ -48,7 +48,8 @@ async function listDocuments() {
     // Check for import_* documents specifically
     console.log('\n=== Checking for import_* documents ===');
     const { resources: importDocs } = await container.items
-      .query('SELECT * FROM c WHERE STARTSWITH(c.id, @prefix) OFFSET 0 LIMIT 10', {
+      .query({
+        query: 'SELECT * FROM c WHERE STARTSWITH(c.id, @prefix) OFFSET 0 LIMIT 10',
         parameters: [{ name: '@prefix', value: 'import_' }]
       })
       .fetchAll();

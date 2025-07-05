@@ -55,7 +55,7 @@ export class IngestionService {
     fileType: string,
     userId: string
   ): Promise<ImportMetadata> {
-    const importId = `imp_${uuidv4()}`;
+    const importId = `import_${uuidv4()}`;
     const importStartTime = new Date();
 
     const importMetadata: ImportMetadata = {

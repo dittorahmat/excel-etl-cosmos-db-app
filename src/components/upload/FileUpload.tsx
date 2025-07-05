@@ -1,16 +1,21 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
 import { Button } from '../ui/button';
-// Progress component will be implemented with a simple div for now
-const Progress = ({ value, className = '' }: { value: number; className?: string }) => (
+import { Upload as UploadIcon, FileText, X } from 'lucide-react';
+
+interface ProgressProps {
+  value: number;
+  className?: string;
+}
+
+const Progress = ({ value, className = '' }: ProgressProps) => (
   <div className={`h-2 w-full bg-muted rounded-full overflow-hidden ${className}`}>
     <div 
       className="h-full bg-primary transition-all duration-300"
-      style={{ width: `${value}%` }}
+      style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
     />
   </div>
 );
-import { Upload as UploadIcon, FileText, X } from 'lucide-react';
 
 type FileUploadProps = {
   /** Callback function when a file is uploaded */
@@ -40,7 +45,7 @@ export function FileUpload({
   className = '',
   progress = 0,
   isUploading = false,
-}: FileUploadProps) {
+}: FileUploadProps): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploadingLocal, setIsUploadingLocal] = useState(false);
@@ -59,7 +64,20 @@ export function FileUpload({
       }
 
       if (acceptedFiles.length > 0) {
-        setFile(acceptedFiles[0]);
+        const file = acceptedFiles[0];
+        // Ensure the file has the correct MIME type based on its extension
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        if (extension && MIME_TYPES[`.${extension}` as keyof typeof MIME_TYPES]) {
+          // Create a new File object with the correct MIME type
+          const mimeType = MIME_TYPES[`.${extension}` as keyof typeof MIME_TYPES];
+          const newFile = new File([file], file.name, { 
+            type: mimeType,
+            lastModified: file.lastModified
+          });
+          setFile(newFile);
+        } else {
+          setFile(file);
+        }
       }
     },
     [maxSize]
