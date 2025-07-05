@@ -23,11 +23,20 @@ let database: Database | null = null;
 export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
   if (!cosmosClient) {
     // Log the raw environment variables for debugging
+    console.log('=== Cosmos DB Configuration Debug ===');
     console.log('Environment variables in initializeCosmosDB:');
     console.log('- process.env.AZURE_COSMOS_ENDPOINT:', process.env.AZURE_COSMOS_ENDPOINT ? '***' : 'Not set');
     console.log('- process.env.COSMOS_ENDPOINT:', process.env.COSMOS_ENDPOINT ? '***' : 'Not set');
     console.log('- process.env.AZURE_COSMOS_KEY:', process.env.AZURE_COSMOS_KEY ? '***' : 'Not set');
     console.log('- process.env.COSMOS_KEY:', process.env.COSMOS_KEY ? '***' : 'Not set');
+    
+    // Log all environment variables for debugging (filtered)
+    console.log('All environment variables with COSMOS or AZURE in name:');
+    Object.entries(process.env).forEach(([key, value]) => {
+      if (key.includes('COSMOS') || key.includes('AZURE')) {
+        console.log(`- ${key}: ${value ? '***' : 'Not set'}`);
+      }
+    });
     
     let endpoint = AZURE_CONFIG.cosmos.endpoint;
     let key = AZURE_CONFIG.cosmos.key;
@@ -36,6 +45,10 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
     console.log('- endpoint:', endpoint ? '***' : 'Not set');
     console.log('- key:', key ? '***' : 'Not set');
     console.log('- connectionString:', AZURE_CONFIG.cosmos.connectionString ? '***' : 'Not set');
+    console.log('- databaseName:', AZURE_CONFIG.cosmos.databaseName);
+    console.log('- containerName:', AZURE_CONFIG.cosmos.containerName);
+    console.log('- partitionKey:', AZURE_CONFIG.cosmos.partitionKey);
+    console.log('=== End Cosmos DB Configuration Debug ===');
 
     if (!endpoint || !key) {
       const connectionString = AZURE_CONFIG.cosmos.connectionString;

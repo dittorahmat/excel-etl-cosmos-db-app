@@ -17,18 +17,52 @@ const storage = multer.memoryStorage();
 
 // File filter for multer
 const fileFilter = (
-  _req: Request,
+  req: Request,
   file: Express.Multer.File,
   cb: (error: Error | null, acceptFile?: boolean) => void
 ) => {
   // Log the incoming file details for debugging
-  console.log('File upload attempt:', {
+  console.log('=== File Upload Debug ===');
+  console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
+  
+  // Extract file extension from original name
+  const fileExt = file.originalname.split('.').pop()?.toLowerCase() || '';
+  
+  // Enhanced MIME type detection for common file types
+  let detectedMimeType = file.mimetype;
+  
+  // If MIME type is application/octet-stream, try to detect based on file extension
+  if (file.mimetype === 'application/octet-stream') {
+    const extensionToMime: Record<string, string> = {
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'xls': 'application/vnd.ms-excel',
+      'xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
+      'csv': 'text/csv',
+      'txt': 'text/plain'
+    };
+    
+    if (fileExt in extensionToMime) {
+      detectedMimeType = extensionToMime[fileExt];
+      console.log(`Detected MIME type for .${fileExt}: ${detectedMimeType}`);
+    }
+  }
+  
+  // Log detailed file information
+  console.log('File details:', {
     originalname: file.originalname,
-    mimetype: file.mimetype,
+    originalMimetype: file.mimetype,
+    detectedMimetype: detectedMimeType,
+    fileExtension: fileExt,
     size: file.size,
     encoding: file.encoding,
-    fieldname: file.fieldname
+    fieldname: file.fieldname,
+    buffer: file.buffer ? `Buffer(${file.buffer.length} bytes)` : 'No buffer',
+    'content-type': file.mimetype,
+    'content-length': file.size,
+    'isBuffer': Buffer.isBuffer(file.buffer)
   });
+  
+  // Define allowed MIME types
   const allowedMimeTypes = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
     'application/vnd.ms-excel', // .xls
@@ -36,15 +70,38 @@ const fileFilter = (
     'text/csv',
     'application/csv',
     'text/x-csv',
+    'application/octet-stream' // Fallback for curl uploads and other clients
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  // Define allowed file extensions
+  const allowedExtensions = ['xlsx', 'xls', 'xlsm', 'csv'];
+  
+  console.log('MIME type analysis:', {
+    originalMimeType: file.mimetype,
+    detectedMimeType,
+    isAllowedMimeType: allowedMimeTypes.includes(detectedMimeType),
+    fileExtension: fileExt,
+    isAllowedExtension: allowedExtensions.includes(fileExt)
+  });
+  
+  console.log('=== End File Upload Debug ===');
+
+  // Check if either the MIME type or file extension is allowed
+  const isMimeTypeAllowed = allowedMimeTypes.includes(detectedMimeType);
+  const isExtensionAllowed = allowedExtensions.includes(fileExt);
+  
+  if (isMimeTypeAllowed || isExtensionAllowed) {
     console.log('File type accepted:', file.mimetype);
     cb(null, true);
   } else {
     console.log('File type rejected. Allowed types:', allowedMimeTypes);
+    console.log('File details on rejection:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      fieldname: file.fieldname
+    });
     const error = new Error(
-      'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.'
+      `Invalid file type: ${file.mimetype}. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.`
     ) as unknown as FileTypeError;
     error.name = 'FileTypeError';
     error.code = 'INVALID_FILE_TYPE';

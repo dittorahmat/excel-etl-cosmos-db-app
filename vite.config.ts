@@ -101,7 +101,7 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
           main: path.resolve(__dirname, 'index.html'),
         },
         output: {
-          manualChunks(id) {
+          manualChunks(id: string): string | undefined {
             if (id.includes('node_modules')) {
               if (id.includes('@azure/cosmos')) {
                 return 'vendor-azure-cosmos';
@@ -136,8 +136,11 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
               if (id.includes('lodash')) {
                 return 'vendor-lodash';
               }
+              // Default vendor chunk for other node_modules
               return 'vendor';
             }
+            // No chunking for non-node_modules
+            return undefined;
           },
           // Preserve the exact filename for config.js
           entryFileNames: '[name].[hash].js',

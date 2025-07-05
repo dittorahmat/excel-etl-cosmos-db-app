@@ -51,14 +51,14 @@ export function UploadPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to upload file');
+        const errorData = await response.json().catch(() => ({} as Record<string, unknown>));
+        throw new Error((errorData as { error?: string }).error || 'Failed to upload file');
       }
 
-      const result = await response.json();
+      const result = await response.json() as { data?: { rowCount?: number }, count?: number };
       
       // Handle v2 response format which might be different
-      const recordCount = result.data?.rowCount || result.count || 0;
+      const recordCount = result.data?.rowCount ?? result.count ?? 0;
       
       toast({
         title: 'File uploaded successfully!',
