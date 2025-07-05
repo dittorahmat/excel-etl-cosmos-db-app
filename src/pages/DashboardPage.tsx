@@ -61,23 +61,64 @@ export const DashboardPage: React.FC = () => {
 
     // Load available fields from the server
     const loadAvailableFields = useCallback(async () => {
+      console.log('[DashboardPage] Starting to load available fields');
+      setLoading(true);
+      
       try {
-        const response = await api.get('/api/fields');
-        if (response.ok) {
-          const data = await response.json();
-          setFields(data.fields || []);
-          // Select all fields by default
-          setSelectedFields(data.fields || []);
+        console.log('[DashboardPage] Making API request to /api/fields');
+        const response = await fetch('http://localhost:3001/api/fields', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+        
+        console.log('[DashboardPage] Fields API response status:', response.status);
+        
+        if (!response.ok) {
+          console.error('[DashboardPage] Error response from fields API:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error('[DashboardPage] Error response body:', errorText);
+          throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('[DashboardPage] Fields API response data:', data);
+        
+        if (data.success && Array.isArray(data.fields)) {
+          console.log(`[DashboardPage] Setting ${data.fields.length} fields`);
+          setFields(data.fields);
+          setSelectedFields(data.fields);
+          return data.fields;
+        } else {
+          console.error('[DashboardPage] Invalid fields data format:', data);
+          setFields([]);
+          setSelectedFields([]);
+          return [];
         }
       } catch (error) {
-        console.error('Error loading fields:', error);
+        console.error('[DashboardPage] Error loading fields:', error);
+        setError(error instanceof Error ? error : new Error('Failed to load fields'));
+        setFields([]);
+        setSelectedFields([]);
+        return [];
+      } finally {
+        setLoading(false);
       }
     }, []);
 
-    // Load initial data
+    // Load available fields when component mounts
     useEffect(() => {
+      console.log('[DashboardPage] Auth state changed, isAuthenticated:', isAuthenticated);
       if (isAuthenticated) {
-        loadAvailableFields();
+        console.log('[DashboardPage] Loading available fields...');
+        loadAvailableFields().then((loadedFields) => {
+          console.log('[DashboardPage] Available fields loaded:', loadedFields);
+        }).catch(error => {
+          console.error('[DashboardPage] Error in loadAvailableFields:', error);
+          setError(error instanceof Error ? error : new Error('Failed to load fields'));
+        });
       }
     }, [isAuthenticated, loadAvailableFields]);
 
@@ -237,10 +278,21 @@ export const DashboardPage: React.FC = () => {
                 </TabsContent>
 
                 <TabsContent value="query">
+                    <div className="p-4 border rounded-lg bg-blue-50 mb-4">
+                      <div className="text-sm text-blue-700">
+                        <div>Fields count: {fields.length}</div>
+                        <div>Loading: {loading ? 'yes' : 'no'}</div>
+                        <div>First 3 fields: {fields.slice(0, 3).join(', ')}</div>
+                      </div>
+                    </div>
                     <QueryBuilder 
                         onExecute={handleExecuteQuery}
                         onQueryChange={handleQueryChange}
-                        loading={loading}
+                        loading={false}  // Always set to false since we handle loading state internally
+                        fields={fields.map(field => ({
+                          name: field,
+                          type: 'string' as const // Explicitly type as const
+                        }))}
                     />
                 </TabsContent>
 
