@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Upload Test</title>
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file first!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:3001/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                console.log('Upload successful:', result);
+                alert('File uploaded successfully!');
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Upload failed: ' + error.message);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>File Upload Test</h1>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <button onclick="uploadFile()">Upload</button>
+    <div id="status"></div>
+</body>
+</html>
