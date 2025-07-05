@@ -2,8 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import { fileParserService } from '../file-parser/file-parser.service.js';
 import { initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
+import { uploadToBlobStorage } from '../blob-storage/upload-to-blob-storage.js';
 import type { CosmosRecord } from '../../types/azure.js';
-
 
 /**
  * Extended CosmosRecord with required fields for import metadata
@@ -57,6 +57,7 @@ export class IngestionService {
   ): Promise<ImportMetadata> {
     const importId = `import_${uuidv4()}`;
     const importStartTime = new Date();
+    let blobUrl = '';
 
     const importMetadata: ImportMetadata = {
       id: importId,
@@ -76,6 +77,14 @@ export class IngestionService {
     };
 
     try {
+      // Upload the original file to blob storage
+      this.logger.info('Uploading file to blob storage', { fileName, fileType, fileSize: fileBuffer.length });
+      blobUrl = await uploadToBlobStorage(fileBuffer, `${importId}_${fileName}`, fileType);
+      this.logger.info('File uploaded to blob storage', { fileName, blobUrl });
+      
+      // Update metadata with blob URL
+      importMetadata['blobUrl'] = blobUrl;
+
       // Save initial import metadata
       await this.saveImportMetadata(importMetadata);
 

@@ -225,7 +225,7 @@ export const authFetch = async <T = unknown>(
   }
 
   // If it's a file upload with progress tracking
-  const { onUploadProgress, ..._fetchOptions } = options;
+  const { onUploadProgress } = options;
   
   if (onUploadProgress) {
     if (!(options.body instanceof FormData)) {
@@ -256,7 +256,6 @@ export const authFetch = async <T = unknown>(
       
       xhr.onload = () => {
         const responseText = xhr.responseText;
-        const _contentType = xhr.getResponseHeader('Content-Type') || 'application/json';
 
         // Create a mock Response object that matches the Fetch API Response interface
         const response = {
@@ -269,14 +268,23 @@ export const authFetch = async <T = unknown>(
           json: () => {
             try {
               return Promise.resolve(responseText ? JSON.parse(responseText) : null);
-            } catch (_e) {
-              return Promise.reject(e);
+            } catch (error) {
+              return Promise.reject(error);
             }
           },
           text: () => Promise.resolve(responseText),
           clone: function() {
             return { ...this };
-          }
+          },
+          // Add other required Response properties
+          type: 'basic' as const,
+          url: requestUrl,
+          redirected: false,
+          body: null,
+          bodyUsed: false,
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+          blob: () => Promise.resolve(new Blob()),
+          formData: () => Promise.resolve(new FormData())
         };
 
         if (!response.ok) {
@@ -286,7 +294,8 @@ export const authFetch = async <T = unknown>(
             if (typeof jsonData === 'object' && jsonData !== null) {
               errorData = { ...jsonData };
             }
-          } catch (_e) {
+          } catch (error) {
+            console.error('Error parsing error response:', error);
             // If we can't parse the error response, use the status text
           }
           reject(new Error(errorData.message || 'Request failed'));
@@ -298,7 +307,7 @@ export const authFetch = async <T = unknown>(
       };
       
       xhr.onerror = () => {
-        // Create a mock Response object for network errors
+        // Create a complete mock Response object for network errors
         const _errorResponse = {
           ok: false,
           status: 0,
@@ -309,7 +318,9 @@ export const authFetch = async <T = unknown>(
             get: () => null
           }
         };
-        reject(new Error('Network error'));
+        
+        // Reject with a network error
+        reject(new Error('Network error occurred'));
       };
       
       xhr.send(options.body as XMLHttpRequestBodyInit);
