@@ -207,6 +207,23 @@ export const authFetch = async <T = unknown>(
     }
   }
   
+  // Get authentication token if needed
+  let authToken = headers.get('Authorization');
+  if (!authToken) {
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        authToken = `Bearer ${token}`;
+      } else if (import.meta.env.DEV) {
+        console.log('Using development mock token for XHR');
+        const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+        authToken = `Bearer ${mockToken}`;
+      }
+    } catch (error) {
+      console.error('Error getting auth token for XHR:', error);
+    }
+  }
+
   // If it's a file upload with progress tracking
   const { onUploadProgress, ..._fetchOptions } = options;
   
@@ -222,8 +239,8 @@ export const authFetch = async <T = unknown>(
       
       // Set headers
       const _xhrHeaders = new Headers(options.headers as HeadersInit);
-      if (token) {
-        _xhrHeaders.set('Authorization', `Bearer ${token}`);
+      if (authToken) {
+        _xhrHeaders.set('Authorization', authToken);
       }
       
       // Progress event handling
@@ -239,38 +256,59 @@ export const authFetch = async <T = unknown>(
       
       xhr.onload = () => {
         const responseText = xhr.responseText;
-        const contentType = xhr.getResponseHeader('Content-Type') || 'application/json';
+        const _contentType = xhr.getResponseHeader('Content-Type') || 'application/json';
 
-        if (!xhr.status.toString().startsWith('2')) {
+        // Create a mock Response object that matches the Fetch API Response interface
+        const response = {
+          ok: xhr.status >= 200 && xhr.status < 300,
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers: {
+            get: (name: string) => xhr.getResponseHeader(name)
+          },
+          json: () => {
+            try {
+              return Promise.resolve(responseText ? JSON.parse(responseText) : null);
+            } catch (_e) {
+              return Promise.reject(e);
+            }
+          },
+          text: () => Promise.resolve(responseText),
+          clone: function() {
+            return { ...this };
+          }
+        };
+
+        if (!response.ok) {
           let errorData: ErrorResponseData = { message: xhr.statusText };
           try {
             const jsonData = JSON.parse(responseText);
             if (typeof jsonData === 'object' && jsonData !== null) {
               errorData = { ...jsonData };
             }
-          } catch (e) {
-            console.debug('Error parsing error response:', e);
+          } catch (_e) {
+            // If we can't parse the error response, use the status text
           }
-
-          const error = new Error(errorData.message || 'Request failed');
-          (error as { status?: number }).status = xhr.status;
-          (error as { response?: ErrorResponseData }).response = errorData;
-          reject(error);
-        } else {
-          try {
-            if (responseText && contentType.includes('application/json')) {
-              resolve(JSON.parse(responseText));
-            } else {
-              resolve({} as T); // Resolve with empty object for non-JSON success
-            }
-          } catch (error) {
-            console.error('Error parsing JSON response:', error);
-            reject(new Error('Invalid JSON response'));
-          }
+          reject(new Error(errorData.message || 'Request failed'));
+          return;
         }
+
+        // Resolve with our mock Response object
+        resolve(response as unknown as T);
       };
       
       xhr.onerror = () => {
+        // Create a mock Response object for network errors
+        const _errorResponse = {
+          ok: false,
+          status: 0,
+          statusText: 'Network Error',
+          json: () => Promise.resolve({ message: 'Network error occurred' }),
+          text: () => Promise.resolve('Network error occurred'),
+          headers: {
+            get: () => null
+          }
+        };
         reject(new Error('Network error'));
       };
       
@@ -319,8 +357,8 @@ export const authFetch = async <T = unknown>(
           if (typeof jsonData === 'object' && jsonData !== null) {
             errorData = { ...jsonData };
           }
-        } catch (e) {
-          console.debug('Error parsing error response:', e);
+        } catch (_e) {
+          console.debug('Error parsing error response:', _e);
         }
 
         const error = new Error(errorData.message || 'Request failed');
@@ -329,8 +367,8 @@ export const authFetch = async <T = unknown>(
         throw error;
       }
       
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+      const _contentType = response.headers.get('content-type');
+      if (_contentType && _contentType.includes('application/json')) {
         return await response.json();
       } else {
         return {} as T; // Return empty object for successful non-JSON responses

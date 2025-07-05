@@ -34,8 +34,8 @@ export function UploadPage() {
         throw new Error('No authentication token available. Please sign in again.');
       }
       
-      // Use the authenticated API client
-      const response = await api.post('/api/upload', formData, {
+      // Use the authenticated API client with v2 imports endpoint
+      const response = await api.post('/api/v2/imports', formData, {
         // Don't set Content-Type header - let the browser set it with the correct boundary
         // The API client will automatically add the Authorization header
         onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & { 
@@ -57,9 +57,12 @@ export function UploadPage() {
 
       const result = await response.json();
       
+      // Handle v2 response format which might be different
+      const recordCount = result.data?.rowCount || result.count || 0;
+      
       toast({
         title: 'File uploaded successfully!',
-        description: `Processed ${result.count} records.`,
+        description: `Processed ${recordCount} records.`,
         action: (
           <ToastAction 
             altText="View details" 

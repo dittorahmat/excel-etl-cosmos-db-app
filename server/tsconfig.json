@@ -29,7 +29,8 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/routes/upload.route.ts"
   ],
   "references": [],
   "ts-node": {

@@ -21,6 +21,14 @@ const fileFilter = (
   file: Express.Multer.File,
   cb: (error: Error | null, acceptFile?: boolean) => void
 ) => {
+  // Log the incoming file details for debugging
+  console.log('File upload attempt:', {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size,
+    encoding: file.encoding,
+    fieldname: file.fieldname
+  });
   const allowedMimeTypes = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
     'application/vnd.ms-excel', // .xls
@@ -31,8 +39,10 @@ const fileFilter = (
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
+    console.log('File type accepted:', file.mimetype);
     cb(null, true);
   } else {
+    console.log('File type rejected. Allowed types:', allowedMimeTypes);
     const error = new Error(
       'Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.'
     ) as unknown as FileTypeError;

@@ -8,7 +8,6 @@ import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { initializeAzureServices } from './config/azure-services.js';
 // Import v1 routes
-import { uploadRoute } from './routes/upload.route.js';
 import dataRoute from './routes/data.route.js';
 import authRoute from './routes/auth.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
@@ -171,7 +170,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
     
     app.use('/api/upload', 
       authMiddleware, 
-      uploadRoute
+
     );
     
     app.use('/api/data', 
@@ -185,7 +184,7 @@ function createApp(azureServices: AzureCosmosDB): Express {
     // API v1 routes (legacy)
     const apiKeyRouter = createApiKeyRouter(azureServices);
     app.use('/api/keys', apiKeyRouter);
-    app.use('/api/upload', uploadRoute);
+    
     app.use('/api/data', dataRoute);
     app.use('/api', apiKeyRouter);
   }
