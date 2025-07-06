@@ -47,44 +47,37 @@ router.get(
       const cosmosService = await getOrInitializeCosmosDB();
       const container = await cosmosService.database.container('excel-records');
       
-      // First, get all unique field names from the records
+      // Get a sample of records from the container to extract field names
+      const sampleSize = 100; // Adjust this number based on your needs
       const query = {
-        query: 'SELECT DISTINCT VALUE c["_partitionKey"] FROM c'
+        query: 'SELECT TOP @sampleSize * FROM c',
+        parameters: [
+          { name: '@sampleSize', value: sampleSize }
+        ]
       };
 
-      const { resources: partitionKeys } = await container.items.query(query).fetchAll();
+      const { resources: sampleRecords } = await container.items.query(query).fetchAll();
       
-      // If we have partition keys, try to get fields from one of them
-      if (partitionKeys && partitionKeys.length > 0) {
-        const sampleQuery = {
-          query: 'SELECT TOP 1 * FROM c WHERE c["_partitionKey"] = @partitionKey',
-          parameters: [
-            { name: '@partitionKey', value: partitionKeys[0] }
-          ]
-        };
-        
-        const { resources: sampleRecords } = await container.items.query(sampleQuery).fetchAll();
-        
-        if (sampleRecords && sampleRecords.length > 0) {
-          // Get all field names from the sample record
-          const fieldSet = new Set<string>();
-          const record = sampleRecords[0];
-          
+      // Collect all unique field names from all sample records
+      const fieldSet = new Set<string>();
+      
+      if (sampleRecords && sampleRecords.length > 0) {
+        sampleRecords.forEach(record => {
           // Skip system properties that start with _
           for (const key in record) {
             if (!key.startsWith('_')) {
               fieldSet.add(key);
             }
           }
-          
-          const fields = Array.from(fieldSet);
-          logger.info(`Found ${fields.length} unique fields in sample record`);
-          
-          return res.status(200).json({
-            success: true,
-            fields
-          });
-        }
+        });
+        
+        const fields = Array.from(fieldSet).sort();
+        logger.info(`Found ${fields.length} unique fields across ${sampleRecords.length} sample records`);
+        
+        return res.status(200).json({
+          success: true,
+          fields
+        });
       }
       
       // Fallback to empty array if no records found
