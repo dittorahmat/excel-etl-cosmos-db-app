@@ -243,6 +243,11 @@ export const authFetch = async <T = unknown>(
         _xhrHeaders.set('Authorization', authToken);
       }
       
+      // Set all headers
+      _xhrHeaders.forEach((value, key) => {
+        xhr.setRequestHeader(key, value);
+      });
+      
       // Progress event handling
       xhr.upload.onprogress = (event: ProgressEvent<EventTarget> & { 
         lengthComputable: boolean; 
@@ -265,18 +270,9 @@ export const authFetch = async <T = unknown>(
           headers: {
             get: (name: string) => xhr.getResponseHeader(name)
           },
-          json: () => {
-            try {
-              return Promise.resolve(responseText ? JSON.parse(responseText) : null);
-            } catch (error) {
-              return Promise.reject(error);
-            }
-          },
+          json: () => Promise.resolve(JSON.parse(responseText)),
           text: () => Promise.resolve(responseText),
-          clone: function() {
-            return { ...this };
-          },
-          // Add other required Response properties
+          clone: function() { return { ...this }; },
           type: 'basic' as const,
           url: requestUrl,
           redirected: false,
@@ -296,30 +292,22 @@ export const authFetch = async <T = unknown>(
             }
           } catch (error) {
             console.error('Error parsing error response:', error);
-            // If we can't parse the error response, use the status text
           }
           reject(new Error(errorData.message || 'Request failed'));
           return;
         }
 
-        // Resolve with our mock Response object
-        resolve(response as unknown as T);
+        try {
+          const data = responseText ? JSON.parse(responseText) : null;
+          console.log('[API] XHR Response data:', data);
+          resolve(data as unknown as T);
+        } catch (e) {
+          console.error('[API] Error parsing XHR JSON response:', e);
+          resolve(null as unknown as T);
+        }
       };
       
       xhr.onerror = () => {
-        // Create a complete mock Response object for network errors
-        const _errorResponse = {
-          ok: false,
-          status: 0,
-          statusText: 'Network Error',
-          json: () => Promise.resolve({ message: 'Network error occurred' }),
-          text: () => Promise.resolve('Network error occurred'),
-          headers: {
-            get: () => null
-          }
-        };
-        
-        // Reject with a network error
         reject(new Error('Network error occurred'));
       };
       
@@ -328,24 +316,39 @@ export const authFetch = async <T = unknown>(
   }
 
   // Regular fetch for non-upload requests with retry logic
-  for (let i = 0; i <= _RATE_LIMIT_RETRY_ATTEMPTS; i++) {
-    // This will be set to true if we should attempt a retry
+  for (let attempt = 0; attempt <= _RATE_LIMIT_RETRY_ATTEMPTS; attempt++) {
     let shouldRetry = false;
     try {
-      const body = prepareBody(options.body);
-      const token = await getAuthToken();
+      const requestBody = prepareBody(options.body);
       
-      const response = await fetch(url, {
+      console.log(`[API] [${new Date().toISOString()}] Making ${options.method || 'GET'} request to:`, requestUrl);
+      console.log('[API] Request headers:', {
+        'Content-Type': 'application/json',
+        ...(authToken ? { 'Authorization': 'Bearer [REDACTED]' } : {}),
+        ...Object.fromEntries(headers.entries()),
+      });
+      
+      if (options.body) {
+        console.log('[API] Request body:', options.body);
+      }
+      
+      const response = await fetch(requestUrl, {
         method: options.method || 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...options.headers,
+          ...(authToken ? { 'Authorization': authToken } : {}),
+          ...Object.fromEntries(headers.entries()),
         },
-        body: body as BodyInit
+        body: requestBody as BodyInit
       });
       
+      console.log(`[API] [${new Date().toISOString()}] Response status:`, response.status, response.statusText);
+      
       if (!response.ok) {
+        console.error(`[API] Request failed with status: ${response.status} ${response.statusText}`);
+        const errorText = await response.text().catch(() => 'Failed to read error response');
+        console.error('[API] Error response body:', errorText);
+        
         // Handle rate limiting
         if (response.status === 429 || response.status === 503) {
           const retryAfter = response.headers.get('Retry-After');
@@ -353,54 +356,52 @@ export const authFetch = async <T = unknown>(
           const maxDelay = 10000; // 10 seconds max delay
           const retryDelay = retryAfter 
             ? parseInt(retryAfter, 10) * 1000 
-            : baseDelay * Math.pow(2, i);
+            : baseDelay * Math.pow(2, attempt);
 
-          if (i < _RATE_LIMIT_RETRY_ATTEMPTS) {
-            await sleep(Math.min(retryDelay, maxDelay));
+          if (attempt < _RATE_LIMIT_RETRY_ATTEMPTS) {
+            const delay = Math.min(retryDelay, maxDelay);
+            console.log(`[API] Rate limited. Retrying in ${delay}ms... (attempt ${attempt + 1}/${_RATE_LIMIT_RETRY_ATTEMPTS})`);
+            await sleep(delay);
             shouldRetry = true;
-            break; // Break out of the try block to retry
+            continue; // Retry the request
           }
         }
-
-        let errorData: ErrorResponseData = { message: response.statusText };
-        try {
-          const jsonData = await response.json();
-          if (typeof jsonData === 'object' && jsonData !== null) {
-            errorData = { ...jsonData };
-          }
-        } catch (_e) {
-          console.debug('Error parsing error response:', _e);
-        }
-
-        const error = new Error(errorData.message || 'Request failed');
-        (error as { status?: number }).status = response.status;
-        (error as { response?: ErrorResponseData }).response = errorData;
-        throw error;
+        
+        // If we get here, we've exceeded retry attempts
+        throw new Error('Max retry attempts exceeded');
       }
       
-      const _contentType = response.headers.get('content-type');
-      if (_contentType && _contentType.includes('application/json')) {
-        return await response.json();
-      } else {
-        return {} as T; // Return empty object for successful non-JSON responses
+      // Request was successful, parse and return the response
+      try {
+        const data = await response.json();
+        console.log('[API] Response data:', data);
+        return data as T;
+      } catch (e) {
+        console.error('[API] Error parsing JSON response:', e);
+        return null as unknown as T;
       }
-    } catch (error) {
-      // Only log and retry if this wasn't a rate limit error we already handled
-      if (!shouldRetry) {
-        console.error('API request failed:', error);
-        if (i === _RATE_LIMIT_RETRY_ATTEMPTS) {
+      
+    } catch (error: unknown) {
+      console.error('[API] Request error:', error);
+      if (!shouldRetry || attempt >= _RATE_LIMIT_RETRY_ATTEMPTS) {
+        // Handle different types of errors
+        if (error instanceof Error) {
           throw error;
+        } else if (error && typeof error === 'object' && 'status' in error && 'statusText' in error) {
+          // Handle Response-like objects
+          const response = error as { status: number; statusText: string };
+          throw new Error(`Request failed with status ${response.status}: ${response.statusText}`);
+        } else {
+          throw new Error('An unknown error occurred');
         }
-        // Wait before retrying
-        await sleep(1000 * (i + 1));
       }
+      // If we should retry, the loop will continue
     }
   }
   
-  // This should never be reached because we throw an error when max retries are exceeded
-  // But TypeScript needs a return statement here
-  throw new Error(`Request failed after ${_RATE_LIMIT_RETRY_ATTEMPTS + 1} attempts.`);
-};
+  // If we've exhausted all retry attempts without returning or throwing
+  throw new Error('Request failed after all retry attempts');
+}
 
 interface ApiClient {
   get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'body' | 'method'>) => Promise<T>;
