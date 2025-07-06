@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { QueryBuilder } from '../components/QueryBuilder';
 import { DataChart } from '../components/DataChart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { FileListTable } from '../components/FileListTable';
 
 // Type definitions for the component props and API responses
 interface QueryResponseData {
@@ -91,11 +92,21 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     
     setFieldsLoading(true);
     try {
-      const response = await api.get<{ fields: FieldDefinition[] }>('/api/fields');
+      const response = await api.get<{ fields: string[] }>('/api/fields');
       if (response && response.fields) {
-        setFieldDefinitions(response.fields);
+        // Transform string array into FieldDefinition objects
+        const fieldDefinitions = response.fields.map(fieldName => ({
+          name: fieldName,
+          type: 'string' as const, // Default to string type
+          label: fieldName
+            .split(/(?=[A-Z])/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+        }));
+        
+        setFieldDefinitions(fieldDefinitions);
         // Select all fields by default
-        setSelectedFields(response.fields.map(f => f.name));
+        setSelectedFields(fieldDefinitions.map(f => f.name));
       }
     } catch (err) {
       console.error('Failed to load fields:', err);
@@ -109,26 +120,20 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const executeQuery = useCallback(async (filter: Record<string, unknown> = {}) => {
     if (!isAuthenticated) return;
     
+    console.log('[DashboardPage] Executing query with filter:', filter);
     setLoading(true);
     setError(null);
     
     try {
       const params = new URLSearchParams();
       
-      // Only add fields if we have selected fields
-      if (selectedFields.length > 0) {
-        selectedFields.forEach(field => {
-          if (field) {  // Ensure field is not undefined
-            params.append('fields', field);
-          }
-        });
-      } else if (fieldDefinitions.length > 0) {
-        // If no fields selected but we have field definitions, use them all
-        fieldDefinitions.forEach(field => {
-          if (field?.name) {
-            params.append('fields', field.name);
-          }
-        });
+      // Format fields as a comma-separated string
+      const fieldsToQuery = selectedFields.length > 0 
+        ? selectedFields.filter(Boolean).join(',')
+        : fieldDefinitions.map(f => f.name).filter(Boolean).join(',');
+      
+      if (fieldsToQuery) {
+        params.append('fields', fieldsToQuery);
       }
       
       params.append('limit', queryResult.pageSize.toString());
@@ -142,14 +147,18 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         params.append('search', searchQuery);
       }
       
-      // Add any additional filters
-      Object.entries(filter).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          params.append(key, String(value));
-        }
-      });
+      // Add filter as a single parameter
+      if (Object.keys(filter).length > 0) {
+        const filterString = JSON.stringify(filter);
+        console.log('[DashboardPage] Adding filter parameter:', filterString);
+        params.append('filter', filterString);
+      }
       
-      const response = await api.get<QueryResponseData>(`/api/v2/query?${params.toString()}`);
+      const url = `/api/v2/query?${params.toString()}`;
+      console.log('[DashboardPage] Making request to:', url);
+      
+      const response = await api.get<QueryResponseData>(url);
+      console.log('[DashboardPage] Received response:', response);
       
       if (response) {
         // Ensure we have valid response data with defaults
@@ -160,10 +169,20 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
           page = 1, 
           pageSize = 10 
         } = response || {};
+        
+        console.log('[DashboardPage] Setting query result:', {
+          itemsCount: items.length,
+          fields: fields,
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize)
+        });
+        
         setQueryResult(prev => ({
           ...prev,
           items,
-          fields,
+          fields: fields.length > 0 ? fields : prev.fields,
           total,
           page,
           pageSize,
@@ -221,10 +240,22 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       <div className="grid gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
+            <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="query">Query Builder</TabsTrigger>
             <TabsTrigger value="results">Results</TabsTrigger>
             <TabsTrigger value="charts">Charts</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="files" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Files</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FileListTable />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="query" className="space-y-4">
             <Card>

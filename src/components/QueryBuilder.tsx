@@ -93,7 +93,7 @@ export function QueryBuilder({
         value: '' 
       }]);
     }
-  }, [fields]); // Removed filters from dependencies
+  }, [fields, filters.length]); // Removed filters from dependencies
   
   // Build query from filters
   const buildQuery = useCallback((): Record<string, unknown> => {
@@ -236,9 +236,9 @@ export function QueryBuilder({
                       return (
                         <SelectItem 
                           key={`${filterId}-${fieldKey}`}
-                          value={fieldKey}
+                          value={field.name} // Use field.name as the value
                         >
-                          {field?.label || fieldKey}
+                          {field.label || field.name}
                         </SelectItem>
                       );
                     })}
