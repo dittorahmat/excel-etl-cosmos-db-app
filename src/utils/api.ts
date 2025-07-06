@@ -179,8 +179,12 @@ export const authFetch = async <T = unknown>(
     headers.append('Content-Type', 'application/json');
   }
   
+  // Skip authentication in development if AUTH_ENABLED is explicitly set to false in the environment
+  if (import.meta.env.VITE_AUTH_ENABLED === 'false') {
+    console.log('Authentication disabled in development mode');
+  } 
   // Check if authentication is required (only on first attempt to avoid extra requests)
-  if (attempt === 1) {
+  else if (attempt === 1 && import.meta.env.VITE_AUTH_ENABLED !== 'false') {
     try {
       const authStatusResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/status`);
       if (authStatusResponse.ok) {
