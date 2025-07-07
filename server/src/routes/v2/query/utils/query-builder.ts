@@ -92,11 +92,12 @@ export function buildCosmosQuery(params: QueryParams, importId?: string) {
     orderByClause = ` ORDER BY c["${sortField}"] ${sortOrder}`;
   }
 
-  // Build the pagination clause
-  const paginationClause = ` OFFSET ${params.offset} LIMIT ${params.limit}`;
+  // For Cosmos DB, we'll use TOP for the limit and handle offset with continuation tokens
+  // The actual pagination will be handled by the query executor
+  const limitClause = params.limit ? ` TOP ${params.limit}` : '';
 
   // Build the final query
-  const query = `SELECT * FROM c ${whereClause}${orderByClause}${paginationClause}`;
+  const query = `SELECT${limitClause} * FROM c ${whereClause}${orderByClause}`;
 
   return {
     query,

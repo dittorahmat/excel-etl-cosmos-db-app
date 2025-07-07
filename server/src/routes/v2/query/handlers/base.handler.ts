@@ -5,6 +5,9 @@ import { QueryParams, ErrorResponse } from '../types/query.types.js';
 import { buildCosmosQuery } from '../utils/query-builder.js';
 import { SqlParameter } from '@azure/cosmos';
 
+
+
+
 /**
  * Base handler with shared functionality for query handlers
  */
@@ -24,35 +27,64 @@ export abstract class BaseQueryHandler {
     params: QueryParams,
     additionalWhereClauses: string[] = [],
     additionalParams: SqlParameter[] = []
-  ): Promise<{ items: T[]; requestCharge?: number }> {
+  ): Promise<{ 
+    items: T[]; 
+    requestCharge?: number; 
+    continuationToken?: string;
+    hasMoreResults?: boolean;
+  }> {
+    // Build the base query
     const { query, parameters } = buildCosmosQuery(params);
     
-    // Add additional where clauses and parameters if provided
-    const whereClause = additionalWhereClauses.length > 0 
-      ? ` AND ${additionalWhereClauses.join(' AND ')}` 
-      : '';
+    // Combine where clauses
+    const allWhereClauses: string[] = [];
+    const allParams = [...parameters];
     
-    const finalQuery = query.replace('WHERE', `WHERE 1=1${whereClause} AND`);
-    const finalParams = [...parameters, ...additionalParams];
+    // Add additional where clauses if provided
+    if (additionalWhereClauses.length > 0) {
+      allWhereClauses.push(...additionalWhereClauses);
+      allParams.push(...additionalParams);
+    }
     
+    // Build the final query
+    let finalQuery: string = query; // Initialize with the base query
+
+    if (allWhereClauses.length > 0) {
+      const additionalConditions = allWhereClauses.map(clause => `(${clause})`).join(' AND ');
+      if (query.includes('WHERE')) {
+        // If the base query already has a WHERE clause, append with AND
+        finalQuery = `${query} AND ${additionalConditions}`;
+      } else {
+        // If no WHERE clause in base query, add one
+        finalQuery = `${query} WHERE ${additionalConditions}`;
+      }
+    }
+
     logger.debug('Executing Cosmos DB query', {
       query: finalQuery,
-      parameters: finalParams,
+      parameters: allParams,
     });
 
     const cosmosDb = await getOrInitializeCosmosDB();
     const container = await cosmosDb.container(this.containerName, this.partitionKey);
     
-    const response = await container.items
-      .query({
-        query: finalQuery,
-        parameters: finalParams,
-      })
-      .fetchAll();
+    const queryOptions = {
+      maxItemCount: params.limit,
+      continuationToken: params.continuationToken
+    };
 
+    const queryIterator = container.items.query(
+      { query: finalQuery, parameters: allParams },
+      queryOptions
+    );
+
+    const response = await queryIterator.fetchNext();
+    
     return {
       items: response.resources as T[],
-      requestCharge: response.requestCharge
+      requestCharge: response.requestCharge,
+      continuationToken: response.continuationToken,
+      hasMoreResults: response.hasMoreResults
     };
   }
 

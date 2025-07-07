@@ -28,7 +28,8 @@
     "multer": "^1.4.5-lts.1",
     "node-abort-controller": "^3.1.1",
     "universal-user-agent": "^6.0.1",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "jsbi": "^3.2.5"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",

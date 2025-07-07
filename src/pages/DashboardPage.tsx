@@ -136,8 +136,14 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         params.append('fields', fieldsToQuery);
       }
       
-      params.append('limit', queryResult.pageSize.toString());
-      params.append('offset', ((queryResult.page - 1) * queryResult.pageSize).toString());
+      // Use continuation token for pagination
+      if (queryResult.continuationToken) {
+        params.append('continuationToken', queryResult.continuationToken);
+      } else {
+        // Only set limit/offset if we don't have a continuation token
+        params.append('limit', queryResult.pageSize.toString());
+        params.append('offset', ((queryResult.page - 1) * queryResult.pageSize).toString());
+      }
       
       if (sortField) {
         params.append('sort', `${sortField}:${sortDirection}`);
@@ -154,7 +160,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         params.append('filter', filterString);
       }
       
-      const url = `/api/v2/query?${params.toString()}`;
+      const url = `/api/v2/query/imports?${params.toString()}`;
       console.log('[DashboardPage] Making request to:', url);
       
       const response = await api.get<QueryResponseData>(url);
@@ -167,8 +173,10 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
           fields = [], 
           total = 0, 
           page = 1, 
-          pageSize = 10 
-        } = response || {};
+          pageSize = 10,
+          continuationToken = null,
+          hasMore = false
+        } = response;
         
         console.log('[DashboardPage] Setting query result:', {
           itemsCount: items.length,
@@ -176,33 +184,46 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
           total,
           page,
           pageSize,
+          continuationToken,
+          hasMore,
           totalPages: Math.ceil(total / pageSize)
         });
         
         setQueryResult(prev => ({
           ...prev,
-          items,
+          items: continuationToken ? [...prev.items, ...items] : items,
           fields: fields.length > 0 ? fields : prev.fields,
           total,
-          page,
+          page: continuationToken ? prev.page : page,
           pageSize,
+          continuationToken,
+          hasMore,
           totalPages: Math.ceil(total / pageSize)
         }));
       }
     } catch (err) {
       console.error('Failed to execute query:', err);
       setError(err instanceof Error ? err.message : 'Failed to execute query');
+      throw err; // Re-throw to allow QueryBuilder to handle the error
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, selectedFields, fieldDefinitions, queryResult.pageSize, queryResult.page, sortField, sortDirection, searchQuery]);
+  }, [isAuthenticated, selectedFields, fieldDefinitions, queryResult.pageSize, queryResult.page, sortField, sortDirection, searchQuery, queryResult.continuationToken]);
 
   // Handle sort
   const handleSort = useCallback((field: string) => {
-    const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortField(field);
-    setSortDirection(direction);
-    executeQuery({ sort: `${field}:${direction}` });
+    setSortDirection(newDirection);
+    
+    // Reset to first page when changing sort
+    setQueryResult(prev => ({
+      ...prev,
+      page: 1,
+      continuationToken: null,
+      items: []
+    }));
+    executeQuery({ sort: `${field}:${newDirection}` });
   }, [sortField, sortDirection, executeQuery]);
 
   // Load available fields on component mount

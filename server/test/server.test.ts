@@ -4,6 +4,14 @@ import express from 'express';
 import type { Express } from 'express';
 // Mock the server module to control its behavior
 import { v4 as uuidv4 } from 'uuid';
+
+vi.mock('../src/routes/v2/upload.route.js', () => ({
+  uploadRouterV2: vi.fn().mockImplementation((req, res, next) => {
+    // Mock the upload route to simply call next()
+    next();
+  }),
+}));
+
 vi.mock('../src/server.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/server.js')>();
   return {

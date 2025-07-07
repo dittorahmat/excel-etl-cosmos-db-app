@@ -41,6 +41,9 @@ export const queryParamsSchema = z.object({
   
   // Field selection
   fields: z.string().optional(),
+
+  // Continuation token for pagination
+  continuationToken: z.string().optional(),
 });
 
 // Type for the parsed query parameters

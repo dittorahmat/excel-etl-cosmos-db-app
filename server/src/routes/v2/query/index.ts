@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '@/middleware/auth.js';
+import { authenticateToken } from '../../../middleware/auth.js';
 import { queryImportRowsHandler } from './handlers/query-import-rows.handler.js';
 import { queryAllRowsHandler } from './handlers/query-all-rows.handler.js';
 import { getImportMetadataHandler } from './handlers/get-import-metadata.handler.js';
