@@ -10,6 +10,8 @@ export interface QueryParams {
   offset: number;
   sort?: string;
   fields?: string;
+  continuationToken?: string;
+  hasMoreResults?: boolean;
 }
 
 /**

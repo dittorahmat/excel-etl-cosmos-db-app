@@ -137,23 +137,70 @@ async function uploadHandler(req: Request, res: Response) {
   
   // Check if file exists
   if (!req.file) {
+    logger.error('No file uploaded', { requestId, userId });
     return res.status(400).json(
       createErrorResponse(400, 'No file uploaded', 'Please upload a file')
     );
   }
 
-  const { buffer, originalname: fileName, mimetype } = req.file;
-  const fileType = mimetype;
+  const { buffer, originalname: fileName, mimetype: originalMimeType } = req.file;
+  const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+  
+  // Enhanced MIME type detection
+  let detectedMimeType = originalMimeType;
+  
+  // If MIME type is generic, try to detect based on file extension
+  if (['application/octet-stream', 'application/vnd.ms-office', 'application/zip'].includes(originalMimeType)) {
+    const extensionToMime: Record<string, string> = {
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'xls': 'application/vnd.ms-excel',
+      'xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
+      'csv': 'text/csv',
+      'txt': 'text/plain'
+    };
+    
+    if (fileExt in extensionToMime) {
+      detectedMimeType = extensionToMime[fileExt];
+      logger.debug('Detected MIME type from extension', { 
+        requestId, 
+        originalMimeType, 
+        detectedMimeType, 
+        fileExt 
+      });
+    }
+  }
+
+  const fileType = detectedMimeType;
   const fileSize = buffer.length;
 
-  // Log the upload attempt
+  // Log the upload attempt with detailed file information
   logger.info('File upload started', {
     requestId,
     fileName,
-    fileType,
+    originalMimeType,
+    detectedMimeType,
+    fileExt,
     fileSize,
     userId,
   });
+
+  // Validate the file type
+  const allowedMimeTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'application/vnd.ms-excel', // .xls
+    'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
+    'text/csv',
+    'application/csv',
+    'text/x-csv'
+  ];
+
+  if (!allowedMimeTypes.includes(detectedMimeType)) {
+    const errorMsg = `Unsupported file type: ${detectedMimeType}. Allowed types: ${allowedMimeTypes.join(', ')}`;
+    logger.error(errorMsg, { requestId, fileName, detectedMimeType, fileExt });
+    return res.status(400).json(
+      createErrorResponse(400, 'Unsupported file type', errorMsg)
+    );
+  }
 
   try {
     // Process the file using the ingestion service

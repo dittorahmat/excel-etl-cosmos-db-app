@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { logger } from '../../../../utils/logger.js';
 import { BaseQueryHandler } from './base.handler.js';
 import { queryParamsSchema } from '../schemas/query.schemas.js';
+import { QueryParams } from '../types/query.types.js';
+
+
 
 export class ListImportsHandler extends BaseQueryHandler {
   constructor() {
@@ -54,15 +57,24 @@ export class ListImportsHandler extends BaseQueryHandler {
         [key: string]: unknown; // Allow additional properties
       }
 
-      // Get all imports with documentType = 'excel-import'
-      const { items: imports = [], requestCharge: importsCharge } = await this.executeQuery<ImportMetadata>(
-        { 
-          ...queryParams,
-          sort: queryParams.sort || '-createdAt', // Default sort by newest first
+      // Prepare query parameters with continuation token
+      const queryParamsWithContinuation = {
+        ...queryParams,
+        sort: queryParams.sort || '-createdAt', // Default sort by newest first
+        filter: {
+          ...(queryParams.filter || {}),
+          documentType: 'excel-import' // Let the query builder handle this
         },
-        ['c.documentType = @documentType'],
-        [{ name: '@documentType', value: 'excel-import' }]
-      );
+        continuationToken: queryParams.continuationToken
+      } as QueryParams;
+
+      // Get all imports (documentType filter is added by the query builder)
+      const { 
+        items: imports = [], 
+        requestCharge: importsCharge,
+        continuationToken,
+        hasMoreResults
+      } = await this.executeQuery<ImportMetadata>(queryParamsWithContinuation);
 
       // Ensure imports is an array
       const safeImports = Array.isArray(imports) ? imports : [];
@@ -71,6 +83,8 @@ export class ListImportsHandler extends BaseQueryHandler {
         ...logContext,
         importCount: safeImports.length,
         requestCharge: importsCharge,
+        hasMoreResults,
+        hasContinuationToken: !!continuationToken
       });
 
       // Get row counts for each import
@@ -97,32 +111,31 @@ export class ListImportsHandler extends BaseQueryHandler {
       // Ensure we have an array of imports with row counts
       const safeImportsWithRowCounts = Array.isArray(importsWithRowCounts) ? importsWithRowCounts : [];
 
-      // Apply pagination
-      const start = queryParams.offset || 0;
-      const end = start + (queryParams.limit || 10);
-      const paginatedImports = safeImportsWithRowCounts.slice(start, end);
-
-      // Prepare response
+      // Return the response with pagination info
       const response = {
         success: true,
         data: {
-          items: paginatedImports,
+          items: safeImportsWithRowCounts,
           total: safeImportsWithRowCounts.length,
-          page: Math.floor(start / (queryParams.limit || 10)) + 1,
-          pageSize: queryParams.limit || 10,
-          totalPages: Math.ceil(safeImportsWithRowCounts.length / (queryParams.limit || 10)),
+          page: queryParams.offset ? Math.floor(queryParams.offset / queryParams.limit) + 1 : 1,
+          pageSize: queryParams.limit || safeImportsWithRowCounts.length,
+          totalPages: queryParams.limit ? Math.ceil(safeImportsWithRowCounts.length / queryParams.limit) : 1,
         },
         pagination: {
           total: safeImportsWithRowCounts.length,
-          limit: queryParams.limit,
-          offset: queryParams.offset,
+          limit: queryParams.limit || safeImportsWithRowCounts.length,
+          offset: queryParams.offset || 0,
+          ...(continuationToken && { continuationToken }),
+          hasMoreResults: hasMoreResults || false
         },
       };
 
-      logger.info('listImports - Sending response', {
+      logger.debug('listImports - Sending response', {
         ...logContext,
-        itemCount: paginatedImports.length,
-        totalCount: safeImportsWithRowCounts.length,
+        itemCount: response.data.items.length,
+        totalCount: response.data.total,
+        hasMoreResults: response.pagination.hasMoreResults,
+        hasContinuationToken: !!response.pagination.continuationToken
       });
 
       return res.status(200).json(response);

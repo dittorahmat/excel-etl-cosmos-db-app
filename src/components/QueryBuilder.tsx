@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Loader2, Play, Plus, X } from 'lucide-react';
+import { Alert, AlertDescription } from './ui/alert';
+import { Loader2, Play, Plus, X, AlertCircle } from 'lucide-react';
+
+import { cn } from '../lib/utils';
 
 type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
 
@@ -35,6 +38,8 @@ interface QueryBuilderProps {
   onQueryChange?: (query: Record<string, unknown>) => void;
   onExecute: (query: Record<string, unknown>) => void;
   loading?: boolean;
+  error?: string | null;
+  className?: string;
 }
 
 const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
@@ -71,12 +76,14 @@ const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
   ],
 };
 
-export function QueryBuilder({
+export const QueryBuilder = ({
   fields = [],
   onQueryChange = () => {},
   onExecute,
   loading = false,
-}: QueryBuilderProps) {
+  error = null,
+  className,
+}: QueryBuilderProps) => {
   const [filters, setFilters] = useState<FilterCondition[]>(() => {
     return fields.length > 0 
       ? [{ id: '1', field: fields[0].name, operator: '=', value: '' }] 
@@ -193,26 +200,54 @@ export function QueryBuilder({
     return type === 'number' ? 'number' : type === 'date' ? 'date' : 'text';
   };
 
+  const canExecute = filters.every(filter => {
+    const fieldDef = fields.find(f => f.name === filter.field);
+    const operator = fieldDef ? 
+      OPERATORS_BY_TYPE[fieldDef.type as keyof typeof OPERATORS_BY_TYPE]?.find(op => op.value === filter.operator) : 
+      null;
+    
+    // Check if required values are present
+    const hasRequiredValues = operator?.inputType ? 
+      (operator.needsSecondValue ? filter.value && filter.value2 : filter.value) : 
+      true;
+      
+    return fieldDef && operator && hasRequiredValues;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-        <span>Loading query builder...</span>
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2">Loading query builder...</span>
       </div>
     );
   }
-  
-  if (!fields.length) {
+
+  if (fields.length === 0) {
     return (
-      <div className="p-4 border rounded-lg bg-yellow-50">
-        <p className="text-yellow-800">No fields available for filtering.</p>
+      <div className="p-4 text-center text-muted-foreground">
+        No fields available for querying.
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 border rounded-lg bg-red-50">
+        <p className="text-red-800">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-4">
+    <div className={cn("space-y-4", className)}>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      <div className="space-y-2">
         {filters.map((filter) => {
           const fieldType = getFieldType(filter.field);
           const operators = OPERATORS_BY_TYPE[fieldType] || [];
@@ -220,36 +255,36 @@ export function QueryBuilder({
           const inputType = getInputType(filter.field);
           
           return (
-            <div key={filter.id} className="flex items-start gap-2 flex-wrap p-2 bg-gray-50 rounded-md">
-              <div className="w-48 flex-shrink-0">
-                <Select 
-                  value={filter.field} 
-                  onValueChange={(val) => updateFilter(filter.id, 'field', val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fields.map((field, index) => {
-                      const fieldKey = field?.name || `field-${index}`;
-                      const filterId = filter?.id || 'no-filter';
-                      return (
-                        <SelectItem 
-                          key={`${filterId}-${fieldKey}`}
-                          value={field.name} // Use field.name as the value
-                        >
-                          {field.label || field.name}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              
+            <div key={filter.id} className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
+              <Select
+                value={filter.field}
+                onValueChange={(value) => updateFilter(filter.id, 'field', value)}
+                disabled={loading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select field" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fields.map((field, index) => {
+                    const fieldKey = field?.name || `field-${index}`;
+                    const filterId = filter?.id || 'no-filter';
+                    return (
+                      <SelectItem 
+                        key={`${filterId}-${fieldKey}`}
+                        value={field.name} // Use field.name as the value
+                      >
+                        {field.label || field.name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+
               <div className="w-32 flex-shrink-0">
-                <Select 
-                  value={filter.operator} 
-                  onValueChange={(val) => updateFilter(filter.id, 'operator', val)}
+                <Select
+                  value={filter.operator}
+                  onValueChange={(value) => updateFilter(filter.id, 'operator', value)}
+                  disabled={!filter.field || loading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Operator" />
@@ -283,11 +318,12 @@ export function QueryBuilder({
               )}
               
               {filters.length > 1 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => removeFilter(filter.id)}
-                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={loading}
                   title="Remove condition"
                 >
                   <X className="h-4 w-4" />
@@ -297,29 +333,47 @@ export function QueryBuilder({
           );
         })}
       </div>
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={addFilter}
-          disabled={loading}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Condition
-        </Button>
-        
-        <Button 
-          onClick={handleExecute}
-          disabled={loading || !filters.length}
-          className="ml-auto"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Play className="h-4 w-4 mr-2" />
-          )}
-          Execute Query
-        </Button>
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <div className="flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addFilter}
+            className="w-full sm:w-auto"
+            disabled={loading}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Condition
+          </Button>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFilters([])}
+            disabled={filters.length === 0 || loading}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Clear All
+          </Button>
+          <Button
+            onClick={handleExecute}
+            disabled={!canExecute || loading}
+            className="min-w-[120px]"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Executing...
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Execute Query
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -164,6 +164,8 @@ export class IngestionService {
         ...metadata,
         id: `import_${metadata.id}`, // Prefix to distinguish from row documents
         _partitionKey: this.metadataPartitionKey, // Use fixed partition key for metadata
+        documentType: 'excel-import', // Add document type for filtering
+        _importId: metadata.id, // Add _importId for consistency with row documents
       };
       
       this.logger.debug('Saving import metadata', { 
