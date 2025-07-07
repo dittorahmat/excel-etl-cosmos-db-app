@@ -4,6 +4,7 @@ import { queryImportRowsHandler } from './handlers/query-import-rows.handler.js'
 import { queryAllRowsHandler } from './handlers/query-all-rows.handler.js';
 import { getImportMetadataHandler } from './handlers/get-import-metadata.handler.js';
 import { listImportsHandler } from './handlers/list-imports.handler.js';
+import { downloadImportHandler } from './handlers/download-import.handler.js';
 
 // Create router
 const router = Router();
@@ -27,5 +28,8 @@ router.get('/imports/:importId', getImportMetadataHandler.handle.bind(getImportM
 
 // List all imports with pagination
 router.get('/imports', listImportsHandler.handle.bind(listImportsHandler));
+
+// Download import file
+router.get('/imports/:importId/download', downloadImportHandler.handle.bind(downloadImportHandler));
 
 export default router;

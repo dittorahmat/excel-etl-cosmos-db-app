@@ -19,7 +19,7 @@ const Progress = ({ value, className = '' }: ProgressProps) => (
 
 type FileUploadProps = {
   /** Callback function when a file is uploaded */
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File) => Promise<{ data?: { rowCount?: number }, count?: number }>;
   /** Array of accepted file types (e.g., ['.xlsx', '.csv']) */
   accept?: string[];
   /** Maximum file size in bytes */

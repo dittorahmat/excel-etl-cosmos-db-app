@@ -14,26 +14,37 @@ import { FileText, Download, Trash2, Loader2 } from 'lucide-react';
 
 interface ImportMetadata {
   id: string;
-  originalFilename: string;
-  fileSize: number;
+  _importId?: string;
+  fileName: string;
+  fileSize?: number;
+  mimeType?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  rowCount?: number;
+  totalRows?: number;
+  validRows?: number;
+  errorRows?: number;
+  createdAt: string;
+  updatedAt?: string;
+  processedAt?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown; // Allow additional properties
+}
+
+interface FileData {
+  id: string;
+  name: string;
+  size: number;
   mimeType: string;
+  uploadedAt: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   recordCount: number;
   processedCount: number;
   errorCount: number;
-  createdAt: string;
   updatedAt: string;
   error?: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface FileData extends Omit<ImportMetadata, 'originalFilename' | 'fileSize' | 'createdAt'> {
-  id: string;
-  name: string;
-  size: number;
-  uploadedAt: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  recordCount: number;
+  metadata: Record<string, unknown>;
+  downloadFileName: string;
 }
 
 export function FileListTable() {
@@ -50,28 +61,51 @@ export function FileListTable() {
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.get<{ items: ImportMetadata[]; total: number; page: number; pageSize: number; totalPages: number }>(
-        `/api/v2/imports?page=${page}&pageSize=${pageSize}&sort=-createdAt`
-      );
+      // Build the query string manually to avoid TypeScript issues with params
+      const queryString = `?page=${page}&pageSize=${pageSize}`;
+      const response = await api.get<{ 
+        data: {
+          items: ImportMetadata[];
+          total: number;
+          page: number;
+          pageSize: number;
+          totalPages: number;
+        };
+        pagination: {
+          total: number;
+          limit: number;
+          offset: number;
+          continuationToken?: string;
+          hasMoreResults: boolean;
+        };
+      }>(`/api/v2/query/imports${queryString}`);
       
-      const mappedFiles: FileData[] = data.items.map((item: ImportMetadata) => ({
-          id: item.id,
-          name: item.fileName,
-          size: item.fileSize,
-          uploadedAt: item.processedAt || item.lastUpdated || item.createdAt,
-          status: item.status,
-          recordCount: item.totalRows,
-          processedCount: item.validRows,
-          errorCount: item.errorRows,
-          updatedAt: item.lastUpdated || item.updatedAt,
-          error: item.error,
-          metadata: item.metadata
-        }));
+      if (response?.data?.items) {
+        const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => {
+          // Ensure we have valid data for all required fields
+          const fileData: FileData = {
+            id: item.id || item._importId || '',
+            name: item.fileName || 'Untitled',
+            size: item.fileSize || 0,
+            mimeType: item.mimeType || 'application/octet-stream',
+            uploadedAt: item.createdAt || new Date().toISOString(),
+            status: item.status || 'completed',
+            recordCount: item.rowCount || item.totalRows || 0,
+            processedCount: item.validRows || 0,
+            errorCount: item.errorRows || 0,
+            updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+            error: item.error,
+            metadata: item,
+            downloadFileName: item.fileName ? `${item.fileName}.xlsx` : `file-${item.id || 'unknown'}.xlsx`
+          };
+          return fileData;
+        });
         
         setFiles(mappedFiles);
-        setTotalPages(data.totalPages || 1);
+        setTotalPages(response.data.totalPages || 1);
         setError(null);
-      } catch (err) {
+      }
+    } catch (err) {
       console.error('Error fetching files:', err);
       if (isMounted.current) {
         setError('Failed to load files. Please try again later.');
@@ -94,70 +128,72 @@ export function FileListTable() {
     fetchFiles();
   }, [page, fetchFiles]);
 
+  useEffect(() => {
+    const debugFetch = async () => {
+      try {
+        console.log('Debug: Fetching files from /api/v2/query/imports');
+        const response = await api.get('/api/v2/query/imports?page=1&pageSize=10');
+        console.log('Debug: API Response:', response);
+      } catch (err) {
+        console.error('Debug: API Error:', err);
+      }
+    };
+    
+    debugFetch();
+    console.log('FileListTable state:', { files, loading, error, page, totalPages });
+  }, [files, loading, error, page, totalPages]);
+
   const handleDownload = async (fileId: string, fileName: string) => {
     try {
-      // Use the api instance which uses fetch under the hood
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v2/imports/${fileId}/download`, {
+      if (!fileId) {
+        throw new Error('File ID is missing');
+      }
+
+      // Ensure we don't have duplicate 'import_' prefixes in the URL
+      const cleanFileId = fileId.startsWith('import_import_') 
+        ? fileId.replace('import_import_', 'import_')
+        : fileId;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v2/query/imports/${cleanFileId}/download`, {
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`,
         },
-        credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to download file');
+        throw new Error(errorData.message || `Failed to download file: ${response.statusText}`);
       }
 
-      // Get the blob from the response
       const blob = await response.blob();
-      
-      // Get the filename from the content-disposition header or use the provided filename
-      let downloadFileName = fileName;
-      const contentDisposition = response.headers.get('content-disposition');
-      if (contentDisposition) {
-        const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (fileNameMatch && fileNameMatch[1]) {
-          downloadFileName = fileNameMatch[1];
-        }
-      }
-
-      // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-
-      // Create and trigger a download link
       const a = document.createElement('a');
-      a.style.display = 'none';
       a.href = url;
+      // Use the provided file name or generate a default one
+      const downloadFileName = fileName || `file-${fileId}.xlsx`;
       a.download = downloadFileName;
       document.body.appendChild(a);
       a.click();
-
-      // Clean up
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      a.remove();
     } catch (err) {
-      console.error('Error downloading file:', err);
-      setError('Failed to download file');
+      console.error('Download error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to download file. Please try again.');
     }
   };
 
   const handleDelete = async (fileId: string) => {
-    if (!window.confirm('Are you sure you want to delete this import and all its data? This action cannot be undone.')) return;
-
-    try {
-      const response = await api.delete(`/api/v2/imports/${fileId}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to delete import');
+    if (window.confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+      try {
+        await api.delete(`/api/v2/query/imports/${fileId}`);
+        // Refresh the file list after deletion with a small delay
+        setTimeout(() => {
+          fetchFiles();
+        }, 500);
+      } catch (err) {
+        console.error('Error deleting file:', err);
+        setError(err instanceof Error ? err.message : 'Failed to delete file. Please try again.');
       }
-
-      // Refresh the file list
-      fetchFiles();
-    } catch (err) {
-      console.error('Error deleting import:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete import');
     }
   };
 

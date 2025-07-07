@@ -199,8 +199,8 @@ function createApp(azureServices: AzureCosmosDB): Express {
   // API v2 routes
   app.use('/api/v2', v2Router);
   
-  // Mount the v2 upload route
-  app.use('/api/upload', uploadRoute);
+  // Mount the v2 upload route at /api/v2/query/imports
+  app.use('/api/v2/query/imports', uploadRoute);
   
   // Fields endpoint (used by dashboard)
   app.use('/api/fields', fieldsRoute);
