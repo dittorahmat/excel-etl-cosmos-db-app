@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Alert, AlertDescription } from './ui/alert';
-import { Loader2, Play, Plus, X, AlertCircle } from 'lucide-react';
-
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Loader2, Play, X, AlertCircle, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { MultiSelect } from './ui/multi-select';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Label } from './ui/label';
 
 type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
 
@@ -15,7 +15,7 @@ interface FieldDefinition {
   path?: string;
   description?: string;
   example?: unknown;
-  label?: string; // Add optional label property
+  label?: string;
 }
 
 interface Operator {
@@ -35,11 +35,13 @@ interface FilterCondition {
 
 interface QueryBuilderProps {
   fields: FieldDefinition[];
-  onQueryChange?: (query: Record<string, unknown>) => void;
-  onExecute: (query: Record<string, unknown>) => void;
+  selectedFields: string[];
+  onFieldsChange: (fields: string[]) => void;
+  onExecute: (filter: Record<string, unknown>) => void;
   loading?: boolean;
-  error?: string | null;
+  error?: string;
   className?: string;
+  defaultShowFilters?: boolean;
 }
 
 const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
@@ -76,23 +78,32 @@ const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
   ],
 };
 
-export const QueryBuilder = ({
-  fields = [],
-  onQueryChange = () => {},
+export function QueryBuilder({
+  fields,
+  selectedFields,
+  onFieldsChange,
   onExecute,
   loading = false,
-  error = null,
+  error,
   className,
-}: QueryBuilderProps) => {
-  const [filters, setFilters] = useState<FilterCondition[]>(() => {
-    return fields.length > 0 
-      ? [{ id: '1', field: fields[0].name, operator: '=', value: '' }] 
-      : [];
-  });
+  defaultShowFilters = false,
+}: QueryBuilderProps) {
+  const [filters, setFilters] = useState<FilterCondition[]>([]);
+  const [showFilters, setShowFilters] = useState(defaultShowFilters);
 
-  // Update filters when fields change (only on mount or when fields change)
+  const fieldOptions = useMemo(() => {
+    return fields.map(field => ({
+      value: field.name,
+      label: field.label || field.name,
+    }));
+  }, [fields]);
+
+  const handleFieldsChange = (selected: string[]) => {
+    onFieldsChange(selected);
+  };
+
   useEffect(() => {
-    if (fields.length > 0 && filters.length === 0) {
+    if (showFilters && fields.length > 0 && filters.length === 0) {
       setFilters([{ 
         id: Date.now().toString(),
         field: fields[0].name, 
@@ -100,25 +111,33 @@ export const QueryBuilder = ({
         value: '' 
       }]);
     }
-  }, [fields, filters.length]); // Removed filters from dependencies
-  
-  // Build query from filters
+  }, [showFilters, fields, filters.length]);
+
+  const getFieldType = useCallback((fieldName: string): FieldType => {
+    const field = fields.find(f => f.name === fieldName);
+    return field?.type || 'string';
+  }, [fields]);
+
   const buildQuery = useCallback((): Record<string, unknown> => {
-    if (!filters || filters.length === 0) return {};
+    if (!showFilters || !filters || filters.length === 0) return {};
     
-    // Get valid filters (with both field and value)
-    const validFilters = filters.filter(filter => 
-      filter.field && 
-      (filter.value !== undefined && filter.value !== '')
-    );
+    const validFilters = filters.filter(filter => {
+      const operator = OPERATORS_BY_TYPE[getFieldType(filter.field)]?.find(op => op.value === filter.operator);
+      const needsValue = operator?.inputType !== undefined && !['empty', '!empty', 'exists', '!exists'].includes(filter.operator);
+      
+      return filter.field && (!needsValue || (filter.value !== undefined && filter.value !== ''));
+    });
     
     if (validFilters.length === 0) return {};
-    if (!filters.length || !filters[0]?.field) return {};
     
-    // If there's only one filter, return it directly
-    if (filters.length === 1) {
-      const filter = filters[0];
-      if (!filter.field) return {};
+    if (validFilters.length === 1) {
+      const filter = validFilters[0];
+      const operator = OPERATORS_BY_TYPE[getFieldType(filter.field)]?.find(op => op.value === filter.operator);
+      const needsValue = operator?.inputType !== undefined && !['empty', '!empty', 'exists', '!exists'].includes(filter.operator);
+      
+      if (!needsValue) {
+        return { [filter.field]: { [filter.operator]: true } };
+      }
       
       return {
         [filter.field]: {
@@ -127,92 +146,38 @@ export const QueryBuilder = ({
       };
     }
     
-    // For multiple filters, combine them with $and
     return {
-      $and: filters
-        .filter(filter => filter.field && filter.value !== undefined)
-        .map(filter => ({
-          [filter.field as string]: {
+      $and: validFilters.map(filter => {
+        const operator = OPERATORS_BY_TYPE[getFieldType(filter.field)]?.find(op => op.value === filter.operator);
+        const needsValue = operator?.inputType !== undefined && !['empty', '!empty', 'exists', '!exists'].includes(filter.operator);
+        
+        if (!needsValue) {
+          return { [filter.field]: { [filter.operator]: true } };
+        }
+        
+        return {
+          [filter.field]: {
             [filter.operator]: filter.value
           }
-        }))
+        };
+      })
     };
-  }, [filters]);
-  
-  // Notify parent of query changes
-  useEffect(() => {
-    const query = buildQuery();
-    onQueryChange(query);
-  }, [filters, buildQuery, onQueryChange]);
-  
-  const addFilter = () => {
-    setFilters(prev => [
-      ...prev, 
-      { 
-        id: Date.now().toString(), 
-        field: fields[0]?.name || '', 
-        operator: '=', 
-        value: '' 
-      }
-    ]);
-  };
-  
-  const removeFilter = (id: string) => {
-    if (filters.length <= 1) return;
-    setFilters(prev => prev.filter(f => f.id !== id));
-  };
-  
-  const updateFilter = (id: string, field: keyof FilterCondition, value: string) => {
-    setFilters(prev => {
-      const newFilters = prev.map(f => {
-        if (f.id === id) {
-          // When changing field, reset operator to default
-          if (field === 'field') {
-            return { 
-              ...f, 
-              field: value, 
-              operator: '=',
-              value: ''
-            };
-          }
-          return { ...f, [field]: value };
-        }
-        return f;
-      });
-      return newFilters;
-    });
-  };
-  
-  const handleExecute = () => {
-    console.log('[QueryBuilder] Execute button clicked');
-    const query = buildQuery();
-    console.log('[QueryBuilder] Built query:', JSON.stringify(query, null, 2));
-    onExecute(query);
-  };
-  
-  const getFieldType = (fieldName: string): FieldType => {
-    const field = fields.find(f => f.name === fieldName);
-    return field?.type || 'string';
-  };
-  
-  const getInputType = (fieldName: string): 'text' | 'number' | 'date' => {
-    const type = getFieldType(fieldName);
-    return type === 'number' ? 'number' : type === 'date' ? 'date' : 'text';
-  };
+  }, [filters, showFilters, getFieldType]);
 
-  const canExecute = filters.every(filter => {
-    const fieldDef = fields.find(f => f.name === filter.field);
-    const operator = fieldDef ? 
-      OPERATORS_BY_TYPE[fieldDef.type as keyof typeof OPERATORS_BY_TYPE]?.find(op => op.value === filter.operator) : 
-      null;
+  useEffect(() => {
+    if (filters.length > 0) {
+      const query = buildQuery();
+      onExecute(query);
+    }
+  }, [filters, buildQuery, onExecute]);
+
+  const handleExecute = useCallback(() => {
+    if (loading || selectedFields.length === 0) return;
     
-    // Check if required values are present
-    const hasRequiredValues = operator?.inputType ? 
-      (operator.needsSecondValue ? filter.value && filter.value2 : filter.value) : 
-      true;
-      
-    return fieldDef && operator && hasRequiredValues;
-  });
+    const query = buildQuery();
+    console.log('[QueryBuilder] Executing query:', query);
+    onExecute(query);
+  }, [buildQuery, loading, onExecute, selectedFields]);
 
   if (loading) {
     return (
@@ -231,150 +196,93 @@ export const QueryBuilder = ({
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-4 border rounded-lg bg-red-50">
-        <p className="text-red-800">{error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className={cn("space-y-4", className)}>
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <div className="space-y-2">
-        {filters.map((filter) => {
-          const fieldType = getFieldType(filter.field);
-          const operators = OPERATORS_BY_TYPE[fieldType] || [];
-          const showValueInput = !['empty', '!empty', 'exists', '!exists'].includes(filter.operator);
-          const inputType = getInputType(filter.field);
-          
-          return (
-            <div key={filter.id} className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
-              <Select
-                value={filter.field}
-                onValueChange={(value) => updateFilter(filter.id, 'field', value)}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select field" />
-                </SelectTrigger>
-                <SelectContent>
-                  {fields.map((field, index) => {
-                    const fieldKey = field?.name || `field-${index}`;
-                    const filterId = filter?.id || 'no-filter';
-                    return (
-                      <SelectItem 
-                        key={`${filterId}-${fieldKey}`}
-                        value={field.name} // Use field.name as the value
-                      >
-                        {field.label || field.name}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-
-              <div className="w-32 flex-shrink-0">
-                <Select
-                  value={filter.operator}
-                  onValueChange={(value) => updateFilter(filter.id, 'operator', value)}
-                  disabled={!filter.field || loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Operator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {operators.map((op, index) => {
-                      const opValue = op?.value || `op-${index}`;
-                      const filterId = filter?.id || 'no-filter';
-                      return (
-                        <SelectItem 
-                          key={`${filterId}-${opValue}`}
-                          value={opValue}
-                        >
-                          {op?.label || opValue}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {showValueInput && (
-                <div className="flex-1 min-w-[200px]">
-                  <Input
-                    type={inputType}
-                    value={filter.value}
-                    onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
-                    placeholder="Enter value"
-                  />
-                </div>
-              )}
-              
-              {filters.length > 1 && (
+      
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle>Query Builder</CardTitle>
+            <div className="flex items-center space-x-2">
+              {fields.length > 0 && (
                 <Button
                   variant="ghost"
-                  size="icon"
-                  onClick={() => removeFilter(filter.id)}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  disabled={loading}
-                  title="Remove condition"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="text-sm text-muted-foreground"
                 >
-                  <X className="h-4 w-4" />
+                  <Filter className="mr-2 h-4 w-4" />
+                  {showFilters ? 'Hide Filters' : 'Add Filters'}
                 </Button>
               )}
             </div>
-          );
-        })}
-      </div>
-      <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <div className="flex-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addFilter}
-            className="w-full sm:w-auto"
-            disabled={loading}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Condition
-          </Button>
-        </div>
-        <div className="flex gap-2 justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFilters([])}
-            disabled={filters.length === 0 || loading}
-          >
-            <X className="mr-2 h-4 w-4" />
-            Clear All
-          </Button>
-          <Button
-            onClick={handleExecute}
-            disabled={!canExecute || loading}
-            className="min-w-[120px]"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Executing...
-              </>
-            ) : (
-              <>
-                <Play className="mr-2 h-4 w-4" />
-                Execute Query
-              </>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="field-selector" className="block text-sm font-medium mb-2">
+                Select fields to display
+              </Label>
+              <MultiSelect
+                options={fieldOptions}
+                selected={selectedFields}
+                onChange={handleFieldsChange}
+                placeholder="Select fields to display..."
+                searchPlaceholder="Search fields..."
+                emptyText="No fields available"
+                className="w-full"
+              />
+            </div>
+
+            {showFilters && (
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium">Filters</h3>
+                  {filters.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFilters([])}
+                      className="h-8 text-xs text-muted-foreground"
+                    >
+                      <X className="mr-1 h-3 w-3" />
+                      Clear All
+                    </Button>
+                  )}
+                </div>
+                {/* Filter rows rendering here */}
+              </div>
             )}
-          </Button>
-        </div>
-      </div>
+            <div className="flex justify-end pt-2">
+              <Button
+                onClick={handleExecute}
+                disabled={loading || selectedFields.length === 0}
+                className="min-w-[120px]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Executing...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Run Query
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

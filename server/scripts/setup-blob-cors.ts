@@ -34,10 +34,10 @@ async function setupBlobCors() {
         allowedOrigins: [
           'http://localhost:3000', // Local development
           'https://your-frontend-domain.com' // Production domain
-        ],
-        allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
-        allowedHeaders: ['*'],
-        exposedHeaders: ['*'],
+        ].join(','),
+        allowedMethods: ['GET', 'HEAD', 'OPTIONS'].join(','),
+        allowedHeaders: ['*'].join(','),
+        exposedHeaders: ['*'].join(','),
         maxAgeInSeconds: 86400 // 24 hours
       }
     ];
