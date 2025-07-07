@@ -20,7 +20,7 @@ export function UploadPage() {
     };
   }, []);
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (file: File): Promise<{ data?: { rowCount?: number }, count?: number }> => {
     setIsUploading(true);
     setUploadProgress(0);
     
@@ -34,8 +34,14 @@ export function UploadPage() {
         throw new Error('No authentication token available. Please sign in again.');
       }
       
-      // Use the authenticated API client with v2 imports endpoint
-      const response = await api.post('/api/v2/imports', formData, {
+      // Use the authenticated API client with v2 query imports endpoint for consistency
+      interface UploadResponse {
+        data: {
+          rowCount?: number;
+        };
+      }
+      
+      const response = await api.post<UploadResponse>('/api/v2/query/imports', formData, {
         // Don't set Content-Type header - let the browser set it with the correct boundary
         // The API client will automatically add the Authorization header
         onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & { 
@@ -50,45 +56,55 @@ export function UploadPage() {
         },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({} as Record<string, unknown>));
-        throw new Error((errorData as { error?: string }).error || 'Failed to upload file');
-      }
-
-      const result = await response.json() as { data?: { rowCount?: number }, count?: number };
-      
-      // Handle v2 response format which might be different
-      const recordCount = result.data?.rowCount ?? result.count ?? 0;
+      // Handle successful upload
+      const rowCount = response.data?.rowCount || 0;
       
       toast({
-        title: 'File uploaded successfully!',
-        description: `Processed ${recordCount} records.`,
+        title: 'Upload Successful',
+        description: `Successfully uploaded ${file.name}. Processed ${rowCount} rows.`,
         action: (
-          <ToastAction 
-            altText="View details" 
-            onClick={() => console.log('View file details', result)}
-          >
-            View Details
+          <ToastAction altText="View" onClick={() => {
+            // Navigate to the dashboard to see the uploaded file
+            window.location.href = '/';
+          }}>
+            View Files
           </ToastAction>
         ),
         open: true,
         onOpenChange: () => {}
       });
-
-      return result;
+      
+      // Reset form
+      setUploadProgress(100);
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 1000);
+      
+      return { data: { rowCount }, count: rowCount };
     } catch (error) {
       console.error('Upload error:', error);
+      
+      let errorMessage = 'Failed to upload file. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
       toast({
         variant: 'destructive',
-        title: 'Upload failed',
-        description: error instanceof Error ? error.message : 'An error occurred during upload',
+        title: 'Upload Failed',
+        description: errorMessage,
         open: true,
         onOpenChange: () => {}
       });
-      throw error;
-    } finally {
+      
       setIsUploading(false);
       setUploadProgress(0);
+      throw error;
     }
   };
 

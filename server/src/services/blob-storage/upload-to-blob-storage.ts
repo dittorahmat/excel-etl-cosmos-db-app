@@ -1,8 +1,16 @@
-import { BlobServiceClient } from '@azure/storage-blob';
+import { 
+  BlobServiceClient, 
+  StorageSharedKeyCredential,
+  BlobSASPermissions,
+  generateBlobSASQueryParameters,
+  BlobSASSignatureValues
+} from '@azure/storage-blob';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
 import { logger } from '../../utils/logger.js';
 
 let blobServiceClient: BlobServiceClient | null = null;
+let accountName: string = '';
+let accountKey: string = '';
 
 /**
  * Upload a file to Azure Blob Storage
@@ -23,6 +31,15 @@ export async function uploadToBlobStorage(
       if (!connectionString) {
         throw new Error('Azure Storage connection string is not configured');
       }
+      
+      // Extract account name and key from connection string
+      const matches = connectionString.match(/AccountName=([^;]+);AccountKey=([^;]+)/i);
+      if (!matches) {
+        throw new Error('Invalid Azure Storage connection string format');
+      }
+      
+      accountName = matches[1];
+      accountKey = matches[2];
       
       blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     }
@@ -47,13 +64,28 @@ export async function uploadToBlobStorage(
       blobHTTPHeaders: { blobContentType: contentType },
     });
 
+    // Generate SAS token that's valid for 1 hour
+    const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+    const sasToken = generateBlobSASQueryParameters(
+      {
+        containerName: containerClient.containerName,
+        blobName: sanitizedFileName,
+        permissions: BlobSASPermissions.parse("r"), // Read-only
+        startsOn: new Date(),
+        expiresOn: new Date(new Date().valueOf() + 3600 * 1000), // 1 hour from now
+      },
+      sharedKeyCredential
+    ).toString();
+
+    const sasUrl = `${blockBlobClient.url}?${sasToken}`;
+    
     logger.info('File uploaded successfully', {
       fileName: sanitizedFileName,
       requestId: uploadResponse.requestId,
-      url: blockBlobClient.url
+      url: sasUrl // Return SAS URL instead of direct URL
     });
 
-    return blockBlobClient.url;
+    return sasUrl;
   } catch (error) {
     logger.error('Error uploading file to blob storage', {
       fileName,
