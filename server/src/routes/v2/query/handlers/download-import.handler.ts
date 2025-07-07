@@ -41,7 +41,7 @@ interface ImportMetadata {
 }
 
 export class DownloadImportHandler {
-  async handle(req: Request, res: Response): Promise<void> {
+  async handle(req: Request, res: Response): Promise<Response | void> {
     try {
       const { importId } = req.params;
       

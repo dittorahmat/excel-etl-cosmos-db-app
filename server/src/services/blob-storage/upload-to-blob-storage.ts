@@ -2,8 +2,7 @@ import {
   BlobServiceClient, 
   StorageSharedKeyCredential,
   BlobSASPermissions,
-  generateBlobSASQueryParameters,
-  BlobSASSignatureValues
+  generateBlobSASQueryParameters
 } from '@azure/storage-blob';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
 import { logger } from '../../utils/logger.js';

@@ -69,6 +69,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // State for sorting
   const [sortField, setSortField] = useState('');
@@ -105,8 +106,12 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         }));
         
         setFieldDefinitions(fieldDefinitions);
-        // Select all fields by default
-        setSelectedFields(fieldDefinitions.map(f => f.name));
+        
+        // Only set default selected fields on initial load
+        if (isInitialLoad) {
+          setSelectedFields(fieldDefinitions.map(f => f.name));
+          setIsInitialLoad(false);
+        }
       }
     } catch (err) {
       console.error('Failed to load fields:', err);
@@ -114,20 +119,29 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     } finally {
       setFieldsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isInitialLoad]);
+
+  // Handle field selection changes
+  const handleFieldsChange = useCallback((fields: string[]) => {
+    setSelectedFields(fields);
+    // We don't execute the query here to avoid too many requests
+    // The user will click "Run Query" when ready
+  }, []);
 
   // Handle query execution
   const executeQuery = useCallback(async (filter: Record<string, unknown> = {}) => {
     if (!isAuthenticated) return;
     
     console.log('[DashboardPage] Executing query with filter:', filter);
+    console.log('[DashboardPage] Selected fields:', selectedFields);
+    
     setLoading(true);
     setError(null);
     
     try {
       const params = new URLSearchParams();
       
-      // Format fields as a comma-separated string
+      // Use the selected fields, or all fields if none selected
       const fieldsToQuery = selectedFields.length > 0 
         ? selectedFields.filter(Boolean).join(',')
         : fieldDefinitions.map(f => f.name).filter(Boolean).join(',');
@@ -209,6 +223,14 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       setLoading(false);
     }
   }, [isAuthenticated, selectedFields, fieldDefinitions, queryResult.pageSize, queryResult.page, sortField, sortDirection, searchQuery, queryResult.continuationToken]);
+  
+  // Update the query when selected fields change
+  useEffect(() => {
+    // Only execute query if we have selected fields and it's not the initial load
+    if (!isInitialLoad && selectedFields.length > 0) {
+      executeQuery({});
+    }
+  }, [selectedFields, isInitialLoad, executeQuery]);
 
   // Handle sort
   const handleSort = useCallback((field: string) => {
@@ -292,8 +314,11 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                 ) : fieldDefinitions.length > 0 ? (
                   <QueryBuilder 
                     fields={fieldDefinitions}
+                    selectedFields={selectedFields}
+                    onFieldsChange={handleFieldsChange}
                     onExecute={executeQuery}
                     loading={loading}
+                    defaultShowFilters={false}
                   />
                 ) : (
                   <div className="text-center p-4 text-muted-foreground">
