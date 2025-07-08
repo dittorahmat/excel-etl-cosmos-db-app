@@ -61,12 +61,14 @@ const getEnv = (key: string, defaultValue: string = ''): string => {
 export const msalConfig: Configuration = {
   auth: {
     clientId: getEnv('AZURE_CLIENT_ID'),
-    authority: `https://login.microsoftonline.com/${getEnv('AZURE_TENANT_ID', 'common')}`,
+    // Use 'organizations' as authority to support both work/school accounts and personal Microsoft accounts
+    authority: 'https://login.microsoftonline.com/organizations',
     redirectUri: getEnv('AZURE_REDIRECT_URI', window.location.origin),
     postLogoutRedirectUri: getEnv('AZURE_REDIRECT_URI', window.location.origin),
     navigateToLoginRequestUrl: false,
+    // Known authorities for both the tenant and common endpoints
     knownAuthorities: [
-      // For Azure AD v2.0, use the tenant ID if available, otherwise use common
+      'login.microsoftonline.com',
       `https://login.microsoftonline.com/${getEnv('AZURE_TENANT_ID', 'common')}`
     ] as string[],
     protocolMode: 'AAD',
@@ -96,11 +98,11 @@ export const msalConfig: Configuration = {
 // Type-safe login request configuration
 export const loginRequest = {
   scopes: ['openid', 'profile', 'email', 'User.Read'],
+  // Use 'select_account' to always show account picker
   prompt: 'select_account',
-  loginHint: '', // Optional: Pre-fill the username/email address
-  domainHint: getEnv('AZURE_TENANT_ID') ? 'organizations' : undefined,
+  // Add domain hint to help with B2B authentication
   extraQueryParameters: {
-    // Add any additional query parameters here
+    domain_hint: 'organizations',
     nux: '1', // Shows the account picker even if only one account is available
   },
 } as const;

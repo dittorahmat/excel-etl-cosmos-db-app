@@ -13,28 +13,37 @@ export class ListImportsHandler extends BaseQueryHandler {
 
   public async handle(req: Request, res: Response): Promise<Response | void> {
     const logContext = { requestId: Math.random().toString(36).substring(2, 9) };
+    const isPostRequest = req.method === 'POST';
 
     logger.info('listImports - Starting request', { 
       ...logContext,
       method: req.method,
       url: req.originalUrl,
-      query: req.query,
+      query: isPostRequest ? 'POST body' : req.query,
     });
 
     try {
-      // Parse and validate query parameters
-      logger.info('listImports - Parsing query parameters', logContext);
-      const parseResult = queryParamsSchema.safeParse(req.query);
+      // For POST requests, use the request body, otherwise use query parameters
+      const inputParams = isPostRequest ? req.body : req.query;
+      
+      // Parse and validate parameters
+      logger.info('listImports - Parsing parameters', { 
+        ...logContext,
+        source: isPostRequest ? 'body' : 'query',
+        params: inputParams
+      });
+      
+      const parseResult = queryParamsSchema.safeParse(inputParams);
       
       if (!parseResult.success) {
-        logger.error('listImports - Invalid query parameters', { 
+        logger.error('listImports - Invalid parameters', { 
           ...logContext,
           error: parseResult.error,
           issues: parseResult.error.issues 
         });
         return res.status(400).json({ 
           success: false, 
-          error: 'Invalid query parameters',
+          error: 'Invalid parameters',
           issues: parseResult.error.issues 
         });
       }
@@ -45,89 +54,110 @@ export class ListImportsHandler extends BaseQueryHandler {
         queryParams 
       });
 
-      // Define the import metadata type
-      interface ImportMetadata {
-        id: string;
-        _importId: string;
-        fileName: string;
-        status: string;
-        rowCount: number;
-        createdAt: string;
-        updatedAt: string;
-        [key: string]: unknown; // Allow additional properties
-      }
+      
 
       // Prepare query parameters with continuation token
-      const queryParamsWithContinuation = {
+      const queryParamsWithContinuation: QueryParams = {
         ...queryParams,
         sort: queryParams.sort || '-createdAt', // Default sort by newest first
         filter: {
           ...(queryParams.filter || {}),
           documentType: 'excel-import' // Let the query builder handle this
         },
-        continuationToken: queryParams.continuationToken
-      } as QueryParams;
+        continuationToken: queryParams.continuationToken,
+        fields: queryParams.fields ? queryParams.fields.join(',') : undefined
+      };
 
-      // Get all imports (documentType filter is added by the query builder)
-      const { 
-        items: imports = [], 
-        requestCharge: importsCharge,
-        continuationToken,
-        hasMoreResults
-      } = await this.executeQuery<ImportMetadata>(queryParamsWithContinuation);
+      // Get the total count of matching documents
+      const totalCount = await this.getTotalCount([], []);
 
-      // Ensure imports is an array
-      const safeImports = Array.isArray(imports) ? imports : [];
+      // Execute the query
+      const { items, requestCharge, continuationToken, hasMoreResults } = 
+        await this.executeQuery<Record<string, unknown>>(
+          queryParamsWithContinuation,
+          [],
+          []
+        );
 
-      logger.info('listImports - Found imports', {
+      logger.info('listImports - Found imports', { 
         ...logContext,
-        importCount: safeImports.length,
-        requestCharge: importsCharge,
+        importCount: items.length,
+        hasMoreResults,
+        hasContinuationToken: !!continuationToken,
+        requestCharge,
+      });
+
+      // If we have fields to select, we need to ensure we only return those fields
+      const selectedFields = queryParams.fields && queryParams.fields.length > 0 
+        ? queryParams.fields 
+        : null;
+      
+      const processedItems = items.map(item => {
+        // If no specific fields are requested, return the full item
+        if (!selectedFields) {
+          return item;
+        }
+        
+        // Otherwise, only include the selected fields
+        const result: Record<string, unknown> = {};
+        selectedFields.forEach(field => {
+          // Handle nested fields if needed (e.g., 'user.name')
+          const fieldParts = field.split('.');
+          let value: unknown = item;
+          
+          try {
+            for (const part of fieldParts) {
+              value = (value as Record<string, unknown>)[part];
+              if (value === undefined) break;
+            }
+            // Only add the field if it exists in the document
+            if (value !== undefined) {
+              result[field] = value;
+            }
+          } catch (error) {
+            // Skip fields that cause errors during access
+            logger.debug(`Error accessing field ${field}`, { error, item });
+          }
+        });
+        
+        // Always include id and documentType fields if they exist
+        if ('id' in item) result.id = item.id;
+        if ('documentType' in item) result.documentType = item.documentType;
+        
+        return result;
+      });
+
+      // Calculate pagination info
+      const pageSize = queryParams.limit || 100;
+      const page = queryParams.offset ? Math.floor(queryParams.offset / pageSize) + 1 : 1;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      logger.debug('listImports - Sending response', {
+        ...logContext,
+        itemCount: processedItems.length,
+        totalCount,
         hasMoreResults,
         hasContinuationToken: !!continuationToken
       });
 
-      // Get row counts for each import
-      const importsWithRowCounts = await Promise.all(
-        safeImports.map(async (imp) => {
-          const { items: [rowCount] } = await this.executeQuery<number>(
-            { limit: 1, offset: 0 },
-            [
-              'c._importId = @importId',
-              'c.documentType = @rowDocumentType'
-            ],
-            [
-              { name: '@importId', value: imp._importId },
-              { name: '@rowDocumentType', value: 'excel-row' }
-            ]
-          );
-          return {
-            ...imp,
-            rowCount: rowCount || 0,
-          };
-        })
-      );
-
-      // Ensure we have an array of imports with row counts
-      const safeImportsWithRowCounts = Array.isArray(importsWithRowCounts) ? importsWithRowCounts : [];
-
-      // Return the response with pagination info
+      // Prepare the response
       const response = {
         success: true,
         data: {
-          items: safeImportsWithRowCounts,
-          total: safeImportsWithRowCounts.length,
-          page: queryParams.offset ? Math.floor(queryParams.offset / queryParams.limit) + 1 : 1,
-          pageSize: queryParams.limit || safeImportsWithRowCounts.length,
-          totalPages: queryParams.limit ? Math.ceil(safeImportsWithRowCounts.length / queryParams.limit) : 1,
+          items: processedItems,
+          total: totalCount,
+          page,
+          pageSize,
+          totalPages,
+          fields: selectedFields || (processedItems.length > 0 ? Object.keys(processedItems[0]) : [])
         },
         pagination: {
-          total: safeImportsWithRowCounts.length,
-          limit: queryParams.limit || safeImportsWithRowCounts.length,
+          total: totalCount,
+          limit: pageSize,
           offset: queryParams.offset || 0,
-          ...(continuationToken && { continuationToken }),
-          hasMoreResults: hasMoreResults || false
-        },
+          hasMoreResults: hasMoreResults || false,
+          ...(continuationToken && { continuationToken })
+        }
       };
 
       logger.debug('listImports - Sending response', {

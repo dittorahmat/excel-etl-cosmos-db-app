@@ -96,8 +96,19 @@ export function buildCosmosQuery(params: QueryParams, importId?: string) {
   // The actual pagination will be handled by the query executor
   const limitClause = params.limit ? ` TOP ${params.limit}` : '';
 
+  // Build the SELECT clause based on requested fields
+  let selectClause: string;
+  if (params.fields && params.fields.length > 0) {
+    // If specific fields are requested, select only those fields
+    const fieldList = params.fields.split(',').map(field => `c["${field}"]`).join(', ');
+    selectClause = `SELECT${limitClause} ${fieldList} FROM c`;
+  } else {
+    // If no fields are specified, select all fields
+    selectClause = `SELECT${limitClause} * FROM c`;
+  }
+
   // Build the final query
-  const query = `SELECT${limitClause} * FROM c ${whereClause}${orderByClause}`;
+  const query = `${selectClause} ${whereClause}${orderByClause}`;
 
   return {
     query,

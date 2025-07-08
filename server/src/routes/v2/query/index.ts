@@ -28,6 +28,7 @@ router.get('/imports/:importId', getImportMetadataHandler.handle.bind(getImportM
 
 // List all imports with pagination
 router.get('/imports', listImportsHandler.handle.bind(listImportsHandler));
+router.post('/imports', listImportsHandler.handle.bind(listImportsHandler));
 
 // Download import file
 router.get('/imports/:importId/download', downloadImportHandler.handle.bind(downloadImportHandler));

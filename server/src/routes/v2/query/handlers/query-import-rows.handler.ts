@@ -72,7 +72,7 @@ export class QueryImportRowsHandler extends BaseQueryHandler {
 
       // Execute the query
       const { items, requestCharge } = await this.executeQuery<Record<string, unknown>>(
-        queryParams,
+        { ...queryParams, fields: queryParams.fields ? queryParams.fields.join(',') : undefined },
         [
           `(${importIdClauses.join(' OR ')})`,
           'c.documentType = @documentType'
@@ -109,7 +109,7 @@ export class QueryImportRowsHandler extends BaseQueryHandler {
         success: true,
         data: {
           items: safeItems,
-          fields: queryParams.fields ? queryParams.fields.split(',') : [],
+          fields: queryParams.fields || [],
           total: totalCount,
           page: Math.floor((queryParams.offset || 0) / (queryParams.limit || 10)) + 1,
           pageSize: queryParams.limit || 10,

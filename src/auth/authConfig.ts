@@ -12,13 +12,14 @@ const getOrigin = (): string => {
 // Azure AD Configuration
 const azureAdConfig = {
   clientId: env.VITE_AZURE_CLIENT_ID || '',
-  tenantId: env.VITE_AZURE_TENANT_ID || 'common',
+  tenantId: env.VITE_AZURE_TENANT_ID || 'organizations',
   redirectUri: env.VITE_AZURE_REDIRECT_URI || getOrigin(),
   scopes: (env.VITE_AZURE_SCOPES || 'User.Read openid profile email').split(' '),
-  // Use the tenant-specific endpoint for better security
-  authority: `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'common'}`,
-  // Explicitly set the knownAuthorities for the tenant
+  // Use 'organizations' as authority to support both work/school accounts and personal Microsoft accounts
+  authority: 'https://login.microsoftonline.com/organizations',
+  // Known authorities for both the tenant and common endpoints
   knownAuthorities: [
+    'login.microsoftonline.com',
     `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'common'}`
   ]
 };
@@ -96,16 +97,17 @@ export const msalConfig = {
 // Login request configuration
 export const loginRequest = {
   scopes: azureAdConfig.scopes,
+  // Use 'select_account' to always show account picker
   prompt: 'select_account',
+  // Add domain hint to help with B2B authentication
   extraQueryParameters: {
+    domain_hint: 'organizations',
     // Ensure client_id is included in the request
     client_id: azureAdConfig.clientId,
     // Add any additional parameters required by your Azure AD app
-    response_type: 'code',
     response_mode: 'fragment',
-    domain_hint: 'organizations', // or 'consumers' for personal accounts
-    // Add nonce for security
-    nonce: window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
+    response_type: 'id_token token',
+    scope: azureAdConfig.scopes.join(' '),
   },
   // Explicitly disable the default token cache
   tokenQueryParameters: {
