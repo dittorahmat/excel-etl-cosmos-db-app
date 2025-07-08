@@ -39,8 +39,12 @@ export const queryParamsSchema = z.object({
   // Sorting
   sort: z.string().optional(),
   
-  // Field selection
-  fields: z.string().optional(),
+  // Field selection - can be comma-separated string, array of strings, or undefined
+  fields: z.union([
+    z.string().transform(val => val.split(',').map(f => f.trim()).filter(Boolean)),
+    z.array(z.string()),
+    z.undefined()
+  ]).optional(),
 
   // Continuation token for pagination
   continuationToken: z.string().optional(),

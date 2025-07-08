@@ -123,9 +123,10 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   // Handle field selection changes
   const handleFieldsChange = useCallback((fields: string[]) => {
+    console.log('[DashboardPage] Fields changed:', fields);
     setSelectedFields(fields);
-    // We don't execute the query here to avoid too many requests
-    // The user will click "Run Query" when ready
+    // Update URL or local storage if you want to persist the selection
+    // For now, we'll just log it and let the user click "Run Query"
   }, []);
 
   // Handle query execution
@@ -139,45 +140,33 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     setError(null);
     
     try {
-      const params = new URLSearchParams();
       
-      // Use the selected fields, or all fields if none selected
+      // Only include fields that are actually selected and exist in fieldDefinitions
       const fieldsToQuery = selectedFields.length > 0 
-        ? selectedFields.filter(Boolean).join(',')
-        : fieldDefinitions.map(f => f.name).filter(Boolean).join(',');
+        ? selectedFields.filter(Boolean).filter(field => 
+            fieldDefinitions.some(f => f.name === field)
+          )
+        : [];
       
-      if (fieldsToQuery) {
-        params.append('fields', fieldsToQuery);
-      }
+      console.log('[DashboardPage] Fields to query:', fieldsToQuery);
       
-      // Use continuation token for pagination
-      if (queryResult.continuationToken) {
-        params.append('continuationToken', queryResult.continuationToken);
-      } else {
-        // Only set limit/offset if we don't have a continuation token
-        params.append('limit', queryResult.pageSize.toString());
-        params.append('offset', ((queryResult.page - 1) * queryResult.pageSize).toString());
-      }
+      // We'll pass fields in the request body instead of URL params
+      const requestBody = {
+        fields: fieldsToQuery,
+        filter: Object.keys(filter).length > 0 ? filter : undefined,
+        limit: queryResult.continuationToken ? undefined : queryResult.pageSize,
+        offset: queryResult.continuationToken ? undefined : (queryResult.page - 1) * queryResult.pageSize,
+        sort: sortField ? `${sortField}:${sortDirection}` : undefined,
+        search: searchQuery || undefined,
+        continuationToken: queryResult.continuationToken
+      };
       
-      if (sortField) {
-        params.append('sort', `${sortField}:${sortDirection}`);
-      }
+      console.log('[DashboardPage] Request body:', requestBody);
       
-      if (searchQuery) {
-        params.append('search', searchQuery);
-      }
-      
-      // Add filter as a single parameter
-      if (Object.keys(filter).length > 0) {
-        const filterString = JSON.stringify(filter);
-        console.log('[DashboardPage] Adding filter parameter:', filterString);
-        params.append('filter', filterString);
-      }
-      
-      const url = `/api/v2/query/imports?${params.toString()}`;
+      const url = '/api/v2/query/imports';
       console.log('[DashboardPage] Making request to:', url);
       
-      const response = await api.get<QueryResponseData>(url);
+      const response = await api.post<QueryResponseData>(url, requestBody);
       console.log('[DashboardPage] Received response:', response);
       
       if (response) {
