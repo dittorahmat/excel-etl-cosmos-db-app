@@ -9,8 +9,10 @@ const getOrigin = (): string => {
   return env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000';
 };
 
+import { LogLevel } from '@azure/msal-browser';
+
 // Azure AD Configuration
-const azureAdConfig = {
+export const azureAdConfig = {
   clientId: env.VITE_AZURE_CLIENT_ID || '',
   tenantId: env.VITE_AZURE_TENANT_ID || 'organizations',
   redirectUri: env.VITE_AZURE_REDIRECT_URI || getOrigin(),
@@ -22,7 +24,7 @@ const azureAdConfig = {
     'login.microsoftonline.com',
     `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'common'}`
   ]
-};
+} as const;
 
 // Log the actual configuration being used
 console.log('Azure AD Configuration:', {
@@ -89,7 +91,7 @@ export const msalConfig = {
             console.log(message);
         }
       },
-      logLevel: import.meta.env.DEV ? 'Info' : 'Error',
+      logLevel: import.meta.env.DEV ? LogLevel.Info : LogLevel.Error,
     },
   },
 };
