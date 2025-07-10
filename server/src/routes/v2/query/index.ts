@@ -23,6 +23,16 @@ router.get('/imports/:importId/rows', queryImportRowsHandler.handle.bind(queryIm
 // Query rows across all imports
 router.get('/rows', queryAllRowsHandler.handle.bind(queryAllRowsHandler));
 
+// Query exactly Name, Email, Phone
+import { queryRowsExactHandler } from './handlers/query-rows-exact.handler.js';
+import express from 'express';
+
+// Add JSON body parser middleware specifically for this route
+router.post('/rows', 
+  express.json(), // Add JSON body parser middleware
+  queryRowsExactHandler.handle.bind(queryRowsExactHandler)
+);
+
 // Get import metadata by ID
 router.get('/imports/:importId', getImportMetadataHandler.handle.bind(getImportMetadataHandler));
 
