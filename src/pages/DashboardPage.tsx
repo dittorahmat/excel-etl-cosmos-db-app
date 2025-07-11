@@ -6,7 +6,7 @@ import { api } from '../utils/api';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { QueryBuilder } from '../components/QueryBuilder';
+import { QueryBuilder } from '../components/QueryBuilder/QueryBuilder';
 import { DataChart } from '../components/DataChart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileListTable } from '../components/FileListTable';
@@ -68,6 +68,13 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Debug: Log fields and selectedFields before rendering QueryBuilder
+  useEffect(() => {
+    console.log('[DashboardPage] Passing to QueryBuilder - fieldDefinitions:', fieldDefinitions);
+    console.log('[DashboardPage] Passing to QueryBuilder - selectedFields:', selectedFields);
+    console.log('[DashboardPage] Passing to QueryBuilder - fieldsLoading:', fieldsLoading);
+  }, [fieldDefinitions, selectedFields, fieldsLoading]);
   
   // State for sorting
   const [sortField, setSortField] = useState('');
