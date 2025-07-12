@@ -139,7 +139,14 @@ export const FieldSelector = ({
             </Button>
           </div>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()} forceMount tabIndex={-1}>
+        <PopoverContent
+  className="w-[400px] p-0"
+  align="start"
+  tabIndex={-1}
+  onKeyDown={(e) => {
+    if (e.key === "Escape") setIsOpen(false);
+  }}
+>
           <Command className="rounded-lg border shadow-md">
             <div className="px-3 pt-2">
               <CommandInput
@@ -164,19 +171,6 @@ export const FieldSelector = ({
                     onSelect={() => {
                       console.log('[FieldSelector] onSelect triggered for:', option.value);
                       handleFieldSelect(option.value);
-                    }}
-                    onClick={(e) => {
-                      console.log('[FieldSelector] onClick triggered for:', option.value);
-                      e.stopPropagation();
-                      handleFieldSelect(option.value);
-                    }}
-                    onPointerDown={(e) => {
-                      console.log('[FieldSelector] onPointerDown triggered for:', option.value);
-                      e.stopPropagation();
-                    }}
-                    onMouseDown={(e) => {
-                      console.log('[FieldSelector] onMouseDown triggered for:', option.value);
-                      e.stopPropagation();
                     }}
                     disabled={false}
                     data-disabled="false"
