@@ -40,21 +40,16 @@ export function QueryBuilder({
 
   // Field options for the dropdown
   const fieldOptions = useMemo<FieldOption[]>(() => {
-    console.log('[QueryBuilder] Processing fields:', fields);
     if (!fields || !Array.isArray(fields)) {
       console.warn("Invalid fields prop:", fields);
       return [];
     }
 
-    const options = fields.map((field) => ({
+    return fields.map((field) => ({
       value: field.name,
       label: field.label || field.name,
       type: field.type,
-      ...field,
     }));
-    
-    console.log('[QueryBuilder] Generated field options:', options);
-    return options;
   }, [fields]);
   
   // Handle fields change
@@ -63,17 +58,7 @@ export function QueryBuilder({
     onFieldsChange(newFields);
   }, [onFieldsChange]);
 
-  // Handle filter changes
-  const handleFilterChange = useCallback(
-    (id: string, updates: Partial<FilterCondition>) => {
-      setFilters((prev) =>
-        prev.map((filter) =>
-          filter.id === id ? { ...filter, ...updates } : filter
-        )
-      );
-    },
-    []
-  );
+  // Handle filter changes - using direct state setter in JSX now
 
   // Add a new filter
   const handleAddFilter = useCallback(() => {
@@ -83,7 +68,7 @@ export function QueryBuilder({
       operator: "",
       value: "",
     };
-    setFilters((prev) => [...prev, newFilter]);
+    setFilters((prevFilters) => [...prevFilters, newFilter]);
   }, []);
 
   // Remove a filter
@@ -133,29 +118,47 @@ export function QueryBuilder({
   return (
     <div className={cn("space-y-4", className)}>
       <div className="space-y-4">
-        {/* Field Selection */}
-        <div className="space-y-2">
-          <FieldSelector
-            fields={fieldOptions}
-            selectedFields={selectedFields}
-            onFieldsChange={handleFieldsChange}
-            loading={fieldsLoading}
-            disabled={fieldsLoading}
-          />
-          {error && <div className="text-sm text-destructive">{error}</div>}
+        <div className="flex items-start justify-between gap-4">
+          {/* Field Selection */}
+          <div className="flex-1 space-y-2">
+            <FieldSelector
+              fields={fieldOptions}
+              selectedFields={selectedFields}
+              onFieldsChange={handleFieldsChange}
+              loading={fieldsLoading}
+              disabled={fieldsLoading}
+            />
+            {error && <div className="text-sm text-destructive">{error}</div>}
+          </div>
+
+          {/* Show Filters Button */}
+          {!showFilters && (
+            <div className="pt-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(true)}
+                className="h-auto p-0 text-sm"
+              >
+                Show filters
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Filters Section */}
-        <div className="space-y-2">
-          <FilterControls
-            fields={fieldOptions}
-            filters={filters}
-            onFiltersChange={handleFilterChange}
-            onAddFilter={handleAddFilter}
-            onRemoveFilter={handleRemoveFilter}
-            defaultShowFilters={showFilters}
-          />
-        </div>
+        {/* Filters Section - Only shown when filters are expanded */}
+        {showFilters && (
+          <div className="space-y-2">
+            <FilterControls
+              fields={fieldOptions}
+              filters={filters}
+              onFiltersChange={(newFilters) => setFilters(newFilters)}
+              onAddFilter={handleAddFilter}
+              onRemoveFilter={handleRemoveFilter}
+              defaultShowFilters={true}
+            />
+          </div>
+        )}
       </div>
 
       {/* Execute Button */}
