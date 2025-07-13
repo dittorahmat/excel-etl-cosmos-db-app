@@ -18,7 +18,7 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
     };
     
     // Log raw request info
-    const rawBody = (req as any).rawBody || 'No raw body';
+    const rawBody = (req as unknown as { rawBody: unknown }).rawBody || 'No raw body';
     log('Raw request info:', {
       method: req.method,
       url: req.url,
