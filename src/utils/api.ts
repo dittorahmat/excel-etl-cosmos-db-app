@@ -233,25 +233,7 @@ export const authFetch = async <T = unknown>(
     await sleep(waitTime);
   }
 
-  // Prepare the request body
-  let body: BodyInit | null | undefined;
   
-  if (options.body === null || options.body === undefined) {
-    body = null;
-  } else if (options.body instanceof FormData || 
-             options.body instanceof Blob || 
-             options.body instanceof URLSearchParams || 
-             typeof options.body === 'string' || 
-             ArrayBuffer.isView(options.body)) {
-    body = options.body as BodyInit;
-  } else if (typeof options.body === 'object') {
-    body = JSON.stringify(options.body);
-    if (!headers['Content-Type']) {
-      headers['Content-Type'] = 'application/json';
-    }
-  } else {
-    body = String(options.body);
-  }
 
   // Convert headers to a format that fetch can use
   const fetchHeaders: Record<string, string> = {};
@@ -385,7 +367,7 @@ export const authFetch = async <T = unknown>(
       console.log(`[API] Making request to ${requestUrl} (attempt ${attempt + 1}/${_RATE_LIMIT_RETRY_ATTEMPTS + 1})`);
       
       // Create a properly typed RequestInit object
-      const { onUploadProgress, ...fetchOptions } = options;
+      const { ...fetchOptions } = options;
       
       // Set default method if not provided
       if (!fetchOptions.method) {

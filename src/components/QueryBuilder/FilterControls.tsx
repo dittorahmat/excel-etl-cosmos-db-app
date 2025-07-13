@@ -314,6 +314,6 @@ export function FilterControls({
       </div>
     </div>
   );
-};
+}
 
 export default FilterControls;
