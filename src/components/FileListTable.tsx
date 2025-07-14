@@ -122,26 +122,7 @@ export function FileListTable() {
     return () => {
       isMounted.current = false;
     };
-  }, [fetchFiles]);
-
-  useEffect(() => {
-    fetchFiles();
-  }, [page, fetchFiles]);
-
-  useEffect(() => {
-    const debugFetch = async () => {
-      try {
-        console.log('Debug: Fetching files from /api/v2/query/imports');
-        const response = await api.get('/api/v2/query/imports?page=1&pageSize=10');
-        console.log('Debug: API Response:', response);
-      } catch (err) {
-        console.error('Debug: API Error:', err);
-      }
-    };
-    
-    debugFetch();
-    console.log('FileListTable state:', { files, loading, error, page, totalPages });
-  }, [files, loading, error, page, totalPages]);
+  }, [page]);
 
   const handleDownload = async (fileId: string, fileName: string) => {
     try {
@@ -207,7 +188,7 @@ export function FileListTable() {
 
   if (loading && files.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64" data-testid="loading-indicator">
         <Loader2 className="h-8 w-8 animate-spin" />
         <span className="ml-2">Loading files...</span>
       </div>
@@ -280,6 +261,7 @@ export function FileListTable() {
                     size="sm"
                     onClick={() => handleDownload(file.id, file.name)}
                     disabled={file.status !== 'completed'}
+                    data-testid={`download-button-${file.id}`}
                   >
                     <Download className="h-4 w-4 mr-1" />
                     Download
@@ -289,6 +271,7 @@ export function FileListTable() {
                     size="sm"
                     className="text-red-600 hover:text-red-800"
                     onClick={() => handleDelete(file.id)}
+                    data-testid={`delete-button-${file.id}`}
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
                     Delete
@@ -298,7 +281,7 @@ export function FileListTable() {
             ))}
             {files.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground" data-testid="no-files-message">
                   No files uploaded yet. Upload a file to get started.
                 </TableCell>
               </TableRow>

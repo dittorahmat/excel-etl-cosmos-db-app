@@ -4,13 +4,18 @@ A modern React dashboard application for uploading Excel files, visualizing data
 
 ## Features
 
-- **Modern React Dashboard**: Built with Vite, TypeScript, and React 18
-- **Secure Authentication**: Azure AD OAuth 2.0 integration with MSAL
-- **Excel File Processing**: Upload and preview Excel files with dynamic schema detection
-- **Data Visualization**: Interactive charts and tables for data analysis
-- **Responsive Design**: Works on desktop and tablet devices
-- **Type Safety**: Full TypeScript support throughout the codebase
-- **Testing**: Comprehensive test suite with Vitest and React Testing Library
+- **Modern React Dashboard**: Built with Vite, TypeScript, and React 18 for a fast and responsive user experience.
+- **Secure Authentication**: Integrates Azure AD OAuth 2.0 with MSAL for robust user authentication and authorization. Supports both interactive (popup) and silent token acquisition.
+- **API Key Management**: Allows users to generate, list, and revoke API keys for programmatic access to data, with features like IP restrictions and usage tracking.
+- **Excel & CSV File Processing**: Enables uploading of Excel (.xlsx, .xls) and CSV files, with backend processing for dynamic schema detection and data extraction.
+- **Data Ingestion to Cosmos DB**: Efficiently ingests processed data from Excel/CSV files into Azure Cosmos DB, handling large datasets through batching.
+- **Data Visualization**: Provides interactive charts (bar, line, pie) and tables for comprehensive data analysis, powered by Recharts.
+- **Dynamic Query Builder**: Features a user-friendly query builder with dynamic field selection and filter controls to retrieve specific data from Cosmos DB.
+- **File Management**: Displays a list of uploaded files with their processing status, record counts, and options to download original files or delete records.
+- **Responsive Design**: Ensures a consistent and optimized user experience across various devices (desktop, tablet).
+- **Type Safety**: Full TypeScript support across both frontend and backend for enhanced code quality and maintainability.
+- **Comprehensive Testing**: Includes a robust test suite with Vitest and React Testing Library for thorough unit and integration testing.
+- **Centralized Logging & Monitoring**: Implements detailed request logging, API key usage tracking, and health check endpoints for operational visibility.
 
 ## 🚀 Getting Started
 
@@ -20,20 +25,67 @@ A modern React dashboard application for uploading Excel files, visualizing data
 - npm or yarn
 - Azure AD App Registration
 - Azure Cosmos DB account
+- Azure Storage account
 
 ### Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the root directory with the following variables (copy from `.env.example`):
 
 ```env
-# Azure AD Configuration
+# Azure AD Configuration (Frontend)
 VITE_AZURE_AD_CLIENT_ID=your-client-id
 VITE_AZURE_AD_TENANT_ID=your-tenant-id
 VITE_AZURE_AD_REDIRECT_URI=http://localhost:3000
 VITE_API_SCOPE=api://your-api-scope
 
-# Backend API URL
-VITE_API_URL=http://localhost:7071
+# Backend API URL (Frontend)
+VITE_API_URL=http://localhost:3001
+
+# Server Configuration (Backend)
+PORT=3001
+NODE_ENV=development
+LOG_LEVEL=info
+
+# Azure Storage Configuration (Backend)
+AZURE_STORAGE_CONNECTION_STRING=your_storage_connection_string
+AZURE_STORAGE_CONTAINER=excel-uploads
+AZURE_STORAGE_ACCOUNT_NAME=your_storage_account
+
+# Azure Cosmos DB Configuration (Backend)
+AZURE_COSMOS_ENDPOINT=your_cosmos_endpoint
+AZURE_COSMOS_KEY=your_cosmos_key
+AZURE_COSMOS_DATABASE=excel-upload-db
+AZURE_COSMOS_CONTAINER=excel-records
+AZURE_COSMOS_PARTITION_KEY=/partitionKey
+
+# Azure AD Authentication (Backend)
+AUTH_ENABLED=true
+AZURE_TENANT_ID=your_tenant-id
+AZURE_CLIENT_ID=your_client-id
+AZURE_CLIENT_SECRET=your_client_secret
+AZURE_AUDIENCE=api://your_client_id
+
+# API Key Configuration (Backend)
+API_KEYS_ENABLED=true
+API_KEY_DEFAULT_EXPIRATION_DAYS=365
+API_KEY_MAX_KEYS_PER_USER=10
+API_KEY_RATE_LIMIT=1000
+API_KEY_ENABLE_IP_RESTRICTIONS=true
+API_KEY_ALLOWED_IPS=127.0.0.1,::1,192.168.1.0/24
+API_KEY_LOGGING_ENABLED=true
+API_KEY_USAGE_RETENTION_DAYS=90
+
+# Rate Limiting (Backend)
+RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+RATE_LIMIT_MAX_REQUESTS=1000
+RATE_LIMIT_MESSAGE="Too many requests, please try again later"
+
+# Logging (Backend)
+LOG_TO_FILE=true
+LOG_FILE_PATH=logs/app.log
+LOG_ROTATION_ENABLED=true
+LOG_ROTATION_MAX_SIZE=10m
+LOG_ROTATION_MAX_FILES=14d
 ```
 
 ### Installation
@@ -47,18 +99,15 @@ VITE_API_URL=http://localhost:7071
 2. Install dependencies:
    ```bash
    npm install
-   # or
-   yarn
    ```
 
-3. Start the development server:
+3. Start the development server (both frontend and backend):
    ```bash
    npm run dev
-   # or
-   yarn dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser for the frontend.
+5. The backend API will be available at `http://localhost:3001`.
 
 ## 🔧 Development
 
@@ -83,55 +132,57 @@ VITE_API_URL=http://localhost:7071
 - [Vitest](https://vitest.dev/) - Testing framework
 - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) - Component testing
 
-## 📦 Deployment
+## API Endpoints
 
-### Building for Production
+### Authentication Endpoints
 
-```bash
-npm run build
-# or
-yarn build
+#### `GET /api/auth/status`
+
+Checks if authentication is enabled on the server.
+
+**Response**:
+```json
+{
+  "authRequired": true, // or false
+  "authType": "jwt" // or "none"
+}
 ```
 
-This will create a `dist` directory with the production build.
+### API Key Management Endpoints
 
-### Azure Static Web Apps
+#### `POST /api/keys`
 
-This project is configured for deployment to Azure Static Web Apps. To deploy:
+Creates a new API key for the authenticated user.
 
-1. Push your code to a GitHub repository
-2. Create a new Static Web App in the Azure Portal
-3. Connect to your GitHub repository
-4. Configure the build settings:
-   - App location: `/`
-   - Output location: `dist`
-   - App build command: `npm run build`
+**Authentication**: Azure AD token required
 
-## 🤝 Contributing
+**Request Body**:
+```json
+{
+  "name": "My New API Key",
+  "expiresAt": "2025-12-31T23:59:59Z", // Optional, ISO 8601 format
+  "allowedIps": ["192.168.1.1", "10.0.0.0/8"] // Optional, array of IPs or CIDR
+}
+```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-        "lastUsed": "2025-06-14T09:15:00.000Z"
-      }
-    ],
-    "rateLimit": {
-      "limit": 1000,
-      "remaining": 577,
-      "reset": 1623772800
-    }
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "key": "<GENERATED_API_KEY_VALUE>", // IMPORTANT: This is shown only once
+    "id": "key_uuid",
+    "name": "My New API Key",
+    "createdAt": "2025-07-14T10:00:00Z",
+    "expiresAt": "2025-12-31T23:59:59Z",
+    "allowedIps": ["192.168.1.1"]
   }
 }
 ```
 
-#### GET /api/keys
-List all API keys for the current user.
+#### `GET /api/keys`
+
+Lists all API keys for the current user.
 
 **Authentication**: Azure AD token required
 
@@ -141,19 +192,21 @@ List all API keys for the current user.
   "success": true,
   "data": [
     {
-      "id": "key_12345",
+      "id": "key_uuid",
       "name": "My API Key",
-      "createdAt": "2025-06-15T12:00:00.000Z",
-      "expiresAt": "2025-12-31T23:59:59.999Z",
-      "lastUsedAt": "2025-06-15T14:30:00.000Z",
-      "isActive": true
+      "isActive": true,
+      "createdAt": "2025-07-14T10:00:00Z",
+      "expiresAt": "2025-12-31T23:59:59Z",
+      "lastUsedAt": "2025-07-14T10:30:00Z",
+      "allowedIps": ["192.168.1.1"]
     }
   ]
 }
 ```
 
-#### DELETE /api/keys/:keyId
-Revoke an API key.
+#### `DELETE /api/keys/:keyId`
+
+Revokes an API key by setting its `isActive` status to `false`.
 
 **Authentication**: Azure AD token required
 
@@ -165,162 +218,150 @@ Revoke an API key.
 }
 ```
 
-## API Endpoints
+### Data Ingestion and Query Endpoints
 
-### Data Query API
+#### `POST /api/v2/query/imports`
 
-#### GET /api/data
+Uploads and processes an Excel or CSV file, ingesting its data into Cosmos DB.
 
-Query data from Cosmos DB with flexible filtering.
+**Authentication**: Azure AD token required
 
-**Authentication**: Azure AD token or API key required
+**Request Body**: `multipart/form-data` with a file field named `file`.
 
-**Query Parameters**:
-
-| Parameter | Type | Description | Example |
-|-----------|------|-------------|---------|
-| startDate | string | Filter records with date >= startDate (ISO format or YYYY-MM-DD) | `2025-01-01` |
-| endDate | string | Filter records with date <= endDate (ISO format or YYYY-MM-DD) | `2025-12-31` |
-| category | string | Filter by category (case-insensitive) | `expenses` |
-| limit | number | Maximum number of records to return (1-1000, default: 100) | `50` |
-| continuationToken | string | Token for pagination (from previous response) | `token123` |
-| [field] | string | Filter by any field (exact match, case-insensitive) | `status=active` |
-
-**Example Request**:
-```http
-GET /api/data?startDate=2025-01-01&category=expenses&limit=10
-Authorization: Bearer <your-jwt-token>
-```
-
-**Example Response**:
+**Response**:
 ```json
 {
-  "items": [
-    {
-      "id": "1",
-      "category": "expenses",
-      "date": "2025-01-15",
-      "amount": 100.5,
-      "description": "Office supplies"
-    },
-    ...
-  ],
-  "count": 10,
-  "continuationToken": "token123"
+  "success": true,
+  "data": {
+    "rowCount": 123 // Number of rows processed
+  }
 }
 ```
 
-## Getting Started
+#### `GET /api/v2/query/imports`
 
-### Prerequisites
+Lists all imported files (metadata) with pagination.
 
-- Node.js 18+
-- Azure account with Cosmos DB and Storage
-- Azure AD app registration
+**Authentication**: Azure AD token required
 
-### Environment Variables
+**Query Parameters**:
 
-Copy `.env.example` to `.env` and update with your configuration:
+| Parameter | Type   | Description                               |
+|-----------|--------|-------------------------------------------|
+| `page`    | `number` | Page number (default: 1)                  |
+| `pageSize`| `number` | Number of items per page (default: 10)    |
+| `status`  | `string` | Filter by import status (e.g., `completed`, `failed`) |
 
-```env
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-LOG_LEVEL=info
-
-# Azure Storage Configuration
-AZURE_STORAGE_CONNECTION_STRING=your_storage_connection_string
-AZURE_STORAGE_CONTAINER=excel-uploads
-AZURE_STORAGE_ACCOUNT_NAME=your_storage_account
-
-# Azure Cosmos DB Configuration
-AZURE_COSMOS_ENDPOINT=your_cosmos_endpoint
-AZURE_COSMOS_KEY=your_cosmos_key
-AZURE_COSMOS_DATABASE=excel-upload-db
-AZURE_COSMOS_CONTAINER=excel-records
-AZURE_COSMOS_PARTITION_KEY=/partitionKey
-
-# Azure AD Authentication
-AUTH_ENABLED=true
-AZURE_TENANT_ID=your_tenant_id
-AZURE_CLIENT_ID=your_client_id
-AZURE_CLIENT_SECRET=your_client_secret
-AZURE_AUDIENCE=api://your_client_id
-
-# API Key Configuration
-API_KEYS_ENABLED=true
-API_KEY_DEFAULT_EXPIRATION_DAYS=365
-API_KEY_MAX_KEYS_PER_USER=10
-API_KEY_RATE_LIMIT=1000
-API_KEY_ENABLE_IP_RESTRICTIONS=true
-API_KEY_ALLOWED_IPS=127.0.0.1,::1,192.168.1.0/24
-API_KEY_LOGGING_ENABLED=true
-API_KEY_USAGE_RETENTION_DAYS=90
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
-RATE_LIMIT_MAX_REQUESTS=1000
-RATE_LIMIT_MESSAGE="Too many requests, please try again later"
-
-# Logging
-LOG_TO_FILE=true
-LOG_FILE_PATH=logs/app.log
-LOG_ROTATION_ENABLED=true
-LOG_ROTATION_MAX_SIZE=10m
-LOG_ROTATION_MAX_FILES=14d
+**Response**:
+```json
+{
+  "data": {
+    "items": [
+      { /* ImportMetadata object */ }
+    ],
+    "total": 100,
+    "page": 1,
+    "pageSize": 10,
+    "totalPages": 10
+  }
+}
 ```
 
-### Installation
+#### `GET /api/v2/query/imports/:importId/rows`
 
-1. Install dependencies:
-   ```bash
-   npm install
-   cd server && npm install
-   ```
+Queries rows from a specific imported file.
 
-2. Start the development server:
-   ```bash
-   # In root directory
-   npm run dev
-   ```
+**Authentication**: Azure AD token required
 
-3. The API will be available at `http://localhost:3001`
+**Query Parameters**: (Similar to `/api/data` v1, but scoped to `importId`)
+
+**Response**:
+```json
+{
+  "items": [ /* Array of data rows */ ],
+  "total": 500,
+  "page": 1,
+  "pageSize": 100
+}
+```
+
+#### `POST /api/v2/query/rows`
+
+Queries data across all imports with dynamic field selection and filtering.
+
+**Authentication**: Azure AD token required
+
+**Request Body**:
+```json
+{
+  "fields": ["Name", "Email", "Phone"], // Fields to retrieve
+  "filters": [ // Optional array of filter conditions
+    {
+      "field": "Status",
+      "operator": "eq",
+      "value": "Active"
+    }
+  ],
+  "limit": 100, // Optional, max records to return
+  "offset": 0 // Optional, for pagination
+}
+```
+
+**Response**:
+```json
+{
+  "items": [ /* Array of data rows */ ],
+  "total": 1234,
+  "hasMore": true
+}
+```
+
+#### `GET /api/v2/query/imports/:importId/download`
+
+Downloads the original uploaded file.
+
+**Authentication**: Azure AD token required
+
+**Response**: The original file content (e.g., `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` for Excel).
+
+#### `GET /api/fields`
+
+Retrieves a list of all unique field names found across all imported data in Cosmos DB.
+
+**Authentication**: Azure AD token required
+
+**Response**:
+```json
+{
+  "success": true,
+  "fields": ["Name", "Email", "Address", "City", "Country"]
+}
+```
 
 ## Logging and Monitoring
 
 ### Request Logging
-All API requests are logged with the following details:
-- Request method and path
-- Response status code
-- Response time
-- User ID (if authenticated)
-- API key ID (if used)
-- IP address and user agent
 
-Logs are stored in the following files in the `logs/` directory:
-- `combined.log`: All requests
-- `error.log`: Only error responses (4xx and 5xx)
+All API requests are logged with details such as method, path, status code, response time, user ID (if authenticated), API key ID (if used), IP address, and user agent.
+
+Logs are stored in the `logs/` directory:
+- `combined.log`: All requests.
+- `error.log`: Only error responses (4xx and 5xx).
 
 ### API Key Usage Tracking
 
-API key usage is tracked in Cosmos DB with the following details:
-- Timestamp of the request
-- API key ID and user ID
-- Request method and path
-- Response status code
-- Response time
-- Client IP address and user agent
+API key usage is tracked in Cosmos DB, recording timestamp, API key ID, user ID, request details, and response metrics. These records have a configurable Time-To-Live (TTL) for automatic expiration.
 
 #### Usage Statistics
 
-You can retrieve usage statistics for an API key:
+Retrieve aggregated usage statistics for an API key:
 
 ```http
 GET /api/keys/:keyId/usage
 ```
 
 **Query Parameters**:
-- `timeRange`: Time range for statistics (24h, 7d, 30d)
+- `timeRange`: Time range for statistics (e.g., `24h`, `7d`, `30d`).
 
 **Example Response**:
 ```json
@@ -352,20 +393,18 @@ GET /api/keys/:keyId/activity
 ```
 
 **Query Parameters**:
-- `limit`: Number of recent activities to return (default: 50, max: 1000)
+- `limit`: Number of recent activities to return (default: 50, max: 1000).
 
-## Rate Limiting
+### Rate Limiting
 
-- All API endpoints are rate limited to 1000 requests per 15 minutes per IP address by default
-- Authentication endpoints have stricter rate limits (100 requests per 15 minutes)
+- All API endpoints are rate limited to 1000 requests per 15 minutes per IP address by default.
+- Authentication endpoints have stricter rate limits (100 requests per 15 minutes).
 - Rate limit headers are included in all responses:
-  - `X-RateLimit-Limit`: Maximum number of requests allowed in the time window
-  - `X-RateLimit-Remaining`: Remaining number of requests in the current window
-  - `X-RateLimit-Reset`: Timestamp when the rate limit resets (in seconds since epoch)
-- When rate limited, the API returns a 429 Too Many Requests response with a `Retry-After` header
-- Additional rate limiting may be applied at the Azure infrastructure level
-
-## Monitoring and Alerts
+  - `X-RateLimit-Limit`: Maximum number of requests allowed in the time window.
+  - `X-RateLimit-Remaining`: Remaining number of requests in the current window.
+  - `X-RateLimit-Reset`: Timestamp when the rate limit resets (in seconds since epoch).
+- When rate limited, the API returns a 429 Too Many Requests response with a `Retry-After` header.
+- Additional rate limiting may be applied at the Azure infrastructure level.
 
 ### Health Check Endpoint
 
@@ -388,15 +427,15 @@ GET /health
 
 ### Recommended Alerts
 
-1. **Error Rate Alert**: Trigger when error rate exceeds 5% of requests
-2. **High Latency Alert**: Trigger when average response time exceeds 1 second
-3. **API Key Abuse**: Trigger when an API key exceeds 1000 requests per minute
-4. **Failed Authentication**: Alert on multiple failed authentication attempts
+1. **Error Rate Alert**: Trigger when error rate exceeds 5% of requests.
+2. **High Latency Alert**: Trigger when average response time exceeds 1 second.
+3. **API Key Abuse**: Trigger when an API key exceeds 1000 requests per minute.
+4. **Failed Authentication**: Alert on multiple failed authentication attempts.
 
 ### Log Retention
 
-- Application logs are retained for 30 days
-- API key usage data is retained for 90 days by default (configurable via `API_KEY_USAGE_RETENTION_DAYS`)
+- Application logs are retained for 30 days.
+- API key usage data is retained for 90 days by default (configurable via `API_KEY_USAGE_RETENTION_DAYS`).
 
 ## Test Configuration
 
@@ -408,13 +447,13 @@ This project uses Vitest for testing with separate configurations for client and
    - Environment: jsdom
    - Setup: Uses `src/setupTests.simple.ts`
    - Runs tests in `src/` directory
-   - Optimized for React component testing
+   - Optimized for React component testing.
 
 2. **Server Tests** (`vitest.server.config.ts`)
    - Environment: node
    - Runs tests in `server/test/` directory
-   - Configured for API and integration testing
-   - Excludes backup test files
+   - Configured for API and integration testing.
+   - Excludes backup test files.
 
 ### Running Tests
 
@@ -426,56 +465,42 @@ This project uses Vitest for testing with separate configurations for client and
 
 ### Test Structure
 
-- Server tests are in `server/test/`
-- Client tests are co-located with components in `src/`
+- Server tests are in `server/test/`.
+- Client tests are co-located with components in `src/`.
 - Test files follow the pattern `*.test.ts` or `*.test.tsx`
 
 ## Security
 
 ### API Key Best Practices
 
-1. **Never commit API keys to version control**
-2. **Use environment variables** to store API keys in production
-3. **Rotate keys regularly** (every 90 days recommended)
-4. **Use IP restrictions** for additional security
-5. **Monitor usage** for suspicious activity
+1. **Never commit API keys to version control**.
+2. **Use environment variables** to store API keys in production.
+3. **Rotate keys regularly** (every 90 days recommended).
+4. **Use IP restrictions** for additional security.
+5. **Monitor usage** for suspicious activity.
 
 ### Revoking Compromised Keys
 
 If an API key is compromised:
-1. Immediately revoke the key using the `/api/keys/:keyId` DELETE endpoint
-2. Generate a new key for the affected service
-3. Update all clients with the new key
-4. Monitor for any suspicious activity
-
-## Testing
-
-Run the test suite:
-
-```bash
-# Run all tests
-npm test
-
-# Run server tests
-cd server && npm test
-```
+1. Immediately revoke the key using the `/api/keys/:keyId` DELETE endpoint.
+2. Generate a new key for the affected service.
+3. Update all clients with the new key.
+4. Monitor for any suspicious activity.
 
 ## Deployment
 
-### Azure Functions
+### Azure Static Web Apps
 
-1. Build the application:
-   ```bash
-   npm run build
-   cd server && npm run build
-   ```
+This project is configured for deployment to Azure Static Web Apps. To deploy:
 
-2. Deploy to Azure Functions using the Azure CLI or GitHub Actions.
+1. Push your code to a GitHub repository.
+2. Create a new Static Web App in the Azure Portal.
+3. Connect to your GitHub repository.
+4. Configure the build settings:
+   - App location: `/`
+   - Output location: `dist`
+   - App build command: `npm run build`.
 
 ## License
 
 MIT
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```

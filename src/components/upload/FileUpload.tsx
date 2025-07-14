@@ -48,28 +48,17 @@ export function FileUpload({
 }: FileUploadProps): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isUploadingLocal, setIsUploadingLocal] = useState(false);
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]) => {
       setError(null);
       
-      if (fileRejections.length > 0) {
-        const { errors } = fileRejections[0];
-        const errorMessage = errors[0].code === 'file-too-large' 
-          ? `File is too large. Max size is ${maxSize / 1024 / 1024}MB`
-          : errors[0].message;
-        setError(errorMessage);
-        return;
-      }
-
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
-        // Ensure the file has the correct MIME type based on its extension
-        const extension = file.name.split('.').pop()?.toLowerCase();
-        if (extension && MIME_TYPES[`.${extension}` as keyof typeof MIME_TYPES]) {
+        const extension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+        if (extension && MIME_TYPES[extension as keyof typeof MIME_TYPES]) {
           // Create a new File object with the correct MIME type
-          const mimeType = MIME_TYPES[`.${extension}` as keyof typeof MIME_TYPES];
+          const mimeType = MIME_TYPES[extension as keyof typeof MIME_TYPES];
           const newFile = new File([file], file.name, { 
             type: mimeType,
             lastModified: file.lastModified
@@ -78,6 +67,14 @@ export function FileUpload({
         } else {
           setFile(file);
         }
+      } else if (fileRejections.length > 0) {
+        const { errors } = fileRejections[0];
+        let errorMessage = errors[0].message;
+        if (errors[0].code === 'file-too-large') {
+          errorMessage = `File is too large. Max size is ${maxSize / 1024 / 1024}MB`;
+        }
+        setError(errorMessage);
+        return;
       }
     },
     [maxSize]
@@ -94,20 +91,18 @@ export function FileUpload({
     }, {} as Record<string, string[]>),
     maxSize,
     multiple: false,
-    disabled: isUploading || isUploadingLocal
+    disabled: isUploading
   });
 
   const handleUpload = async () => {
     if (!file) return;
     
     try {
-      setIsUploadingLocal(true);
+      
       await onUpload(file);
       setFile(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload file');
-    } finally {
-      setIsUploadingLocal(false);
     }
   };
 
@@ -121,12 +116,12 @@ export function FileUpload({
     if (process.env.NODE_ENV === 'development') {
       console.log('FileUpload state:', { 
         hasFile: !!file,
-        isUploading: isUploading || isUploadingLocal,
+        isUploading: isUploading,
         progress,
         error
       });
     }
-  }, [file, isUploading, isUploadingLocal, progress, error]);
+  }, [file, isUploading, progress, error]);
 
   return (
     <div
@@ -135,11 +130,11 @@ export function FileUpload({
         isDragActive ? 'bg-muted/50' : 'bg-background'
       } ${
         error ? 'border-destructive' : 'border-border'
-      } ${isUploading || isUploadingLocal ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+      } ${isUploading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
     >
-      <input {...getInputProps()} />
+      <input {...getInputProps()} data-testid="file-upload-input" />
       
-      {isUploading || isUploadingLocal ? (
+      {isUploading ? (
         <div className="w-full text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-sm text-muted-foreground">
@@ -164,10 +159,10 @@ export function FileUpload({
                 e.stopPropagation();
                 handleUpload();
               }}
-              disabled={isUploading || isUploadingLocal}
+              disabled={isUploading}
               className="px-3 py-1 h-8 text-xs"
             >
-              {isUploading || isUploadingLocal ? 'Uploading...' : 'Upload'}
+                            {isUploading ? 'Uploading...' : 'Upload'}
             </Button>
             <button
               type="button"
@@ -175,8 +170,9 @@ export function FileUpload({
                 e.stopPropagation();
                 handleRemoveFile();
               }}
-              disabled={isUploading || isUploadingLocal}
+              disabled={isUploading}
               className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+              data-testid="remove-file-button"
             >
               <X className="h-4 w-4" />
             </button>
@@ -200,7 +196,7 @@ export function FileUpload({
 
       
       {error && (
-        <p className="text-sm text-destructive mt-2 text-center">
+        <p className="text-sm text-destructive mt-2 text-center" data-testid="error-message">
           {error}
         </p>
       )}
@@ -208,4 +204,4 @@ export function FileUpload({
   );
 }
 
-export default FileUpload;
+
