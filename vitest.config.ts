@@ -30,6 +30,7 @@ export default defineConfig({
     
     // Test setup files - only load what's needed
     setupFiles: [
+      './vitest.setup.ts',
       './src/setupTests.ts',
       ...(process.env.NODE_ENV !== 'test' ? [] : ['./src/test/setup/testSetup.ts'])
     ],

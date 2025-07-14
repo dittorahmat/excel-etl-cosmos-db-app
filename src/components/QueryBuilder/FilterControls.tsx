@@ -293,6 +293,7 @@ export function FilterControls({
                     size="icon"
                     onClick={() => onRemoveFilter(filter.id)}
                     className="text-destructive hover:text-destructive/80 h-9 w-9"
+                    data-testid={`remove-filter-${filter.id}`}
                   >
                     <X className="h-4 w-4" />
                   </Button>

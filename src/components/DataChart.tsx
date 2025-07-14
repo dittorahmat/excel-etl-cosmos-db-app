@@ -306,7 +306,7 @@ export const DataChart: React.FC<DataChartProps> = ({
       value={chartType}
       onValueChange={(value) => setChartType(value as ChartType)}
     >
-      <SelectTrigger className="w-[140px]">
+      <SelectTrigger className="w-[140px]" data-testid="chart-type-selector">
         <SelectValue placeholder="Chart Type" />
       </SelectTrigger>
       <SelectContent>
@@ -330,7 +330,7 @@ export const DataChart: React.FC<DataChartProps> = ({
         onValueChange={handleXAxisChange}
         disabled={availableFields.length === 0}
       >
-        <SelectTrigger className="w-[120px]">
+        <SelectTrigger className="w-[120px]" data-testid="x-axis-selector">
           <SelectValue placeholder="X-Axis" />
         </SelectTrigger>
         <SelectContent>
@@ -347,7 +347,7 @@ export const DataChart: React.FC<DataChartProps> = ({
         onValueChange={handleYAxisChange}
         disabled={availableFields.length === 0}
       >
-        <SelectTrigger className="w-[120px]">
+        <SelectTrigger className="w-[120px]" data-testid="y-axis-selector">
           <SelectValue placeholder="Y-Axis" />
         </SelectTrigger>
         <SelectContent>
@@ -369,7 +369,7 @@ export const DataChart: React.FC<DataChartProps> = ({
           <CardTitle>Loading Data...</CardTitle>
         </CardHeader>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader" />
         </div>
       </Card>
     );
