@@ -145,3 +145,4 @@ when you find an error, find, list and fix all possible root causes of that erro
 only make changes you are at least 95% confident in
 use npm run test:client to test client side components
 use npm run test:server to test server side components
+before you commit anything; run lint, type check, test then build. fix all errors.

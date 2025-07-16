@@ -5,6 +5,7 @@
 - Successfully implemented dynamic query filtering in the Query Builder.
 - Resolved all linting, type checking, testing, and build errors.
 - Implemented initial API Key Management frontend, including listing, creating, and revoking API keys, and an API Query Builder.
+- Addressed test failures in `ApiKeyManagementPage.test.tsx` and `ApiQueryBuilder.test.tsx`.
 
 ## Recent Changes
 
@@ -15,6 +16,7 @@
 - **API Key Management Frontend**: Created `src/pages/ApiKeyManagementPage.tsx` with sections for listing, creating, and revoking API keys. Integrated `ApiQueryBuilder` component.
 - **API Query Builder Component**: Created `src/components/ApiQueryBuilder/ApiQueryBuilder.tsx` to generate API URLs based on selected fields and filters.
 - **Navigation Updates**: Added a new route for API Key Management in `src/App.tsx` and a corresponding navigation link in `src/components/layout/Sidebar.tsx`.
+- **Test Fixes**: Corrected import path for `Calendar` in `ApiKeyManagementPage.test.tsx`. Escaped curly braces in Python example in `ApiQueryBuilder.tsx` to resolve React child error.
 
 ## Next Steps
 
