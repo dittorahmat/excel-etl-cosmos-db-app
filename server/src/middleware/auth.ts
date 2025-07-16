@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { JsonWebTokenError as _JsonWebTokenError, TokenExpiredError as _TokenExpiredError, JwtPayload } from 'jsonwebtoken';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload, JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { config } from 'dotenv';
 
@@ -146,7 +145,7 @@ export const authenticateToken = (
         return next();
       } catch (error) {
         console.error('[auth] Error in test token verification:', error);
-        if (error instanceof _JsonWebTokenError || error instanceof _TokenExpiredError) {
+        if ((error as any) instanceof JsonWebTokenError || (error as any) instanceof TokenExpiredError) {
           return res.status(403).json({
             success: false,
             error: 'Authentication failed',
@@ -169,7 +168,7 @@ export const authenticateToken = (
       (err, decoded) => {
         if (err) {
           console.warn('[auth] Invalid or expired token', { error: err });
-          if (err instanceof _JsonWebTokenError || err instanceof _TokenExpiredError) {
+          if ((err as any) instanceof JsonWebTokenError || (err as any) instanceof TokenExpiredError) {
             return res.status(403).json({
               success: false,
               error: 'Authentication failed',

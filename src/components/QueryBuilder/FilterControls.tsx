@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "../ui/button";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Check } from "lucide-react";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -185,28 +185,46 @@ export function FilterControls({
                               No fields found.
                             </CommandEmpty>
                             <CommandGroup className="overflow-y-auto max-h-[300px]">
-                              {getFilteredFieldOptions(filter.id).map((option) => (
-                                <CommandItem
-                                  key={option.value}
-                                  value={option.value}
-                                  onSelect={() => {
-                                    handleFilterChange(filter.id, {
-                                      field: option.value,
-                                      operator: "",
-                                    });
-                                    toggleFilterPopover(`${filter.id}-field`, false);
-                                  }}
-                                  className="cursor-pointer px-3 py-2 text-sm flex items-center gap-2 aria-selected:bg-accent aria-selected:text-accent-foreground"
-                                >
-                                  <span className="font-medium">{option.label}</span>
-                                  <Badge
-                                    variant="outline"
-                                    className="ml-auto text-xs font-normal text-muted-foreground"
+                              {getFilteredFieldOptions(filter.id).map((option) => {
+                                const isSelected = selectedField?.value === option.value;
+                                return (
+                                  <CommandItem
+                                    key={option.value}
+                                    value={option.value}
+                                    onSelect={() => {
+                                      handleFilterChange(filter.id, { 
+                                        field: option.value,
+                                        operator: "",
+                                        value: "",
+                                      });
+                                      toggleFilterPopover(`${filter.id}-field`, false);
+                                    }}
+                                    data-disabled="false"
+                                    className={cn(
+                                      "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 aria-selected:bg-accent aria-selected:text-accent-foreground",
+                                      "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto"
+                                    )}
                                   >
-                                    {option.type}
-                                  </Badge>
-                                </CommandItem>
-                              ))}
+                                    <div
+                                      className={cn(
+                                        "flex h-4 w-4 items-center justify-center rounded-sm border",
+                                        isSelected
+                                          ? "bg-primary border-primary text-primary-foreground"
+                                          : "border-muted-foreground/30"
+                                      )}
+                                    >
+                                      {isSelected && <Check className="h-3 w-3" />}
+                                    </div>
+                                    <span className="font-medium">{option.label}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className="ml-auto text-xs font-normal text-muted-foreground"
+                                    >
+                                      {option.type}
+                                    </Badge>
+                                  </CommandItem>
+                                );
+                              })}
                             </CommandGroup>
                           </Command>
                         </PopoverContent>

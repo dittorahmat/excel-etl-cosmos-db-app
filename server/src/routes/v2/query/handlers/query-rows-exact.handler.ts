@@ -52,7 +52,7 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         });
       }
       
-      const { fields, limit = 100, offset = 0 } = req.body;
+      const { fields, filters = [], limit = 100, offset = 0 } = req.body;
       
       log('Request body parsed', {
         fields,
@@ -103,18 +103,63 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
       
       // Create parameters for each field in the WHERE clause
       const fieldConditions = fields.map(field => `IS_DEFINED(c["${field}"])`).join(' AND ');
+
+      // Build filter conditions
+      const filterConditions = filters.map((filter, index) => {
+        const paramName = `@filterValue${index}`;
+        const paramName2 = `@filterValue2_${index}`;
+        switch (filter.operator) {
+          case '=':
+            return `c["${filter.field}"] = ${paramName}`;
+          case '!=':
+            return `c["${filter.field}"] != ${paramName}`;
+          case 'contains':
+            return `CONTAINS(c["${filter.field}"], ${paramName})`;
+          case 'startsWith':
+            return `STARTSWITH(c["${filter.field}"], ${paramName})`;
+          case 'endsWith':
+            return `ENDSWITH(c["${filter.field}"], ${paramName})`;
+          case '>':
+            return `c["${filter.field}"] > ${paramName}`;
+          case '>=':
+            return `c["${filter.field}"] >= ${paramName}`;
+          case '<':
+            return `c["${filter.field}"] < ${paramName}`;
+          case '<=':
+            return `c["${filter.field}"] <= ${paramName}`;
+          case 'between':
+            return `(c["${filter.field}"] >= ${paramName} AND c["${filter.field}"] <= ${paramName2})`;
+          case 'empty':
+            return `(NOT IS_DEFINED(c["${filter.field}"]) OR c["${filter.field}"] = '' OR c["${filter.field}"] = null)`;
+          case '!empty':
+            return `(IS_DEFINED(c["${filter.field}"]) AND c["${filter.field}"] != '' AND c["${filter.field}"] != null)`;
+          default:
+            return '';
+        }
+      }).filter(Boolean).join(' AND ');
+
+      const filterParameters = filters.flatMap((filter, index) => {
+        const params = [{ name: `@filterValue${index}`, value: filter.value }];
+        if (filter.operator === 'between') {
+          params.push({ name: `@filterValue2_${index}`, value: filter.value2 });
+        }
+        return params;
+      });
+
+      const whereClause = [fieldConditions, filterConditions].filter(Boolean).join(' AND ');
       
       // Build the exact query with dynamic fields
       const query = {
         query: `
           SELECT ${fieldSelections}
           FROM c 
-          WHERE ${fieldConditions}
+          WHERE ${whereClause}
             AND c.documentType = @documentType
           OFFSET @offset LIMIT @limit
         `,
         parameters: [
           { name: '@documentType', value: 'excel-row' },
+          ...filterParameters,
           { name: '@offset', value: offset },
           { name: '@limit', value: limit }
         ]
@@ -125,11 +170,12 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         query: `
           SELECT VALUE COUNT(1)
           FROM c 
-          WHERE ${fieldConditions}
+          WHERE ${whereClause}
             AND c.documentType = @documentType
         `,
         parameters: [
-          { name: '@documentType', value: 'excel-row' }
+          { name: '@documentType', value: 'excel-row' },
+          ...filterParameters
         ]
       };
 
