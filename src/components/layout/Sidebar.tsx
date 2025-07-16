@@ -10,6 +10,7 @@ import {
   History,
   ChevronDown,
   ChevronRight,
+  KeyRound,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -39,11 +40,18 @@ const menuItems = [
   },
 ];
 
+import { KeyRound } from 'lucide-react';
+
 const adminMenuItems = [
   {
     title: 'Settings',
     path: '/settings',
     icon: Settings,
+  },
+  {
+    title: 'API Keys',
+    path: '/api-keys',
+    icon: KeyRound,
   },
 ];
 
