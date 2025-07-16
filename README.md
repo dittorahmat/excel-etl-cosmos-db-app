@@ -6,7 +6,8 @@ A modern React dashboard application for uploading Excel files, visualizing data
 
 - **Modern React Dashboard**: Built with Vite, TypeScript, and React 18 for a fast and responsive user experience.
 - **Secure Authentication**: Integrates Azure AD OAuth 2.0 with MSAL for robust user authentication and authorization. Supports both interactive (popup) and silent token acquisition.
-- **API Key Management**: Allows users to generate, list, and revoke API keys for programmatic access to data, with features like IP restrictions and usage tracking.
+- **API Key Management**: Provides a dedicated frontend interface for users to securely generate, list, and revoke their API keys. Features include key naming, optional expiration dates, IP restrictions, and usage tracking.
+- **API Query Builder**: Features a user-friendly query builder with dynamic field selection and filter controls to retrieve specific data from Cosmos DB, and also generates API URLs for programmatic access.
 - **Excel & CSV File Processing**: Enables uploading of Excel (.xlsx, .xls) and CSV files, with backend processing for dynamic schema detection and data extraction.
 - **Data Ingestion to Cosmos DB**: Efficiently ingests processed data from Excel/CSV files into Azure Cosmos DB, handling large datasets through batching.
 - **Data Visualization**: Provides interactive charts (bar, line, pie) and tables for comprehensive data analysis, powered by Recharts.
