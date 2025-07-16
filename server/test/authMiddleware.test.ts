@@ -1,16 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { validateToken } from '../src/middleware/auth.js';
+import { authenticateToken } from '../src/middleware/auth.js';
 
 // Mock modules first to avoid hoisting issues
-vi.mock('jsonwebtoken', () => ({
-  default: {
-    verify: vi.fn(),
-  },
-}));
+vi.mock('jsonwebtoken', async () => {
+  const actual = await vi.importActual<typeof import('jsonwebtoken')>('jsonwebtoken');
+  return {
+    ...actual,
+    default: {
+      verify: vi.fn(),
+    },
+    JsonWebTokenError: actual.JsonWebTokenError,
+    TokenExpiredError: actual.TokenExpiredError,
+  };
+});
 
 // Import after mocks are set up
-import jwt from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+
 import jwksClient from 'jwks-rsa';
 
 // Create mock functions after mocks are set up
@@ -35,7 +43,7 @@ process.env.AZURE_TENANT_ID = 'test-tenant-id';
 process.env.AZURE_CLIENT_ID = 'test-client-id';
 process.env.AZURE_CLIENT_SECRET = 'test-client-secret';
 
-describe('Token Validation Middleware', () => {
+describe('Authentication Middleware', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let nextFunction: NextFunction;
@@ -73,7 +81,7 @@ describe('Token Validation Middleware', () => {
       process.env.AUTH_ENABLED = 'false';
 
       // Act
-      await validateToken(
+      await authenticateToken(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
@@ -89,7 +97,7 @@ describe('Token Validation Middleware', () => {
       mockRequest.headers = {};
 
       // Act
-      await validateToken(
+      await authenticateToken(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
@@ -99,65 +107,63 @@ describe('Token Validation Middleware', () => {
       expect(statusMock).toHaveBeenCalledWith(401);
       expect(jsonMock).toHaveBeenCalledWith({
         success: false,
-        error: 'Unauthorized',
+        error: 'Authentication required',
         message: 'No token provided',
       });
       expect(nextFunction).not.toHaveBeenCalled();
     });
 
-    it('should return 401 when token is invalid', async () => {
+    it('should return 403 when token is invalid', async () => {
       // Arrange
       mockRequest.headers = {
         authorization: 'Bearer invalid.token.here',
       };
 
       // Mock jwt.verify to simulate invalid token
-      vi.mocked(jwt.verify).mockImplementationOnce(((_token: string, _getKey: any, _options: any, callback: any) => {
-        callback(new Error('invalid token'), null);
-      }) as any);
+      vi.mocked(jwt.verify).mockImplementationOnce(() => {
+        throw new JsonWebTokenError('invalid token');
+      });
 
       // Act
-      await validateToken(
+      await authenticateToken(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
       );
 
       // Assert
-      expect(statusMock).toHaveBeenCalledWith(401);
+      expect(statusMock).toHaveBeenCalledWith(403);
       expect(jsonMock).toHaveBeenCalledWith({
         success: false,
-        error: 'Unauthorized',
+        error: 'Authentication failed',
         message: 'Invalid or expired token',
       });
       expect(nextFunction).not.toHaveBeenCalled();
     });
 
-    it('should return 401 when token is expired', async () => {
+    it('should return 403 when token is expired', async () => {
       // Arrange
       mockRequest.headers = {
         authorization: 'Bearer expired.token.here',
       };
 
       // Mock jwt.verify to simulate expired token
-      vi.mocked(jwt.verify).mockImplementationOnce(((_token: string, _getKey: any, _options: any, callback: any) => {
-        const error = new Error('jwt expired');
-        (error as any).name = 'TokenExpiredError';
-        callback(error, null);
-      }) as any);
+      vi.mocked(jwt.verify).mockImplementationOnce(() => {
+        throw new TokenExpiredError('jwt expired', new Date(Date.now() - 1000));
+      });
 
       // Act
-      await validateToken(
+      await authenticateToken(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
       );
 
       // Assert
-      expect(statusMock).toHaveBeenCalledWith(401);
+      expect(statusMock).toHaveBeenCalledWith(403);
       expect(jsonMock).toHaveBeenCalledWith({
         success: false,
-        error: 'Unauthorized',
+        error: 'Authentication failed',
         message: 'Invalid or expired token',
       });
       expect(nextFunction).not.toHaveBeenCalled();
@@ -182,24 +188,13 @@ describe('Token Validation Middleware', () => {
       };
 
       // Mock the JWT verification to return the mock user
-      vi.mocked(jwt.verify).mockImplementationOnce((_token: string, _getKey: any, _options: any, callback: any) => {
-        callback(null, mockUser);
-      });
-
-      // Mock the getSigningKey implementation for this test case
-      // mockGetSigningKey.mockImplementationOnce((_kid, cb) => {
-      //   cb(null, {
-      //     getPublicKey: () => 'public-key',
-      //     rsaPublicKey: 'public-key',
-      //     publicKey: 'public-key'
-      //   });
-      // });
+      vi.mocked(jwt.verify).mockImplementationOnce(() => mockUser);
 
       // Create a spy for the next function
       const nextSpy = vi.fn();
 
       // Act
-      await validateToken(
+      await authenticateToken(
         testRequest as Request,
         mockResponse as Response,
         nextSpy

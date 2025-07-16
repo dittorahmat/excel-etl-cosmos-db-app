@@ -41,7 +41,7 @@ export function UploadPage() {
         };
       }
       
-      const response = await api.post<UploadResponse>('/api/v2/query/imports', formData, {
+                  const response = await api.post<UploadResponse>('/api/v2/query/imports', formData, {
         // Don't set Content-Type header - let the browser set it with the correct boundary
         // The API client will automatically add the Authorization header
         onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & { 

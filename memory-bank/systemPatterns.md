@@ -2,7 +2,7 @@
 
 ## Current Work Focus
 
-Populating the memory bank with detailed information about existing files, functions, and components to establish a comprehensive understanding of the project.
+Improving test coverage, starting with client-side components.
 
 ## Recent Changes
 
@@ -44,7 +44,24 @@ Populating the memory bank with detailed information about existing files, funct
 
 ## Next Steps
 
-1.  **Document Findings**: Continuously update the memory bank files, especially `systemPatterns.md` and `progress.md`, with detailed insights gained from the inspection.
+1.  **Write more tests to improve test coverage, focusing on client-side components.**
+    *   Added tests for `DashboardPage.tsx` (initial render and field loading, fixed Vitest compatibility).
+    *   Added tests for `UploadPage.tsx`.
+    *   Added tests for `src/components/QueryBuilder/QueryBuilder.tsx`.
+    *   Added tests for `src/components/QueryBuilder/FieldSelector.tsx`.
+    *   Added tests for `src/components/QueryBuilder/FilterControls.tsx`.
+    *   Added tests for `src/components/DataChart.tsx`.
+    *   Added tests for `src/components/FileListTable.tsx`.
+    *   Added tests for `src/components/upload/FileUpload.tsx`.
+    *   Added tests for `src/components/auth/LoginButton.tsx`.
+    *   Added tests for `src/components/auth/ProtectedRoute.tsx`.
+    *   Added tests for `src/components/common/ErrorBoundary.tsx`.
+    *   Added tests for `src/components/ui/alert.tsx`.
+    *   Added tests for `src/components/ui/button.tsx`.
+    *   Added tests for `src/components/ui/button-variants.ts`.
+    *   Added tests for `src/components/ui/card.tsx`.
+    *   Added tests for `src/components/ui/dialog.tsx`.
+2.  **Document Findings**: Continuously update the memory bank files, especially `systemPatterns.md` and `progress.md`, with detailed insights gained from the inspection.
 
 ## Key Functionalities (Detailed)
 
@@ -109,7 +126,7 @@ Populating the memory bank with detailed information about existing files, funct
 5.  **Ingestion Service (`server/src/services/ingestion/ingestion.service.ts`):**
     *   `importFile()` orchestrates the ingestion process:
         *   Generates a unique `importId`.
-        *   Uploads the original file to Azure Blob Storage using `uploadToBlobStorage()` (from `server/src/services/blob-storage/upload-to-blob-storage.ts` - implicitly, as it's used by `ingestion.service.ts`).
+        *   Uploads the original file to Azure Blob Storage using `uploadToBlobStorage()` (from `server/src/services/blob-storage/blob-storage.service.ts` - implicitly, as it's used by `ingestion.service.ts`).
         *   Saves initial import metadata to Cosmos DB (`excel-records` container, `imports` partition key) using `saveImportMetadata()`.
         *   Parses the file using `fileParserService.parseFile()` (from `server/src/services/file-parser/file-parser.service.ts`).
             *   During parsing, `transformRow` callback adds system fields (`_importId`, `_rowNumber`, `_importedAt`, `_importedBy`) to each row.
@@ -153,7 +170,7 @@ Populating the memory bank with detailed information about existing files, funct
     *   When the "Execute Query" button in `QueryBuilder.tsx` is clicked, `handleExecuteClick` is triggered.
     *   It constructs a query object including `fields`, `limit`, and `offset`.
     *   It calls `onExecute()` prop, which is `executeQuery()` in `DashboardPage.tsx`.
-    *   `executeQuery()` makes an API call to `/api/v2/query/rows` using `api.post()`, sending the constructed query object in the request body.
+    *   It makes an API call to `/api/v2/query/rows` using `api.post()`, sending the constructed query object in the request body.
     *   **Backend (`server/src/routes/v2/query/index.ts` and `server/src/routes/v2/query/handlers/query-rows-exact.handler.ts`):**
         *   The `/api/v2/query/rows` (POST) endpoint receives the query.
         *   `queryRowsExactHandler` constructs a Cosmos DB SQL query dynamically based on the requested fields, filters, limit, and offset.

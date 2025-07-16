@@ -10,7 +10,21 @@ This file tracks what works, what's left to build, the current status, known iss
 *   **Type Checking**: Type checking is configured, and the codebase passes type checks.
 *   **Testing**: Unit tests are configured for both client and server, and all existing tests are passing. Test coverage reports can be generated.
     *   **Client-side Test Coverage**: Initial tests for `LoginPage.tsx` have been added, improving client-side coverage from 0% to 1.37% (statements and lines).
-    *   **Client-side Test Coverage**: Added tests for `UploadPage.tsx`, `src/components/QueryBuilder/QueryBuilder.tsx`, `src/components/QueryBuilder/FieldSelector.tsx`, `src/components/QueryBuilder/FilterControls.tsx`, `src/components/DataChart.tsx`, `src/components/FileListTable.tsx`, and `src/components/upload/FileUpload.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `UploadPage.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/QueryBuilder/QueryBuilder.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/QueryBuilder/FieldSelector.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/QueryBuilder/FilterControls.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/DataChart.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/FileListTable.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/upload/FileUpload.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/auth/LoginButton.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/auth/ProtectedRoute.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/common/ErrorBoundary.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/ui/alert.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/ui/button.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/ui/button-variants.ts`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/ui/card.tsx`.
+    *   **Client-side Test Coverage**: Added tests for `src/components/ui/dialog.tsx`.
 *   **Building**: The project can be successfully built for production, generating both client and server artifacts.
 *   **Initial Codebase Inspection**: Completed a comprehensive review of the frontend and backend codebase, documenting key components, services, middleware, and utilities.
 *   **Key Functionalities Mapped**: Detailed flows for Authentication, Excel Upload and Ingestion, Data Visualization and Querying, and API Key Management have been identified and documented in `systemPatterns.md`.

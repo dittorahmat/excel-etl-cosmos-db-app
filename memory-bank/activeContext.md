@@ -53,4 +53,12 @@ Improving test coverage, starting with client-side components.
     *   Added tests for `src/components/DataChart.tsx`.
     *   Added tests for `src/components/FileListTable.tsx`.
     *   Added tests for `src/components/upload/FileUpload.tsx`.
+    *   Added tests for `src/components/auth/LoginButton.tsx`.
+    *   Added tests for `src/components/auth/ProtectedRoute.tsx`.
+    *   Added tests for `src/components/common/ErrorBoundary.tsx`.
+    *   Added tests for `src/components/ui/alert.tsx`.
+    *   Added tests for `src/components/ui/button.tsx`.
+    *   Added tests for `src/components/ui/button-variants.ts`.
+    *   Added tests for `src/components/ui/card.tsx`.
+    *   Added tests for `src/components/ui/dialog.tsx`.
 2.  **Document Findings**: Continuously update the memory bank files, especially `systemPatterns.md` and `progress.md`, with detailed insights gained from the inspection.
