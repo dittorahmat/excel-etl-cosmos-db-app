@@ -3,6 +3,7 @@ import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
 import { LoginPage } from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import ApiKeyManagementPage from './pages/ApiKeyManagementPage';
 import { UploadPage } from './pages/UploadPage';
 import { MainLayout } from './components/layout/MainLayout';
 import { useEffect } from 'react';
@@ -93,6 +94,7 @@ const AppContent = () => {
           }>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/api-keys" element={<ApiKeyManagementPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>
