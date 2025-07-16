@@ -1,12 +1,5 @@
-# Active Context
+# System Patterns
 
-## Current Work Focus
-
-Improving test coverage, starting with client-side components.
-
-## Recent Changes
-
-*   **Memory Bank Initialization**: Created and populated initial `projectbrief.md`, `productContext.md`, `systemPatterns.md`, `techContext.md`, and `progress.md` files.
 *   **Frontend Deep Dive - Authentication**: Examined `LoginPage.tsx`, `useAuth.ts`, `AuthContext.ts`, and `AuthProvider.tsx` to understand the Azure AD authentication flow, including MSAL integration, mock authentication for development, and handling of silent and interactive token acquisition.
 *   **Frontend Deep Dive - Dashboard**: Reviewed `DashboardPage.tsx`, identifying its role in data display, query building, visualization, file listing, dynamic field loading, data fetching, pagination, sorting, and error handling. Noted its reliance on `useAuth`, `api`, `shadcn/ui` components, `QueryBuilder`, `DataChart`, and `FileListTable`.
 *   **Frontend Deep Dive - Upload**: Reviewed `UploadPage.tsx`, understanding its client-side file upload logic, state management for progress, API integration for sending `FormData` to `/api/v2/query/imports`, explicit authentication token retrieval, progress tracking, user feedback via toasts, and navigation to the dashboard post-upload.
@@ -18,7 +11,7 @@ Improving test coverage, starting with client-side components.
 *   **Frontend Deep Dive - FileUpload**: Reviewed `src/components/upload/FileUpload.tsx`, understanding its role in providing a drag-and-drop interface for file uploads. Noted its use of `react-dropzone` for drag-and-drop, `lucide-react` for icons, and its handling of file type/size validation, progress display, and error handling.
 *   **Frontend Deep Dive - UI Components**: Explored `src/components/ui/` and confirmed the extensive use of `shadcn/ui` components, which are built on Radix UI and styled with Tailwind CSS, providing a consistent and accessible UI foundation.
 *   **Backend Deep Dive - Server Entry Point**: Reviewed `server/src/server.ts`, understanding its role as the Express application setup, middleware configuration (CORS, JSON, logging, authentication, rate limiting), route definition (API v1 and v2, health checks), Azure services initialization (Cosmos DB), and server lifecycle management (startup/shutdown).
-*   **Backend Deep Dive - API Routes (v2)**: Examined `server/src/routes/v2/index.ts` and `server/src/routes/v2/query/index.ts`, understanding the modular organization of v2 API routes, particularly for query-related operations (fetching, listing, downloading imports, and querying rows). Noted the conditional application of authentication middleware.
+*   **Backend Deep Dive - API Routes (v2)**: Examined `server/src/routes/v2/index.ts` and `server/src/routes/v2/query/index.ts`, understanding the modular organization of v2 API routes, particularly for query-related operations (fetching, listing, downloading imports, and querying rows). Noted the conditional application of authentication middleware. Specifically, `server/src/routes/v2/query/handlers/query-rows-exact.handler.ts` now dynamically constructs Cosmos DB queries based on filters provided in the request.
 *   **Backend Deep Dive - API Routes (API Key Management)**: Reviewed `server/src/routes/apiKey.route.ts`, understanding its role in defining API routes for creating, listing, and revoking API keys. Noted its use of `express-validator` for validation, `ApiKeyRepository` for data interaction, and its application of authentication and rate-limiting middleware.
 *   **Backend Deep Dive - API Routes (Authentication Status)**: Reviewed `server/src/routes/auth.route.ts`, understanding its role in providing an endpoint (`/api/auth/status`) to check if authentication is enabled on the server.
 *   **Backend Deep Dive - API Routes (Data Query v1)**: Reviewed `server/src/routes/data.route.ts`, understanding its role in defining a v1 API route for querying data from Cosmos DB. Noted its support for filtering by date range, category, and dynamic fields, as well as pagination, and its dynamic Cosmos DB SQL query construction.
@@ -42,26 +35,6 @@ Improving test coverage, starting with client-side components.
 *   **Backend Deep Dive - Utilities (Excel Parser)**: Reviewed `server/src/utils/excelParser.ts`, understanding its role in parsing Excel files, extracting headers, and converting data into a structured JSON format with added metadata. Noted its use of the `xlsx` library.
 *   **Backend Deep Dive - Utilities (Logging)**: Reviewed `server/src/utils/logger.ts`, understanding its role in setting up a comprehensive logging system using `winston`. Noted its custom log levels, console and file transports, and middleware for request, API key usage, and error logging.
 
-## Next Steps
-
-1.  **Write more tests to improve test coverage, focusing on client-side components.**
-    *   Added tests for `DashboardPage.tsx` (initial render and field loading, fixed Vitest compatibility).
-    *   Added tests for `UploadPage.tsx`.
-    *   Added tests for `src/components/QueryBuilder/QueryBuilder.tsx`.
-    *   Added tests for `src/components/QueryBuilder/FieldSelector.tsx`.
-    *   Added tests for `src/components/QueryBuilder/FilterControls.tsx`.
-    *   Added tests for `src/components/DataChart.tsx`.
-    *   Added tests for `src/components/FileListTable.tsx`.
-    *   Added tests for `src/components/upload/FileUpload.tsx`.
-    *   Added tests for `src/components/auth/LoginButton.tsx`.
-    *   Added tests for `src/components/auth/ProtectedRoute.tsx`.
-    *   Added tests for `src/components/common/ErrorBoundary.tsx`.
-    *   Added tests for `src/components/ui/alert.tsx`.
-    *   Added tests for `src/components/ui/button.tsx`.
-    *   Added tests for `src/components/ui/button-variants.ts`.
-    *   Added tests for `src/components/ui/card.tsx`.
-    *   Added tests for `src/components/ui/dialog.tsx`.
-2.  **Document Findings**: Continuously update the memory bank files, especially `systemPatterns.md` and `progress.md`, with detailed insights gained from the inspection.
 
 ## Key Functionalities (Detailed)
 
@@ -94,11 +67,11 @@ Improving test coverage, starting with client-side components.
     *   The token is then added to the `Authorization` header of the request.
 6.  **Backend Authentication Middleware:**
     *   **`server/src/middleware/authLogger.ts`**: Logs authentication attempts and errors.
-    *   **`server/src/middleware/auth.ts`**: 
+    *   **`server/src/middleware/auth.ts`**:
         *   `validateToken`: Middleware for JWT token validation using `jsonwebtoken` and `jwks-rsa` (for Azure AD). Supports development mock tokens.
         *   `authenticateToken`: A more general middleware for JWT token validation.
         *   `checkRole`: Middleware for role-based access control.
-    *   **`server/src/middleware/apiKeyAuth.ts`**: 
+    *   **`server/src/middleware/apiKeyAuth.ts`**:
         *   `apiKeyAuth`: Middleware for API key authentication. Validates API keys against `ApiKeyRepository`.
         *   `requireAuthOrApiKey`: Combines Azure AD and API key authentication, prioritizing Azure AD.
     *   **`server/src/middleware/authMiddleware.ts`**: Provides the combined `requireAuthOrApiKey` middleware used in `server.ts`.

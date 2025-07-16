@@ -11,7 +11,7 @@ interface QueryBuilderProps {
   fields: FieldDefinition[];
   selectedFields: string[];
   onFieldsChange: (fields: string[]) => void;
-  onExecute: (query: { fields: string[]; limit: number; offset: number }) => void;
+  onExecute: (query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number }) => void;
   loading?: boolean;
   error?: string | null;
   className?: string;
@@ -90,10 +90,11 @@ export function QueryBuilder({
 
     onExecute({
       fields: validFields,
+      filters,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     });
-  }, [onExecute, selectedFields, fieldOptions, page, pageSize]);
+  }, [onExecute, selectedFields, fieldOptions, page, pageSize, filters]);
 
   // Handle loading state
   if (fieldsLoading) {

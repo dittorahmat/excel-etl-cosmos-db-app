@@ -32,6 +32,13 @@ interface QueryResult {
   continuationToken?: string;
 }
 
+interface FilterCondition {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+}
+
 interface DashboardPageProps {
   children?: React.ReactNode;
 }
@@ -150,11 +157,10 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   }, [isAuthenticated, loadAvailableFields, fieldDefinitions.length]);
 
   // Define executeQuery first
-  const executeQuery = useCallback(async (filter: Record<string, unknown> = {}) => {
+  const executeQuery = useCallback(async (query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number; }) => {
     if (!isAuthenticated) return;
     
-    console.log('[DashboardPage] Executing query with filter:', filter);
-    console.log('[DashboardPage] Selected fields:', selectedFields);
+    console.log('[DashboardPage] Executing query with selectedFields:', selectedFields);
     
     // If no field definitions are loaded yet, don't execute the query
     if (fieldDefinitions.length === 0) {
@@ -188,8 +194,9 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       // Prepare request for the new /api/v2/query/rows endpoint
       const requestBody = {
         fields: [...fields], // Ensure we're working with a new array
-        limit: queryResult.pageSize,
-        offset: (queryResult.page - 1) * queryResult.pageSize,
+        filters: query.filters,
+        limit: query.limit,
+        offset: query.offset,
       };
       
       console.log('[DashboardPage] Request details:', {
@@ -249,7 +256,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, queryResult.page, queryResult.pageSize, selectedFields, fieldDefinitions]);
+  }, [isAuthenticated, selectedFields, fieldDefinitions]);
 
   // Update the ref when executeQuery changes
   useEffect(() => {
@@ -293,9 +300,9 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   }, []);
 
   // Handle manual query execution
-  const handleExecuteQuery = useCallback((filter: Record<string, unknown> = {}) => {
+  const handleExecuteQuery = useCallback((query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number; }) => {
     if (executeQueryRef.current) {
-      return executeQueryRef.current(filter);
+      return executeQueryRef.current(query);
     }
     return Promise.resolve();
   }, []);
@@ -318,11 +325,12 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       }));
       
       // Execute query with new sort
-      executeQuery({ sort: `${field}:${newDirection}` });
+      // Note: We are not passing filters here, as sorting should re-fetch without filters.
+      executeQuery({ ...queryResult, fields: selectedFields, filters: [], sort: `${field}:${newDirection}` });
       
       return field;
     });
-  }, [sortDirection, executeQuery]);
+  }, [sortDirection, executeQuery, queryResult, selectedFields]);
 
   // Load available fields on component mount
   useEffect(() => {
