@@ -16,7 +16,7 @@ const router = Router();
 const storage = multer.memoryStorage();
 
 // File filter for multer
-const fileFilter = (
+export const fileFilter = (
   req: Request,
   file: Express.Multer.File,
   cb: (error: Error | null, acceptFile?: boolean) => void
@@ -101,7 +101,7 @@ const fileFilter = (
       fieldname: file.fieldname
     });
     const error = new Error(
-      `Invalid file type: ${file.mimetype}. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.`
+      `Unsupported file type: ${file.mimetype}. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.`
     ) as unknown as FileTypeError;
     error.name = 'FileTypeError';
     error.code = 'INVALID_FILE_TYPE';
@@ -132,7 +132,7 @@ const createErrorResponse = (status: number, error: string, message: string) => 
  */
 async function uploadHandler(req: Request, res: Response) {
   const startTime = Date.now();
-  const requestId = req.id || `req_${uuidv4()}`;
+  const requestId = req.id?.toString() || `req_${uuidv4()}`;
   const userId = req.user?.oid || 'anonymous';
   
   // Check if file exists
@@ -307,7 +307,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     return res.status(400).json(
       createErrorResponse(
         400,
-        'Invalid file type',
+        'Unsupported file type',
         err.message || 'Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.'
       )
     );
@@ -319,9 +319,9 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     createErrorResponse(
       500,
       'Internal server error',
-      'An error occurred while processing your request'
+      err.message || 'An error occurred while processing your request'
     )
   );
 });
 
-export { router as uploadRouterV2 };
+export { router as uploadRouterV2, upload };

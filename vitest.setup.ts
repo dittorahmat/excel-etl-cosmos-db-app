@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 
 if (!('hasPointerCapture' in Element.prototype)) {
-  Element.prototype.hasPointerCapture = function(pointerId) {
+  Element.prototype.hasPointerCapture = function(_pointerId) {
     return false;
   };
 }

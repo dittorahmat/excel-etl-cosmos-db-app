@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api, getAuthToken } from '../utils/api';
 import {
   Table,
@@ -122,7 +123,7 @@ export function FileListTable() {
     return () => {
       isMounted.current = false;
     };
-  }, [page]);
+  }, [page, fetchFiles]);
 
   const handleDownload = async (fileId: string, fileName: string) => {
     try {
@@ -219,10 +220,14 @@ export function FileListTable() {
           <TableBody>
             {files.map((file) => (
               <TableRow key={file.id}>
+                
+
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     <FileText className="h-4 w-4 mr-2" />
-                    {file.name}
+                    <Link to={`/files/${file.id}`} className="hover:underline">
+                      {file.name}
+                    </Link>
                   </div>
                 </TableCell>
                 <TableCell>{formatFileSize(file.size)}</TableCell>

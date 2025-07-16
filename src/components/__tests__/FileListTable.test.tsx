@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { FileListTable } from '../FileListTable';
 import { api } from '../../utils/api';
 
@@ -68,6 +69,8 @@ const mockFiles = {
   },
 };
 
+
+
 describe('FileListTable', () => {
   beforeEach(() => {
     vi.mocked(api.get).mockResolvedValue(mockFiles);
@@ -77,6 +80,14 @@ describe('FileListTable', () => {
       ok: true,
       blob: () => Promise.resolve(new Blob(['mock blob content'])),
     } as Response);
+
+    
+
+    // Mock window.location.href for navigation tests
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { href: '' },
+    });
   });
 
   afterEach(() => {
@@ -85,30 +96,43 @@ describe('FileListTable', () => {
 
   it('renders loading state initially', () => {
     vi.mocked(api.get).mockReturnValueOnce(new Promise(() => {})); // Never resolve to keep loading
-    render(<FileListTable />);
+    act(() => {
+      render(<MemoryRouter><FileListTable /></MemoryRouter>);
+    });
     expect(screen.getByText('Loading files...')).toBeInTheDocument();
   });
 
   it('renders no files message when no data', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({ data: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 }, pagination: { total: 0, limit: 10, offset: 0, hasMoreResults: false } });
-    render(<FileListTable />);
+    act(() => {
+      render(<MemoryRouter><FileListTable /></MemoryRouter>);
+    });
     await waitFor(() => {
       expect(screen.getByTestId('no-files-message')).toBeInTheDocument();
     });
   });
 
   it('renders files correctly', async () => {
-    render(<FileListTable />);
+    act(() => {
+      render(<MemoryRouter><FileListTable /></MemoryRouter>);
+    });
     await waitFor(() => {
       expect(screen.getByText('test1.xlsx')).toBeInTheDocument();
       expect(screen.getByText('test2.csv')).toBeInTheDocument();
       expect(screen.getByText('90')).toBeInTheDocument(); // validRows for test1.xlsx
       expect(screen.getByText('Processing 50 of 200')).toBeInTheDocument(); // status for test2.csv
+
+      // Check that the link has the correct href
+      const link = screen.getByText('test1.xlsx');
+      expect(link).toBeInTheDocument();
+      expect(link.closest('a')).toHaveAttribute('href', '/files/1');
     });
   });
 
   it('handles download button click', async () => {
-    render(<FileListTable />);
+    act(() => {
+      render(<MemoryRouter><FileListTable /></MemoryRouter>);
+    });
     await waitFor(() => {
       expect(screen.getByText('test1.xlsx')).toBeInTheDocument();
     });
@@ -121,7 +145,9 @@ describe('FileListTable', () => {
   });
 
   it('handles delete button click', async () => {
-    render(<FileListTable />);
+    act(() => {
+      render(<MemoryRouter><FileListTable /></MemoryRouter>);
+    });
     await waitFor(() => {
       expect(screen.getByText('test1.xlsx')).toBeInTheDocument();
     });
@@ -165,7 +191,9 @@ describe('FileListTable', () => {
     });
 
     const user = userEvent.setup();
-    render(<FileListTable />);
+    act(() => {
+      render(<MemoryRouter><FileListTable /></MemoryRouter>);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('page1.xlsx')).toBeInTheDocument();

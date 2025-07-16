@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { JwtPayload } from 'jsonwebtoken';
+import { JsonWebTokenError as _JsonWebTokenError, TokenExpiredError as _TokenExpiredError, JwtPayload } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { config } from 'dotenv';
@@ -138,12 +138,27 @@ export const authenticateToken = (
     });
   }
 
-  try {
-    // In test environment, use a simple verification
+  // In test environment, use a simple verification
     if (process.env.NODE_ENV === 'test') {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret');
-      req.user = decoded as TokenPayload;
-      return next();
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret');
+        req.user = decoded as TokenPayload;
+        return next();
+      } catch (error) {
+        console.error('[auth] Error in test token verification:', error);
+        if (error instanceof _JsonWebTokenError || error instanceof _TokenExpiredError) {
+          return res.status(403).json({
+            success: false,
+            error: 'Authentication failed',
+            message: 'Invalid or expired token'
+          });
+        }
+        return res.status(500).json({
+          success: false,
+          error: 'Internal server error',
+          message: 'Failed to authenticate token'
+        });
+      }
     }
 
     // In other environments, use the full verification
@@ -154,10 +169,17 @@ export const authenticateToken = (
       (err, decoded) => {
         if (err) {
           console.warn('[auth] Invalid or expired token', { error: err });
-          return res.status(403).json({
+          if (err instanceof _JsonWebTokenError || err instanceof _TokenExpiredError) {
+            return res.status(403).json({
+              success: false,
+              error: 'Authentication failed',
+              message: 'Invalid or expired token'
+            });
+          }
+          return res.status(500).json({
             success: false,
-            error: 'Authentication failed',
-            message: 'Invalid or expired token'
+            error: 'Internal server error',
+            message: 'Failed to authenticate token'
           });
         }
         console.info('[auth] Token decoded successfully');
@@ -165,14 +187,6 @@ export const authenticateToken = (
         next();
       }
     );
-  } catch (error) {
-    console.error('[auth] Error in token verification:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to authenticate token'
-    });
-  }
 };
 
 // Middleware to check for required roles

@@ -138,8 +138,10 @@ flowchart TD
 Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on `activeContext.md` and `progress.md` as they track current state.
 
 REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.
+
 when designing or adding new code, always consider YAGNI + SOLID + KISS + DRY principles
-if a code file is over 500 lines, please split it down into separate files without breaking any functionalities
+if a .ts, .tsx, js or jsx file is over 500 lines, please split it down into separate files without breaking any functionalities
 when you find an error, find, list and fix all possible root causes of that error
 only make changes you are at least 95% confident in
-
+use npm run test:client to test client side components
+use npm run test:server to test server side components
