@@ -29,12 +29,6 @@ export const FieldSelector = ({
   loading = false,
   disabled = false,
 }: FieldSelectorProps) => {
-  console.log('[FieldSelector] Rendering with props:', {
-    fields: fields?.length,
-    selectedFields,
-    loading,
-    disabled
-  });
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -67,17 +61,11 @@ export const FieldSelector = ({
    * Handles field selection from both dropdown (no event) and chip remove (with event).
    * Always updates state. Logs entry and exit for debugging.
    */
-  const handleFieldSelect = (field: string, event?: React.MouseEvent) => {
-    console.log('[FieldSelector] handleFieldSelect ENTRY:', { field, selectedFields, event });
-    if (event && typeof event.stopPropagation === 'function') {
-      event.stopPropagation();
-    }
-    const newFields = selectedFields.includes(field)
-      ? selectedFields.filter((f) => f !== field)
-      : [...selectedFields, field];
-    console.log('[FieldSelector] handleFieldSelect EXIT: new selectedFields:', newFields);
-    onFieldsChange(newFields);
-    setSearchTerm("");
+  const handleFieldSelect = (fieldValue: string) => {
+    const newSelectedFields = selectedFields.includes(fieldValue)
+      ? selectedFields.filter((value) => value !== fieldValue)
+      : [...selectedFields, fieldValue];
+    onFieldsChange(newSelectedFields);
   };
 
   return (
@@ -163,13 +151,11 @@ export const FieldSelector = ({
             <CommandGroup className="overflow-y-auto max-h-[300px]">
               {filteredFields.map((option) => {
                 const isSelected = selectedFields.includes(option.value);
-                console.log(`[FieldSelector] Rendering field ${option.value}, isSelected: ${isSelected}`);
                 return (
                   <CommandItem
                     key={option.value}
                     value={option.value}
                     onSelect={() => {
-                      console.log('[FieldSelector] onSelect triggered for:', option.value);
                       handleFieldSelect(option.value);
                     }}
                     disabled={false}

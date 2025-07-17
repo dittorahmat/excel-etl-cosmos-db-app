@@ -145,7 +145,7 @@ export const authenticateToken = (
         return next();
       } catch (error) {
         console.error('[auth] Error in test token verification:', error);
-        if ((error as any) instanceof JsonWebTokenError || (error as any) instanceof TokenExpiredError) {
+        if (error instanceof Error && (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError')) {
           return res.status(403).json({
             success: false,
             error: 'Authentication failed',
@@ -168,7 +168,7 @@ export const authenticateToken = (
       (err, decoded) => {
         if (err) {
           console.warn('[auth] Invalid or expired token', { error: err });
-          if ((err as any) instanceof JsonWebTokenError || (err as any) instanceof TokenExpiredError) {
+          if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
             return res.status(403).json({
               success: false,
               error: 'Authentication failed',

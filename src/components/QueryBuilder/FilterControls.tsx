@@ -143,7 +143,10 @@ export function FilterControls({
                   <div className="grid flex-1 grid-cols-12 gap-2">
                     {/* Field Selector */}
                     <div className="col-span-4">
-                      <Label className="text-xs font-medium text-muted-foreground mb-1 block">
+                      <Label
+                        id={`field-label-${filter.id}`}
+                        className="text-xs font-medium text-muted-foreground mb-1 block"
+                      >
                         Field
                       </Label>
                       <Popover
@@ -157,6 +160,7 @@ export function FilterControls({
                             variant="outline"
                             role="combobox"
                             aria-expanded={openFilterPopovers[`${filter.id}-field`]}
+                            aria-labelledby={`field-label-${filter.id}`}
                             className="w-full justify-between h-9"
                           >
                             {selectedField ? (
@@ -179,6 +183,7 @@ export function FilterControls({
                                   handleFilterSearchChange(filter.id, value)
                                 }
                                 className="h-9"
+                                aria-label="Search fields"
                               />
                             </div>
                             <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
@@ -233,7 +238,7 @@ export function FilterControls({
 
                     {/* Operator Selector */}
                     <div className="col-span-3">
-                      <Label className="text-xs font-medium text-muted-foreground mb-1 block">
+                      <Label htmlFor={`operator-select-${filter.id}`} className="text-xs font-medium text-muted-foreground mb-1 block">
                         Operator
                       </Label>
                       <Select
@@ -247,7 +252,7 @@ export function FilterControls({
                         }
                         disabled={!filter.field}
                       >
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger id={`operator-select-${filter.id}`} className="h-9">
                           <SelectValue placeholder="Select operator..." />
                         </SelectTrigger>
                         <SelectContent>

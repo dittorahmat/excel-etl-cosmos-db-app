@@ -57,6 +57,7 @@ describe('Dialog', () => {
       <Dialog defaultOpen>
         <DialogContent className="custom-content-class">
           <DialogTitle>Title</DialogTitle>
+          <DialogDescription>Description</DialogDescription>
         </DialogContent>
       </Dialog>
     );
@@ -67,6 +68,8 @@ describe('Dialog', () => {
     render(
       <Dialog defaultOpen>
         <DialogContent>
+          <DialogTitle>Title</DialogTitle>
+          <DialogDescription>Description</DialogDescription>
           <DialogHeader className="custom-header-class">Header</DialogHeader>
           <DialogFooter className="custom-footer-class">Footer</DialogFooter>
         </DialogContent>
@@ -81,6 +84,7 @@ describe('Dialog', () => {
       <Dialog defaultOpen>
         <DialogContent>
           <DialogTitle>Title</DialogTitle>
+          <DialogDescription>Description</DialogDescription>
         </DialogContent>
       </Dialog>
     );
