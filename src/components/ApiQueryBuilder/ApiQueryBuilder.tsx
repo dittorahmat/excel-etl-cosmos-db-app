@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { FieldSelector } from '../QueryBuilder/FieldSelector';
 import { FilterControls } from '../QueryBuilder/FilterControls';
@@ -29,6 +29,7 @@ interface ApiQueryBuilderProps {
 
 export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => {
   const [fields, setFields] = useState<FieldDefinition[]>([]);
+  console.log("[ApiQueryBuilder] Render - fields state:", fields);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterCondition[]>([]);
   const [generatedUrl, setGeneratedUrl] = useState<string>('');
@@ -37,27 +38,29 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => 
 
   // Fetch available fields
   useEffect(() => {
+    console.log("[ApiQueryBuilder] useEffect fetchFields - Start");
     const fetchFields = async () => {
       setFieldsLoading(true);
       setError(null);
       try {
-        const response = await api.get<{ success: boolean; fields: string[] }>('/api/fields');
+        console.log("[ApiQueryBuilder] useEffect fetchFields - Calling api.get('/api/fields')");
+        const response = await api.get<{ success: boolean; fields: FieldDefinition[], message?: string }>('/api/fields');
+        console.log("[ApiQueryBuilder] useEffect fetchFields - API response:", response);
         if (response.success && Array.isArray(response.fields)) {
-          const fieldDefinitions = response.fields.map(fieldName => ({
-            name: fieldName,
-            type: 'string', // Default to string type
-            label: fieldName
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ')
-          }));
+          const fieldDefinitions = response.fields.map(field => (
+            typeof field === 'string' ? { name: field, value: field, label: field, type: 'string' } : { ...field, value: field.name, label: field.label || field.name }
+          ));
+          console.log("[ApiQueryBuilder] useEffect fetchFields - Setting fields:", fieldDefinitions);
           setFields(fieldDefinitions);
         } else {
+          console.error("[ApiQueryBuilder] useEffect fetchFields - API call failed or returned invalid data:", response.message);
           setError(response.message || 'Failed to load fields');
         }
-      } catch (err) {
+      } catch (err) { 
+        console.error("[ApiQueryBuilder] useEffect fetchFields - Error:", err);
         setError(err instanceof Error ? err.message : 'Failed to load fields');
       } finally {
+        console.log("[ApiQueryBuilder] useEffect fetchFields - Setting fieldsLoading to false");
         setFieldsLoading(false);
       }
     };
@@ -163,7 +166,7 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => 
           <Label htmlFor="apiUrl">Generated API URL</Label>
           <div className="flex items-center space-x-2">
             <Input id="apiUrl" value={generatedUrl} readOnly className="flex-1" />
-            <Button onClick={handleCopyUrl} size="icon" variant="outline">
+            <Button onClick={handleCopyUrl} size="icon" variant="outline" aria-label="Copy URL">
               <Copy className="h-4 w-4" />
             </Button>
           </div>
@@ -178,7 +181,7 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => 
               import requests
 
               url = "{generatedUrl}"
-              headers = {{'x-api-key': 'YOUR_API_KEY'}}
+              headers = "X-API-KEY: YOUR_API_KEY"
 
               response = requests.get(url, headers=headers)
               print(response.json())

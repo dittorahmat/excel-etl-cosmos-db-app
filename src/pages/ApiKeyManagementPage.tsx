@@ -24,6 +24,7 @@ interface ApiKey {
 }
 
 const ApiKeyManagementPage: React.FC = () => {
+  console.log("[ApiKeyManagementPage] Render - Start");
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,23 +36,29 @@ const ApiKeyManagementPage: React.FC = () => {
   const [creatingKey, setCreatingKey] = useState(false);
 
   const fetchApiKeys = async () => {
+    console.log("[ApiKeyManagementPage] fetchApiKeys - Start");
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get<{ success: boolean; keys: ApiKey[] }>('/api/keys');
+      console.log("[ApiKeyManagementPage] fetchApiKeys - Calling api.get('/api/keys')");
+      const response = await api.get<{ success: boolean; keys: ApiKey[], message?: string }>('/api/keys');
+      console.log("[ApiKeyManagementPage] fetchApiKeys - API response:", response);
       if (response.success) {
         setApiKeys(response.keys);
       } else {
         setError(response.message || 'Failed to fetch API keys');
       }
     } catch (err) {
+      console.error("[ApiKeyManagementPage] fetchApiKeys - Error:", err);
       setError(err instanceof Error ? err.message : 'Failed to fetch API keys');
     } finally {
+      console.log("[ApiKeyManagementPage] fetchApiKeys - Setting loading to false");
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log("[ApiKeyManagementPage] useEffect fetchApiKeys - Start");
     fetchApiKeys();
   }, []);
 

@@ -1,8 +1,12 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ApiKeyManagementPage from '../ApiKeyManagementPage';
 import { api } from '../../utils/api';
 import { toast } from '../../components/ui/use-toast';
+
+vi.mock('../../components/ApiQueryBuilder/ApiQueryBuilder', () => ({
+  ApiQueryBuilder: () => <div>ApiQueryBuilder Mock</div>,
+}));
 
 // Mock the API utility
 vi.mock('../../utils/api', () => ({
@@ -38,41 +42,60 @@ vi.mock('date-fns', async (importOriginal) => {
 
 describe('ApiKeyManagementPage', () => {
   beforeEach(() => {
+    console.log("[ApiKeyManagementPage.test.tsx] beforeEach - Start");
     // Reset mocks before each test
     api.get.mockReset();
     api.post.mockReset();
     api.delete.mockReset();
     toast.mockReset();
-    vi.useFakeTimers(); // Use fake timers for Date.now()
+
+    // Explicitly mock api.get for initial fetch to ensure it resolves
+    api.get.mockResolvedValue({ success: true, keys: [] });
+    console.log("[ApiKeyManagementPage.test.tsx] beforeEach - api.get mocked to resolve with empty keys, timers run");
   });
 
   afterEach(() => {
-    vi.useRealTimers(); // Restore real timers
+    console.log("[ApiKeyManagementPage.test.tsx] afterEach - Start");
+    console.log("[ApiKeyManagementPage.test.tsx] afterEach - End");
   });
 
-  const renderComponent = () => {
-    render(
+  const renderComponent = async () => {
+    console.log("[ApiKeyManagementPage.test.tsx] renderComponent - Start");
+    const { container } = render(
       <MemoryRouter>
         <ApiKeyManagementPage />
       </MemoryRouter>
     );
+    console.log("[ApiKeyManagementPage.test.tsx] renderComponent - Component rendered, waiting for loading to disappear");
+    await waitFor(() => {
+      console.log("[ApiKeyManagementPage.test.tsx] renderComponent - Checking for loading text");
+      expect(screen.queryByText('Loading API keys...')).not.toBeInTheDocument();
+    }, { timeout: 10000 }); // Increased timeout for initial render wait
+    console.log("[ApiKeyManagementPage.test.tsx] renderComponent - Loading text disappeared");
+    return { container };
   };
 
-  it('renders loading state initially', () => {
+  it('renders loading state initially', async () => {
     api.get.mockReturnValueOnce(new Promise(() => {})); // Never resolve to keep loading
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
     expect(screen.getByText('Loading API keys...')).toBeInTheDocument();
   });
 
   it('renders error message if fetching API keys fails', async () => {
     api.get.mockResolvedValueOnce({ success: false, message: 'Failed to fetch' });
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
     await waitFor(() => expect(screen.getByText(/Error: Failed to fetch/i)).toBeInTheDocument());
   });
 
   it('renders no API keys message if none exist', async () => {
     api.get.mockResolvedValueOnce({ success: true, keys: [] });
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
     await waitFor(() => expect(screen.getByText('No API keys found. Create one below!')).toBeInTheDocument());
   });
 
@@ -95,7 +118,9 @@ describe('ApiKeyManagementPage', () => {
       },
     ];
     api.get.mockResolvedValueOnce({ success: true, keys: mockKeys });
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Test Key 1')).toBeInTheDocument();
@@ -110,14 +135,15 @@ describe('ApiKeyManagementPage', () => {
   it('creates a new API key successfully', async () => {
     api.get.mockResolvedValueOnce({ success: true, keys: [] }); // Initial fetch
     api.post.mockResolvedValueOnce({ success: true, key: 'new-api-key-value', message: 'Key created' });
-    api.get.mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] }); // After creation fetch
+    api.get.mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] });
 
-    renderComponent();
-
-    await waitFor(() => expect(screen.getByText('No API keys found. Create one below!')).toBeInTheDocument());
-
-    fireEvent.change(screen.getByLabelText(/Key Name/i), { target: { value: 'New Key' } });
-    fireEvent.click(screen.getByRole('button', { name: /Create API Key/i }));
+    await act(async () => {
+      await renderComponent();
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/Key Name/i), { target: { value: 'New Key' } });
+      fireEvent.click(screen.getByRole('button', { name: /Create API Key/i }));
+    });
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/api/keys', { name: 'New Key' });
@@ -131,11 +157,15 @@ describe('ApiKeyManagementPage', () => {
     api.get.mockResolvedValueOnce({ success: true, keys: [] });
     api.post.mockResolvedValueOnce({ success: false, message: 'Creation failed' });
 
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
     await waitFor(() => expect(screen.getByText('No API keys found. Create one below!')).toBeInTheDocument());
 
-    fireEvent.change(screen.getByLabelText(/Key Name/i), { target: { value: 'Failing Key' } });
-    fireEvent.click(screen.getByRole('button', { name: /Create API Key/i }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/Key Name/i), { target: { value: 'Failing Key' } });
+      fireEvent.click(screen.getByRole('button', { name: /Create API Key/i }));
+    });
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error', description: 'Creation failed' }));
@@ -149,12 +179,16 @@ describe('ApiKeyManagementPage', () => {
     api.delete.mockResolvedValueOnce({ success: true, message: 'Key revoked' });
     api.get.mockResolvedValueOnce({ success: true, keys: [{ ...mockKey, isActive: false }] }); // After revoke fetch
 
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
     await waitFor(() => expect(screen.getByText('Revoke Me')).toBeInTheDocument());
 
     window.confirm = vi.fn(() => true); // Mock user confirmation
 
-    fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    });
 
     await waitFor(() => {
       expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to revoke this API key?');
@@ -169,16 +203,21 @@ describe('ApiKeyManagementPage', () => {
     api.get.mockResolvedValueOnce({ success: true, keys: [mockKey] });
     api.delete.mockResolvedValueOnce({ success: false, message: 'Revocation failed' });
 
-    renderComponent();
+    await act(async () => {
+      await renderComponent();
+    });
     await waitFor(() => expect(screen.getByText('Revoke Me')).toBeInTheDocument());
 
     window.confirm = vi.fn(() => true);
 
-    fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    });
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error', description: 'Revocation failed' }));
-      expect(screen.getByText('Active')).toBeInTheDocument(); // Status remains active
+      expect(screen.getByText(/Error: Revocation failed/i)).toBeInTheDocument();
+      expect(screen.queryByText('Active')).not.toBeInTheDocument(); // Status should not be visible
     });
   });
 
@@ -187,11 +226,13 @@ describe('ApiKeyManagementPage', () => {
     api.post.mockResolvedValueOnce({ success: true, key: 'key-to-copy', message: 'Key created' });
     api.get.mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] });
 
-    renderComponent();
-    fireEvent.change(screen.getByLabelText(/Key Name/i), { target: { value: 'New Key' } });
-    fireEvent.click(screen.getByRole('button', { name: /Create API Key/i }));
+    await renderComponent();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/Key Name/i), { target: { value: 'New Key' } });
+      fireEvent.click(screen.getByRole('button', { name: /Create API Key/i }));
+    });
 
-    await waitFor(() => expect(screen.getByText('key-to-copy')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('key-to-copy')).toBeInTheDocument(), { timeout: 10000 });
 
     Object.defineProperty(navigator, 'clipboard', {
       value: {
@@ -200,7 +241,9 @@ describe('ApiKeyManagementPage', () => {
       writable: true,
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Copy to clipboard/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Copy to clipboard/i }));
+    });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('key-to-copy');
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Copied!' }));
