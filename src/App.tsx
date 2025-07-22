@@ -1,13 +1,15 @@
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
-import { LoginPage } from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import ApiKeyManagementPage from './pages/ApiKeyManagementPage';
-import { UploadPage } from './pages/UploadPage';
 import { MainLayout } from './components/layout/MainLayout';
-import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+
+// Lazy load page components
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ApiKeyManagementPage = lazy(() => import('./pages/ApiKeyManagementPage'));
+const UploadPage = lazy(() => import('./pages/UploadPage'));
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -74,7 +76,8 @@ const AppContent = () => {
   return (
     <Router>
       <ScrollToTop />
-      <Routes>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
         {/* Public routes */}
         <Route
           path="/login"
@@ -99,6 +102,7 @@ const AppContent = () => {
           </Route>
         </Route>
       </Routes>
+      </Suspense>
     </Router>
   );
 };
