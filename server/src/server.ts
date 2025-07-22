@@ -178,7 +178,9 @@ function createApp(azureServices: AzureCosmosDB): Express {
       dataRoute
     );
   } else {
-    logger.warn('Authentication is DISABLED. All API routes are UNPROTECTED.');
+    if (process.env.NODE_ENV !== 'test') {
+      logger.warn('Authentication is DISABLED. All API routes are UNPROTECTED.');
+    }
     app.use('/api/auth', authRoute); // Always allow auth route without rate limiting if auth is disabled
     
     // API v1 routes (legacy)

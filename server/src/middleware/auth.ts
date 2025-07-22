@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload, JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { config } from 'dotenv';
 

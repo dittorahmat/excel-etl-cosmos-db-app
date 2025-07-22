@@ -95,7 +95,7 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
       emptyOutDir: true,
       copyPublicDir: true,
       assetsInlineLimit: 0, // Ensure all assets are copied as files
-      chunkSizeWarningLimit: 2000,
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
