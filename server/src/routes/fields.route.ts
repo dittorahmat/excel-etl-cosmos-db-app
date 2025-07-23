@@ -72,11 +72,16 @@ router.get(
         });
         
         const fields = Array.from(fieldSet).sort();
-        logger.info(`Found ${fields.length} unique fields across ${sampleRecords.length} sample records`);
+        const fieldDefinitions = fields.map(field => ({
+          name: field,
+          type: 'string', // Default to string, as type inference from sample data is complex
+          label: field,
+        }));
+        logger.info(`Found ${fieldDefinitions.length} unique fields across ${sampleRecords.length} sample records. Transformed fields: ${JSON.stringify(fieldDefinitions)}`);
         
         return res.status(200).json({
           success: true,
-          fields
+          fields: fieldDefinitions
         });
       }
       

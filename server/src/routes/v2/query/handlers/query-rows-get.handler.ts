@@ -7,7 +7,7 @@ import { FilterCondition } from '@common/types/filter-condition.js';
  * Handler for querying exactly Name, Email, Phone fields, mimicking the Cosmos DB query:
  * SELECT c.Name, c.Email, c.Phone FROM c WHERE IS_DEFINED(c.Name) AND IS_DEFINED(c.Email) AND IS_DEFINED(c.Phone) AND c.documentType = 'excel-row'
  */
-export class QueryRowsExactHandler extends BaseQueryHandler {
+export class QueryRowsGetHandler extends BaseQueryHandler {
   constructor() {
     super('excel-records', '/_partitionKey');
   }
@@ -24,10 +24,8 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
       url: req.url,
       headers: req.headers,
       query: req.query,
-      body: req.body, // Add body to the log
       queryType: typeof req.query,
-      queryKeys: Object.keys(req.query || {}),
-      bodyKeys: Object.keys(req.body || {})
+      queryKeys: Object.keys(req.query || {})
     });
     
     try {
@@ -38,35 +36,32 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         query: req.query
       });
       
-      // Only allow POST with { fields: string[], limit, offset }
-      if (req.method !== 'POST') {
+      // Only allow GET
+      if (req.method !== 'GET') {
         log(`Method not allowed: ${req.method}`);
         return res.status(405).json({ success: false, message: 'Method Not Allowed' });
       }
       
-      
-      
-      const { fields, filters: rawFilters, limit: rawLimit, offset: rawOffset } = req.body;
-
+      const fields = req.query.fields ? (req.query.fields as string).split(',') : [];
       let filters: FilterCondition[] = [];
-      if (rawFilters) {
+      if (req.query.filters) {
         try {
-          filters = Array.isArray(rawFilters) ? rawFilters : JSON.parse(decodeURIComponent(rawFilters as string));
+          filters = JSON.parse(decodeURIComponent(req.query.filters as string));
         } catch (e) {
-          log('Error parsing filters', { error: e, filters: rawFilters });
+          log('Error parsing filters', { error: e, filters: req.query.filters });
           return res.status(400).json({ success: false, message: 'Invalid filters parameter' });
         }
       }
-      const limit = rawLimit ? parseInt(rawLimit as string, 10) : 100;
-      const offset = rawOffset ? parseInt(rawOffset as string, 10) : 0;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
       
-      log('Request body parsed', {
+      log('Request query parsed', {
         fields,
         limit,
         offset,
         fieldsType: Array.isArray(fields) ? 'array' : typeof fields,
         fieldsLength: Array.isArray(fields) ? fields.length : 'not an array',
-        bodyKeys: Object.keys(req.body)
+        queryKeys: Object.keys(req.query)
       });
       
       // Validate fields parameter
@@ -245,4 +240,4 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
   }
 }
 
-export const queryRowsExactHandler = new QueryRowsExactHandler();
+export const queryRowsGetHandler = new QueryRowsGetHandler();

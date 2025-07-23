@@ -65,7 +65,7 @@ export class ListImportsHandler extends BaseQueryHandler {
           documentType: 'excel-import' // Let the query builder handle this
         },
         continuationToken: queryParams.continuationToken,
-        fields: queryParams.fields ? queryParams.fields.join(',') : undefined
+        fields: queryParams.fields ? JSON.stringify(queryParams.fields) : undefined
       };
 
       // Get the total count of matching documents
@@ -88,8 +88,8 @@ export class ListImportsHandler extends BaseQueryHandler {
       });
 
       // If we have fields to select, we need to ensure we only return those fields
-      const selectedFields = queryParams.fields && queryParams.fields.length > 0 
-        ? queryParams.fields 
+      const selectedFields = queryParams.fields && Array.isArray(queryParams.fields) 
+        ? queryParams.fields.map(f => typeof f === 'string' ? f : f.name) 
         : null;
       
       const processedItems = items.map(item => {
@@ -102,7 +102,7 @@ export class ListImportsHandler extends BaseQueryHandler {
         const result: Record<string, unknown> = {};
         selectedFields.forEach(field => {
           // Handle nested fields if needed (e.g., 'user.name')
-          const fieldParts = field.split('.');
+          const fieldParts = typeof field === 'string' ? field.split('.') : [field.name];
           let value: unknown = item;
           
           try {

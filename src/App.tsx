@@ -10,6 +10,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ApiKeyManagementPage = lazy(() => import('./pages/ApiKeyManagementPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
+import ApiQueryBuilderPage from './pages/ApiQueryBuilderPage';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -98,6 +99,7 @@ const AppContent = () => {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/api-keys" element={<ApiKeyManagementPage />} />
+            <Route path="/api-query-builder" element={<ApiQueryBuilderPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>

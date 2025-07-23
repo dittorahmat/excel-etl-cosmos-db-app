@@ -53,11 +53,6 @@ const server = http.createServer((req, res) => {
                     res.writeHead(404, { 'Content-Type': 'text/html' });
                     res.end('404 Not Found', 'utf-8');
                 });
-            } else {
-                // Server error
-                res.writeHead(500);
-                res.end('Sorry, check with the site admin for error: '+error.code+' ..\n');
-            }
         } else {
             // Success
             res.writeHead(200, { 'Content-Type': contentType });

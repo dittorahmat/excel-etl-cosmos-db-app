@@ -22,8 +22,16 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
   const router = Router();
   const apiKeyRepository = new ApiKeyRepository(cosmosDb);
 
-  // Apply authentication and rate limiting to all routes
-  router.use(authenticateToken);
+  // Conditionally apply authentication and rate limiting to all routes
+  if (process.env.AUTH_ENABLED === 'true') {
+    router.use(authenticateToken);
+  } else {
+    // In development/test, if auth is disabled, mock the user object
+    router.use((req, res, next) => {
+      req.user = { oid: 'mock-user-id', name: 'Mock User' };
+      next();
+    });
+  }
   
   // Apply rate limiting to all API key routes
   router.use(authRateLimiter);

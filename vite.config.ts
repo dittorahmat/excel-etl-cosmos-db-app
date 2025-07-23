@@ -194,6 +194,16 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
           }
         },
       },
+      // Custom middleware for history API fallback
+      configureServer(app) {
+        app.use((req, res, next) => {
+          // Check if the request is for a file (has an extension)
+          if (req.url && !req.url.includes('.') && req.url !== '/' && !req.url.startsWith('/api')) {
+            req.url = '/index.html';
+          }
+          next();
+        });
+      }
     },
   };
 });
