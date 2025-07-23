@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { FieldSelector } from '../QueryBuilder/FieldSelector';
 import { FilterControls } from '../QueryBuilder/FilterControls';
-import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Copy, Loader2 } from 'lucide-react';
 import { toast } from '../ui/use-toast';
@@ -27,7 +26,7 @@ interface ApiQueryBuilderProps {
   baseUrl: string;
 }
 
-export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => {
+export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/api/v2/query/rows' }) => {
   const [fields, setFields] = useState<FieldDefinition[]>([]);
   console.log("[ApiQueryBuilder] Render - fields state:", fields);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -87,25 +86,21 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => 
   }, []);
 
   const generateApiUrl = useCallback(() => {
-    const params = new URLSearchParams();
+    const body = {
+      fields: selectedFields,
+      filters: filters.filter(f => f.field && f.operator && f.value),
+      limit: 10,
+      offset: 0,
+    };
 
-    if (selectedFields.length > 0) {
-      params.append('fields', selectedFields.join(','));
-    }
+    const fullUrl = `${window.location.origin}${baseUrl}`;
 
-    if (filters.length > 0) {
-      const validFilters = filters.filter(f => f.field && f.operator && f.value);
-      if (validFilters.length > 0) {
-        params.append('filters', JSON.stringify(validFilters));
-      }
-    }
+    const curlCommand = `curl -X POST ${fullUrl} \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '${JSON.stringify(body, null, 2)}'`
 
-    // Add pagination defaults or allow user to specify
-    params.append('limit', '10');
-    params.append('offset', '0');
-
-    const queryString = params.toString();
-    setGeneratedUrl(`${baseUrl}?${queryString}`);
+    setGeneratedUrl(curlCommand);
   }, [selectedFields, filters, baseUrl]);
 
   useEffect(() => {
@@ -149,12 +144,13 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => 
       <div className="space-y-2">
         <Label>Filter API Results</Label>
         <FilterControls
-          fields={fields}
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          onAddFilter={handleAddFilter}
-          onRemoveFilter={handleRemoveFilter}
-        />
+            fields={fields}
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onAddFilter={handleAddFilter}
+            onRemoveFilter={handleRemoveFilter}
+            defaultShowFilters={true}
+          />
       </div>
 
       <Button onClick={generateApiUrl} className="w-full">
@@ -163,30 +159,16 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl }) => 
 
       {generatedUrl && (
         <div className="space-y-2 mt-4">
-          <Label htmlFor="apiUrl">Generated API URL</Label>
+          <Label htmlFor="apiUrl">Generated cURL Command</Label>
           <div className="flex items-center space-x-2">
-            <Input id="apiUrl" value={generatedUrl} readOnly className="flex-1" />
+            <textarea id="apiUrl" value={generatedUrl} readOnly className="flex-1 w-full h-48 p-2 border rounded-md bg-gray-100 dark:bg-gray-800" />
             <Button onClick={handleCopyUrl} size="icon" variant="outline" aria-label="Copy URL">
               <Copy className="h-4 w-4" />
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Use this URL with your API key in the `x-api-key` header.
+            Replace `YOUR_API_KEY` with your actual API key.
           </p>
-          <p className="text-sm text-muted-foreground">
-            Example (Python requests):
-          </p>
-          <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md text-sm overflow-x-auto">
-            <code className="language-python">
-              import requests
-
-              url = "{generatedUrl}"
-              headers = "X-API-KEY: YOUR_API_KEY"
-
-              response = requests.get(url, headers=headers)
-              print(response.json())
-            </code>
-          </pre>
         </div>
       )}
     </div>

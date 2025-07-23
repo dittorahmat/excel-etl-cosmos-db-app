@@ -5,11 +5,12 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "./dist/server",
-    "rootDir": "./server",
+    "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./server/src/*"],
-      "@/test-utils/*": ["./server/src/test-utils/*"]
+      "@/server/*": ["./server/src/*"],
+      "@/server/test-utils/*": ["./server/src/test-utils/*"],
+      "@common/*": ["./common/*"]
     },
     "strict": true,
     "esModuleInterop": true,
@@ -34,7 +35,8 @@
     "server/test/**/*.ts",
     "server/src/**/*.tsx",
     "server/test/**/*.tsx",
-    "server/test/test-types.d.ts"
+    "server/test/test-types.d.ts",
+    "common/types/*.ts"
   ],
   "exclude": [
     "node_modules",

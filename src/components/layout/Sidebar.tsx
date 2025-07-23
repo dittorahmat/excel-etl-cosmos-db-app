@@ -40,7 +40,7 @@ const menuItems = [
   },
 ];
 
-import { KeyRound } from 'lucide-react';
+
 
 const adminMenuItems = [
   {
@@ -52,6 +52,11 @@ const adminMenuItems = [
     title: 'API Keys',
     path: '/api-keys',
     icon: KeyRound,
+  },
+  {
+    title: 'API Query Builder',
+    path: '/api-query-builder',
+    icon: Database, // Using Database icon for now, can be changed later
   },
 ];
 

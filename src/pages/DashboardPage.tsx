@@ -107,21 +107,18 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     setFieldsLoading(true);
     
     try {
-      const response = await api.get<{ success: boolean; fields: string[] }>('/api/fields');
+      const response = await api.get<{ success: boolean; fields: FieldDefinition[] }>('/api/fields');
       console.log('[loadAvailableFields] API response:', response);
       
       if (response?.success && Array.isArray(response.fields)) {
         console.log(`[loadAvailableFields] Received ${response.fields.length} fields from API`);
         
         // Transform string array into FieldDefinition objects
-        const fieldDefinitions = response.fields.map(fieldName => {
+        const fieldDefinitions = response.fields.map(field => {
           const fieldDef: FieldDefinition = {
-            name: fieldName,
-            type: 'string', // Default to string type
-            label: fieldName
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ')
+            name: field.name,
+            type: field.type || 'string', // Use field.type, default to string
+            label: field.label || field.name
           };
           console.log(`[loadAvailableFields] Processed field:`, fieldDef);
           return fieldDef;

@@ -73,7 +73,9 @@ describe('ApiQueryBuilder', () => {
     await user.click(screen.getByRole('combobox'));
     await user.click(screen.getByText('City'));
 
-    await user.click(screen.getByRole('button', { name: 'Show filters' }));
+    // Filter controls are now visible by default, so no need to click 'Show filters'
+    // If you want to test hiding them, you would click 'Hide filters' instead:
+    // await user.click(screen.getByRole('button', { name: 'Hide filters' }));
     await user.click(screen.getByRole('button', { name: 'Add Filter' }));
 
     // Select field for filter

@@ -41,8 +41,12 @@ export const queryParamsSchema = z.object({
   
   // Field selection - can be comma-separated string, array of strings, or undefined
   fields: z.union([
-    z.string().transform(val => val.split(',').map(f => f.trim()).filter(Boolean)),
-    z.array(z.string()),
+    z.array(z.object({
+      name: z.string(),
+      type: z.string().optional(),
+      label: z.string().optional(),
+    })),
+    z.string().transform(val => val.split(',').map(f => ({ name: f.trim(), type: 'string', label: f.trim() })).filter(f => f.name.length > 0)),
     z.undefined()
   ]).optional(),
 

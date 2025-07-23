@@ -12,7 +12,6 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '../components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { toast } from '../components/ui/use-toast';
-import { ApiQueryBuilder } from '../components/ApiQueryBuilder/ApiQueryBuilder';
 
 interface ApiKey {
   id: string;
@@ -294,18 +293,9 @@ const ApiKeyManagementPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Section for API Query Builder */}
-        <Card>
-          <CardHeader>
-            <CardTitle>API Query Builder</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ApiQueryBuilder baseUrl="/api/v2/query/rows" />
-          </CardContent>
-        </Card>
       </div>
-    </div>
+      {/* Section for API Query Builder */}
+      </div>
   );
 };
 
