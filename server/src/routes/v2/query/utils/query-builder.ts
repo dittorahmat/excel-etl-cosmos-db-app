@@ -112,6 +112,7 @@ export function buildCosmosQuery(params: QueryParams, importId?: string) {
 
   return {
     query,
+    whereClauses,
     parameters,
   };
 }

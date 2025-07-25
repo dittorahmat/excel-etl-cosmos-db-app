@@ -59,7 +59,7 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
         console.error("[ApiQueryBuilder] useEffect fetchFields - Error:", err);
         setError(err instanceof Error ? err.message : 'Failed to load fields');
       } finally {
-        console.log("[ApiQueryBuilder] useEffect fetchFields - Setting fieldsLoading to false");
+        
         setFieldsLoading(false);
       }
     };

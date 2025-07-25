@@ -55,8 +55,7 @@ describe('ApiKeyManagementPage', () => {
   });
 
   afterEach(() => {
-    console.log("[ApiKeyManagementPage.test.tsx] afterEach - Start");
-    console.log("[ApiKeyManagementPage.test.tsx] afterEach - End");
+    
   });
 
   const renderComponent = async () => {

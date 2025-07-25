@@ -69,7 +69,8 @@ export class ListImportsHandler extends BaseQueryHandler {
       };
 
       // Get the total count of matching documents
-      const totalCount = await this.getTotalCount([], []);
+      const { whereClauses, parameters } = this.buildQueryParts(queryParamsWithContinuation);
+      const totalCount = await this.getTotalCount(whereClauses, parameters);
 
       // Execute the query
       const { items, requestCharge, continuationToken, hasMoreResults } = 
@@ -128,7 +129,7 @@ export class ListImportsHandler extends BaseQueryHandler {
       });
 
       // Calculate pagination info
-      const pageSize = queryParams.limit || 100;
+      const pageSize = queryParams.limit || 10;
       const page = queryParams.offset ? Math.floor(queryParams.offset / pageSize) + 1 : 1;
       const totalPages = Math.ceil(totalCount / pageSize);
 
