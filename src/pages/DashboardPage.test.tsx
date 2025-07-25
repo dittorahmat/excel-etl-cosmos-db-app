@@ -29,8 +29,7 @@ describe('DashboardPage', () => {
     (api.get as vi.Mock).mockImplementation((url: string) => {
       if (url === '/api/fields') {
         return Promise.resolve({
-          success: true,
-          fields: ['id', 'name', 'value'],
+          
         });
       }
       return Promise.reject(new Error('Unknown API endpoint'));

@@ -89,6 +89,14 @@ export abstract class BaseQueryHandler {
   }
 
   /**
+   * Build query parts from query parameters
+   */
+  protected buildQueryParts(params: QueryParams): { whereClauses: string[], parameters: SqlParameter[] } {
+    const { whereClauses, parameters } = buildCosmosQuery(params);
+    return { whereClauses, parameters };
+  }
+
+  /**
    * Get the total count of items matching the query
    */
   protected async getTotalCount(

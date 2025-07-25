@@ -2,6 +2,13 @@ import winston from 'winston'; // WinstonLogger and LoggerOptions were imported 
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { TransformableInfo } from 'logform';
+import fs from 'fs';
+
+// Ensure log directory exists
+const logDir = 'logs';
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir);
+}
 
 // Define log levels
 const levels = {

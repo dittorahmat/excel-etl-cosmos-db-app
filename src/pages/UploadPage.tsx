@@ -16,7 +16,7 @@ export function UploadPage() {
   useEffect(() => {
     console.log('UploadPage mounted');
     return () => {
-      console.log('UploadPage unmounted');
+      
     };
   }, []);
 

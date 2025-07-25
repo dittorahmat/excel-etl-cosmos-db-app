@@ -93,7 +93,7 @@ describe('AuthProvider', () => {
       // Check for memory leaks
       if (memoryUsage.length > 1) {
         const diff = memoryUsage[memoryUsage.length - 1] - memoryUsage[0];
-        console.log(`[Memory] Total memory change: ${diff.toFixed(2)} MB`);
+        
         if (diff > 10) {
           console.warn('[Memory] Possible memory leak detected!');
         }

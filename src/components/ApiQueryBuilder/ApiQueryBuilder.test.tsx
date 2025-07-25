@@ -24,7 +24,7 @@ describe('ApiQueryBuilder', () => {
   });
 
   it('renders error state if fields fail to load', async () => {
-    api.get.mockResolvedValueOnce({ success: false, message: 'Failed to load fields' });
+    api.get.mockRejectedValueOnce(new Error('Failed to load fields'));
     render(<ApiQueryBuilder baseUrl="/api/v2/query/rows" />);
     await waitFor(() => {
       expect(screen.getByText('Error: Failed to load fields')).toBeInTheDocument();
@@ -50,8 +50,18 @@ describe('ApiQueryBuilder', () => {
     await user.click(screen.getByRole('combobox'));
     await user.click(screen.getByText('City'));
 
-    const apiUrlInput = screen.getByLabelText('Generated API URL');
-    expect(apiUrlInput).toHaveValue('/api/v2/query/rows?fields=city&limit=10&offset=0');
+    const apiUrlInput = screen.getByLabelText('Generated cURL Command');
+    expect(apiUrlInput).toHaveValue(`curl -X POST ${window.location.origin}/api/v2/query/rows \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+  "fields": [
+    "city"
+  ],
+  "filters": [],
+  "limit": 10,
+  "offset": 0
+}'`);
   });
 
   it('allows adding filters and generates URL with filters', async () => {
@@ -94,8 +104,8 @@ describe('ApiQueryBuilder', () => {
     // Enter value for filter
     await user.type(screen.getByPlaceholderText('Value'), 'New York');
 
-    const apiUrlInput = screen.getByLabelText('Generated API URL');
-    expect(apiUrlInput.value).toContain('filters=');
+    const apiUrlInput = screen.getByLabelText('Generated cURL Command');
+    expect(apiUrlInput.value).toContain('filters');
   });
 
   it('copies the generated URL to clipboard', async () => {
@@ -129,7 +139,14 @@ describe('ApiQueryBuilder', () => {
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        '/api/v2/query/rows?fields=city&limit=10&offset=0'
+        `curl -X POST ${window.location.origin}/api/v2/query/rows   -H "Content-Type: application/json"   -H "x-api-key: YOUR_API_KEY"   -d '{
+  "fields": [
+    "city"
+  ],
+  "filters": [],
+  "limit": 10,
+  "offset": 0
+}'`
       );
     });
   });

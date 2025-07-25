@@ -102,6 +102,7 @@ export function FileListTable() {
           return fileData;
         });
         
+        console.log('Total files from backend:', response.data.total);
         setFiles(mappedFiles);
         setTotalPages(response.data.totalPages || 1);
         setError(null);

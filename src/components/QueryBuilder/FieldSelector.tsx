@@ -12,6 +12,7 @@ import {
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Badge } from "../ui/badge";
+
 import { FieldOption } from "./types";
 
 interface FieldSelectorProps {
@@ -82,49 +83,46 @@ export const FieldSelector = ({
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="w-full">
-            {selectedFieldLabels.length > 0 && (
-              <div className="flex flex-wrap gap-1 max-w-full mb-2">
-                {selectedFieldLabels.map((field) => (
-                  <span
-                    key={field.value}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-secondary rounded-md text-secondary-foreground"
-                  >
-                    {field.label}
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Remove ${field.label}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFieldSelect(field.value, e);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleFieldSelect(field.value, e);
-                        }
-                      }}
-                      className="rounded-full hover:bg-accent/50 ml-1 -mr-1 p-0.5 cursor-pointer"
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </span>
+            <PopoverTrigger asChild>
+              <div>
+                {selectedFieldLabels.length > 0 && (
+                  <div className="flex flex-wrap gap-1 max-w-full mb-2">
+                    {selectedFieldLabels.map((field) => (
+                      <Badge
+                        key={field.value}
+                        variant="secondary"
+                        className="flex items-center gap-1 px-2 py-1 text-sm"
+                      >
+                        {field.label}
+                        <button
+                          aria-label={`Remove ${field.label}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFieldSelect(field.value);
+                          }}
+                          className="rounded-full hover:bg-accent/50 p-0.5"
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isOpen}
+                  className="w-full justify-between h-auto min-h-10 py-1.5"
+                  disabled={disabled || loading || fields.length === 0}
+                  onClick={() => setIsOpen(!isOpen)}
+                >
+                  <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : undefined}>
+                    {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
                   </span>
-                ))}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
               </div>
-            )}
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={isOpen}
-              className="w-full justify-between h-auto min-h-10 py-1.5"
-              disabled={disabled || loading || fields.length === 0}
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : undefined}>
-                {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
-              </span>
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
+            </PopoverTrigger>
           </div>
         </PopoverTrigger>
         <PopoverContent
@@ -153,7 +151,7 @@ export const FieldSelector = ({
                 const isSelected = selectedFields.includes(option.value);
                 return (
                   <CommandItem
-                    key={option.value}
+                                            key={option.value}
                     value={option.value}
                     onSelect={() => {
                       handleFieldSelect(option.value);

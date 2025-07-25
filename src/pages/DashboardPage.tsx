@@ -76,12 +76,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const [fieldsLoading, setFieldsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Debug: Log fields and selectedFields before rendering QueryBuilder
-  useEffect(() => {
-    console.log('[DashboardPage] Passing to QueryBuilder - fieldDefinitions:', fieldDefinitions);
-    console.log('[DashboardPage] Passing to QueryBuilder - selectedFields:', selectedFields);
-    console.log('[DashboardPage] Passing to QueryBuilder - fieldsLoading:', fieldsLoading);
-  }, [fieldDefinitions, selectedFields, fieldsLoading]);
+  
   
   // State for sorting
   const [sortField, setSortField] = useState('');
@@ -114,14 +109,20 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         console.log(`[loadAvailableFields] Received ${response.fields.length} fields from API`);
         
         // Transform string array into FieldDefinition objects
-        const fieldDefinitions = response.fields.map(field => {
-          const fieldDef: FieldDefinition = {
-            name: field.name,
-            type: field.type || 'string', // Use field.type, default to string
-            label: field.label || field.name
-          };
-          console.log(`[loadAvailableFields] Processed field:`, fieldDef);
-          return fieldDef;
+        const uniqueFieldNames = new Set<string>();
+        const fieldDefinitions: FieldDefinition[] = [];
+
+        response.fields.forEach(field => {
+          if (!uniqueFieldNames.has(field.name)) {
+            uniqueFieldNames.add(field.name);
+            const fieldDef: FieldDefinition = {
+              name: field.name,
+              type: field.type || 'string', // Use field.type, default to string
+              label: field.label || field.name
+            };
+            console.log(`[loadAvailableFields] Processed field:`, fieldDef);
+            fieldDefinitions.push(fieldDef);
+          }
         });
         
         console.log('[loadAvailableFields] Setting field definitions:', fieldDefinitions);
@@ -224,16 +225,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         const pageSize = requestBody.limit || 10;
         const page = Math.floor((requestBody.offset || 0) / pageSize) + 1;
         const totalPages = Math.ceil(total / pageSize);
-        
-        console.log('[DashboardPage] Setting query result:', {
-          itemsCount: items.length,
-          fields,
-          total,
-          page,
-          pageSize,
-          hasMore,
-          totalPages
-        });
         
         setQueryResult(prev => ({
           ...prev,
@@ -449,7 +440,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                       </TableHeader>
                       <TableBody>
                         {queryResult.items.map((item, index) => (
-                          <TableRow key={index}>
+                          <TableRow key={item.id || index}>
                             {queryResult.fields.map((field) => (
                               <TableCell key={`${index}-${field}`}>
                                 {typeof item[field] === 'string' && String(item[field]).includes('T')
@@ -491,9 +482,8 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                       }
                       return mapped;
                     })}
-                    onExport={(format) => {
+                    onExport={() => {
                       // Implement export functionality
-                      console.log(`Exporting data as ${format}`, queryResult.items);
                     }}
                   />
                 ) : (
