@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { AzureCosmosDB } from '../types/azure.js';
+import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 
 // Enable debug logging in test environment
@@ -29,11 +29,11 @@ function createError(status: number, message: string, originalError?: Error): Ht
  * Middleware to validate API key authentication
  * This should be used in conjunction with the Azure AD authentication middleware
  * to support both authentication methods.
- * @param cosmosDb Azure CosmosDB instance or ApiKeyRepository
+ * @param azureServices Azure CosmosDB instance or ApiKeyRepository
  * @param apiKeyRepository Optional ApiKeyRepository instance (for testing)
  */
 export function apiKeyAuth(
-  cosmosDb: AzureCosmosDB | ApiKeyRepository,
+  azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureBlobStorage },
   apiKeyRepository?: ApiKeyRepository
 ) {
   debug('[apiKeyAuth] Creating new middleware instance');
@@ -42,7 +42,7 @@ export function apiKeyAuth(
   let repository: ApiKeyRepository;
   try {
     repository = apiKeyRepository ||
-      (cosmosDb instanceof ApiKeyRepository ? cosmosDb : new ApiKeyRepository(cosmosDb as AzureCosmosDB));
+      (azureServices instanceof ApiKeyRepository ? azureServices : new ApiKeyRepository(azureServices));
   } catch (error) {
     console.error('Failed to initialize ApiKeyRepository:', error);
     throw new Error('Failed to initialize API key validation service');
@@ -158,8 +158,8 @@ export function apiKeyAuth(
 /**
  * Middleware to require either API key or Azure AD authentication
  */
-export function requireAuthOrApiKey(cosmosDb: AzureCosmosDB) {
-  const authMiddleware = apiKeyAuth(cosmosDb);
+export function requireAuthOrApiKey(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureBlobStorage }) {
+  const authMiddleware = apiKeyAuth(azureServices);
 
   return async (req: Request, res: Response, next: NextFunction) => {
     if (req.user) {
@@ -170,4 +170,3 @@ export function requireAuthOrApiKey(cosmosDb: AzureCosmosDB) {
     return authMiddleware(req, res, next);
   };
 }
-

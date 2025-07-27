@@ -65,7 +65,11 @@ describe('API Key Revocation', () => {
       container: vi.fn().mockImplementation(() => mockContainer),
     } as any;
     
-    apiKeyRepository = new ApiKeyRepository(mockCosmosDb);
+    const mockAzureServices = {
+      cosmosDb: mockCosmosDb,
+      blobStorage: { /* mock blobStorage if needed, or leave empty if not used by ApiKeyRepository */ },
+    };
+    apiKeyRepository = new ApiKeyRepository(mockAzureServices);
   });
 
   describe('revokeApiKey', () => {

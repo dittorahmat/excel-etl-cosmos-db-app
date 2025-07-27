@@ -5,15 +5,30 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import { authenticateToken } from '../../middleware/auth.js';
 import { ingestionService } from '../../services/ingestion/ingestion.service.js';
-
+import path from 'path';
+import fs from 'fs/promises';
 
 // Type imports
 import type { FileTypeError } from '../../types/custom.js';
 
 const router = Router();
 
-// Initialize multer with memory storage
-const storage = multer.memoryStorage();
+// Define a temporary directory for uploads
+const uploadDir = path.join(process.cwd(), 'tmp_uploads');
+
+// Ensure the upload directory exists
+fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
+
+// Initialize multer with disk storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  },
+});
 
 // File filter for multer
 export const fileFilter = (
@@ -143,7 +158,7 @@ async function uploadHandler(req: Request, res: Response) {
     );
   }
 
-  const { buffer, originalname: fileName, mimetype: originalMimeType } = req.file;
+  const { path: filePath, originalname: fileName, mimetype: originalMimeType } = req.file;
   const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
   
   // Enhanced MIME type detection
@@ -171,7 +186,6 @@ async function uploadHandler(req: Request, res: Response) {
   }
 
   const fileType = detectedMimeType;
-  const fileSize = buffer.length;
 
   // Log the upload attempt with detailed file information
   logger.info('File upload started', {
@@ -180,7 +194,6 @@ async function uploadHandler(req: Request, res: Response) {
     originalMimeType,
     detectedMimeType,
     fileExt,
-    fileSize,
     userId,
   });
 
@@ -197,6 +210,8 @@ async function uploadHandler(req: Request, res: Response) {
   if (!allowedMimeTypes.includes(detectedMimeType)) {
     const errorMsg = `Unsupported file type: ${detectedMimeType}. Allowed types: ${allowedMimeTypes.join(', ')}`;
     logger.error(errorMsg, { requestId, fileName, detectedMimeType, fileExt });
+    // Clean up the uploaded file
+    await fs.unlink(filePath).catch(err => logger.error('Failed to delete temp file', { filePath, error: err }));
     return res.status(400).json(
       createErrorResponse(400, 'Unsupported file type', errorMsg)
     );
@@ -205,7 +220,7 @@ async function uploadHandler(req: Request, res: Response) {
   try {
     // Process the file using the ingestion service
     const importMetadata = await ingestionService.importFile(
-      buffer,
+      filePath,
       fileName,
       fileType,
       userId
@@ -253,6 +268,9 @@ async function uploadHandler(req: Request, res: Response) {
         `Failed to process file: ${errorMessage}`
       )
     );
+  } finally {
+    // Always delete the temporary file
+    await fs.unlink(filePath).catch(err => logger.error('Failed to delete temp file in finally', { filePath, error: err }));
   }
 }
 

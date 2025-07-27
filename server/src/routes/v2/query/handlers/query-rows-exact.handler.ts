@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { BaseQueryHandler } from './base.handler.js';
-import { getOrInitializeCosmosDB } from '../../../../services/cosmos-db/cosmos-db.service.js';
+import { AzureCosmosDB } from '../../../../types/azure.js';
 import { FilterCondition } from '@common/types/filter-condition.js';
 
 /**
@@ -8,8 +8,8 @@ import { FilterCondition } from '@common/types/filter-condition.js';
  * SELECT c.Name, c.Email, c.Phone FROM c WHERE IS_DEFINED(c.Name) AND IS_DEFINED(c.Email) AND IS_DEFINED(c.Phone) AND c.documentType = 'excel-row'
  */
 export class QueryRowsExactHandler extends BaseQueryHandler {
-  constructor() {
-    super('excel-records', '/_partitionKey');
+  constructor(cosmosDb: AzureCosmosDB) {
+    super(cosmosDb, 'excel-records', '/_partitionKey');
   }
 
   public async handle(req: Request, res: Response): Promise<Response | void> {
@@ -99,9 +99,9 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         });
       }
 
-      const cosmosDb = await getOrInitializeCosmosDB();
+      
       log('Initializing Cosmos DB container', { containerName: this.containerName, partitionKey: this.partitionKey });
-      const container = await cosmosDb.container(this.containerName, this.partitionKey);
+      const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
 
       // Build the field selection part of the query
       // Build field selections and conditions with proper parameterization
@@ -245,4 +245,4 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
   }
 }
 
-export const queryRowsExactHandler = new QueryRowsExactHandler();
+

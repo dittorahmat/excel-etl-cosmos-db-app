@@ -15,7 +15,7 @@ export default defineConfig({
       include: ['**/*.test.ts'],
     },
     
-    include: ['**/server/test/**/*.test.{js,ts}'],
+    include: ['server/test/**/*.test.{js,ts}'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -111,6 +111,10 @@ export default defineConfig({
       {
         find: '@test',
         replacement: path.resolve(__dirname, './server/test')
+      },
+      {
+        find: '@server',
+        replacement: path.resolve(__dirname, './server/src')
       },
       {
         find: /\.\/(.*)\.js$/,

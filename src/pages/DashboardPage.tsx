@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useAuth } from '../auth/useAuth';
-import { api } from '../utils/api';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -10,34 +9,9 @@ import { QueryBuilder } from '../components/QueryBuilder/QueryBuilder';
 import { DataChart } from '../components/DataChart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileListTable } from '../components/FileListTable';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 // Type definitions for the component props and API responses
-type FieldType = 'string' | 'number' | 'date' | 'boolean';
-
-interface FieldDefinition {
-  name: string;
-  type: FieldType;
-  label?: string;
-  description?: string;
-}
-
-interface QueryResult {
-  items: Record<string, unknown>[];
-  fields: string[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  hasMore: boolean;
-  continuationToken?: string;
-}
-
-interface FilterCondition {
-  id: string;
-  field: string;
-  operator: string;
-  value: string;
-}
 
 interface DashboardPageProps {
   children?: React.ReactNode;
@@ -48,40 +22,23 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Initialize state
-  const [isMounted, setIsMounted] = useState(false);
-  
-  // State for query results and UI
-  const [queryResult, setQueryResult] = useState<QueryResult>({
-    items: [],
-    fields: [],
-    total: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 0,
-    hasMore: false,
-    continuationToken: undefined
-  });
-  
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Ref to store the latest executeQuery function
-  const executeQueryRef = useRef<typeof executeQuery>();
-  const [activeTab, setActiveTab] = useState('query');
-  
-  // State for field definitions and selections
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [fieldsLoading, setFieldsLoading] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  // Use the custom hook for dashboard data and logic
+  const {
+    queryResult,
+    loading,
+    error,
+    fieldDefinitions,
+    selectedFields,
+    fieldsLoading,
+    sortField,
+    sortDirection,
+    handleExecuteQuery,
+    handleFieldsChange,
+    handleSort,
+  } = useDashboardData();
 
-  
-  
-  // State for sorting
-  const [sortField, setSortField] = useState('');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  
+  const [activeTab, setActiveTab] = useState('query');
+
   // Format date for display
   const formatDate = (dateString: string) => {
     try {
@@ -90,257 +47,9 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       return dateString;
     }
   };
-  
-  // Load available fields from the server
-  const loadAvailableFields = useCallback(async () => {
-    if (!isAuthenticated) {
-      console.log('[loadAvailableFields] Not authenticated, skipping');
-      return;
-    }
-    
-    console.log('[loadAvailableFields] Loading fields from API...');
-    setFieldsLoading(true);
-    
-    try {
-      const response = await api.get<{ success: boolean; fields: FieldDefinition[] }>('/api/fields');
-      console.log('[loadAvailableFields] API response:', response);
-      
-      if (response?.success && Array.isArray(response.fields)) {
-        console.log(`[loadAvailableFields] Received ${response.fields.length} fields from API`);
-        
-        // Transform string array into FieldDefinition objects
-        const uniqueFieldNames = new Set<string>();
-        const fieldDefinitions: FieldDefinition[] = [];
-
-        response.fields.forEach(field => {
-          if (!uniqueFieldNames.has(field.name)) {
-            uniqueFieldNames.add(field.name);
-            const fieldDef: FieldDefinition = {
-              name: field.name,
-              type: field.type || 'string', // Use field.type, default to string
-              label: field.label || field.name
-            };
-            console.log(`[loadAvailableFields] Processed field:`, fieldDef);
-            fieldDefinitions.push(fieldDef);
-          }
-        });
-        
-        console.log('[loadAvailableFields] Setting field definitions:', fieldDefinitions);
-        setFieldDefinitions(fieldDefinitions);
-        
-        // Only set default selected fields on initial load
-        if (isInitialLoad) {
-          const defaultFields = fieldDefinitions.length > 0 
-            ? fieldDefinitions.slice(0, Math.min(5, fieldDefinitions.length)).map(f => f.name)
-            : [];
-          
-          console.log('[loadAvailableFields] Setting default selected fields:', defaultFields);
-          setSelectedFields(defaultFields);
-          setIsInitialLoad(false);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load fields:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load fields');
-    } finally {
-      setFieldsLoading(false);
-    }
-  }, [isAuthenticated, isInitialLoad]);
-
-  // Load fields when component mounts and when authentication state changes
-  useEffect(() => {
-    if (isAuthenticated && fieldDefinitions.length === 0) {
-      loadAvailableFields();
-    }
-  }, [isAuthenticated, loadAvailableFields, fieldDefinitions.length]);
-
-  // Define executeQuery first
-  const executeQuery = useCallback(async (query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number; }) => {
-    if (!isAuthenticated) return;
-    
-    console.log('[DashboardPage] Executing query with selectedFields:', selectedFields);
-    
-    // If no field definitions are loaded yet, don't execute the query
-    if (fieldDefinitions.length === 0) {
-      console.log('[DashboardPage] Field definitions not loaded yet, skipping query');
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Only include fields that are actually selected and exist in fieldDefinitions
-      const fieldsToQuery = selectedFields.length > 0 
-        ? selectedFields.filter(Boolean).filter(field => 
-            fieldDefinitions.some(f => f.name === field)
-          )
-        : [];
-      
-      // If no fields are selected, use all available fields
-      const fields = fieldsToQuery.length > 0 ? fieldsToQuery : fieldDefinitions.map(f => f.name);
-      
-      // If we still don't have any fields, don't execute the query
-      if (fields.length === 0) {
-        console.log('[DashboardPage] No valid fields to query');
-        setLoading(false);
-        return;
-      }
-      
-      console.log('[DashboardPage] Fields to query:', fields);
-      
-      // Prepare request for the new /api/v2/query/rows endpoint
-      const requestBody = {
-        fields: [...fields], // Ensure we're working with a new array
-        filters: query.filters,
-        limit: query.limit,
-        offset: query.offset,
-      };
-      
-      console.log('[DashboardPage] Request details:', {
-        url: '/api/v2/query/rows',
-        method: 'POST',
-        body: requestBody,
-        fieldsType: Array.isArray(fields) ? 'array' : typeof fields,
-        fieldsLength: Array.isArray(fields) ? fields.length : 'not an array',
-        fieldsContent: [...fields],
-        bodyStringified: JSON.stringify(requestBody),
-        bodyType: typeof requestBody,
-        bodyKeys: Object.keys(requestBody)
-      });
-      
-      const url = '/api/v2/query/rows';
-      
-      const response = await api.post<{
-        success: boolean;
-        items: Record<string, unknown>[];
-        total: number;
-        hasMore: boolean;
-      }>(url, requestBody);
-      
-      console.log('[DashboardPage] Received response:', response);
-      
-      if (response && response.success) {
-        const { items = [], total = 0, hasMore = false } = response;
-        const pageSize = requestBody.limit || 10;
-        const page = Math.floor((requestBody.offset || 0) / pageSize) + 1;
-        const totalPages = Math.ceil(total / pageSize);
-        
-        setQueryResult(prev => ({
-          ...prev,
-          items,
-          fields,
-          total,
-          page,
-          pageSize,
-          hasMore,
-          totalPages
-        }));
-      }
-    } catch (err) {
-      console.error('Failed to execute query:', err);
-      setError(err instanceof Error ? err.message : 'Failed to execute query');
-      throw err; // Re-throw to allow QueryBuilder to handle the error
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, selectedFields, fieldDefinitions]);
-
-  // Update the ref when executeQuery changes
-  useEffect(() => {
-    executeQueryRef.current = executeQuery;
-  }, [executeQuery]);
-
-  // Load available fields when authenticated
-  useEffect(() => {
-    if (isAuthenticated && fieldDefinitions.length === 0) {
-      console.log('[DashboardPage] Loading available fields...');
-      loadAvailableFields();
-    }
-  }, [isAuthenticated, loadAvailableFields, fieldDefinitions.length]);
-
-  // Reset pagination and clear results when selected fields change
-  const handleFieldsChange = useCallback((newFields: string[]) => {
-    console.log('[DashboardPage] Fields changed:', newFields);
-    
-    // Only update if the fields have actually changed
-    setSelectedFields(prevFields => {
-      if (JSON.stringify(prevFields) === JSON.stringify(newFields)) {
-        console.log('[DashboardPage] Fields unchanged, skipping update');
-        return prevFields;
-      }
-      return newFields;
-    });
-    
-    // Reset pagination and clear results
-    setQueryResult(prev => {
-      console.log('[DashboardPage] Resetting query result state');
-      return {
-        ...prev,
-        page: 1,
-        items: [],
-        hasMore: false,
-        continuationToken: undefined,
-        total: 0,
-        totalPages: 0
-      };
-    });
-  }, []);
-
-  // Handle manual query execution
-  const handleExecuteQuery = useCallback((query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number; }) => {
-    if (executeQueryRef.current) {
-      return executeQueryRef.current(query);
-    }
-    return Promise.resolve();
-  }, []);
-
-  // Handle sort
-  const handleSort = useCallback((field: string) => {
-    // Get current field and direction
-    setSortField((currentField: string) => {
-      const newDirection = currentField === field && sortDirection === 'asc' ? 'desc' : 'asc';
-      
-      // Update sort direction state
-      setSortDirection(newDirection);
-      
-      // Reset to first page when changing sort
-      setQueryResult(prev => ({
-        ...prev,
-        page: 1,
-        continuationToken: undefined,
-        items: []
-      }));
-      
-      // Execute query with new sort
-      // Note: We are not passing filters here, as sorting should re-fetch without filters.
-      executeQuery({ ...queryResult, fields: selectedFields, filters: [], sort: `${field}:${newDirection}` });
-      
-      return field;
-    });
-  }, [sortDirection, executeQuery, queryResult, selectedFields]);
-
-  // Load available fields on component mount
-  useEffect(() => {
-    if (!isMounted) {
-      setIsMounted(true);
-      loadAvailableFields();
-    }
-  }, [isMounted, loadAvailableFields]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    } else if (isMounted) {
-      loadAvailableFields();
-    }
-  }, [isAuthenticated, navigate, isMounted, loadAvailableFields]);
-
-  // Removed automatic query execution on authentication change
-  // Queries will now only be executed when explicitly triggered by the user
 
   if (!isAuthenticated) {
+    navigate('/login');
     return null; // Will redirect to login
   }
 

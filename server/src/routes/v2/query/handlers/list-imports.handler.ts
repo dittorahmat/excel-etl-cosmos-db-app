@@ -1,14 +1,15 @@
 import { Request, Response } from 'express';
 import { logger } from '../../../../utils/logger.js';
 import { BaseQueryHandler } from './base.handler.js';
+import { AzureCosmosDB } from '../../../../types/azure.js';
 import { queryParamsSchema } from '../schemas/query.schemas.js';
 import { QueryParams } from '../types/query.types.js';
 
 
 
 export class ListImportsHandler extends BaseQueryHandler {
-  constructor() {
-    super('excel-records', '/_partitionKey');
+  constructor(cosmosDb: AzureCosmosDB) {
+    super(cosmosDb, 'excel-records', '/_partitionKey');
   }
 
   public async handle(req: Request, res: Response): Promise<Response | void> {
@@ -90,7 +91,7 @@ export class ListImportsHandler extends BaseQueryHandler {
 
       // If we have fields to select, we need to ensure we only return those fields
       const selectedFields = queryParams.fields && Array.isArray(queryParams.fields) 
-        ? queryParams.fields.map(f => typeof f === 'string' ? f : f.name) 
+        ? queryParams.fields.map(f => typeof f === 'string' ? f : (f as { name: string }).name) 
         : null;
       
       const processedItems = items.map(item => {
@@ -103,7 +104,7 @@ export class ListImportsHandler extends BaseQueryHandler {
         const result: Record<string, unknown> = {};
         selectedFields.forEach(field => {
           // Handle nested fields if needed (e.g., 'user.name')
-          const fieldParts = typeof field === 'string' ? field.split('.') : [field.name];
+          const fieldParts = typeof field === 'string' ? field.split('.') : (field as { name: string }).name.split('.');
           let value: unknown = item;
           
           try {
@@ -176,4 +177,4 @@ export class ListImportsHandler extends BaseQueryHandler {
   }
 }
 
-export const listImportsHandler = new ListImportsHandler();
+
