@@ -7,20 +7,20 @@ import { validateRequest } from '../middleware/validateRequest.js';
 import { authenticateToken, TokenPayload } from '../middleware/auth.js';
 import { authRateLimiter } from '../middleware/rateLimit.js';
 
-import type { AzureCosmosDB } from '../types/azure.js';
+import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
 import type { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
 
 
 // Helper type to properly type async request handlers
-type AsyncRequestHandler<P = {}, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> = (
+type AsyncRequestHandler<P = unknown, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> = (
   req: Request<P, ResBody, ReqBody, ReqQuery> & { user?: TokenPayload },
   res: Response<ResBody>,
   next: NextFunction
 ) => Promise<void>;
 
-export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
+export function createApiKeyRouter(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureBlobStorage }) {
   const router = Router();
-  const apiKeyRepository = new ApiKeyRepository(cosmosDb);
+  const apiKeyRepository = new ApiKeyRepository(azureServices);
 
   // Conditionally apply authentication and rate limiting to all routes
   if (process.env.AUTH_ENABLED === 'true') {
@@ -44,7 +44,7 @@ export function createApiKeyRouter(cosmosDb: AzureCosmosDB) {
    * @access  Private
    */
   // Create API key route
-  const createApiKeyHandler: AsyncRequestHandler<{}, unknown, CreateApiKeyRequest> = async (req, res, next) => {
+  const createApiKeyHandler: AsyncRequestHandler<unknown, unknown, CreateApiKeyRequest> = async (req, res, next) => {
     try {
       const userId = req.user?.oid;
       if (!userId) {

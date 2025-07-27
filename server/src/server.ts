@@ -7,38 +7,34 @@ import { Server } from 'http';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { initializeAzureServices } from './config/azure-services.js';
-// Import v1 routes
-import dataRoute from './routes/data.route.js';
-import authRoute from './routes/auth.route.js';
-import { createApiKeyRouter } from './routes/apiKey.route.js';
+
 
 // Import v2 routes
-import v2Router from './routes/v2/index.js';
+import { createV2Router } from './routes/v2/index.js';
 import { uploadRouterV2 as uploadRoute } from './routes/v2/upload.route.js';
-import fieldsRoute from './routes/fields.route.js';
-import { validateToken } from './middleware/auth.js';
+import { createFieldsRouter } from './routes/fields.route.js';
+import { createApiKeyRouter } from './routes/apiKey.route.js';
+import authRoute from './routes/auth.route.js';
+
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
+import { validateToken } from './middleware/auth.js';
 import { logger, LogContext } from './utils/logger.js';
-import { authRateLimiter } from './middleware/rateLimit.js';
+
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
-import type { AzureCosmosDB } from './types/custom.js';
+import type { AzureCosmosDB, AzureBlobStorage } from './types/azure.js';
 
 // Load environment variables from .env file
 dotenv.config();
 
-console.log('AUTH_ENABLED from process.env:', process.env.AUTH_ENABLED);
+
 
 // Environment flags - prefix with _ to indicate it's used in middleware
 
 
-// Debug log environment variables
-console.log('Environment variables:');
-console.log('AZURE_COSMOS_ENDPOINT:', process.env.AZURE_COSMOS_ENDPOINT ? '***' : 'Not set');
-console.log('AZURE_COSMOS_KEY:', process.env.AZURE_COSMOS_KEY ? '***' : 'Not set');
-console.log('AZURE_COSMOS_DATABASE:', process.env.AZURE_COSMOS_DATABASE || 'Not set');
-console.log('AZURE_COSMOS_CONTAINER:', process.env.AZURE_COSMOS_CONTAINER || 'Not set');
+
+
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -55,12 +51,12 @@ let app: Express | null = null;
 /**
  * Create and configure the Express application
  */
-function createApp(azureServices: AzureCosmosDB): Express {
+function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureBlobStorage }): Express {
   const app = express();
 
   // Middleware
   app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -147,67 +143,29 @@ function createApp(azureServices: AzureCosmosDB): Express {
     apiKeyUsageRepository: apiKeyUsageRepository
   });
 
-  // Check if authentication is enabled
-  const authEnabled = process.env.AUTH_ENABLED === 'true';
+  
   
   // Public routes (no authentication required)
   // Register auth route with conditional rate limiting
   
 
-  // Public routes (no authentication required)
-  if (authEnabled) {
-    logger.info('Authentication is ENABLED. Protecting API routes.');
-    // Apply auth rate limiting if authentication is enabled and not in development
-    if (!(process.env.NODE_ENV === 'development')) {
-      app.use('/api/auth', authRateLimiter, authRoute);
-    } else {
-      app.use('/api/auth', authRoute);
-    }
-    
-    // Apply auth middleware to protected routes
-    app.use('/api/keys', 
-      authMiddleware, 
-      createApiKeyRouter(azureServices)
-    );
-    
-    app.use('/api/upload', 
-      authMiddleware, 
-
-    );
-    
-    app.use('/api/data', 
-      authMiddleware, 
-      dataRoute
-    );
-  } else {
-    if (process.env.NODE_ENV !== 'test') {
-      logger.warn('Authentication is DISABLED. All API routes are UNPROTECTED.');
-    }
-    app.use('/api/auth', authRoute); // Always allow auth route without rate limiting if auth is disabled
-    
-    // API v1 routes (legacy)
-    const apiKeyRouter = createApiKeyRouter(azureServices);
-    app.use('/api/keys', apiKeyRouter);
-    
-    app.use('/api/data', dataRoute);
-    app.use('/api', apiKeyRouter);
-  }
-
-  // Register auth route with conditional rate limiting
-  if (authEnabled && !(process.env.NODE_ENV === 'development')) {
-    app.use('/api/auth', authRateLimiter, authRoute);
-  } else {
-    app.use('/api/auth', authRoute);
-  }
+  
 
   // API v2 routes
-  app.use('/api/v2', v2Router);
+  app.use('/api/v2', createV2Router(azureServices.cosmosDb));
   
   // Mount the v2 upload route at /api/v2/query/imports
   app.use('/api/v2/query/imports', uploadRoute);
   
   // Fields endpoint (used by dashboard)
-  app.use('/api/fields', fieldsRoute);
+  console.log('server.ts: azureServices.cosmosDb before createFieldsRouter:', azureServices.cosmosDb);
+  app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
+
+  // API Key routes (v2)
+  app.use('/api/v2/keys', authMiddleware, createApiKeyRouter(azureServices));
+
+  // Auth route (v2)
+  app.use('/api/v2/auth', authRoute);
   
   // Redirect root to API docs or health check
   app.get('/', (_req, res) => {
@@ -315,7 +273,7 @@ async function startServer(port: number | string = PORT): Promise<Server> {
   try {
     logger.info('Initializing Azure services...');
     console.log('Initializing Azure services...');
-    const { cosmosDb } = await initializeAzureServices();
+    const azureServices = await initializeAzureServices();
     console.log('Azure services initialized successfully');
 
     // Create Express application
@@ -324,7 +282,7 @@ async function startServer(port: number | string = PORT): Promise<Server> {
     logger.info('Repositories initialized');
 
     // Create Express app with initialized services
-    app = createApp(cosmosDb);
+    app = createApp(azureServices);
     // Start the HTTP server
     const expressApp = app; // Create a local constant to help TypeScript with type narrowing
     if (!expressApp) {

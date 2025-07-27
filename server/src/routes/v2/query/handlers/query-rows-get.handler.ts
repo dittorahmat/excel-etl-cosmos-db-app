@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { BaseQueryHandler } from './base.handler.js';
-import { getOrInitializeCosmosDB } from '../../../../services/cosmos-db/cosmos-db.service.js';
+import { AzureCosmosDB } from '../../../../types/azure.js';
 import { FilterCondition } from '@common/types/filter-condition.js';
 
 /**
@@ -8,18 +8,16 @@ import { FilterCondition } from '@common/types/filter-condition.js';
  * SELECT c.Name, c.Email, c.Phone FROM c WHERE IS_DEFINED(c.Name) AND IS_DEFINED(c.Email) AND IS_DEFINED(c.Phone) AND c.documentType = 'excel-row'
  */
 export class QueryRowsGetHandler extends BaseQueryHandler {
-  constructor() {
-    super('excel-records', '/_partitionKey');
+
+  constructor(cosmosDb: AzureCosmosDB) {
+    super(cosmosDb, 'excel-records', '/_partitionKey');
   }
 
   public async handle(req: Request, res: Response): Promise<Response | void> {
     const logContext = { requestId: Math.random().toString(36).substring(2, 9) };
-    const log = (message: string, data?: unknown) => {
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] ${message}`, data || '');
-    };
     
     // Log raw request info
-    log('Raw request info:', {
+    console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Raw request info:`, {
       method: req.method,
       url: req.url,
       headers: req.headers,
@@ -29,7 +27,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
     });
     
     try {
-      log('Received request', {
+      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Received request`, {
         method: req.method,
         url: req.url,
         headers: req.headers,
@@ -38,7 +36,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       
       // Only allow GET
       if (req.method !== 'GET') {
-        log(`Method not allowed: ${req.method}`);
+        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Method not allowed: ${req.method}`);
         return res.status(405).json({ success: false, message: 'Method Not Allowed' });
       }
       
@@ -48,14 +46,14 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         try {
           filters = JSON.parse(decodeURIComponent(req.query.filters as string));
         } catch (e) {
-          log('Error parsing filters', { error: e, filters: req.query.filters });
+          console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Error parsing filters`, { error: e, filters: req.query.filters });
           return res.status(400).json({ success: false, message: 'Invalid filters parameter' });
         }
       }
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
       
-      log('Request query parsed', {
+      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Request query parsed`, {
         fields,
         limit,
         offset,
@@ -66,7 +64,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       
       // Validate fields parameter
       if (!Array.isArray(fields)) {
-        log('Fields is not an array', { fields });
+        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Fields is not an array`, { fields });
         return res.status(400).json({ 
           success: false, 
           message: 'Fields must be an array of field names',
@@ -76,7 +74,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       }
       
       if (fields.length === 0) {
-        log('Empty fields array received');
+        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Empty fields array received`);
         return res.status(400).json({ 
           success: false, 
           message: 'Fields array must contain at least one field' 
@@ -86,7 +84,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       // Ensure all fields are valid strings
       const invalidFields = fields.filter(field => typeof field !== 'string' || field.trim().length === 0);
       if (invalidFields.length > 0) {
-        log('Invalid fields found', { invalidFields });
+        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Invalid fields found`, { invalidFields });
         return res.status(400).json({ 
           success: false, 
           message: 'All fields must be non-empty strings',
@@ -94,19 +92,30 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         });
       }
 
-      const cosmosDb = await getOrInitializeCosmosDB();
-      log('Initializing Cosmos DB container', { containerName: this.containerName, partitionKey: this.partitionKey });
-      const container = await cosmosDb.container(this.containerName, this.partitionKey);
+      
+      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Initializing Cosmos DB container`, { containerName: this.containerName, partitionKey: this.partitionKey });
+      const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
+
+      const sanitizeFieldName = (fieldName: string): string => {
+        // Allow alphanumeric, underscore, and hyphen characters
+        return fieldName.replace(/[^a-zA-Z0-9_-]/g, '');
+      };
+
+      const sanitizedFields = fields.map(sanitizeFieldName);
+      const sanitizedFilters = filters.map(filter => ({
+        ...filter,
+        field: sanitizeFieldName(filter.field)
+      }));
 
       // Build the field selection part of the query
       // Build field selections and conditions with proper parameterization
-      const fieldSelections = fields.map(field => `c["${field}"]`).join(', ');
+      const fieldSelections = sanitizedFields.map(field => `c["${field}"]`).join(', ');
       
       // Create parameters for each field in the WHERE clause
-      const fieldConditions = fields.map(field => `IS_DEFINED(c["${field}"])`).join(' AND ');
+      const fieldConditions = sanitizedFields.map(field => `IS_DEFINED(c["${field}"])`).join(' AND ');
 
       // Build filter conditions
-      const filterConditions = filters.map((filter, index) => {
+      const filterConditions = sanitizedFilters.map((filter, index) => {
         const paramName = `@filterValue${index}`;
         const paramName2 = `@filterValue2_${index}`;
         switch (filter.operator) {
@@ -139,7 +148,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         }
       }).filter(Boolean).join(' AND ');
 
-      const filterParameters = filters.flatMap((filter, index) => {
+      const filterParameters = sanitizedFilters.flatMap((filter, index) => {
         const params = [{ name: `@filterValue${index}`, value: filter.value }];
         if (filter.operator === 'between') {
           params.push({ name: `@filterValue2_${index}`, value: filter.value2 ?? null });
@@ -180,12 +189,12 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         ]
       };
 
-      log('Executing Cosmos DB data query', { 
+      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Executing Cosmos DB data query`, { 
         query: query.query, 
         parameters: query.parameters
       });
 
-      log('Executing Cosmos DB count query', { 
+      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Executing Cosmos DB count query`, { 
         query: countQuery.query,
         parameters: countQuery.parameters
       });
@@ -198,10 +207,10 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
           container.items.query(countQuery).fetchAll()
         ]);
         
-        log('Cosmos DB queries executed successfully', {
-          itemsCount: itemsResponse?.resources?.length,
-          totalCount: countResponse?.resources?.[0]
-        });
+        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Cosmos DB queries executed successfully`, { 
+        itemsCount: itemsResponse?.resources?.length,
+        totalCount: countResponse?.resources?.[0]
+      });
       } catch (error) {
         const errorInfo = error instanceof Error 
           ? { 
@@ -215,7 +224,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
               name: 'UnknownError'
             };
             
-        log('Error executing Cosmos DB queries', { 
+        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Error executing Cosmos DB queries`, { 
           error: errorInfo,
           query: query.query,
           parameters: query.parameters
@@ -226,7 +235,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       const items = itemsResponse?.resources || [];
       const total = countResponse?.resources?.[0] || 0;
       
-      log('Query results', { itemsCount: items.length, total });
+      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Query results`, { itemsCount: items.length, total });
 
       return res.status(200).json({
         success: true,
@@ -239,5 +248,3 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
     }
   }
 }
-
-export const queryRowsGetHandler = new QueryRowsGetHandler();

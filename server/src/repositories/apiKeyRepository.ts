@@ -1,4 +1,4 @@
-import type { AzureCosmosDB } from '../types/azure.js';
+import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
 import type {
   ApiKey,
   CreateApiKeyRequest,
@@ -24,8 +24,11 @@ export interface UpdateApiKeyData {
 
 export class ApiKeyRepository {
   private readonly containerName = 'api-keys';
+  private readonly cosmosDb: AzureCosmosDB;
 
-  constructor(private readonly cosmosDb: AzureCosmosDB) {}
+  constructor(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureBlobStorage }) {
+    this.cosmosDb = azureServices.cosmosDb;
+  }
 
   /**
    * Validates an API key

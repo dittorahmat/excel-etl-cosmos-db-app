@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { BlobServiceClient } from '@azure/storage-blob';
-import { initializeCosmosDB } from '../../../../services/cosmos-db/cosmos-db.service.js';
+import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import { logger } from '../../../../utils/logger.js';
 import { AZURE_CONFIG } from '../../../../config/azure-config.js';
+import { AzureCosmosDB } from '../../../../types/azure.js';
 
 // Initialize Blob Service Client with error handling
-let blobServiceClient;
-let containerClient;
+let blobServiceClient: BlobServiceClient | undefined;
+let containerClient: ContainerClient | undefined;
 
 try {
   if (!AZURE_CONFIG.storage.connectionString) {
@@ -22,13 +22,13 @@ try {
   containerClient = blobServiceClient.getContainerClient(AZURE_CONFIG.storage.containerName);
   
   // Test the connection
-  containerClient.exists().then(exists => {
+  containerClient.exists().then((exists: boolean) => {
     logger.info(`Container ${AZURE_CONFIG.storage.containerName} exists: ${exists}`);
-  }).catch(error => {
+  }).catch((error: Error) => {
     logger.error('Failed to check container existence:', error);
   });
   
-} catch (error) {
+} catch (error: unknown) {
   logger.error('Failed to initialize Azure Blob Storage client:', error);
   throw error; // Fail fast if we can't initialize the client
 }
@@ -41,6 +41,12 @@ interface ImportMetadata {
 }
 
 export class DownloadImportHandler {
+  private cosmosDb: AzureCosmosDB;
+
+  constructor(cosmosDb: AzureCosmosDB) {
+    this.cosmosDb = cosmosDb;
+  }
+
   async handle(req: Request, res: Response): Promise<Response | void> {
     try {
       const { importId } = req.params;
@@ -56,7 +62,7 @@ export class DownloadImportHandler {
       logger.info(`Processing download request for import ID: ${importId}`);
       
       // Get the import metadata to find the blob URL with SAS token
-      const cosmosDb = await initializeCosmosDB();
+      const cosmosDb = this.cosmosDb;
       
       try {
         // Get the document from Cosmos DB using the container's item method
@@ -109,7 +115,7 @@ export class DownloadImportHandler {
           }
           
           // Get a block blob client
-          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+          const blockBlobClient = containerClient!.getBlockBlobClient(blobName);
           
           // Check if the blob exists
           logger.debug(`Checking if blob exists: ${blobName}`);
@@ -119,10 +125,10 @@ export class DownloadImportHandler {
             // Try to list blobs to see what's in the container
             try {
               logger.warn(`Blob ${blobName} not found. Listing blobs in container...`);
-              for await (const blob of containerClient.listBlobsFlat()) {
+              for await (const blob of containerClient!.listBlobsFlat()) {
                 logger.warn(`Found blob: ${blob.name} (${blob.properties.contentLength} bytes)`);
               }
-            } catch (listError) {
+            } catch (listError: unknown) {
               logger.error('Error listing blobs:', listError);
             }
             
@@ -154,7 +160,7 @@ export class DownloadImportHandler {
           }
           
           // Handle stream errors
-          readableStream.on('error', (streamError) => {
+          readableStream.on('error', (streamError: Error) => {
             logger.error('Error reading from blob stream:', streamError);
             if (!res.headersSent) {
               res.status(500).json({
@@ -172,7 +178,7 @@ export class DownloadImportHandler {
           // Pipe the stream to the response
           logger.debug('Piping stream to response...');
           return readableStream.pipe(res);
-        } catch (error) {
+        } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           const errorStack = error instanceof Error ? error.stack : undefined;
           
@@ -191,7 +197,7 @@ export class DownloadImportHandler {
           });
         }
         
-      } catch (error) {
+      } catch (error: unknown) {
         logger.error('Error processing download request:', error);
         res.status(500).json({
           success: false,
@@ -199,7 +205,7 @@ export class DownloadImportHandler {
           details: error instanceof Error ? error.message : 'Unknown error',
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('Error initializing download:', error);
       res.status(500).json({
         success: false,
@@ -209,5 +215,3 @@ export class DownloadImportHandler {
     }
   }
 }
-
-export const downloadImportHandler = new DownloadImportHandler();

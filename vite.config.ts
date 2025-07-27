@@ -9,15 +9,7 @@ const loadEnvVars = (mode: string) => {
   // Load all environment variables from .env files and process.env
   const env = loadEnv(mode, process.cwd(), '');
   
-  // Log environment variables in development for debugging
-  if (mode === 'development') {
-    console.log('Loaded environment variables:', {
-      VITE_AZURE_TENANT_ID: !!env.VITE_AZURE_TENANT_ID,
-      VITE_AZURE_CLIENT_ID: !!env.VITE_AZURE_CLIENT_ID,
-      VITE_AZURE_REDIRECT_URI: !!env.VITE_AZURE_REDIRECT_URI,
-      VITE_AZURE_SCOPES: !!env.VITE_AZURE_SCOPES,
-    });
-  }
+  
   
   // Use environment variables with fallbacks
   return {
@@ -43,10 +35,7 @@ export default defineConfig(({ mode }) => {
     DEV: mode !== 'production'
   };
   
-  // Log the environment variables for debugging (only in development)
-  if (mode === 'development') {
-    console.log('Environment variables:', JSON.stringify(envVars, null, 2));
-  }
+  
 
   // Generate config content
   const configContent = `// This file is auto-generated during build
@@ -95,7 +84,7 @@ window.__APP_CONFIG__ = ${JSON.stringify(envConfig, null, 2)};`;
       emptyOutDir: true,
       copyPublicDir: true,
       assetsInlineLimit: 0, // Ensure all assets are copied as files
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),

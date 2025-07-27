@@ -4,16 +4,17 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "../dist/server",
-    "rootDir": ".",
+    "rootDir": "../",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "resolveJsonModule": true,
     "noEmit": false,
-    "baseUrl": ".",
+    "baseUrl": "../",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["server/src/*"],
+      "@common/*": ["common/*"]
     },
     "typeRoots": [
       "./node_modules/@types",
@@ -23,14 +24,13 @@
     "moduleDetection": "force",
     "verbatimModuleSyntax": false
   },
-  "include": [
-    "src/**/*.ts",
-    "scripts/**/*.ts"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.js", "../common/**/*.ts", "scripts/**/*.ts"],
   "exclude": [
     "node_modules",
     "dist",
-    "src/routes/upload.route.ts"
+    "src/routes/upload.route.ts",
+    "**/__tests__/**",
+    "**/test/**"
   ],
   "references": [],
   "ts-node": {

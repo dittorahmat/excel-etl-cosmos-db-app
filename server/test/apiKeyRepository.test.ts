@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
+import { initializeCosmosDB } from '../src/services/cosmos-db/cosmos-db.service.js';
+
+vi.mock('../src/services/cosmos-db/cosmos-db.service.js');
 import type { ApiKey } from '../src/types/apiKey.js';
 import { generateApiKey, hashApiKey } from '../src/utils/apiKeyUtils.js';
 
@@ -69,11 +72,18 @@ describe('ApiKeyRepository', () => {
 
     mockCosmosClient = {
       container: vi.fn().mockReturnValue(mockContainer),
-      database: vi.fn().mockReturnThis()
+      database: vi.fn().mockReturnThis(),
+    };
+
+    const mockAzureServices = {
+      cosmosDb: mockCosmosClient,
+      blobStorage: { /* mock blobStorage if needed, or leave empty if not used by ApiKeyRepository */ },
     };
 
     // Create a new instance of the repository for each test
-    repository = new ApiKeyRepository(mockCosmosClient);
+    repository = new ApiKeyRepository(mockAzureServices);
+
+    
   });
 
   describe('createApiKey', () => {
@@ -95,10 +105,8 @@ describe('ApiKeyRepository', () => {
       mockContainer.items.upsert = mockUpsert;
 
       // Create a new repository instance to ensure mocks are applied
-      const testRepository = new ApiKeyRepository(mockCosmosClient);
-      
       // Call the method under test
-      const result = await testRepository.createApiKey(mockUserId, {
+      const result = await repository.createApiKey(mockUserId, {
         name: 'Test Key',
       });
 

@@ -4,6 +4,7 @@ import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { logger } from '../../utils/logger.js';
 import csv from 'csv-parser';
+import * as fs from 'fs';
 
 interface ParseOptions {
   /**
@@ -56,7 +57,7 @@ export class FileParserService {
    * Parse an Excel file buffer
    */
   async parseExcel(
-    fileBuffer: Buffer,
+    filePath: string,
     options: ParseOptions = {}
   ): Promise<ParseResult> {
     const result: ParseResult = {
@@ -68,8 +69,7 @@ export class FileParserService {
     };
 
     try {
-      const workbook = XLSX.read(fileBuffer, {
-        type: 'buffer',
+      const workbook = XLSX.readFile(filePath, {
         cellDates: true,
         cellNF: false,
         cellText: false,
@@ -241,16 +241,14 @@ export class FileParserService {
    * Parse a file based on its MIME type
    */
   async parseFile(
-    fileBuffer: Buffer,
+    filePath: string,
     mimeType: string,
     options: ParseOptions = {}
   ): Promise<ParseResult> {
     if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
-      return this.parseExcel(fileBuffer, options);
+      return this.parseExcel(filePath, options);
     } else if (mimeType.includes('csv') || mimeType.includes('text/csv')) {
-      const stream = new Readable();
-      stream.push(fileBuffer);
-      stream.push(null); // Signal end of stream
+      const stream = fs.createReadStream(filePath); // Create read stream from file path
       return this.parseCsv(stream, options);
     } else {
       throw new Error(`Unsupported file type: ${mimeType}`);

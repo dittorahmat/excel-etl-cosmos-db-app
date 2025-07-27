@@ -4,6 +4,7 @@ import { fileParserService } from '../file-parser/file-parser.service.js';
 import { initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
 import { uploadToBlobStorage } from '../blob-storage/upload-to-blob-storage.js';
 import type { CosmosRecord } from '../../types/azure.js';
+import fs from 'fs/promises';
 
 /**
  * Extended CosmosRecord with required fields for import metadata
@@ -50,7 +51,7 @@ export class IngestionService {
    * Process and import a file into Cosmos DB
    */
   async importFile(
-    fileBuffer: Buffer,
+    filePath: string,
     fileName: string,
     fileType: string,
     userId: string
@@ -59,11 +60,15 @@ export class IngestionService {
     const importStartTime = new Date();
     let blobUrl = '';
 
+    // Read file from disk to get its size and for blob upload
+    const fileBuffer = await fs.readFile(filePath);
+    const fileSize = fileBuffer.length;
+
     const importMetadata: ImportMetadata = {
       id: importId,
       fileName,
       fileType,
-      fileSize: fileBuffer.length,
+      fileSize,
       status: 'processing',
       processedAt: importStartTime.toISOString(),
       processedBy: userId,
@@ -76,6 +81,11 @@ export class IngestionService {
       _ts: Math.floor(Date.now() / 1000),
     };
 
+    const cosmosDb = await initializeCosmosDB();
+
+    // Save initial import metadata
+    await this.saveImportMetadata(importMetadata, cosmosDb);
+
     try {
       // Upload the original file to blob storage
       this.logger.info('Uploading file to blob storage', { fileName, fileType, fileSize: fileBuffer.length });
@@ -85,11 +95,8 @@ export class IngestionService {
       // Update metadata with blob URL
       importMetadata['blobUrl'] = blobUrl;
 
-      // Save initial import metadata
-      await this.saveImportMetadata(importMetadata);
-
       // Parse the file
-      const parseResult = await fileParserService.parseFile(fileBuffer, fileType, {
+      const parseResult = await fileParserService.parseFile(filePath, fileType, {
         transformRow: (row, rowIndex) => {
           // Add system fields to each row
           return {
@@ -111,12 +118,12 @@ export class IngestionService {
 
       if (parseResult.rows.length > 0) {
         // Save rows to Cosmos DB in batches
-        await this.saveRows(parseResult.rows as RowData[]);
+        await this.saveRows(parseResult.rows as RowData[], cosmosDb);
       }
 
       // Update import status to completed
       importMetadata.status = 'completed';
-      await this.saveImportMetadata(importMetadata);
+      await this.saveImportMetadata(importMetadata, cosmosDb);
 
       this.logger.info('File import completed successfully', {
         importId,
@@ -137,7 +144,7 @@ export class IngestionService {
         },
       ];
 
-      await this.saveImportMetadata(importMetadata).catch((saveError) => {
+      await this.saveImportMetadata(importMetadata, cosmosDb).catch((saveError) => {
         this.logger.error('Failed to save failed import metadata', {
           importId,
           error: saveError,
@@ -157,9 +164,8 @@ export class IngestionService {
   /**
    * Save import metadata to Cosmos DB
    */
-  private async saveImportMetadata(metadata: ImportMetadata): Promise<void> {
+  private async saveImportMetadata(metadata: ImportMetadata, cosmosDb: any): Promise<void> {
     try {
-      const cosmosDb = await initializeCosmosDB();
       const record = {
         ...metadata,
         id: `import_${metadata.id}`, // Prefix to distinguish from row documents
@@ -178,7 +184,7 @@ export class IngestionService {
         }
       });
       
-      const result = await cosmosDb.upsertRecord<ImportMetadata>(
+      const result = await cosmosDb.upsertRecord(
         record,
         this.metadataContainerName
       );
@@ -200,14 +206,13 @@ export class IngestionService {
   /**
    * Save rows to Cosmos DB in batches
    */
-  private async saveRows(rows: RowData[]): Promise<void> {
+  private async saveRows(rows: RowData[], cosmosDb: any): Promise<void> {
     if (rows.length === 0) {
       this.logger.debug('No rows to save');
       return;
     }
 
     const BATCH_SIZE = 100; // Cosmos DB batch limit
-    const cosmosDb = await initializeCosmosDB();
     const importId = rows[0]?._importId;
 
     if (!importId) {
@@ -254,7 +259,7 @@ export class IngestionService {
             this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId}`, rowLogData);
             
             // Execute the upsert operation
-            return cosmosDb.upsertRecord<RowData>(record).then(result => {
+            return cosmosDb.upsertRecord(record).then(result => {
               this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
                 rowId: record.id,
                 statusCode: result.statusCode,

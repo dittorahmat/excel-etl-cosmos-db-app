@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { logger } from '../../../../utils/logger.js';
 import { BaseQueryHandler } from './base.handler.js';
+import { AzureCosmosDB } from '../../../../types/azure.js';
 import { queryParamsSchema } from '../schemas/query.schemas.js';
 
 export class QueryImportRowsHandler extends BaseQueryHandler {
-  constructor() {
-    super('excel-records', '/_partitionKey');
+  constructor(cosmosDb: AzureCosmosDB) {
+    super(cosmosDb, 'excel-records', '/_partitionKey');
   }
 
   public async handle(req: Request, res: Response): Promise<Response | void> {
@@ -135,4 +136,4 @@ export class QueryImportRowsHandler extends BaseQueryHandler {
   }
 }
 
-export const queryImportRowsHandler = new QueryImportRowsHandler();
+

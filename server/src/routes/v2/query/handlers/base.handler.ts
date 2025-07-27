@@ -1,9 +1,10 @@
 import { Response } from 'express';
 import { logger } from '../../../../utils/logger.js';
-import { getOrInitializeCosmosDB } from '../../../../services/cosmos-db/cosmos-db.service.js';
+
 import { QueryParams, ErrorResponse } from '../types/query.types.js';
 import { buildCosmosQuery } from '../utils/query-builder.js';
 import { SqlParameter } from '@azure/cosmos';
+import { AzureCosmosDB } from '../../../../types/azure.js';
 
 
 
@@ -14,10 +15,12 @@ import { SqlParameter } from '@azure/cosmos';
 export abstract class BaseQueryHandler {
   protected containerName: string;
   protected partitionKey: string;
+  protected cosmosDb: AzureCosmosDB;
 
-  constructor(containerName: string, partitionKey: string) {
+  constructor(cosmosDb: AzureCosmosDB, containerName: string, partitionKey: string) {
     this.containerName = containerName;
     this.partitionKey = partitionKey;
+    this.cosmosDb = cosmosDb;
   }
 
   /**
@@ -65,7 +68,7 @@ export abstract class BaseQueryHandler {
       parameters: allParams,
     });
 
-    const cosmosDb = await getOrInitializeCosmosDB();
+    const cosmosDb = this.cosmosDb;
     const container = await cosmosDb.container(this.containerName, this.partitionKey);
     
     const queryOptions = {
@@ -114,7 +117,7 @@ export abstract class BaseQueryHandler {
       parameters,
     });
 
-    const cosmosDb = await getOrInitializeCosmosDB();
+    const cosmosDb = this.cosmosDb;
     const container = await cosmosDb.container(this.containerName, this.partitionKey);
     
     const response = await container.items

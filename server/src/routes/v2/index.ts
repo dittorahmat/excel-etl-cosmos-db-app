@@ -1,12 +1,15 @@
 import { Router } from 'express';
-import queryRouter from './query/index.js';
+import { createQueryRouter } from './query/index.js';
+import { AzureCosmosDB } from '../../types/azure.js';
 
-const router = Router();
+export function createV2Router(cosmosDb: AzureCosmosDB): Router {
+  const router = Router();
 
-// Mount query routes
-router.use('/query', queryRouter);
+  // Mount query routes
+  router.use('/query', createQueryRouter(cosmosDb));
 
-// Add other v2 routes here as needed
-// router.use('/other', otherRouter);
+  // Add other v2 routes here as needed
+  // router.use('/other', otherRouter);
 
-export default router;
+  return router;
+}

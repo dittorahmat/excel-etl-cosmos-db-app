@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 // Import types from the types index file
 import type { 
   AzureCosmosDB, 
-  CosmosRecord 
+  CosmosRecord, 
+  AzureBlobStorage
 } from '../types/azure.js';
 
 /**
@@ -31,8 +32,8 @@ export class ApiKeyUsageRepository {
   private ttlInDays: number;
   private cosmosDb: AzureCosmosDB;
 
-  constructor(cosmosDb: AzureCosmosDB) {
-    this.cosmosDb = cosmosDb;
+  constructor(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureBlobStorage }) {
+    this.cosmosDb = azureServices.cosmosDb;
     // Default to 30 days retention for usage records
     this.ttlInDays = parseInt(process.env.API_KEY_USAGE_RETENTION_DAYS || '30', 10);
   }
