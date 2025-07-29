@@ -1,33 +1,22 @@
-Subjek: Permohonan Penyesuaian Konfigurasi Azure AD (Pembaruan Lokasi Pengaturan)
+Pak Ruben
 
-Yth. Bapak/Ibu [Nama Administrator/Tim IT],
+Saya mau minta bantuan terkait akses aplikasi Excel ETL App, untuk permission deploy API & backend nya.  Untuk UI / frontendnya sudah bisa diakses di https://gray-flower-09b086c00.6.azurestaticapps.net/login , hanya saja belum tersambung dengan backend nya. 
 
-Semoga email ini menemukan Anda dalam keadaan baik.
+Mohon bantuannya untuk memeriksa dan menyesuaikan pengaturan berikut di Azure Portal:
 
-Saya ingin memberikan pembaruan lanjutan terkait kendala autentikasi yang saya alami saat mengakses aplikasi [Nama Aplikasi Anda, jika ada, atau sebutkan "aplikasi yang sedang dikembangkan"] menggunakan akun Microsoft personal saya ([alamat email Anda, misal: ditto.asnar@gmail.com]).
+1.  **Verifikasi Konfigurasi Aplikasi API**:
+    *   Navigasi ke **Azure Active Directory**.
+    *   Di menu sebelah kiri, klik **"App registrations"**.
+    *   Cari dan pilih aplikasi API Anda yang memiliki **Application ID URI** (juga dikenal sebagai `identifierUris`) `api://1a6232b5-e392-4b8d-9a30-23fb8642d9c0`.
+    *   Setelah memilih aplikasi, di menu sebelah kiri, klik **"Expose an API"**.
+    *   Pastikan bahwa scope `.default` sudah terdaftar dan statusnya **"Published"**.
 
-Setelah mencoba penyesuaian `signInAudience` di manifes aplikasi dan membahas pesan kesalahan "Application must accept Access Token Version 2", ada satu klarifikasi penting mengenai lokasi pengaturan "Allow personal Microsoft accounts".
+2.  **Verifikasi Konfigurasi Aplikasi Klien**:
+    *   Kembali ke **Azure Active Directory** > **"App registrations"**.
+    *   Cari dan pilih aplikasi klien Anda yang memiliki **Client ID** `1a6232b5-e392-4b8d-9a30-23fb8642d9c0`.
+    *   Setelah memilih aplikasi, di menu sebelah kiri, klik **"API permissions"**.
+    *   Pastikan bahwa aplikasi ini telah diberikan izin (permission) untuk mengakses aplikasi API (`api://1a6232b5-e392-4b8d-9a30-23fb8642d9c0`).
+    *   **Sangat Penting**: Di bagian atas halaman "API permissions", mohon klik tombol **"Grant admin consent for [Nama Tenant Anda]"** untuk memberikan persetujuan admin terhadap izin-izin tersebut.
 
-Berdasarkan investigasi lebih lanjut, pengaturan untuk mengizinkan akun Microsoft personal tidak berada langsung di bawah "External collaboration settings" seperti yang saya sebutkan sebelumnya. Sebaliknya, pengaturan tersebut berada di bagian **"All identity providers"** (atau **"Identity providers"**) di Azure Active Directory.
+Terima kasih sebelumnya atas waktu dan bantuannya 
 
-Jadi, berikut adalah langkah-langkah yang perlu dilakukan di Azure AD:
-
-1.  **Pengaturan Penyedia Identitas**:
-    *   Mohon navigasi ke **Azure Active Directory** > **External identities** > **All identity providers** (atau **Identity providers**).
-    *   Di sana, pastikan **"Microsoft account"** diaktifkan. Ini adalah penyedia identitas yang mencakup akun personal Microsoft seperti Gmail, Outlook.com, dll.
-
-2.  **Manifes Aplikasi (Application Manifest) - Gunakan "Microsoft Graph App Manifest (New)"**:
-    *   Untuk pendaftaran aplikasi [Nama Aplikasi Anda di Azure AD, jika diketahui], mohon ubah properti `signInAudience` di bagian **Manifest** dari nilai saat ini (kemungkinan `AzureADMyOrg` atau `AzureADMultipleOrgs`) menjadi `AzureADandPersonalMicrosoftAccount`.
-    *   **Tambahan**: Mohon juga tambahkan atau ubah properti `accessTokenAcceptedVersion` di manifes aplikasi menjadi `2`. Ini memastikan aplikasi dapat menerima token akses dari endpoint v2.0 Microsoft identity platform.
-
-Menggunakan "Microsoft Graph App Manifest (New)" adalah pendekatan yang benar karena "AAD Graph App Manifest (Deprecating Soon)" adalah format lama yang akan segera tidak didukung.
-
-Dengan penyesuaian ini, saya seharusnya dapat masuk ke aplikasi menggunakan akun personal saya, yang akan sangat membantu kelancaran pekerjaan saya dalam proyek ini.
-
-Mohon informasinya jika ada hal lain yang saya bisa bantu atau jika Anda memerlukan detail lebih lanjut.
-
-Terima kasih atas perhatian dan bantuan Anda.
-
-Hormat saya,
-
-[Nama Anda]

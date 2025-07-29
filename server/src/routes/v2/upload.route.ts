@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+
+const router = Router();
+
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
-import { authenticateToken } from '../../middleware/auth.js';
+import * as authMiddleware from '../../middleware/auth.js';
 import { ingestionService } from '../../services/ingestion/ingestion.service.js';
 import path from 'path';
 import fs from 'fs/promises';
@@ -11,9 +14,6 @@ import fs from 'fs/promises';
 // Type imports
 import type { FileTypeError } from '../../types/custom.js';
 
-const router = Router();
-
-// Define a temporary directory for uploads
 const uploadDir = path.join(process.cwd(), 'tmp_uploads');
 
 // Ensure the upload directory exists
@@ -66,7 +66,7 @@ export const fileFilter = (
   console.log('File details:', {
     originalname: file.originalname,
     originalMimetype: file.mimetype,
-    detectedMimetype: detectedMimeType,
+    detectedMimeType: detectedMimeType,
     fileExtension: fileExt,
     size: file.size,
     encoding: file.encoding,
@@ -134,6 +134,8 @@ const upload = multer({
     files: 1, // Limit to single file upload
   },
 });
+
+
 
 // Helper function to create consistent error responses
 const createErrorResponse = (status: number, error: string, message: string) => ({
@@ -281,7 +283,7 @@ const authRequired = process.env.AUTH_ENABLED === 'true';
 if (authRequired) {
   router.post(
     '/',
-    authenticateToken,
+    authMiddleware.authenticateToken,
     upload.single('file'),
     uploadHandler
   );
@@ -342,4 +344,4 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   );
 });
 
-export { router as uploadRouterV2, upload };
+export { router as uploadRouterV2 };

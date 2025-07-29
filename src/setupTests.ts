@@ -31,7 +31,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock the auth config
-vi.mock('../../src/auth/authConfig', () => ({
+vi.mock('../../src/auth/authConfig.ts', () => ({
   msalConfig: {
     auth: {
       clientId: 'test-client-id',

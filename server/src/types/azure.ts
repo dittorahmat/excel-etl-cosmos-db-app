@@ -3,7 +3,7 @@ import type {
   CosmosClient, 
   Container, 
   SqlQuerySpec,
-  
+  ItemResponse,
   Database
 } from '@azure/cosmos';
 // Mock types are now defined locally
@@ -21,7 +21,9 @@ export interface MulterFile {
 
 
 // Base type for all Cosmos DB records
-export interface CosmosRecord {
+import type { Resource } from '@azure/cosmos';
+
+export interface CosmosRecord extends Partial<Resource> {
   id: string;
   _partitionKey?: string;
   documentType?: string;
@@ -74,7 +76,7 @@ export interface AzureCosmosDB {
   upsertRecord: <T extends CosmosRecord>(
     record: T,
     containerName?: string
-  ) => Promise<T>;
+  ) => Promise<ItemResponse<T>>;
 
   /**
    * Query records from Cosmos DB
@@ -126,7 +128,7 @@ export interface MockCosmosDB extends AzureCosmosDB {
     upsert: <T extends CosmosRecord>(
       record: T, 
       containerName?: string
-    ) => Promise<T>;
+    ) => Promise<ItemResponse<T>>;
     query: <T extends CosmosRecord>(
       query: string | SqlQuerySpec, 
       parameters?: Array<{ name: string; value: unknown }>, 
@@ -154,7 +156,7 @@ export interface MockCosmosDB extends AzureCosmosDB {
   upsert: <T extends CosmosRecord>(
     record: T, 
     containerName?: string
-  ) => Promise<T>;
+  ) => Promise<ItemResponse<T>>;
   
   query: <T extends CosmosRecord>(
     query: string | SqlQuerySpec, 

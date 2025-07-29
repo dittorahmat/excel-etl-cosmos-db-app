@@ -42,6 +42,10 @@ vi.mock('../src/middleware/auth.js', () => ({
     req.user = { oid: 'mock-user-id' };
     next();
   }),
+  authenticateToken: vi.fn((req: any, res: any, next: any) => {
+    req.user = { oid: 'mock-user-id' };
+    next();
+  }),
 }));
 
 // Define mock functions for rate-limit outside of vi.mock to allow resetting

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AccountInfo, InteractionRequiredAuthError, AuthenticationResult, EventType } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { AuthContext, AuthProviderProps, AuthContextType } from './AuthContext';
-import { loginRequest } from './authConfig';
+import { loginRequest } from './authConfig.ts';
 import { isTokenExpired } from './authUtils';
 
 
@@ -86,7 +86,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             console.log('AuthProvider: Starting authentication check...');
             try {
-                if (import.meta.env.DEV) {
+                if (import.meta.env.DEV && import.meta.env.VITE_AUTH_ENABLED === 'false') {
                     const mockUser = localStorage.getItem('mockUser');
                     if (mockUser) {
                         const parsedUser = JSON.parse(mockUser);
@@ -100,46 +100,16 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         console.log('AuthProvider: DEV mode - isAuthenticated set to FALSE after no mock user found.');
                     }
                 } else {
-                    // Production flow: Check Azure Static Web Apps authentication first
-                    try {
-                        const response = await fetch('/.auth/me');
-                        if (response.ok) {
-                            const authData = await response.json();
-                            if (authData.clientPrincipal) {
-                                setUser({
-                                    homeAccountId: authData.clientPrincipal.userId,
-                                    environment: 'login.microsoftonline.com',
-                                    tenantId: 'common',
-                                    username: authData.clientPrincipal.userDetails,
-                                    localAccountId: authData.clientPrincipal.userId,
-                                    name: authData.clientPrincipal.userDetails,
-                                    idTokenClaims: {
-                                        name: authData.clientPrincipal.userDetails,
-                                        preferred_username: authData.clientPrincipal.userDetails,
-                                        oid: authData.clientPrincipal.userId,
-                                        tid: 'common'
-                                    }
-                                } as AccountInfo);
-                                setIsAuthenticated(true);
-                                setLoading(false);
-                                return;
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Auth check failed (Azure Static Web Apps):', error);
-                    }
-
-                    // Fallback to MSAL accounts if AWA auth not found
+                    // MSAL-based authentication for both local development and production
                     const currentAccounts = instance.getAllAccounts();
                     if (currentAccounts.length > 0) {
                         const account = currentAccounts[0];
-                        console.log('AuthProvider: PROD mode - MSAL account found:', account.username);
+                        console.log('AuthProvider: MSAL account found:', account.username);
                         setUser(account);
                         setIsAuthenticated(true);
-                        // Get a token to verify it's still valid
                         await getTokenSilently();
                     } else {
-                        console.log('AuthProvider: PROD mode - No MSAL account found.');
+                        console.log('AuthProvider: No MSAL account found.');
                         setIsAuthenticated(false);
                     }
                 }
@@ -180,7 +150,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Handle login
     const login = useCallback(async () => {
-        if (import.meta.env.DEV) {
+        if (import.meta.env.DEV && import.meta.env.VITE_AUTH_ENABLED === 'false') {
             console.log('AuthProvider: DEV mode - Performing mock login.');
             const mockUser = {
                 homeAccountId: 'mock-account-id',
@@ -228,22 +198,18 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const logout = useCallback(async () => {
         setLoading(true);
         try {
-            // In production, redirect to Azure AD logout
-            if (process.env.NODE_ENV !== 'development') {
-                window.location.href = '/.auth/logout';
-                return;
+            if (import.meta.env.DEV && import.meta.env.VITE_AUTH_ENABLED === 'false') {
+                // In development with auth disabled, clear the mock auth
+                console.log('Running in development mode with mock logout');
+                localStorage.removeItem('mockUser');
+                setUser(null);
+                setIsAuthenticated(false);
+            } else {
+                // Standard MSAL logout
+                await instance.logoutPopup();
+                setUser(null);
+                setIsAuthenticated(false);
             }
-            
-            // In development, clear the mock auth
-            console.log('Running in development mode with mock logout');
-            localStorage.removeItem('mockAuth');
-            localStorage.removeItem('mockUser');
-            localStorage.removeItem('msalToken');
-            localStorage.removeItem('msalTokenExpiry');
-            
-            setUser(null);
-            setIsAuthenticated(false);
-            
         } catch (error) {
             console.error('Logout failed:', error);
             setError(error instanceof Error ? error : new Error('Logout failed'));
@@ -251,7 +217,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [instance]);
 
     // Note: getAccessToken is an alias for getTokenSilently for backward compatibility
 

@@ -17,6 +17,7 @@ const loadEnvVars = (mode: string) => {
     VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID || process.env.VITE_AZURE_CLIENT_ID || '',
     VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || process.env.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net',
     VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
+    VITE_API_SCOPE: env.VITE_API_SCOPE || process.env.VITE_API_SCOPE || '',
   };
 };
 

@@ -23,9 +23,17 @@
 - **`apiKeyRepository.test.ts` Fix**: Corrected the `cosmosDb` mock setup in `server/test/apiKeyRepository.test.ts` to properly provide `cosmosDb` and `blobStorage` to the `ApiKeyRepository` constructor, resolving `TypeError: Cannot read properties of undefined (reading 'container')`.
 - **Server-Side Test Fixes**: Resolved `TypeError: Cannot read properties of undefined (reading 'container')` in `apiKeyRepository.test.ts` and `apiKeyRevocation.test.ts` by ensuring `cosmosDb` is correctly mocked and passed. Also fixed module resolution errors in `ingestion.service.test.ts` by correcting import paths and `vi.mock` calls to use aliases consistently.
 - **`ingestion.service.test.ts` Test Creation**: Created `server/test/services/ingestion/ingestion.service.test.ts` and added initial passing tests for `IngestionService`.
+- **Client-Side Authentication**: The client-side authentication flow is now correctly configured and attempting to acquire tokens from Azure AD.
+- **Server-Side Authentication**: The server-side authentication middleware is correctly configured to validate JWTs.
+- **`mock-cosmos-db.ts` `upsert` method updated**: The `upsert` method in `mock-cosmos-db.ts` now correctly returns `Promise<ItemResponse<T>>`.
+- **`MockCosmosDB` interface updated**: The `MockCosmosDB` interface in `server/src/types/azure.ts` has been updated to reflect the correct return type for `upsert`.
+- **`CosmosRecord` definition refined**: The `CosmosRecord` interface in `server/src/types/azure.ts` has been adjusted to correctly extend `Resource` and include optional Cosmos DB system properties (`_rid`, `_ts`, `_self`, `_etag`).
+- **`ApiKey` interface updated**: The `ApiKey` interface in `server/src/types/apiKey.ts` has been updated to remove the `[key: string]: unknown;` property.
+- **`ApiKeyUsageRecord`, `ImportMetadata`, `RowData` interfaces updated**: These interfaces have been updated to correctly extend `CosmosRecord` and include the necessary Cosmos DB system properties.
 
 ## What's left to build
 
+- Address the `AADSTS500011` error by correctly configuring the Azure AD application registration.
 - Address the server test warning about authentication being disabled in the test environment.
 - Improve the low code coverage for the server-side tests.
 - Further investigate and address the Vite build warning about large chunk sizes if it becomes a performance bottleneck, potentially requiring deeper refactoring or bundle analysis.
@@ -35,6 +43,7 @@
 - The project is in a stable state. The build is successful, and most tests are passing.
 - The codebase is in a much better state after the recent fixes and optimizations.
 - A persistent chunk size warning remains in the build process, but it does not prevent the application from building or running.
+- The primary blocker is the `AADSTS500011` error, which is an Azure AD configuration issue.
 
 ## Evolution of project decisions
 
@@ -42,11 +51,12 @@
 - The importance of a clean and warning-free build and test process has been reinforced.
 - Decided to implement lazy loading for client-side routes to mitigate large chunk sizes.
 - The API Query Builder was refactored to generate `curl` commands for POST requests, aligning with backend expectations.
+- The authentication flow has been fully re-enabled in the development environment to allow for proper testing of Azure AD integration.
 
 ## Known issues
 
 - The Vite build process still shows a warning about a large chunk size, even after implementing lazy loading. This might require further investigation or architectural changes.
-- **Authentication Disabled in Test Environment**: Authentication is intentionally disabled in the test environment because the user is using a personal Microsoft account (Gmail) in the Azure directory and does not have the necessary permissions for full Azure AD integration yet. This is a known limitation for the test environment.
+- **Azure AD Application Registration Misconfiguration**: The `AADSTS500011` error indicates that the Azure AD application registration for the API is incorrect or lacks proper consent. This is an external configuration issue that needs to be resolved in the Azure portal.
 
 ## Recent Progress (Since Last Update)
 
@@ -62,22 +72,30 @@
     *   Modified `server/src/routes/fields.route.ts` to export `createFieldsRouter` (a function that accepts `cosmosDb`) and use `cosmosDb` for database operations.
     *   Updated `server/src/server.ts` to pass the `azureServices` object (containing `cosmosDb` and `blobStorage`) to `createApp`, and then pass `azureServices.cosmosDb` to `createV2Router` and `createFieldsRouter`.
     *   Modified `ApiKeyRepository` and `ApiKeyUsageRepository` constructors to accept the full `azureServices` object and extract `cosmosDb` from it.
-3.  **Fixed `useMocks` ReferenceError:** Defined `useMocks` in `server/src/config/azure-services.ts` to correctly handle mock service initialization.
-4.  **Addressed linting errors and warnings:**
+2.  **Fixed `useMocks` ReferenceError:** Defined `useMocks` in `server/src/config/azure-services.ts` to correctly handle mock service initialization.
+3.  **Addressed linting errors and warnings:**
     *   Added `eslint-disable-next-line` comments for unused variables (`AZURE_CONFIG`, `Database`).
     *   Removed unused imports (`authRateLimiter`).
     *   Replaced `{}` with `unknown` in `AsyncRequestHandler` type in `server/src/routes/apiKey.route.ts`.
-5.  **Fixed TypeScript build errors:**
+4.  **Fixed TypeScript build errors:**
     *   Corrected `rootDir` and `paths` in `server/tsconfig.json` to properly resolve modules from `common`.
     *   Explicitly typed `blobServiceClient`, `containerClient`, and `streamError` in `server/src/routes/v2/query/handlers/download-import.handler.ts`.
     *   Added `import fs from 'fs/promises';` to `server/src/services/ingestion/ingestion.service.ts`.
     *   Updated `server/src/services/ingestion/__tests__/ingestion.service.test.ts` to use `initializeCosmosDB` and pass file paths instead of buffers to `importFile`.
     *   Corrected the `log` function implementation in `server/src/routes/v2/query/handlers/query-rows-get.handler.ts` to be a private method and use `this.logContext`.
     *   Corrected the `log` function call in `query-rows-get.handler.ts` to provide a message.
-6.  **Created and refined `ingestion.service.test.ts`**:
+5.  **Created and refined `ingestion.service.test.ts`**: 
     *   Created the test file `server/test/services/ingestion/ingestion.service.test.ts`.
     *   Added a test case to verify successful file import and metadata saving.
     *   Added a test case to verify error handling during file upload, ensuring the import status is correctly set to 'failed'.
+6.  **Reverted Client-Side Authentication Bypass**: Reverted the change in `src/utils/api.ts` to re-enable the full authentication flow, as per user's clarification.
+7.  **Updated `VITE_API_SCOPE`**: Changed `VITE_API_SCOPE` in `.env` to `api://1a6232b5-e392-4b8d-9a30-23fb8642d9c0/.default` to align with the server's `AZURE_SCOPE`.
+8.  **Reverted Server-Side Authentication Bypass**: Reverted the change in `server/src/routes/fields.route.ts` to re-enable authentication in the development environment, as per user's clarification.
+9.  **Fixed `mock-cosmos-db.ts` `upsert` method return type**: Corrected the `upsert` method in `mock-cosmos-db.ts` to return `Promise<ItemResponse<T>>`.
+10. **Updated `MockCosmosDB` interface**: Modified the `MockCosmosDB` interface in `server/src/types/azure.ts` to reflect the correct return type for `upsert`.
+11. **Refined `CosmosRecord` definition**: Adjusted the `CosmosRecord` interface in `server/src/types/azure.ts` to correctly extend `Resource` and include optional Cosmos DB system properties (`_rid`, `_ts`, `_self`, `_etag`).
+12. **Updated `ApiKey` interface**: Removed the `[key: string]: unknown;` property from the `ApiKey` interface in `server/src/types/apiKey.ts`.
+13. **Updated `ApiKeyUsageRecord`, `ImportMetadata`, `RowData` interfaces**: These interfaces have been updated to correctly extend `CosmosRecord` and include the necessary Cosmos DB system properties.
 
 **What went wrong (and how it was addressed):**
 
@@ -97,3 +115,10 @@
     *   **Resolution**: Ensured `initializeCosmosDB` always returns the *same* mock instance by setting `(initializeCosmosDB as vi.Mock).mockResolvedValue(mockCosmosDb);` in `beforeEach`. This made the `upsertRecord` calls count correctly.
 *   **`ingestion.service.test.ts` `initializeCosmosDB` call count mismatch**: The test for error handling in `importFile` initially expected `initializeCosmosDB` to be called twice. However, `initializeCosmosDB` is designed as a singleton and should only be called once.
     *   **Resolution**: Corrected the assertion to `expect(initializeCosmosDB).toHaveBeenCalledTimes(1)`.
+*   **`ReferenceError: upload is not defined` in `upload.route.ts`**: This error occurred because `upload` was being used before it was defined. This was due to incorrect ordering of declarations within the file.
+    *   **Resolution**: Reordered the declarations in `upload.route.ts` to ensure `storage` and `fileFilter` are defined before `upload`, and `upload` is defined before it is used in the `router.post` calls.
+*   **Conflicting `authConfig` files**: The presence of `authConfig.js`, `authConfig.custom.ts`, and `authConfig.ts` caused module resolution issues. This was resolved by deleting `authConfig.js` and `authConfig.custom.ts` and explicitly referencing `authConfig.ts` in all imports.
+*   **`CosmosRecord` definition issues**: The `CosmosRecord` interface was causing type errors when extended. This was addressed by making the Cosmos DB system properties (`_rid`, `_ts`, `_self`, `_etag`) optional in `CosmosRecord` and ensuring types implementing it correctly handle these properties.
+*   **`mock-cosmos-db.ts` `upsert` method inconsistency**: The `upsert` method in `mock-cosmos-db.ts` was not returning the correct type. This was fixed by explicitly casting the return value to `ItemResponse<T>`.
+*   **`ApiKey` interface update**: The `[key: string]: unknown;` property was removed from the `ApiKey` interface to simplify its definition.
+*   **`ApiKeyUsageRecord`, `ImportMetadata`, `RowData` interfaces update**: These interfaces were updated to correctly extend `CosmosRecord` and include the necessary Cosmos DB system properties as optional.

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../../middleware/auth.js';
+import * as authMiddleware from '../../../middleware/auth.js';
 import express from 'express';
 import { AzureCosmosDB } from '../../../types/azure.js';
 
@@ -28,7 +28,7 @@ export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
   // Define routes
   if (authRequired) {
-    router.use(authenticateToken);
+    router.use(authMiddleware.authenticateToken);
   }
 
   // Query rows from a specific import
