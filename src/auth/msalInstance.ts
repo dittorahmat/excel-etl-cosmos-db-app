@@ -1,5 +1,5 @@
 import { PublicClientApplication } from '@azure/msal-browser';
-import { msalConfig } from './authConfig.custom';
+import { msalConfig } from './authConfig.ts';
 import { assertMsalConfig } from './authUtils';
 
 // Create MSAL instance

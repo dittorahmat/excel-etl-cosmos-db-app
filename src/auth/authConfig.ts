@@ -17,8 +17,8 @@ export const azureAdConfig = {
   tenantId: env.VITE_AZURE_TENANT_ID || 'organizations',
   redirectUri: env.VITE_AZURE_REDIRECT_URI || getOrigin(),
   scopes: (env.VITE_AZURE_SCOPES || 'User.Read openid profile email').split(' '),
-  // Use 'organizations' as authority to support both work/school accounts and personal Microsoft accounts
-  authority: 'https://login.microsoftonline.com/organizations',
+  // Use tenant-specific authority for single-tenant applications
+  authority: `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'organizations'}`,
   // Known authorities for both the tenant and common endpoints
   knownAuthorities: [
     'login.microsoftonline.com',
@@ -101,32 +101,24 @@ export const loginRequest = {
   scopes: azureAdConfig.scopes,
   // Use 'select_account' to always show account picker
   prompt: 'select_account',
-  // Add domain hint to help with B2B authentication
-  extraQueryParameters: {
-    domain_hint: 'organizations',
-    // Ensure client_id is included in the request
-    client_id: azureAdConfig.clientId,
-    // Add any additional parameters required by your Azure AD app
-    response_mode: 'fragment',
-    response_type: 'id_token token',
-    scope: azureAdConfig.scopes.join(' '),
-  },
-  // Explicitly disable the default token cache
-  tokenQueryParameters: {
-    client_info: '1'
-  }
 };
 
+// Get runtime config, falling back to build-time env vars
+const getRuntimeConfig = () => (window as any).__APP_CONFIG__ || import.meta.env;
+
 // API Configuration
-export const apiConfig = {
-  scopes: [env.VITE_API_SCOPE || 'api://access_as_user'],
-  uri: env.VITE_API_BASE_URL || '/api',
+export const getApiConfig = () => {
+  const runtimeConfig = getRuntimeConfig();
+  return {
+    scopes: [`api://exceletlfunc-wqp03jun.azurewebsites.net/access_as_user`],
+    uri: runtimeConfig.VITE_API_BASE_URL || '/api',
+  };
 };
 
 // Log the API configuration for debugging in development only
-if (import.meta.env.DEV && !import.meta.env.VITEST) {
-  console.log('API Config:', {
-    scope: apiConfig.scopes[0],
-    uri: apiConfig.uri
-  });
-}
+// if (import.meta.env.DEV && !import.meta.env.VITEST) {
+//   console.log('API Config:', {
+//     scope: getApiConfig().scopes[0],
+//     uri: getApiConfig().uri
+//   });
+// }

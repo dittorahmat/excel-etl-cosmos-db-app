@@ -4,7 +4,6 @@ import { CosmosRecord } from '../types/azure.js';
  * Represents an API key in the system
  */
 export interface ApiKey extends CosmosRecord {
-  [key: string]: unknown; // This allows for dynamic properties while maintaining type safety
   /**
    * The unique identifier for the API key (not the actual key value)
    */

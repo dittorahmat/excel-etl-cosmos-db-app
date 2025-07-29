@@ -11,14 +11,14 @@ import { initializeAzureServices } from './config/azure-services.js';
 
 // Import v2 routes
 import { createV2Router } from './routes/v2/index.js';
-import { uploadRouterV2 as uploadRoute } from './routes/v2/upload.route.js';
+
 import { createFieldsRouter } from './routes/fields.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
 import authRoute from './routes/auth.route.js';
 
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
-import { validateToken } from './middleware/auth.js';
+import * as authMiddleware from './middleware/auth.js';
 import { logger, LogContext } from './utils/logger.js';
 
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
@@ -138,7 +138,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   const apiKeyUsageRepository = new ApiKeyUsageRepository(azureServices);
 
   // Setup authentication middleware with required dependencies
-  const authMiddleware = requireAuthOrApiKey({
+  const authOrApiKeyMiddleware = requireAuthOrApiKey({
     apiKeyRepository: apiKeyRepository,
     apiKeyUsageRepository: apiKeyUsageRepository
   });
@@ -155,14 +155,14 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   app.use('/api/v2', createV2Router(azureServices.cosmosDb));
   
   // Mount the v2 upload route at /api/v2/query/imports
-  app.use('/api/v2/query/imports', uploadRoute);
+  // app.use('/api/v2/query/imports', uploadRoute);
   
   // Fields endpoint (used by dashboard)
   console.log('server.ts: azureServices.cosmosDb before createFieldsRouter:', azureServices.cosmosDb);
   app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
 
   // API Key routes (v2)
-  app.use('/api/v2/keys', authMiddleware, createApiKeyRouter(azureServices));
+  app.use('/api/v2/keys', authOrApiKeyMiddleware, createApiKeyRouter(azureServices));
 
   // Auth route (v2)
   app.use('/api/v2/auth', authRoute);
@@ -217,7 +217,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   });
 
   // Example of a protected route with role-based access
-  app.get('/api/protected', validateToken, (req: Request, res: Response) => {
+  app.get('/api/protected', authMiddleware.authenticateToken, (req: Request, res: Response) => {
     res.json({
       message: 'This is a protected endpoint',
       user: req.user,

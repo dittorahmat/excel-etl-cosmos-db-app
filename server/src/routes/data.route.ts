@@ -2,13 +2,13 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { CosmosRecord } from '../types/custom.d.ts';
 
-import { validateToken } from '../middleware/auth.js';
+import * as authMiddleware from '../middleware/auth.js';
 import { initializeCosmosDB } from '../services/cosmos-db/cosmos-db.service.js';
 
 // Conditional auth middleware that only validates tokens if AUTH_ENABLED is true
 const conditionalAuth = (req: Request, res: Response, next: NextFunction) => {
   if (process.env.AUTH_ENABLED === 'true') {
-    return validateToken(req, res, next);
+    return authMiddleware.authenticateToken(req, res, next);
   }
   next();
 };

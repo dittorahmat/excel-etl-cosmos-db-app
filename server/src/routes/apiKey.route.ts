@@ -4,7 +4,7 @@ import { body, param } from 'express-validator';
 
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import { validateRequest } from '../middleware/validateRequest.js';
-import { authenticateToken, TokenPayload } from '../middleware/auth.js';
+import * as authMiddleware from '../middleware/auth.js';
 import { authRateLimiter } from '../middleware/rateLimit.js';
 
 import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
@@ -13,7 +13,7 @@ import type { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js
 
 // Helper type to properly type async request handlers
 type AsyncRequestHandler<P = unknown, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> = (
-  req: Request<P, ResBody, ReqBody, ReqQuery> & { user?: TokenPayload },
+  req: Request<P, ResBody, ReqBody, ReqQuery> & { user?: authMiddleware.TokenPayload },
   res: Response<ResBody>,
   next: NextFunction
 ) => Promise<void>;
@@ -24,7 +24,7 @@ export function createApiKeyRouter(azureServices: { cosmosDb: AzureCosmosDB; blo
 
   // Conditionally apply authentication and rate limiting to all routes
   if (process.env.AUTH_ENABLED === 'true') {
-    router.use(authenticateToken);
+    router.use(authMiddleware.authenticateToken);
   } else {
     // In development/test, if auth is disabled, mock the user object
     router.use((req, res, next) => {
@@ -180,12 +180,9 @@ export function createApiKeyRouter(azureServices: { cosmosDb: AzureCosmosDB; blo
     '/:keyId',
     [
       param('keyId').isString().notEmpty().withMessage('Key ID is required'),
-      validateRequest as unknown as RequestHandler,
     ],
     revokeApiKeyHandler as unknown as RequestHandler
   );
-
-  return router;
 
   return router;
 }

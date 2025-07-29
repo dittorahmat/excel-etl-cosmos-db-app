@@ -10,9 +10,9 @@ import type {
 /**
  * Represents an API key usage record in Cosmos DB
  */
-interface ApiKeyUsageRecord extends Omit<CosmosRecord, 'id'> {
-  // Override id to be required and non-optional
+interface ApiKeyUsageRecord extends CosmosRecord {
   id: string; // Required for Cosmos DB
+  
   apiKeyId: string;
   userId: string;
   timestamp: string;

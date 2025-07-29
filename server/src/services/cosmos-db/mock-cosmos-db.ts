@@ -1,5 +1,5 @@
 import type { MockCosmosDB, CosmosRecord } from '../../types/azure.js';
-import type { 
+import type {
   Container,
   ContainerResponse,
   Database,
@@ -8,7 +8,9 @@ import type {
   Items,
   FeedOptions,
   FeedResponse,
-  CosmosClient as CosmosClientType
+  CosmosClient as CosmosClientType,
+  ItemResponse,
+  Resource
 } from '@azure/cosmos';
 import type {
   CosmosDiagnostics,
@@ -174,7 +176,7 @@ const createMockContainer = (containerName: string, partitionKey: string): Conta
 const upsertRecord = async <T extends CosmosRecord>(
   record: T,
   containerName = 'default'
-): Promise<T> => {
+): Promise<T & { _rid: string; _self: string; _etag: string; _ts: number }> => {
   if (!mockDataStore[containerName]) {
     mockDataStore[containerName] = {};
   }
@@ -190,7 +192,7 @@ const upsertRecord = async <T extends CosmosRecord>(
   };
   
   mockDataStore[containerName][id] = recordWithMetadata;
-  return recordWithMetadata as T;
+  return recordWithMetadata as T & { _rid: string; _self: string; _etag: string; _ts: number };
 };
 
 // Helper function to query records
@@ -244,7 +246,17 @@ export function initializeMockCosmosDB(): MockCosmosDB {
     },
     
     upsertRecord: async <T extends CosmosRecord>(record: T, containerName = 'default') => {
-      return upsertRecord(record, containerName);
+      const result = await upsertRecord(record, containerName);
+      return {
+        resource: result,
+        statusCode: 200,
+        etag: 'mock-etag',
+        item: undefined as any, // Mock item property
+        headers: {},
+        activityId: 'mock-activity-id',
+        requestCharge: 1,
+        diagnostics: undefined as any, // Mock diagnostics
+      } as ItemResponse<T>;
     },
     
     query: async <T extends CosmosRecord>(
@@ -278,7 +290,17 @@ export function initializeMockCosmosDB(): MockCosmosDB {
     
     // Mock-specific methods
     upsert: async <T extends CosmosRecord>(record: T, containerName = 'default') => {
-      return upsertRecord(record, containerName);
+      const result = await upsertRecord(record, containerName);
+      return {
+        resource: result,
+        statusCode: 200,
+        etag: 'mock-etag',
+        item: undefined as any, // Mock item property
+        headers: {},
+        activityId: 'mock-activity-id',
+        requestCharge: 1,
+        diagnostics: undefined as any, // Mock diagnostics
+      } as ItemResponse<T>;
     },
     
     delete: async (
@@ -298,7 +320,17 @@ export function initializeMockCosmosDB(): MockCosmosDB {
     // Mock utilities
     _mocks: {
       upsert: async <T extends CosmosRecord>(record: T, containerName = 'default') => {
-        return upsertRecord(record, containerName);
+        const result = await upsertRecord(record, containerName);
+        return {
+          resource: result,
+          statusCode: 200,
+          etag: 'mock-etag',
+          item: undefined as any, // Mock item property
+          headers: {},
+          activityId: 'mock-activity-id',
+          requestCharge: 1,
+          diagnostics: undefined as any, // Mock diagnostics
+        } as ItemResponse<T>;
       },
       
       query: async <T extends CosmosRecord>(

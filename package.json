@@ -7,7 +7,7 @@
     "server"
   ],
   "scripts": {
-    "dev:client": "vite",
+    "dev:client": "npm run generate:config && vite --force",
     "generate:config": "node scripts/generate-config.js",
     "prebuild:client": "npm run generate:config",
     "build:client": "npm run generate:config && vite build",

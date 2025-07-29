@@ -16,6 +16,7 @@ const config = {
   VITE_AZURE_TENANT_ID: process.env.VITE_AZURE_TENANT_ID || '',
   VITE_AZURE_REDIRECT_URI: process.env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000',
   VITE_AZURE_SCOPES: process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
+  VITE_API_SCOPE: process.env.VITE_API_SCOPE || '',
   MODE: process.env.NODE_ENV || 'development',
   PROD: process.env.NODE_ENV === 'production',
   DEV: process.env.NODE_ENV !== 'production'

@@ -1,4 +1,4 @@
-import { CosmosClient, type SqlParameter } from '@azure/cosmos';
+import { CosmosClient, type SqlParameter, ItemResponse, ItemDefinition } from '@azure/cosmos';
 import type { CosmosRecord, AzureCosmosDB } from '../../types/azure.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
@@ -11,6 +11,8 @@ type CosmosResponse<T> = T & {
   _rid?: string;
   _self?: string;
   _attachments?: string;
+  statusCode?: number;
+  etag?: string;
 };
 
 
@@ -123,14 +125,14 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
       upsertRecord: async <T extends CosmosRecord>(
         record: T,
         containerName: string = AZURE_CONFIG.cosmos.containerName
-      ): Promise<CosmosResponse<T>> => {
+      ): Promise<ItemResponse<T>> => {
         const operationId = `op_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
         const recordId = record.id || 'new-record';
         
         logger.info(`[${operationId}] Starting upsert operation`, { recordId, containerName });
         
         try {
-          const recordToUpsert: T & { _ts: number; _partitionKey: string } = {
+          const recordToUpsert: ItemDefinition = {
             ...record,
             id: record.id || uuidv4(),
             _ts: Math.floor(Date.now() / 1000),
@@ -150,7 +152,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
             requestCharge: response.requestCharge
           });
           
-          return response.resource as CosmosResponse<T>;
+          return response as ItemResponse<T>;
         } catch (error) {
           logger.error(`[${operationId}] Failed to upsert record`, {
             error: error instanceof Error ? error.message : 'Unknown error',

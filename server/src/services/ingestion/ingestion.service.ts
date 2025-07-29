@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import { fileParserService } from '../file-parser/file-parser.service.js';
-import { initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
+import { initialize as initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
+import type { AzureCosmosDB } from '../../types/azure.js';
 import { uploadToBlobStorage } from '../blob-storage/upload-to-blob-storage.js';
 import type { CosmosRecord } from '../../types/azure.js';
 import fs from 'fs/promises';
@@ -27,6 +28,10 @@ export interface ImportMetadata extends CosmosRecord {
     rawData?: unknown;
   }>;
   _partitionKey: string; // Ensure partition key is required
+  _rid?: string;
+  _ts?: number;
+  _self?: string;
+  _etag?: string;
 }
 
 /**
@@ -38,6 +43,10 @@ export interface RowData extends CosmosRecord {
   _rowNumber: number;
   _importedAt: string;
   _importedBy: string;
+  _rid?: string;
+  _ts?: number;
+  _self?: string;
+  _etag?: string;
   [key: string]: unknown; // Allow dynamic properties
 }
 
@@ -164,7 +173,7 @@ export class IngestionService {
   /**
    * Save import metadata to Cosmos DB
    */
-  private async saveImportMetadata(metadata: ImportMetadata, cosmosDb: any): Promise<void> {
+  private async saveImportMetadata(metadata: ImportMetadata, cosmosDb: AzureCosmosDB): Promise<void> {
     try {
       const record = {
         ...metadata,
@@ -191,7 +200,7 @@ export class IngestionService {
       
       this.logger.debug('Import metadata saved', { 
         importId: metadata.id,
-        etag: result._etag,
+        etag: result.resource?._etag,
         partitionKey: this.metadataPartitionKey
       });
     } catch (error) {
@@ -206,7 +215,7 @@ export class IngestionService {
   /**
    * Save rows to Cosmos DB in batches
    */
-  private async saveRows(rows: RowData[], cosmosDb: any): Promise<void> {
+  private async saveRows(rows: RowData[], cosmosDb: AzureCosmosDB): Promise<void> {
     if (rows.length === 0) {
       this.logger.debug('No rows to save');
       return;

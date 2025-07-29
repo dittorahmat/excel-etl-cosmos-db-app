@@ -4,7 +4,7 @@ import {
   InteractionRequiredAuthError,
   LogLevel
 } from '@azure/msal-browser';
-import { msalConfig } from '../auth/authConfig';
+import { msalConfig, getApiConfig } from '../auth/authConfig.ts';
 
 // Initialize MSAL instance with proper typing
 const msalInstance = new PublicClientApplication({
@@ -17,6 +17,15 @@ const msalInstance = new PublicClientApplication({
     },
   },
 });
+
+let msalInitialized = false;
+
+const initializeMsal = async () => {
+  if (!msalInitialized) {
+    await msalInstance.initialize();
+    msalInitialized = true;
+  }
+};
 
 // Interface for error response data
 interface ErrorResponseData {
@@ -39,9 +48,10 @@ const getCacheKey = (account: AccountInfo): string => {
 };
 
 export const getAuthToken = async (forceRefresh = false): Promise<string | null> => {
+  await initializeMsal();
   try {
     // In development, return a mock token
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && import.meta.env.VITE_AUTH_ENABLED === 'false') {
       console.log('Using development mock token');
       return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
     }
@@ -53,7 +63,7 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
       // Try to initiate login if no accounts found
       try {
         await msalInstance.loginRedirect({
-          scopes: ['User.Read']
+          scopes: getApiConfig().scopes
         });
       } catch (error) {
         console.error('Login failed:', error);
@@ -72,7 +82,7 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     }
     
     const silentRequest = {
-      scopes: ['User.Read'],
+      scopes: getApiConfig().scopes,
       account,
       forceRefresh
     };
@@ -100,7 +110,7 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
       try {
         console.log('Interactive token acquisition required');
         const authResult = await msalInstance.acquireTokenPopup({
-          scopes: ['User.Read'],
+          scopes: getApiConfig().scopes,
           account: accounts[0],
         });
         
@@ -185,8 +195,7 @@ const normalizeHeaders = (headers: HeadersInit | undefined): Record<string, stri
 
 export const authFetch = async <T = unknown>(
   url: string, 
-  options: RequestOptions = {},
-  attempt = 1
+  options: RequestOptions = {}
 ): Promise<T> => {
   // Initialize headers from options or create a new object
   const headers = options.headers ? { ...normalizeHeaders(options.headers) } : {};
@@ -235,6 +244,21 @@ export const authFetch = async <T = unknown>(
 
   
 
+  // Always try to get a token if auth is not explicitly disabled
+  if (import.meta.env.VITE_AUTH_ENABLED !== 'false') {
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('[API] Authorization header set with token');
+      } else {
+        console.warn('[API] No token available for request');
+      }
+    } catch (error) {
+      console.error('Error getting auth token for request:', error);
+    }
+  }
+
   // Convert headers to a format that fetch can use
   const fetchHeaders: Record<string, string> = {};
   Object.entries(headers).forEach(([key, value]) => {
@@ -242,37 +266,6 @@ export const authFetch = async <T = unknown>(
       fetchHeaders[key] = String(value);
     }
   });
-
-  // Skip authentication in development if AUTH_ENABLED is explicitly set to false in the environment
-  if (import.meta.env.VITE_AUTH_ENABLED === 'false') {
-    console.log('Authentication disabled in development mode');
-  } 
-  // Check if authentication is required (only on first attempt to avoid extra requests)
-  else if (attempt === 1 && import.meta.env.VITE_AUTH_ENABLED !== 'false') {
-    try {
-      const authStatusResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/status`);
-      if (authStatusResponse.ok) {
-        const authStatus = await authStatusResponse.json();
-        const authRequired = authStatus.authRequired !== false;
-        
-        if (authRequired) {
-          const token = await getAuthToken();
-          if (token) {
-            fetchHeaders['Authorization'] = `Bearer ${token}`;
-          } else if (import.meta.env.DEV) {
-            console.log('Using development mock token');
-            const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-            fetchHeaders['Authorization'] = `Bearer ${mockToken}`;
-          } else {
-            throw new Error('Authentication required but no valid token available');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking authentication status:', error);
-      console.warn('Could not determine if authentication is required, proceeding without token');
-    }
-  }
 
   // Handle file upload with progress tracking
   const { onUploadProgress } = options;
