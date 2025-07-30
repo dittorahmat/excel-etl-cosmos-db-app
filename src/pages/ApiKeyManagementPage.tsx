@@ -114,15 +114,15 @@ const ApiKeyManagementPage: React.FC = () => {
         }
         
         const errorResponse = response as ErrorResponse;
-        const errorMsg = typeof errorResponse?.message === 'string' 
-          ? errorResponse.message 
+        const errorMsg = typeof (response as { message?: unknown })?.message === 'string' 
+          ? (response as { message: string }).message 
           : 'Invalid response format from server: expected keys array';
         console.error("[ApiKeyManagementPage] Unexpected response format:", response);
         setError(errorMsg);
         setApiKeys([]);
       }
     } catch (err) {
-      const error = err as any;
+      const error = err as { response?: { data?: { message?: string}}, message?: string, stack?: string };
       const errorMessage = error?.response?.data?.message || 
                          error?.message || 
                          'Unknown error occurred';
@@ -187,7 +187,7 @@ const ApiKeyManagementPage: React.FC = () => {
         setApiKeys([]);
       }
     } catch (err) {
-      const error = err as any;
+      const error = err as { response?: { data?: { message?: string}}, message?: string };
       const errorMessage = error?.response?.data?.message || 
                          error?.message || 
                          'Unknown error occurred';

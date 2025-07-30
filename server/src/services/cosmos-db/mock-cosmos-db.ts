@@ -50,7 +50,7 @@ export const createMockItemResponse = <T extends { id?: string }>(
       // Mock the Item methods that might be called
       read: async () => createMockItemResponse(mockItem),
       replace: async (body: T) => createMockItemResponse({ ...mockItem, ...body }),
-      delete: async () => ({} as any),
+      delete: async () => ({} as unknown as ItemResponse<{ id: string }>),
       // Add other required Item properties
       container: {},
       clientContext: {},

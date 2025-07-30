@@ -140,7 +140,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   
   // Log response when it's finished
   const originalSend = res.send.bind(res);
-  res.send = function (body?: any) {
+  res.send = function (body?: unknown) {
     const responseTime = Date.now() - start;
     const logLevel = res.statusCode >= 400 ? 'warn' : 'http';
     
