@@ -125,11 +125,6 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      working-directory: my-app/
-      run: npm ci
-
-    - name: Install dependencies
-      working-directory: my-app/
       run: npm ci
 
     - name: Generate config
