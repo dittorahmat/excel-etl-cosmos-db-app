@@ -47,8 +47,7 @@ jobs:
 
     - name: Verify build output
       run: |
-        echo -e "
-Checking for Cosmos DB test script..."
+        echo -e "\nChecking for Cosmos DB test script..."
         if [ -f "server/scripts/test-cosmos-direct.ts" ]; then
           echo "✅ Found TypeScript Cosmos DB direct test script"
           ls -la server/scripts/
@@ -71,16 +70,15 @@ Checking for Cosmos DB test script..."
         echo "- COSMOS_DATABASE: ${COSMOS_DATABASE:-Not set}"
         echo "- COSMOS_CONTAINER: ${COSMOS_CONTAINER:-Not set}"
         echo "- COSMOS_KEY: ${COSMOS_KEY:+set (hidden for security)}"
-        
+
         # Check for required environment variables
         if [ -z "$COSMOS_ENDPOINT" ] || [ -z "$COSMOS_KEY" ]; then
           echo "::error::Missing required environment variables: COSMOS_ENDPOINT and/or COSMOS_KEY"
           exit 1
         fi
-        
+
         # Run the TypeScript test script directly
-        echo "
-Running TypeScript Cosmos DB direct connection test..."
+        echo -e "\nRunning TypeScript Cosmos DB direct connection test..."
         npx tsx server/scripts/test-cosmos-direct.ts
 
     - name: Lint codebase
@@ -125,9 +123,7 @@ Running TypeScript Cosmos DB direct connection test..."
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "dist" 
-          api_location: "" 
-          output_location: "" 
+          app_location: "dist"
 
   deploy-backend:
     name: Deploy Backend to App Service
