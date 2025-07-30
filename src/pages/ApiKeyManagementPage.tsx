@@ -108,12 +108,6 @@ const ApiKeyManagementPage: React.FC = () => {
       }
       else {
         // Unknown response format
-        interface ErrorResponse {
-          message?: string;
-          [key: string]: unknown;
-        }
-        
-        const errorResponse = response as ErrorResponse;
         const errorMsg = typeof (response as { message?: unknown })?.message === 'string' 
           ? (response as { message: string }).message 
           : 'Invalid response format from server: expected keys array';
