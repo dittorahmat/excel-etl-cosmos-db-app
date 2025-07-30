@@ -1,5 +1,7 @@
-import winston from 'winston'; // WinstonLogger and LoggerOptions were imported but not used
-import { Request as ExpressRequest, Response } from 'express';
+import winston, { format } from 'winston';
+import { Request as ExpressRequest, Response, NextFunction } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
 
 // Define the user type
 export interface AuthUser {
@@ -18,9 +20,6 @@ declare module 'express-serve-static-core' {
 }
 
 type Request = ExpressRequest;
-import { v4 as uuidv4 } from 'uuid';
-import { TransformableInfo } from 'logform';
-import fs from 'fs';
 
 // Ensure log directory exists
 const logDir = 'logs';
@@ -35,7 +34,9 @@ const levels = {
   info: 2,
   http: 3,
   debug: 4,
-};
+} as const;
+
+// LogLevel type is used internally by winston
 
 // Define log colors
 const colors = {
@@ -44,24 +45,22 @@ const colors = {
   info: 'green',
   http: 'magenta',
   debug: 'blue',
-};
+} as const;
 
 // Add colors to winston
 winston.addColors(colors);
 
 // Format for console logging
-const consoleFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.colorize({ all: true }),
-  winston.format.printf(
-    (info: TransformableInfo) => `${info.timestamp} [${info.level}]: ${info.message}`
-  )
+const consoleFormat = format.combine(
+  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  format.colorize({ all: true }),
+  format.printf((info) => `${info.timestamp} [${info.level}]: ${info.message}`)
 );
 
 // Format for file logging
-const fileFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.json()
+const fileFormat = format.combine(
+  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  format.json()
 );
 
 // Define the logger interface with our custom log levels
@@ -107,7 +106,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Request logging middleware
-export const requestLogger = (req: Request, res: Response, next: () => void) => {
+export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   // Skip health check logs in production to reduce noise
   if (req.path === '/health' && process.env.NODE_ENV === 'production') {
     return next();
@@ -140,8 +139,8 @@ export const requestLogger = (req: Request, res: Response, next: () => void) => 
   }
   
   // Log response when it's finished
-  const originalSend = res.send;
-  res.send = function (body) {
+  const originalSend = res.send.bind(res);
+  res.send = function (body?: any) {
     const responseTime = Date.now() - start;
     const logLevel = res.statusCode >= 400 ? 'warn' : 'http';
     

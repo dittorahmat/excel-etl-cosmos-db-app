@@ -210,6 +210,7 @@ jobs:
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
     - uses: actions/checkout@v4
@@ -221,30 +222,34 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      working-directory: my-app/
-      run: npm ci --production=false
+      run: |
+        npm ci --production=false
+        cd server && npm ci --production=false && cd ..
 
     - name: Build backend
-      working-directory: ./
-      run: npm run build:server
-      env:
-        NODE_ENV: production
+      run: |
+        npm run build:server
+        # Ensure the dist directory has the correct structure
+        ls -la dist/server/
 
     - name: Prepare deployment package
-      working-directory: ./
       run: |
         mkdir -p deployment
         # Copy the built server files from dist/server to deployment
         cp -r dist/server/* deployment/
-        # Copy package.json from the server directory
-        cp server/package.json deployment/
-        # Copy web.config for Azure App Service
-        echo '<?xml version="1.0" encoding="utf-8"?>
+        # Copy package.json and package-lock.json from the server directory
+        cp server/package*.json deployment/
+        # Copy .env file with production settings (if needed)
+        # cp server/.env.production deployment/.env
+        
+        # Create web.config for Azure App Service
+        cat > deployment/web.config << 'EOL'
+        <?xml version="1.0" encoding="utf-8"?>
         <configuration>
           <system.webServer>
             <webSocket enabled="false" />
             <handlers>
-              <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode" />
+              <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
             </handlers>
             <rewrite>
               <rules>
@@ -262,13 +267,17 @@ jobs:
         # Install production dependencies only (no devDependencies)
         cd deployment && npm install --omit=dev --prefer-offline --no-audit --progress=false
 
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
+    - name: Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
       with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-        package: ./deployment
-        slot-name: production
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: 'upload'
+        app_location: '/'
+        output_location: 'dist'
+        api_location: 'deployment'
+        app_build_command: 'npm run build'
+        api_build_command: 'npm run build:server'
 
     - name: Document Manual Configuration
       run: |

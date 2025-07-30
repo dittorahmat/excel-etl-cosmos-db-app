@@ -1,12 +1,11 @@
-import type { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
+// Import only the types we need
 import type { 
-  CosmosClient, 
   Container, 
+  CosmosClient,
   SqlQuerySpec,
   ItemResponse,
   Database
 } from '@azure/cosmos';
-// Mock types are now defined locally
 
 
 // Express Multer File type

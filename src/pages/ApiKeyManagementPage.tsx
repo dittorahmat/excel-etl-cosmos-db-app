@@ -144,11 +144,70 @@ const ApiKeyManagementPage: React.FC = () => {
     }
   };
 
-  // Memoize the fetchApiKeys function to prevent unnecessary re-renders
+  // Memoize the fetchApiKeys function with useCallback to prevent unnecessary re-renders
   const memoizedFetchApiKeys = React.useCallback(async () => {
-    await fetchApiKeys();
-  }, [fetchApiKeys]);
+    console.log("[ApiKeyManagementPage] memoizedFetchApiKeys - Start");
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log("[ApiKeyManagementPage] Making API call to /api/v2/keys");
+      const response = await api.get<ApiKeyResponse>('/api/v2/keys')
+        .catch(error => {
+          console.error("[ApiKeyManagementPage] API call failed:", {
+            error: error.toString(),
+            response: error.response,
+            status: error.response?.status,
+            data: error.response?.data,
+          });
+          throw error;
+        });
+      
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        setApiKeys(response);
+      } 
+      else if (response && 'keys' in response && Array.isArray(response.keys)) {
+        setApiKeys(response.keys);
+      }
+      else if (response && 'success' in response && response.success === false) {
+        const errorMsg = response.message || 'Failed to fetch API keys';
+        setError(errorMsg);
+        setApiKeys([]);
+      }
+      else if (response && 'data' in response && Array.isArray(response.data)) {
+        setApiKeys(response.data);
+      }
+      else {
+        const errorResponse = response as { message?: string; [key: string]: unknown };
+        const errorMsg = typeof errorResponse?.message === 'string' 
+          ? errorResponse.message 
+          : 'Invalid response format from server: expected keys array';
+        setError(errorMsg);
+        setApiKeys([]);
+      }
+    } catch (err) {
+      const error = err as any;
+      const errorMessage = error?.response?.data?.message || 
+                         error?.message || 
+                         'Unknown error occurred';
+      const status = error?.response?.status;
+      
+      console.error("[ApiKeyManagementPage] Error in fetchApiKeys:", {
+        message: errorMessage,
+        status,
+        error: error.toString(),
+      });
+      
+      setError(`Failed to fetch API keys: ${errorMessage}${status ? ` (${status})` : ''}`);
+      setApiKeys([]);
+    } finally {
+      console.log("[ApiKeyManagementPage] fetchApiKeys - Loading complete");
+      setLoading(false);
+    }
+  }, []); // No dependencies since we don't use any external values
 
+  // Fetch API keys on component mount
   useEffect(() => {
     void memoizedFetchApiKeys();
   }, [memoizedFetchApiKeys]);

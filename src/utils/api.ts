@@ -136,12 +136,18 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     if (error instanceof InteractionRequiredAuthError) {
       try {
         console.log('Interactive token acquisition required');
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length === 0) {
+          console.warn('No accounts available for interactive token acquisition');
+          return null;
+        }
+        
         const authResult = await msalInstance.acquireTokenPopup({
           scopes: getApiConfig().scopes,
           account: accounts[0],
         });
         
-        if (authResult && authResult.accessToken) {
+        if (authResult?.accessToken) {
           // Cache the new token
           const cacheKey = getCacheKey(accounts[0]);
           tokenCache[cacheKey] = {
@@ -196,36 +202,6 @@ const safeStringify = (value: unknown): string => {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper function to convert various header formats to a plain object
-const normalizeHeaders = (headers: HeadersInit | undefined): Record<string, string> => {
-  const result: Record<string, string> = {};
-  
-  if (!headers) return result;
-  
-  if (headers instanceof Headers) {
-    headers.forEach((value, key) => {
-      result[key] = safeStringify(value);
-    });
-  } else if (Array.isArray(headers)) {
-    headers.forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        result[key] = value.map(safeStringify).join(',');
-      } else if (value !== undefined && value !== null) {
-        result[key] = safeStringify(value);
-      }
-    });
-  } else {
-    Object.entries(headers).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        result[key] = value.map(safeStringify).join(',');
-      } else if (value !== undefined && value !== null) {
-        result[key] = safeStringify(value);
-      }
-    });
-  }
-  
-  return result;
-};
 
 export const authFetch = async <T = unknown>(
   url: string, 
@@ -262,19 +238,20 @@ export const authFetch = async <T = unknown>(
   }
 
   // Process request body
-  let body: BodyInit | null = null;
-  if (options.body !== undefined && options.body !== null) {
-    if (typeof options.body === 'string' || 
+  let body: BodyInit | null | undefined;
+  if (options.body) {
+    if (options.body instanceof FormData || 
         options.body instanceof Blob || 
-        options.body instanceof FormData || 
         options.body instanceof URLSearchParams || 
         ArrayBuffer.isView(options.body)) {
       body = options.body;
-    } else if (typeof options.body === 'object') {
+    } else if (typeof options.body === 'object' && options.body !== null) {
       if (!headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
       }
       body = JSON.stringify(options.body);
+    } else if (typeof options.body === 'string') {
+      body = options.body;
     }
   }
   
@@ -437,45 +414,30 @@ export const authFetch = async <T = unknown>(
     try {
       console.log(`[API] Making request to ${requestUrl} (attempt ${attempt + 1}/${_RATE_LIMIT_RETRY_ATTEMPTS + 1})`);
       
-      // Create a properly typed RequestInit object
-      const { ...fetchOptions } = options;
-      
-      // Set default method if not provided
-      if (!fetchOptions.method) {
-        fetchOptions.method = 'GET';
-      }
-      
-      // Always include credentials
-      fetchOptions.credentials = 'include';
-      
-      // Convert headers to a format compatible with HeadersInit
-      const normalizedHeaders: Record<string, string> = {};
-      Object.entries(headers).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          normalizedHeaders[key] = String(value);
-        }
+      // Create headers object from the Headers instance
+      const headersObj: Record<string, string> = {};
+      headers.forEach((value, key) => {
+        headersObj[key] = value;
       });
       
-      // Set headers in a way that's compatible with both browser and Node.js
-      if (Object.keys(normalizedHeaders).length > 0) {
-        fetchOptions.headers = normalizedHeaders as Record<string, string>;
-      }
+      // Create a properly typed RequestInit object
+      const fetchOptions: RequestInit = {
+        method: options.method || 'GET',
+        credentials: 'include',
+        headers: headersObj,
+      };
       
-      // Handle body separately to ensure it's a valid BodyInit type
-      if (options.body !== undefined && options.body !== null) {
-        if (typeof options.body === 'string' || 
-            options.body instanceof Blob || 
-            options.body instanceof FormData || 
-            options.body instanceof URLSearchParams || 
-            ArrayBuffer.isView(options.body)) {
-          fetchOptions.body = options.body as BodyInit;
-        } else if (typeof options.body === 'object') {
-          fetchOptions.body = JSON.stringify(options.body);
-          if (!headers['Content-Type']) {
-            (fetchOptions.headers as Record<string, string>)['Content-Type'] = 'application/json';
-          }
-        } else {
-          fetchOptions.body = String(options.body);
+      // Set the body if it exists
+      if (body !== undefined && body !== null) {
+        fetchOptions.body = body;
+        
+        // Set Content-Type header if not already set and body is an object
+        if (typeof options.body === 'object' && options.body !== null && 
+            !(options.body instanceof Blob) && 
+            !(options.body instanceof FormData) &&
+            !(options.body instanceof URLSearchParams) &&
+            !ArrayBuffer.isView(options.body)) {
+          headersObj['Content-Type'] = 'application/json';
         }
       }
       
@@ -601,12 +563,24 @@ export const api: ApiClient = {
         });
       }
     }
-    
+
     // Set Content-Type header if not already set and not FormData
     if (!isFormData && !headers['Content-Type']) {
       headers['Content-Type'] = 'application/json';
     }
-    
+
+    // For FormData, let the browser set the content type with the boundary
+    if (body instanceof FormData) {
+      // Remove any existing content-type header to let the browser set it with the boundary
+      const { 'content-type': _unusedContentType, ...headersWithoutContentType } = headers;
+      return authFetch<T>(endpoint, {
+        ...options,
+        headers: headersWithoutContentType as HeadersInit,
+        method: 'POST',
+        body,
+      });
+    }
+
     return authFetch<T>(endpoint, {
       ...options,
       headers: headers as HeadersInit,
