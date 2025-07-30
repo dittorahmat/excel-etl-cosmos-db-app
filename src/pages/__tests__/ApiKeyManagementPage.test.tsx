@@ -2,7 +2,6 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom';
 import ApiKeyManagementPage from '../ApiKeyManagementPage';
 import { api } from '../../utils/api';
-import { toast } from '../../components/ui/use-toast';
 
 vi.mock('../../components/ApiQueryBuilder/ApiQueryBuilder', () => ({
   ApiQueryBuilder: () => <div>ApiQueryBuilder Mock</div>,
@@ -18,8 +17,11 @@ vi.mock('../../utils/api', () => ({
 }));
 
 // Mock the toast hook
+const mockToast = vi.fn();
 vi.mock('../../components/ui/use-toast', () => ({
-  toast: vi.fn(),
+  useToast: () => ({
+    toast: mockToast,
+  }),
 }));
 
 // Mock date-fns format function
@@ -47,7 +49,7 @@ describe('ApiKeyManagementPage', () => {
     api.get.mockReset();
     api.post.mockReset();
     api.delete.mockReset();
-    toast.mockReset();
+    mockToast.mockReset();
 
     // Explicitly mock api.get for initial fetch to ensure it resolves
     api.get.mockResolvedValue({ success: true, keys: [] });
@@ -87,7 +89,7 @@ describe('ApiKeyManagementPage', () => {
     await act(async () => {
       await renderComponent();
     });
-    await waitFor(() => expect(screen.getByText(/Error: Failed to fetch/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Failed to fetch')).toBeInTheDocument());
   });
 
   it('renders no API keys message if none exist', async () => {
@@ -147,7 +149,7 @@ describe('ApiKeyManagementPage', () => {
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/api/v2/keys', { name: 'New Key' });
       expect(screen.getByText('new-api-key-value')).toBeInTheDocument();
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'API Key Created' }));
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'API Key Created' }));
       expect(screen.getByText('New Key')).toBeInTheDocument(); // Verify new key in table
     });
   });
@@ -167,7 +169,7 @@ describe('ApiKeyManagementPage', () => {
     });
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error', description: 'Creation failed' }));
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error', description: 'Creation failed' }));
       expect(screen.queryByText('Failing Key')).not.toBeInTheDocument();
     });
   });
@@ -192,7 +194,7 @@ describe('ApiKeyManagementPage', () => {
     await waitFor(() => {
       expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to revoke this API key?');
       expect(api.delete).toHaveBeenCalledWith('/api/v2/keys/1');
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'API Key Revoked' }));
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'API Key Revoked' }));
       expect(screen.getByText('Revoked')).toBeInTheDocument(); // Status updated in table
     });
   });
@@ -214,9 +216,9 @@ describe('ApiKeyManagementPage', () => {
     });
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error', description: 'Revocation failed' }));
-      expect(screen.getByText(/Error: Revocation failed/i)).toBeInTheDocument();
-      expect(screen.queryByText('Active')).not.toBeInTheDocument(); // Status should not be visible
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error', description: 'Revocation failed' }));
+      expect(screen.getByText('Revocation failed')).toBeInTheDocument();
+      expect(screen.queryByText('Active')).not.toBeInTheDocument();
     });
   });
 
@@ -241,10 +243,10 @@ describe('ApiKeyManagementPage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Copy to clipboard/i }));
+      fireEvent.click(screen.getByTitle('Copy to clipboard'));
     });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('key-to-copy');
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Copied!' }));
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Copied!' }));
   });
 });
