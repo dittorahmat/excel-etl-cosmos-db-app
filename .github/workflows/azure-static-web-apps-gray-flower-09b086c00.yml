@@ -47,14 +47,14 @@ jobs:
 
     - name: Verify build output
       run: |
-        echo -e "\nChecking for Cosmos DB service file..."
-        if [ -f "dist/server/server/src/services/cosmos-db/cosmos-db.service.js" ]; then
-          echo "✅ Cosmos DB service file exists"
-          ls -la dist/server/server/src/services/cosmos-db/
+        echo -e "\nChecking for Cosmos DB test script..."
+        if [ -f "dist/server/scripts/test-cosmos-connection.js" ]; then
+          echo "✅ Cosmos DB test script exists in expected location"
+          ls -la dist/server/scripts/
         else
-          echo "❌ Cosmos DB service file not found in expected location"
-          echo "Searching for any Cosmos DB related files..."
-          find dist -name "*.js" | grep -i cosmos || echo "No Cosmos DB files found"
+          echo "❌ Cosmos DB test script not found in expected location"
+          echo "Searching for test script..."
+          find dist -name "test-cosmos-connection.js" || echo "Test script not found"
           exit 1
         fi
 
