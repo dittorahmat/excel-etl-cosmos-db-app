@@ -70,15 +70,15 @@ export function initializeBlobStorage(config?: BlobStorageConfig): void {
   if (!config) {
     config = {
       connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
-      containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || ''
+      containerName: process.env.AZURE_STORAGE_CONTAINER || ''
     };
   }
   blobStorageService.initialize(config);
 }
 
 // Legacy exports for backward compatibility
-export let blobServiceClient: BlobServiceClient | null = null;
-export let containerClient: ContainerClient | null = null;
+export const blobServiceClient: BlobServiceClient | null = null;
+export const containerClient: ContainerClient | null = null;
 
 /**
  * Initialize Azure Blob Storage client asynchronously
@@ -89,7 +89,7 @@ export async function initializeBlobStorageAsync(config?: BlobStorageConfig): Pr
   if (!config) {
     config = {
       connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
-      containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || ''
+      containerName: process.env.AZURE_STORAGE_CONTAINER || ''
     };
   }
   
