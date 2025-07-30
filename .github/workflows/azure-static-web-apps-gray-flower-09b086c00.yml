@@ -145,18 +145,28 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - name: Install and Build Backend
+        working-directory: ./server
         run: |
           npm ci
-          npm run build:server
+          npm run build
+          
       - name: Prepare deployment package
         run: |
+          # Create deployment directory
           mkdir -p deployment
-          cp -r dist/server/* deployment/
+          
+          # Copy built files
+          cp -r server/dist/* deployment/
+          
+          # Copy package.json and install production dependencies
           cp server/package.json deployment/
+          
           # Only copy package-lock.json if it exists
           if [ -f "server/package-lock.json" ]; then
             cp server/package-lock.json deployment/
           fi
+          
+          # Install only production dependencies
           cd deployment
           npm install --omit=dev
       - name: Login to Azure
@@ -171,6 +181,22 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deployment
           
+      - name: Configure App Service
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            # Set the startup command
+            az webapp config set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --startup-file "node dist/server.js"
+            
+            # Set the Node.js version
+            az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --settings \
+                WEBSITE_NODE_DEFAULT_VERSION=20.19.1 \
+                NODE_ENV=production
+      
       - name: Update App Settings
         uses: azure/CLI@v1
         with:
