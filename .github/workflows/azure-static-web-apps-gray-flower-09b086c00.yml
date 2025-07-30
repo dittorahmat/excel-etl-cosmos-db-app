@@ -155,8 +155,8 @@ jobs:
           # Create deployment directory
           mkdir -p deployment
           
-          # Copy built files
-          cp -r server/dist/* deployment/
+          # Copy built files from dist/server
+          cp -r dist/server/* deployment/
           
           # Copy package.json and install production dependencies
           cp server/package.json deployment/
