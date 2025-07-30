@@ -153,6 +153,11 @@ jobs:
           fi
           cd deployment
           npm install --omit=dev
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
