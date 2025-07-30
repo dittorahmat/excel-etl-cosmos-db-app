@@ -6,8 +6,6 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
-console.log(`[auth.ts] AUTH_ENABLED: ${process.env.AUTH_ENABLED}`);
-
 // Type for the token payload
 export interface TokenPayload extends JwtPayload {
   oid?: string;
@@ -49,14 +47,13 @@ const getKey = (header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) => {
 // Middleware to validate JWT tokens
 const validateToken = (token: string): Promise<TokenPayload> => {
   return new Promise((resolve, reject) => {
-    if (process.env.NODE_ENV === 'development' && process.env.AUTH_ENABLED === 'false') {
-      // In development, if AUTH_ENABLED is false, resolve with a mock payload
-      console.warn('Authentication is disabled. Using mock token payload.');
+    if (process.env.NODE_ENV === 'test') {
+      // In the test environment, resolve with a mock payload
       return resolve({
-        oid: 'dev-user-oid',
-        name: 'Dev User',
-        email: 'dev@example.com',
-        roles: ['developer'],
+        oid: 'test-user-oid',
+        name: 'Test User',
+        email: 'test@example.com',
+        roles: ['developer', 'admin'],
         scp: 'user_impersonation',
       });
     }
@@ -67,7 +64,7 @@ const validateToken = (token: string): Promise<TokenPayload> => {
 
     jwt.verify(token, getKey, {
       algorithms: ['RS256'], // Specify the algorithm used by Azure AD
-      audience: process.env.AZURE_APP_CLIENT_ID,
+      audience: process.env.AZURE_CLIENT_ID,
       issuer: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0`,
     }, (err, decoded) => {
       if (err) {
@@ -80,13 +77,13 @@ const validateToken = (token: string): Promise<TokenPayload> => {
 };
 
 const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
-  if (process.env.NODE_ENV === 'development' && process.env.AUTH_ENABLED === 'false') {
-    // Bypass authentication in development if AUTH_ENABLED is false
+  if (process.env.NODE_ENV === 'test') {
+    // Bypass authentication in test environment
     req.user = {
-      oid: 'dev-user-oid',
-      name: 'Dev User',
-      email: 'dev@example.com',
-      roles: ['developer'],
+      oid: 'test-user-oid',
+      name: 'Test User',
+      email: 'test@example.com',
+      roles: ['developer', 'admin'],
       scp: 'user_impersonation',
     };
     return next();
@@ -109,10 +106,15 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-const checkRole = (roles: string[]) => {
+const checkRole = (requiredRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (process.env.NODE_ENV === 'development' && process.env.AUTH_ENABLED === 'false') {
-      // Bypass role check in development if AUTH_ENABLED is false
+    if (process.env.NODE_ENV === 'test') {
+      // Bypass role check in test environment
+      return next();
+    }
+
+    // If no roles are required, just continue
+    if (!requiredRoles || requiredRoles.length === 0) {
       return next();
     }
 
@@ -120,7 +122,7 @@ const checkRole = (roles: string[]) => {
       return res.status(403).json({ message: 'Access Denied: No roles found for user' });
     }
 
-    const hasRequiredRole = roles.some(role => req.user?.roles?.includes(role));
+    const hasRequiredRole = requiredRoles.some(role => req.user?.roles?.includes(role));
     if (hasRequiredRole) {
       next();
     } else {

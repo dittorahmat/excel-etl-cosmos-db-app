@@ -162,7 +162,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
 
   // API Key routes (v2)
-  app.use('/api/v2/keys', authOrApiKeyMiddleware, createApiKeyRouter(azureServices));
+  app.use('/api/v2/keys', authMiddleware.authenticateToken, authOrApiKeyMiddleware, createApiKeyRouter(azureServices));
 
   // Auth route (v2)
   app.use('/api/v2/auth', authRoute);

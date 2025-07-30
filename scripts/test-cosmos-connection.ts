@@ -1,4 +1,4 @@
-import { getOrInitializeCosmosDB } from '../server/src/services/cosmos-db/cosmos-db.service.js';
+import { initializeCosmosDB } from '../server/src/services/cosmos-db/cosmos-db.service.js';
 import { logger } from '../server/src/utils/logger.js';
 
 async function testConnection() {
@@ -6,7 +6,7 @@ async function testConnection() {
     logger.info('Testing Cosmos DB connection...');
     
     // Initialize the Cosmos DB client
-    const cosmosDb = await getOrInitializeCosmosDB();
+    const cosmosDb = await initializeCosmosDB();
     
     // Test connection by listing databases
     const { resources: databases } = await cosmosDb.cosmosClient.databases.readAll().fetchAll();

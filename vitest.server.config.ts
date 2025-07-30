@@ -59,9 +59,9 @@ export default defineConfig({
       reportsDirectory: 'coverage/server',
       clean: true,
       cleanOnRerun: true,
+      include: ['server/src/**/*.ts'],
       exclude: [
         '**/node_modules/**',
-        '**/test/**',
         '**/dist/**',
         '**/*.d.ts',
         '**/*.config.*',

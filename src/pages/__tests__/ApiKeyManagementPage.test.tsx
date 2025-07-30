@@ -145,7 +145,7 @@ describe('ApiKeyManagementPage', () => {
     });
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/keys', { name: 'New Key' });
+      expect(api.post).toHaveBeenCalledWith('/api/v2/keys', { name: 'New Key' });
       expect(screen.getByText('new-api-key-value')).toBeInTheDocument();
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'API Key Created' }));
       expect(screen.getByText('New Key')).toBeInTheDocument(); // Verify new key in table
@@ -191,7 +191,7 @@ describe('ApiKeyManagementPage', () => {
 
     await waitFor(() => {
       expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to revoke this API key?');
-      expect(api.delete).toHaveBeenCalledWith('/api/keys/1');
+      expect(api.delete).toHaveBeenCalledWith('/api/v2/keys/1');
       expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'API Key Revoked' }));
       expect(screen.getByText('Revoked')).toBeInTheDocument(); // Status updated in table
     });
