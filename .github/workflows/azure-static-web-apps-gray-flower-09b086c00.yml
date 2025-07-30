@@ -59,7 +59,7 @@ jobs:
         fi
 
     - name: Run Cosmos DB connection test
-      working-directory: ./server
+      working-directory: .
       env:
         NODE_OPTIONS: --experimental-vm-modules
         # Use connection string if available, otherwise fall back to individual variables
@@ -68,15 +68,22 @@ jobs:
         AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
         AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
         AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
+        # Map Azure environment variables to what the script expects
+        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
       run: |
         echo "Testing Cosmos DB connection..."
-        echo "Using connection string: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
         echo "Using endpoint: ${AZURE_COSMOS_ENDPOINT:0:20}..."
         echo "- AZURE_COSMOS_CONNECTION_STRING: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
         echo "- AZURE_COSMOS_ENDPOINT: ${AZURE_COSMOS_ENDPOINT:0:20}..."
         echo "- AZURE_COSMOS_DATABASE: ${AZURE_COSMOS_DATABASE:-Not set}"
         echo "- AZURE_COSMOS_CONTAINER: ${AZURE_COSMOS_CONTAINER:-Not set}"
-        echo "- AZURE_COSMOS_KEY: ${AZURE_COSMOS_KEY:+set (hidden for security)}"
+        echo "- AZURE_COSMOS_KEY: ${AZURE_COSMOS_KEY:+set (hidden for security)}\n"
+        
+        # Run the compiled JavaScript file directly
+        node dist/server/scripts/test-cosmos-connection.js "$AZURE_COSMOS_CONNECTION_STRING"
 
         # Verify required environment variables
         if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_ENDPOINT" ]; then

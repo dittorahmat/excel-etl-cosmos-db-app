@@ -2,8 +2,8 @@ import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
 import type { AzureBlobStorage, MulterFile } from '../../types/azure.js';
 
-let blobServiceClient: BlobServiceClient | null = null;
-let containerClient: ContainerClient | null = null;
+export let blobServiceClient: BlobServiceClient | null = null;
+export let containerClient: ContainerClient | null = null;
 
 /**
  * Initialize Azure Blob Storage client

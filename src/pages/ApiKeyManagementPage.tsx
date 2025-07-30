@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '../components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { toast } from '../components/ui/use-toast';
+import { useToast } from '../components/ui/use-toast';
 
 interface ApiKey {
   id: string;
@@ -33,25 +33,104 @@ const ApiKeyManagementPage: React.FC = () => {
   const [newKeyAllowedIps, setNewKeyAllowedIps] = useState('');
   const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
+  const { toast } = useToast();
+
+  // Define possible API response formats
+  type ApiKeyResponse = 
+    | { success: true; keys: ApiKey[]; message?: string }  // Success response with keys
+    | { success: false; message: string }                  // Error response
+    | { keys: ApiKey[]; message?: string }                 // Legacy format without success flag
+    | ApiKey[];                                           // Direct array of API keys
 
   const fetchApiKeys = async () => {
     console.log("[ApiKeyManagementPage] fetchApiKeys - Start");
     setLoading(true);
     setError(null);
+    
     try {
-      console.log("[ApiKeyManagementPage] fetchApiKeys - Calling api.get('/api/keys')");
-      const response = await api.get<{ success: boolean; keys: ApiKey[], message?: string }>('/api/keys');
-      console.log("[ApiKeyManagementPage] fetchApiKeys - API response:", response);
-      if (response.success) {
+      // Log the current state before making the API call
+      console.log("[ApiKeyManagementPage] Current state:", {
+        loading,
+        error,
+        apiKeys: apiKeys ? `Array(${apiKeys.length})` : 'null/undefined',
+      });
+      
+      console.log("[ApiKeyManagementPage] Making API call to /api/v2/keys");
+      
+      // Make the API call and handle the response
+      const response = await api.get<ApiKeyResponse>('/api/v2/keys')
+        .catch(error => {
+          console.error("[ApiKeyManagementPage] API call failed:", {
+            error: error.toString(),
+            response: error.response,
+            status: error.response?.status,
+            data: error.response?.data,
+            config: {
+              url: error.config?.url,
+              method: error.config?.method,
+              headers: error.config?.headers,
+            },
+          });
+          throw error;
+        });
+      
+      // Log the raw response for debugging
+      console.log("[ApiKeyManagementPage] Raw API Response:", response);
+      
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        // Case 1: Direct array of API keys
+        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.length} API keys (array format)`);
+        setApiKeys(response);
+      } 
+      else if (response && 'keys' in response && Array.isArray(response.keys)) {
+        // Case 2: { keys: ApiKey[], ... } format
+        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (keys object format)`);
         setApiKeys(response.keys);
-      } else {
-        setError(response.message || 'Failed to fetch API keys');
+      }
+      else if (response && 'success' in response && response.success === true && 'keys' in response && Array.isArray(response.keys)) {
+        // Case 3: { success: true, keys: ApiKey[], ... } format
+        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (success with keys format)`);
+        setApiKeys(response.keys);
+      }
+      else if (response && 'success' in response && response.success === false) {
+        // Case 4: Error response with success: false
+        const errorMsg = response.message || 'Failed to fetch API keys';
+        console.error("[ApiKeyManagementPage] API returned error:", errorMsg);
+        setError(errorMsg);
+        setApiKeys([]);
+      }
+      else if (response && 'data' in response && Array.isArray(response.data)) {
+        // Case 5: Legacy format with data array
+        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.data.length} API keys (legacy data format)`);
+        setApiKeys(response.data);
+      }
+      else {
+        // Unknown response format
+        const errorMsg = (response as any)?.message || 'Invalid response format from server: expected keys array';
+        console.error("[ApiKeyManagementPage] Unexpected response format:", response);
+        setError(errorMsg);
+        setApiKeys([]);
       }
     } catch (err) {
-      console.error("[ApiKeyManagementPage] fetchApiKeys - Error:", err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch API keys');
+      const error = err as any;
+      const errorMessage = error?.response?.data?.message || 
+                         error?.message || 
+                         'Unknown error occurred';
+      const status = error?.response?.status;
+      
+      console.error("[ApiKeyManagementPage] Error in fetchApiKeys:", {
+        message: errorMessage,
+        status,
+        error: error.toString(),
+        response: error?.response?.data,
+        stack: error.stack,
+      });
+      
+      setError(`Failed to fetch API keys: ${errorMessage}${status ? ` (${status})` : ''}`);
+      setApiKeys([]);
     } finally {
-      console.log("[ApiKeyManagementPage] fetchApiKeys - Setting loading to false");
+      console.log("[ApiKeyManagementPage] fetchApiKeys - Loading complete");
       setLoading(false);
     }
   };
@@ -64,11 +143,14 @@ const ApiKeyManagementPage: React.FC = () => {
   const handleRevokeKey = async (id: string) => {
     if (window.confirm('Are you sure you want to revoke this API key?')) {
       try {
-        const response = await api.delete<{ success: boolean; message?: string }>(`/api/keys/${id}`);
+        const response = await api.delete<{ success: boolean; message?: string }>(`/api/v2/keys/${id}`);
         if (response.success) {
           toast({
             title: "API Key Revoked",
             description: "The API key has been successfully revoked.",
+            variant: "default",
+            open: true,
+            onOpenChange: () => {}
           });
           fetchApiKeys(); // Refresh the list
         } else {
@@ -77,6 +159,8 @@ const ApiKeyManagementPage: React.FC = () => {
             title: "Error",
             description: response.message || 'Failed to revoke API key',
             variant: "destructive",
+            open: true,
+            onOpenChange: () => {}
           });
         }
       } catch (err) {
@@ -85,6 +169,8 @@ const ApiKeyManagementPage: React.FC = () => {
           title: "Error",
           description: err instanceof Error ? err.message : 'Failed to revoke API key',
           variant: "destructive",
+          open: true,
+          onOpenChange: () => {}
         });
       }
     }
@@ -107,7 +193,7 @@ const ApiKeyManagementPage: React.FC = () => {
         payload.allowedIps = newKeyAllowedIps.split(',').map(ip => ip.trim());
       }
 
-      const response = await api.post<{ success: boolean; key?: string; message?: string }>('/api/keys', payload);
+      const response = await api.post<{ success: boolean; key?: string; message?: string }>('/api/v2/keys', payload);
       if (response.success && response.key) {
         setGeneratedApiKey(response.key);
         setNewKeyName('');
@@ -117,6 +203,9 @@ const ApiKeyManagementPage: React.FC = () => {
         toast({
           title: "API Key Created",
           description: "Your new API key has been generated.",
+          variant: "default",
+          open: true,
+          onOpenChange: () => {}
         });
       } else {
         setError(response.message || 'Failed to create API key');
@@ -124,6 +213,8 @@ const ApiKeyManagementPage: React.FC = () => {
           title: "Error",
           description: response.message || 'Failed to create API key',
           variant: "destructive",
+          open: true,
+          onOpenChange: () => {}
         });
       }
     } catch (err) {
@@ -132,6 +223,8 @@ const ApiKeyManagementPage: React.FC = () => {
         title: "Error",
         description: err instanceof Error ? err.message : 'Failed to create API key',
         variant: "destructive",
+        open: true,
+        onOpenChange: () => {}
       });
     } finally {
       setCreatingKey(false);
@@ -144,6 +237,9 @@ const ApiKeyManagementPage: React.FC = () => {
       toast({
         title: "Copied!",
         description: "API key copied to clipboard.",
+        variant: "default",
+        open: true,
+        onOpenChange: () => {}
       });
     }
   };
@@ -173,9 +269,20 @@ const ApiKeyManagementPage: React.FC = () => {
                 <span className="ml-2">Loading API keys...</span>
               </div>
             ) : error ? (
-              <div className="text-red-500">Error: {error}</div>
-            ) : apiKeys.length === 0 ? (
-              <p>No API keys found. Create one below!</p>
+              <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                <p className="font-bold">Error loading API keys</p>
+                <p>{error}</p>
+                <button 
+                  onClick={fetchApiKeys}
+                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : !Array.isArray(apiKeys) || apiKeys.length === 0 ? (
+              <div className="p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded">
+                <p>No API keys found. Create one below!</p>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>

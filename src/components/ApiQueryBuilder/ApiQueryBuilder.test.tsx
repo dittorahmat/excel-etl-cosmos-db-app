@@ -38,7 +38,11 @@ describe('ApiQueryBuilder', () => {
       fields: [
         { name: 'id', type: 'string', label: 'ID' },
         { name: 'name', type: 'string', label: 'Name' },
-        { name: 'city', type: 'string', label: 'City' },
+        { name: 'category', type: 'string', label: 'Category' },
+        { name: 'price', type: 'number', label: 'Price' },
+        { name: 'quantity', type: 'number', label: 'Quantity' },
+        { name: 'date', type: 'string', label: 'Date' },
+        { name: 'location', type: 'string', label: 'Location' },
       ],
     });
     render(<ApiQueryBuilder baseUrl="/api/v2/query/rows" />);
@@ -48,7 +52,7 @@ describe('ApiQueryBuilder', () => {
     });
 
     await user.click(screen.getByRole('combobox'));
-    await user.click(screen.getByText('City'));
+    await user.click(screen.getByText('Category'));
 
     const apiUrlInput = screen.getByLabelText('Generated cURL Command');
     expect(apiUrlInput).toHaveValue(`curl -X POST ${window.location.origin}/api/v2/query/rows \
@@ -56,7 +60,7 @@ describe('ApiQueryBuilder', () => {
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
   "fields": [
-    "city"
+    "category"
   ],
   "filters": [],
   "limit": 10,
@@ -71,7 +75,11 @@ describe('ApiQueryBuilder', () => {
       fields: [
         { name: 'id', type: 'string', label: 'ID' },
         { name: 'name', type: 'string', label: 'Name' },
-        { name: 'city', type: 'string', label: 'City' },
+        { name: 'category', type: 'string', label: 'Category' },
+        { name: 'price', type: 'number', label: 'Price' },
+        { name: 'quantity', type: 'number', label: 'Quantity' },
+        { name: 'date', type: 'string', label: 'Date' },
+        { name: 'location', type: 'string', label: 'Location' },
       ],
     });
     render(<ApiQueryBuilder baseUrl="/api/v2/query/rows" />);
@@ -81,7 +89,7 @@ describe('ApiQueryBuilder', () => {
     });
 
     await user.click(screen.getByRole('combobox'));
-    await user.click(screen.getByText('City'));
+    await user.click(screen.getByText('Category'));
 
     // Filter controls are now visible by default, so no need to click 'Show filters'
     // If you want to test hiding them, you would click 'Hide filters' instead:
@@ -92,9 +100,9 @@ describe('ApiQueryBuilder', () => {
     await user.click(screen.getByLabelText('Field'));
     screen.debug(); // Debug after opening the field selector
     await waitFor(() => {
-      const cityOption = screen.getByRole('option', { name: /City/i });
-      expect(cityOption).toBeInTheDocument();
-      user.click(cityOption);
+      const categoryOption = screen.getByRole('option', { name: /Category/i });
+      expect(categoryOption).toBeInTheDocument();
+      user.click(categoryOption);
     });
 
     // Select operator for filter
@@ -115,7 +123,11 @@ describe('ApiQueryBuilder', () => {
       fields: [
         { name: 'id', type: 'string', label: 'ID' },
         { name: 'name', type: 'string', label: 'Name' },
-        { name: 'city', type: 'string', label: 'City' },
+        { name: 'category', type: 'string', label: 'Category' },
+        { name: 'price', type: 'number', label: 'Price' },
+        { name: 'quantity', type: 'number', label: 'Quantity' },
+        { name: 'date', type: 'string', label: 'Date' },
+        { name: 'location', type: 'string', label: 'Location' },
       ],
     });
 
@@ -133,7 +145,7 @@ describe('ApiQueryBuilder', () => {
     });
 
     await user.click(screen.getByRole('combobox'));
-    await user.click(screen.getByText('City'));
+    await user.click(screen.getByText('Category'));
 
     await user.click(screen.getByRole('button', { name: 'Copy URL' }));
 
@@ -141,7 +153,7 @@ describe('ApiQueryBuilder', () => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
         `curl -X POST ${window.location.origin}/api/v2/query/rows   -H "Content-Type: application/json"   -H "x-api-key: YOUR_API_KEY"   -d '{
   "fields": [
-    "city"
+    "category"
   ],
   "filters": [],
   "limit": 10,

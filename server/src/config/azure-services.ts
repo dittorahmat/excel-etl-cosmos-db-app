@@ -19,12 +19,12 @@ export async function initializeAzureServices(): Promise<{
   try {
     // Initialize Blob Storage
     const blobStorageInstance = useMocks
-      ? initializeMockBlobStorage()
+      ? await initializeMockBlobStorage()
       : await initializeBlobStorageAsync();
 
     // Initialize Cosmos DB
     const cosmosDbInstance = useMocks
-      ? initializeMockCosmosDB()
+      ? await initializeMockCosmosDB()
       : await initializeCosmosDB();
     
     return {
