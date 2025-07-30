@@ -41,22 +41,20 @@ jobs:
       run: |
         # Build the server
         npm run build:server
-        # Create the expected directory structure
-        mkdir -p dist/server/dist/services/cosmos-db
-        # Copy the built files to the expected location
-        cp -r dist/server/src/services/cosmos-db/*.js dist/server/dist/services/cosmos-db/ || true
+        # Verify the build output structure
+        echo "Build output structure:"
+        find dist -type f | sort
 
     - name: Verify build output
       run: |
-        echo "Build output structure:"
-        find dist -type f | sort
         echo -e "\nChecking for Cosmos DB service file..."
-        if [ -f "dist/server/dist/services/cosmos-db/cosmos-db.service.js" ]; then
+        if [ -f "dist/server/server/src/services/cosmos-db/cosmos-db.service.js" ]; then
           echo "✅ Cosmos DB service file exists"
-          ls -la dist/server/dist/services/cosmos-db/
+          ls -la dist/server/server/src/services/cosmos-db/
         else
-          echo "❌ Cosmos DB service file not found"
-          find dist -name "*.js" | grep -i cosmos
+          echo "❌ Cosmos DB service file not found in expected location"
+          echo "Searching for any Cosmos DB related files..."
+          find dist -name "*.js" | grep -i cosmos || echo "No Cosmos DB files found"
           exit 1
         fi
 
