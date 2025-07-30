@@ -1,23 +1,20 @@
-## Active Context
+# Active Context
 
-- **Current Work Focus:** Improving code coverage for server-side services and investigating Vite build warnings.
-- **Recent Changes:**
-    - Fixed `AADSTS500011` error by correcting server-side JWT audience validation in `server/src/middleware/auth.ts`.
-    - Fixed API Key Management Page 404 error by updating client-side API calls in `src/pages/ApiKeyManagementPage.tsx`.
-    - Added sample data to Cosmos DB using `scripts/add-sample-data.ts` to enable field extraction for the API Query Builder.
-    - Fixed `ApiQueryBuilder` tests by updating mock data to match Cosmos DB sample data in `src/components/ApiQueryBuilder/ApiQueryBuilder.test.tsx`.
-    - Addressed server test authentication warning by explicitly setting bypass for `NODE_ENV=test` in `server/src/middleware/auth.ts`.
-    - Created unit tests for `server/src/config/azure-services.ts` in `server/test/config/azure-services.test.ts`.
-    - Debugged and fixed mocking issues in `server/test/config/azure-services.test.ts`.
-    - Updated `vitest.server.config.ts` to include `server/src/**/*.ts` for coverage.
-    - Fixed failing test case for `checkRole` middleware in `server/test/middleware/auth.test.ts`.
-- **Next Steps:**
-    1. Improve the low code coverage for `server/src/config/azure-services.ts` (currently 3.7% statements) and `server/src/services/blob-storage/blob-storage.service.ts` (currently 4.08% statements).
-    2. Further investigate and address the Vite build warning about large chunk sizes if it becomes a performance bottleneck, potentially requiring deeper refactoring or bundle analysis.
-- **Active Decisions and Considerations:**
-    - Authentication is enabled. The previous issue with a personal Microsoft account (Gmail) in the Azure directory and lack of necessary permissions for full Azure AD integration has been resolved.
-    - The `AZURE_CLIENT_ID` environment variable is used for audience validation on the server.
-- **Learnings and Project Insights:**
-    - Thorough testing, especially with mock data reflecting actual database structures, is crucial for robust application development.
-    - Explicitly managing test environment configurations helps prevent unexpected authentication issues during testing.
-    - Incremental improvements in code coverage contribute to overall code quality and stability.
+## Current Focus
+Currently focused on resolving a persistent YAML syntax error in the GitHub Actions workflow file (`.github/workflows/azure-static-web-apps-gray-flower-09b086c00.yml`).
+
+## Recent Changes
+- Fixed linting warnings in `server/src/services/cosmos-db/mock-cosmos-db.ts`, `server/src/utils/logger.ts`, and `src/pages/ApiKeyManagementPage.tsx`.
+- Corrected failing client-side tests in `src/pages/__tests__/ApiKeyManagementPage.test.tsx` by adjusting the `useToast` mock and updating assertions.
+- Ensured all linting, type-checking, and tests pass, and the project builds successfully.
+- Attempted to fix a GitHub Actions workflow error related to `working-directory` and duplicate steps.
+- Attempted to fix a YAML syntax error in the GitHub Actions workflow file, specifically on line 60, by removing trailing spaces and re-indenting.
+
+## Important Patterns and Preferences
+- Strict adherence to linting and type-checking.
+- Ensuring all tests pass before considering a task complete.
+- Prioritizing clear and correct CI/CD configurations.
+
+## Learnings and Project Insights
+- YAML syntax is highly sensitive to indentation and hidden characters.
+- The `Azure/static-web-apps-deploy` action requires specific parameters and their values to be correctly formatted.
