@@ -32,18 +32,15 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      working-directory: my-app/
       run: |
         npm ci --include=dev
         npx tsc --version
         npx eslint --version
 
     - name: Build server
-      working-directory: ./
       run: npm run build:server
 
     - name: Verify build output
-      working-directory: ./
       run: |
         echo "Build output structure:"
         find dist -type f | sort
