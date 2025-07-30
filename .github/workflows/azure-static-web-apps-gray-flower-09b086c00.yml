@@ -38,16 +38,36 @@ jobs:
         npx eslint --version
 
     - name: Build server
-      run: npm run build:server
+      run: |
+        # Build the server
+        npm run build:server
+        # Create the expected directory structure
+        mkdir -p dist/server/dist/services/cosmos-db
+        # Copy the built files to the expected location
+        cp -r dist/server/src/services/cosmos-db/*.js dist/server/dist/services/cosmos-db/ || true
 
     - name: Verify build output
       run: |
         echo "Build output structure:"
         find dist -type f | sort
-        echo "\nCosmos DB service file exists: $(ls -la dist/server/src/services/cosmos-db/cosmos-db.service.js 2>/dev/null && echo 'Yes' || echo 'No')"
+        echo -e "\nChecking for Cosmos DB service file..."
+        if [ -f "dist/server/dist/services/cosmos-db/cosmos-db.service.js" ]; then
+          echo "✅ Cosmos DB service file exists"
+          ls -la dist/server/dist/services/cosmos-db/
+        else
+          echo "❌ Cosmos DB service file not found"
+          find dist -name "*.js" | grep -i cosmos
+          exit 1
+        fi
 
     - name: Run Cosmos DB connection test
-      working-directory: ./
+      working-directory: ./server
+      env:
+        NODE_OPTIONS: --experimental-vm-modules
+        AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
       env:
         # Use connection string instead of separate variables for better reliability
         AZURE_COSMOS_CONNECTION_STRING: ${{ secrets.AZURE_COSMOS_CONNECTION_STRING }}
