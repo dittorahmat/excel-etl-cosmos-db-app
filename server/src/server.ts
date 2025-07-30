@@ -39,8 +39,11 @@ dotenv.config();
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 
-// Port configuration
+// Set the port from environment variable or default to 3001 for local development
 const PORT = process.env.PORT || 3001;
+
+// Azure App Service sets WEBSITE_SITE_NAME and WEBSITE_INSTANCE_ID
+const isAzureAppService = process.env.WEBSITE_SITE_NAME !== undefined;
 
 // Server instance
 let server: Server | null = null;
@@ -265,11 +268,19 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
+// Get the port from environment variable or use default
+const getPort = (): number => {
+  const port = process.env.PORT || 3001;
+  if (typeof port === 'string') {
+    return parseInt(port, 10);
+  }
+  return port;
+};
 
 /**
  * Start the Express server
  */
-async function startServer(port: number | string = PORT): Promise<Server> {
+async function startServer(port: number | string = getPort()): Promise<Server> {
   try {
     logger.info('Initializing Azure services...');
     console.log('Initializing Azure services...');
