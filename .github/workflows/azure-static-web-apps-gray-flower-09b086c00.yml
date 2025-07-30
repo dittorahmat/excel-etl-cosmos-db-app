@@ -169,19 +169,30 @@ jobs:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 || '' }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: 'upload'
-        app_location: '/'
-        output_location: 'dist'
+        app_location: '/'  # Root of the frontend code
+        api_location: 'server'  # Path to the backend code
+        output_location: 'dist'  # Built frontend files
         skip_app_build: false
-        app_build_command: './azure-build.sh'
+        app_build_command: 'npm run build'
+        api_build_command: 'npm run build'
+        verbose: 'true'
       continue-on-error: true
       env:
         DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 || '' }}
+        # Frontend environment variables
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
         VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
         VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
         VITE_AZURE_SCOPES: ${{ secrets.VITE_AZURE_SCOPES || 'User.Read openid profile email' }}
+        # Backend environment variables
         NODE_ENV: production
         VITE_MODE: production
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        AZURE_COSMOS_CONNECTION_STRING: ${{ secrets.AZURE_COSMOS_CONNECTION_STRING }}
+        AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER || 'excel-uploads' }}
+        AZURE_COSMOSDB_DATABASE: ${{ secrets.AZURE_COSMOSDB_DATABASE || 'excel-upload-db' }}
+        AZURE_COSMOSDB_CONTAINER: ${{ secrets.AZURE_COSMOSDB_CONTAINER || 'excel-records' }}
 
     - name: Check deployment status
       if: steps.builddeploy.outcome != 'success' && github.ref == 'refs/heads/main'

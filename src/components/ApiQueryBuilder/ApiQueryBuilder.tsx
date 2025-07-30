@@ -9,8 +9,9 @@ import { api } from '../../utils/api';
 
 interface FieldDefinition {
   name: string;
+  value: string;
+  label: string;
   type: 'string' | 'number' | 'date' | 'boolean';
-  label?: string;
   description?: string;
 }
 
@@ -107,15 +108,17 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
     generateApiUrl();
   }, [selectedFields, filters, generateApiUrl]);
 
-  const handleCopyUrl = () => {
+  const handleCopyUrl = useCallback(() => {
     if (generatedUrl) {
       navigator.clipboard.writeText(generatedUrl);
       toast({
-        title: "Copied!",
-        description: "API URL copied to clipboard.",
+        title: 'Copied!',
+        description: 'API URL copied to clipboard.',
+        open: true,
+        onOpenChange: () => {}
       });
     }
-  };
+  }, [generatedUrl]);
 
   if (fieldsLoading) {
     return (
@@ -135,7 +138,13 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
       <div className="space-y-2">
         <Label>Select Fields for API Response</Label>
         <FieldSelector
-          fields={fields}
+          fields={fields.map(f => ({
+            value: f.value,
+            label: f.label,
+            name: f.name,
+            type: f.type,
+            description: f.description
+          }))}
           selectedFields={selectedFields}
           onFieldsChange={handleFieldsChange}
         />
@@ -144,7 +153,13 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
       <div className="space-y-2">
         <Label>Filter API Results</Label>
         <FilterControls
-            fields={fields}
+            fields={fields.map(f => ({
+              value: f.value,
+              label: f.label,
+              name: f.name,
+              type: f.type,
+              description: f.description
+            }))}
             filters={filters}
             onFiltersChange={handleFiltersChange}
             onAddFilter={handleAddFilter}

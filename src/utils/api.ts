@@ -4,19 +4,46 @@ import {
   InteractionRequiredAuthError,
   LogLevel
 } from '@azure/msal-browser';
-import { msalConfig, getApiConfig } from '../auth/authConfig.ts';
+import { msalConfig, getApiConfig } from '../auth/authConfig';
 
 // Initialize MSAL instance with proper typing
-const msalInstance = new PublicClientApplication({
+// Create a properly typed configuration object
+const appConfig = {
   ...msalConfig,
   system: {
     ...msalConfig.system,
     loggerOptions: {
       ...msalConfig.system?.loggerOptions,
       logLevel: import.meta.env.DEV ? LogLevel.Info : LogLevel.Error,
+      loggerCallback: (level: LogLevel, message: string, containsPii: boolean) => {
+        if (containsPii) {
+          return;
+        }
+        switch (level) {
+          case LogLevel.Error:
+            console.error(message);
+            return;
+          case LogLevel.Info:
+            console.info(message);
+            return;
+          case LogLevel.Verbose:
+            console.debug(message);
+            return;
+          case LogLevel.Warning:
+            console.warn(message);
+            return;
+        }
+      },
     },
   },
-});
+  // Ensure knownAuthorities is a mutable array
+  auth: {
+    ...msalConfig.auth,
+    knownAuthorities: msalConfig.auth.knownAuthorities ? [...msalConfig.auth.knownAuthorities] : []
+  }
+};
+
+const msalInstance = new PublicClientApplication(appConfig);
 
 let msalInitialized = false;
 
@@ -138,11 +165,12 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
 declare module '@azure/msal-browser' {
   interface LoggerOptions {
     logLevel: LogLevel;
+    loggerCallback: (level: LogLevel, message: string, containsPii: boolean) => void;
   }
 }
 
-interface RequestOptions extends Omit<RequestInit, 'body' | 'headers' | 'onUploadProgress'> {
-  headers?: Record<string, string | string[] | undefined> & {
+interface RequestOptions extends Omit<RequestInit, 'headers' | 'body'> {
+  headers?: HeadersInit | Record<string, string | string[] | undefined> & {
     'Content-Type'?: string;
   };
   body?: BodyInit | Record<string, unknown> | null;
@@ -155,9 +183,15 @@ interface RequestOptions extends Omit<RequestInit, 'body' | 'headers' | 'onUploa
 
 // Helper function to safely convert a value to a string for headers
 const safeStringify = (value: unknown): string => {
-  if (value === undefined || value === null) return '';
+  if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
-  return String(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return value.toString();
+  try {
+    return JSON.stringify(value);
+  } catch (e) {
+    console.error('Error stringifying header value:', e);
+    return '';
+  }
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -197,8 +231,52 @@ export const authFetch = async <T = unknown>(
   url: string, 
   options: RequestOptions = {}
 ): Promise<T> => {
-  // Initialize headers from options or create a new object
-  const headers = options.headers ? { ...normalizeHeaders(options.headers) } : {};
+  // Initialize headers
+  const headers = new Headers();
+  
+  // Process headers from options
+  if (options.headers) {
+    if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => headers.append(key, v));
+        } else if (value !== undefined) {
+          headers.append(key, value);
+        }
+      });
+    } else if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        if (value !== null) {
+          headers.append(key, value);
+        }
+      });
+    } else {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => headers.append(key, safeStringify(v)));
+        } else if (value !== undefined) {
+          headers.append(key, safeStringify(value));
+        }
+      });
+    }
+  }
+
+  // Process request body
+  let body: BodyInit | null = null;
+  if (options.body !== undefined && options.body !== null) {
+    if (typeof options.body === 'string' || 
+        options.body instanceof Blob || 
+        options.body instanceof FormData || 
+        options.body instanceof URLSearchParams || 
+        ArrayBuffer.isView(options.body)) {
+      body = options.body;
+    } else if (typeof options.body === 'object') {
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+      body = JSON.stringify(options.body);
+    }
+  }
   
   // Get base URL from environment and ensure it doesn't end with a slash
   const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
@@ -207,7 +285,7 @@ export const authFetch = async <T = unknown>(
   const cleanPath = url.replace(/^\/+|\/+$/g, '');
   
   // Construct the full URL, ensuring we don't have double /api
-  let fullUrl;
+  let fullUrl: string;
   if (cleanPath.startsWith('http')) {
     // If it's a full URL, use it as is
     fullUrl = cleanPath;
@@ -219,9 +297,9 @@ export const authFetch = async <T = unknown>(
     const baseHasApi = baseUrl.endsWith('/api') || baseUrl.includes('/api/');
     
     if (baseHasApi) {
-      fullUrl = `${baseUrl}/${normalizedPath}`;
+      fullUrl = `${baseUrl}/${normalizedPath}`.replace(/([^:]\/)\/+/g, '$1');
     } else {
-      fullUrl = `${baseUrl}/api/${normalizedPath}`;
+      fullUrl = `${baseUrl}/api/${normalizedPath}`.replace(/([^:]\/)\/+/g, '$1');
     }
     
     // Ensure we don't have double slashes
