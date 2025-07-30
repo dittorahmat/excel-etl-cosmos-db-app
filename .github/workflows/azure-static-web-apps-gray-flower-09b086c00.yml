@@ -48,11 +48,11 @@ jobs:
     - name: Verify build output
       run: |
         echo -e "\nChecking for Cosmos DB test script..."
-        if [ -f "server/scripts/test-cosmos-connection.ts" ]; then
-          echo "✅ Found TypeScript Cosmos DB test script"
+        if [ -f "server/scripts/test-cosmos-direct.ts" ]; then
+          echo "✅ Found TypeScript Cosmos DB direct test script"
           ls -la server/scripts/
         else
-          echo "❌ Cosmos DB test script not found"
+          echo "❌ Cosmos DB direct test script not found"
           exit 1
         fi
 
@@ -77,9 +77,9 @@ jobs:
           exit 1
         fi
         
-        # Run the TypeScript test script
-        echo "\nRunning TypeScript Cosmos DB connection test..."
-        npx tsx server/scripts/test-cosmos-connection.ts
+        # Run the TypeScript test script directly
+        echo "\nRunning TypeScript Cosmos DB direct connection test..."
+        npx tsx server/scripts/test-cosmos-direct.ts
 
     - name: Lint codebase
       working-directory: ./

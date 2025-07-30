@@ -21,7 +21,8 @@ async function runTest() {
   
   try {
     // Import from the built JavaScript file
-    const modulePath = path.resolve(__dirname, '../dist/services/cosmos-db/cosmos-db.service.js');
+    // Note: The build output is in dist/server/server/src/services/cosmos-db/cosmos-db.service.js
+    const modulePath = path.resolve(__dirname, '../server/src/services/cosmos-db/cosmos-db.service.js');
     console.log(`Importing from: ${modulePath}`);
     
     // Dynamic import with error handling
