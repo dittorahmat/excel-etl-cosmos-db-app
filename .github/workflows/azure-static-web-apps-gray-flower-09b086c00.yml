@@ -64,20 +64,16 @@ jobs:
       working-directory: ./server
       env:
         NODE_OPTIONS: --experimental-vm-modules
-        AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
-        AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
-        AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
-        AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
-      env:
-        # Use connection string instead of separate variables for better reliability
+        # Use connection string if available, otherwise fall back to individual variables
         AZURE_COSMOS_CONNECTION_STRING: ${{ secrets.AZURE_COSMOS_CONNECTION_STRING }}
-        # Fallback to individual variables if connection string is not available
         AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
         AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
         AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
         AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
       run: |
         echo "Testing Cosmos DB connection..."
+        echo "Using connection string: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
+        echo "Using endpoint: ${AZURE_COSMOS_ENDPOINT:0:20}..."
         echo "- AZURE_COSMOS_CONNECTION_STRING: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
         echo "- AZURE_COSMOS_ENDPOINT: ${AZURE_COSMOS_ENDPOINT:0:20}..."
         echo "- AZURE_COSMOS_DATABASE: ${AZURE_COSMOS_DATABASE:-Not set}"
