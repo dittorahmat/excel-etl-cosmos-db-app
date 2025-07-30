@@ -1,13 +1,23 @@
 {
   "extends": "./tsconfig.server.json",
   "compilerOptions": {
-    "outDir": "./dist/server/scripts",
-    "rootDir": "./server/scripts"
+    "outDir": "./dist/server",
+    "rootDir": "./server/scripts",
+    "composite": false,
+    "noEmit": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/server/*": ["./server/src/*"],
+      "@/server/test-utils/*": ["./server/src/test-utils/*"],
+      "@common/*": ["./common/*"]
+    },
+    "rootDirs": ["./server/scripts"]
   },
   "include": [
     "./server/scripts/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/node_modules/*"
   ]
 }

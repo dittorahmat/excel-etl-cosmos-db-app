@@ -1,48 +1,45 @@
 import type { MockBlobStorage, MulterFile } from '../../types/azure.js';
 
-interface UploadResult {
-  url: string;
-  name: string;
-  size: number;
-}
-
 /**
  * Initialize mock Blob Storage for development and testing
- * @returns A mock implementation of AzureBlobStorage
+ * @returns A mock implementation of AzureBlobStorage that matches the MockBlobStorage interface
  */
 export function initializeMockBlobStorage(): MockBlobStorage {
-  const uploadMock = async (_containerName: string, file?: MulterFile): Promise<UploadResult> => ({
-    url: `https://mockstorage.blob.core.windows.net/mockcontainer/mock-${file?.originalname ?? 'file'}`,
-    name: `mock-${file?.originalname ?? 'file'}`,
-    size: file?.size ?? 0,
-  });
-
-  const deleteMock = async (_containerName: string, _blobName: string): Promise<void> => {
-    // No-op for mock
+  // Mock container name for testing
+  const mockContainerName = 'mock-container';
+  
+  // Mock implementation of the upload function
+  const uploadMock = async (file: MulterFile, blobName: string): Promise<string> => {
+    const url = `https://mockstorage.blob.core.windows.net/${mockContainerName}/${blobName}`;
+    console.log(`[MOCK] Uploaded file ${file.originalname} as ${blobName}`);
+    return url;
   };
 
+  // Mock implementation of the delete function
+  const deleteMock = async (blobName: string): Promise<boolean> => {
+    console.log(`[MOCK] Deleted file ${blobName}`);
+    return true;
+  };
+
+  // Mock implementation of getFileUrl
+  const getFileUrl = (blobName: string): string => {
+    return `https://mockstorage.blob.core.windows.net/${mockContainerName}/${blobName}`;
+  };
+
+  // Mock implementation of getContainerName
+  const getContainerName = (): string => {
+    return mockContainerName;
+  };
+
+  // Create the mock blob storage object that matches the MockBlobStorage interface
   const mockBlobStorage: MockBlobStorage = {
-    blobServiceClient: {
-      getContainerClient: (_containerName: string) => ({
-        getBlockBlobClient: (_blobName: string) => ({
-          uploadData: async (_data: unknown) => Promise.resolve(undefined),
-          deleteIfExists: async () => Promise.resolve(undefined),
-          url: 'https://mockstorage.blob.core.windows.net/mockcontainer/mock-file',
-        }),
-        createIfNotExists: async () => Promise.resolve(undefined),
-      }),
-    } as unknown as MockBlobStorage['blobServiceClient'],
-    // Minimal mock to satisfy ContainerClient interface for testing only
-    getContainerClient: (_containerName: string) => ({
-      getBlockBlobClient: (_blobName: string) => ({
-        uploadData: async (_data: unknown) => Promise.resolve(undefined),
-        deleteIfExists: async () => Promise.resolve(undefined),
-        url: 'https://mockstorage.blob.core.windows.net/mockcontainer/mock-file',
-      }),
-      createIfNotExists: async () => Promise.resolve(undefined),
-    }) as unknown as ReturnType<MockBlobStorage['getContainerClient']>,
-    uploadFile: uploadMock,
-    deleteFile: deleteMock,
+    // Public methods that match MockBlobStorage interface
+    upload: uploadMock,
+    delete: deleteMock,
+    getFileUrl: getFileUrl,
+    getContainerName: getContainerName,
+    
+    // Internal mocks for testing
     _mocks: {
       upload: uploadMock,
       delete: deleteMock,

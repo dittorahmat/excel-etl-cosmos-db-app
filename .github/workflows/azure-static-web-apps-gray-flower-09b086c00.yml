@@ -48,13 +48,11 @@ jobs:
     - name: Verify build output
       run: |
         echo -e "\nChecking for Cosmos DB test script..."
-        if [ -f "dist/server/scripts/test-cosmos-connection.js" ]; then
-          echo "✅ Cosmos DB test script exists in expected location"
-          ls -la dist/server/scripts/
+        if [ -f "server/scripts/test-cosmos-connection.ts" ]; then
+          echo "✅ Found TypeScript Cosmos DB test script"
+          ls -la server/scripts/
         else
-          echo "❌ Cosmos DB test script not found in expected location"
-          echo "Searching for test script..."
-          find dist -name "test-cosmos-connection.js" || echo "Test script not found"
+          echo "❌ Cosmos DB test script not found"
           exit 1
         fi
 
@@ -62,42 +60,26 @@ jobs:
       working-directory: .
       env:
         NODE_OPTIONS: --experimental-vm-modules
-        # Use connection string if available, otherwise fall back to individual variables
-        AZURE_COSMOS_CONNECTION_STRING: ${{ secrets.AZURE_COSMOS_CONNECTION_STRING }}
-        AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
-        AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
-        AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
-        AZURE_COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
-        # Map Azure environment variables to what the script expects
         COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
         COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
         COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
         COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
       run: |
         echo "Testing Cosmos DB connection..."
-        echo "Using endpoint: ${AZURE_COSMOS_ENDPOINT:0:20}..."
-        echo "- AZURE_COSMOS_CONNECTION_STRING: ${AZURE_COSMOS_CONNECTION_STRING:0:20}..."
-        echo "- AZURE_COSMOS_ENDPOINT: ${AZURE_COSMOS_ENDPOINT:0:20}..."
-        echo "- AZURE_COSMOS_DATABASE: ${AZURE_COSMOS_DATABASE:-Not set}"
-        echo "- AZURE_COSMOS_CONTAINER: ${AZURE_COSMOS_CONTAINER:-Not set}"
-        echo "- AZURE_COSMOS_KEY: ${AZURE_COSMOS_KEY:+set (hidden for security)}\n"
+        echo "- COSMOS_ENDPOINT: ${COSMOS_ENDPOINT:-Not set}"
+        echo "- COSMOS_DATABASE: ${COSMOS_DATABASE:-Not set}"
+        echo "- COSMOS_CONTAINER: ${COSMOS_CONTAINER:-Not set}"
+        echo "- COSMOS_KEY: ${COSMOS_KEY:+set (hidden for security)}"
         
-        # Run the compiled JavaScript file directly
-        node dist/server/scripts/test-cosmos-connection.js "$AZURE_COSMOS_CONNECTION_STRING"
-
-        # Verify required environment variables
-        if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_ENDPOINT" ]; then
-          echo "::error::Either AZURE_COSMOS_CONNECTION_STRING or AZURE_COSMOS_ENDPOINT must be set"
+        # Check for required environment variables
+        if [ -z "$COSMOS_ENDPOINT" ] || [ -z "$COSMOS_KEY" ]; then
+          echo "::error::Missing required environment variables: COSMOS_ENDPOINT and/or COSMOS_KEY"
           exit 1
         fi
-
-        if [ -z "$AZURE_COSMOS_CONNECTION_STRING" ] && [ -z "$AZURE_COSMOS_KEY" ]; then
-          echo "::error::AZURE_COSMOS_KEY must be set when using AZURE_COSMOS_ENDPOINT"
-          exit 1
-        fi
-
-        # Run the test script with debugging
-        NODE_DEBUG=cosmos* npx tsx server/scripts/test-cosmos-connection.ts
+        
+        # Run the TypeScript test script
+        echo "\nRunning TypeScript Cosmos DB connection test..."
+        npx tsx server/scripts/test-cosmos-connection.ts
 
     - name: Lint codebase
       working-directory: ./

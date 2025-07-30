@@ -19,7 +19,7 @@ export async function initializeAzureServices(): Promise<{
   try {
     // Initialize Blob Storage
     const blobStorageInstance = useMocks
-      ? await initializeMockBlobStorage()
+      ? (await initializeMockBlobStorage()) as unknown as AzureBlobStorage
       : await initializeBlobStorageAsync();
 
     // Initialize Cosmos DB

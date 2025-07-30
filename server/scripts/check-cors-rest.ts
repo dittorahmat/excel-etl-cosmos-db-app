@@ -20,11 +20,14 @@ async function checkCors() {
     } else {
       console.log('CORS rules are configured.');
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching service properties:', error);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response body:', await error.response.text());
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { status?: number; text?: () => Promise<string> } };
+      console.error('Response status:', axiosError.response?.status || 'unknown');
+      if (axiosError.response?.text) {
+        console.error('Response body:', await axiosError.response.text());
+      }
     }
   }
 }

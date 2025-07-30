@@ -18,6 +18,7 @@ const loadEnvVars = (mode: string) => {
     VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || process.env.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net',
     VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
     VITE_API_SCOPE: env.VITE_API_SCOPE || process.env.VITE_API_SCOPE || '',
+    VITE_API_BASE_URL: env.VITE_API_BASE_URL || process.env.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net',
   };
 };
 

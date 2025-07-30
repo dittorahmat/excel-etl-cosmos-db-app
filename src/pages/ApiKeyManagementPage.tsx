@@ -88,11 +88,12 @@ const ApiKeyManagementPage: React.FC = () => {
         console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (keys object format)`);
         setApiKeys(response.keys);
       }
-      else if (response && 'success' in response && response.success === true && 'keys' in response && Array.isArray(response.keys)) {
-        // Case 3: { success: true, keys: ApiKey[], ... } format
-        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (success with keys format)`);
-        setApiKeys(response.keys);
-      }
+      // This condition is already covered by the previous condition
+      // else if (response && 'success' in response && response.success === true && 'keys' in response && Array.isArray(response.keys)) {
+      //   // Case 3: { success: true, keys: ApiKey[], ... } format
+      //   console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (success with keys format)`);
+      //   setApiKeys(response.keys);
+      // }
       else if (response && 'success' in response && response.success === false) {
         // Case 4: Error response with success: false
         const errorMsg = response.message || 'Failed to fetch API keys';
@@ -107,7 +108,15 @@ const ApiKeyManagementPage: React.FC = () => {
       }
       else {
         // Unknown response format
-        const errorMsg = (response as any)?.message || 'Invalid response format from server: expected keys array';
+        interface ErrorResponse {
+          message?: string;
+          [key: string]: unknown;
+        }
+        
+        const errorResponse = response as ErrorResponse;
+        const errorMsg = typeof errorResponse?.message === 'string' 
+          ? errorResponse.message 
+          : 'Invalid response format from server: expected keys array';
         console.error("[ApiKeyManagementPage] Unexpected response format:", response);
         setError(errorMsg);
         setApiKeys([]);
@@ -135,10 +144,14 @@ const ApiKeyManagementPage: React.FC = () => {
     }
   };
 
+  // Memoize the fetchApiKeys function to prevent unnecessary re-renders
+  const memoizedFetchApiKeys = React.useCallback(async () => {
+    await fetchApiKeys();
+  }, [fetchApiKeys]);
+
   useEffect(() => {
-    
-    fetchApiKeys();
-  }, []);
+    void memoizedFetchApiKeys();
+  }, [memoizedFetchApiKeys]);
 
   const handleRevokeKey = async (id: string) => {
     if (window.confirm('Are you sure you want to revoke this API key?')) {
