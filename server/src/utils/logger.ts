@@ -1,5 +1,23 @@
 import winston from 'winston'; // WinstonLogger and LoggerOptions were imported but not used
-import { Request, Response } from 'express';
+import { Request as ExpressRequest, Response } from 'express';
+
+// Define the user type
+export interface AuthUser {
+  oid?: string;
+  name?: string;
+  email?: string;
+  roles?: string[];
+  [key: string]: unknown; // Allow additional properties for flexibility
+}
+
+// Extend the Express Request type to include the user property
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: AuthUser;
+  }
+}
+
+type Request = ExpressRequest;
 import { v4 as uuidv4 } from 'uuid';
 import { TransformableInfo } from 'logform';
 import fs from 'fs';

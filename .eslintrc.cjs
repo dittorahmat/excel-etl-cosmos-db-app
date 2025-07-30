@@ -7,6 +7,11 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
+  env: {
+    node: true,
+    browser: true,
+    es2021: true,
+  },
   rules: {
     'react-refresh/only-export-components': [
       'warn',

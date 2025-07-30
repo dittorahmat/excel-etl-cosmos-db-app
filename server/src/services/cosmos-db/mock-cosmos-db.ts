@@ -9,8 +9,7 @@ import type {
   FeedOptions,
   FeedResponse,
   CosmosClient as CosmosClientType,
-  ItemResponse,
-  Resource
+  ItemResponse
 } from '@azure/cosmos';
 import type {
   CosmosDiagnostics,
@@ -21,7 +20,13 @@ import type {
 
 
 // In-memory store for mock data
-const mockDataStore: Record<string, Record<string, unknown>> = {};
+interface MockDataStore {
+  [containerName: string]: {
+    [recordId: string]: unknown;
+  };
+}
+
+const mockDataStore: MockDataStore = {};
 
 // Mock GatewayStatistics
 const _mockGatewayStats: GatewayStatistics[] = [];
@@ -35,7 +40,7 @@ const createMockDiagnosticNode = (): DiagnosticNode => {
     children: [],
     startTimeUTCInMs: Date.now(),
     durationInMs: 0,
-    record: () => { /* no-op */ }
+    record: (): void => { /* no-op */ }
   };
   return node;
 };

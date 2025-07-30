@@ -35,17 +35,10 @@ export interface CosmosRecord extends Partial<Resource> {
  * Interface for interacting with Azure Blob Storage
  */
 export interface AzureBlobStorage {
-  blobServiceClient: BlobServiceClient;
-  getContainerClient: (containerName: string) => ContainerClient;
-  uploadFile: (
-    containerName: string,
-    file: MulterFile
-  ) => Promise<{
-    url: string;
-    name: string;
-    size: number;
-  }>;
-  deleteFile: (containerName: string, fileName: string) => Promise<void>;
+  uploadFile: (file: MulterFile, blobName: string) => Promise<string>;
+  deleteFile: (blobName: string) => Promise<boolean>;
+  getFileUrl: (blobName: string) => string;
+  getContainerName: () => string;
 }
 
 /**
@@ -116,11 +109,15 @@ export interface AzureCosmosDB {
 }
 
 // Mock implementation types
-export interface MockBlobStorage extends AzureBlobStorage {
+export interface MockBlobStorage {
   _mocks: {
-    upload: (containerName: string, file: MulterFile) => Promise<{ url: string; name: string; size: number; }>;
-    delete: (containerName: string, fileName: string) => Promise<void>;
+    upload: (file: MulterFile, blobName: string) => Promise<string>;
+    delete: (blobName: string) => Promise<boolean>;
   };
+  upload: (file: MulterFile, blobName: string) => Promise<string>;
+  delete: (blobName: string) => Promise<boolean>;
+  getFileUrl: (blobName: string) => string;
+  getContainerName: () => string;
 }
 
 export interface MockCosmosDB extends AzureCosmosDB {

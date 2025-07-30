@@ -103,8 +103,20 @@ export const loginRequest = {
   prompt: 'select_account',
 };
 
+// Type for the runtime configuration
+interface RuntimeConfig {
+  VITE_API_BASE_URL?: string;
+  [key: string]: unknown;
+}
+
+declare global {
+  interface Window {
+    __APP_CONFIG__?: RuntimeConfig;
+  }
+}
+
 // Get runtime config, falling back to build-time env vars
-const getRuntimeConfig = () => (window as any).__APP_CONFIG__ || import.meta.env;
+const getRuntimeConfig = (): RuntimeConfig => (window.__APP_CONFIG__ || import.meta.env) as RuntimeConfig;
 
 // API Configuration
 export const getApiConfig = () => {

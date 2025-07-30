@@ -4,17 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
 import { logger } from '../../utils/logger.js';
 
-type CosmosResponse<T> = T & {
-  id: string;
-  _etag?: string;
-  _ts?: number;
-  _rid?: string;
-  _self?: string;
-  _attachments?: string;
-  statusCode?: number;
-  etag?: string;
-};
-
 
 
 /**
