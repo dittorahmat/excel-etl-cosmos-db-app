@@ -147,7 +147,10 @@ jobs:
           mkdir -p deployment
           cp -r dist/server/* deployment/
           cp server/package.json deployment/
-          cp server/package-lock.json deployment/
+          # Only copy package-lock.json if it exists
+          if [ -f "server/package-lock.json" ]; then
+            cp server/package-lock.json deployment/
+          fi
           cd deployment
           npm install --omit=dev
       - name: Deploy to Azure App Service
