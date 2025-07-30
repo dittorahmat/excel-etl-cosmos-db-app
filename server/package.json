@@ -38,7 +38,6 @@
     "@types/express": "^4.17.21",
     "@types/express-validator": "^3.0.0",
     "@types/jest": "^29.5.12",
-    "@types/jwks-rsa": "^3.0.2",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/logform": "^1.2.0",
     "@types/multer": "^1.4.11",
