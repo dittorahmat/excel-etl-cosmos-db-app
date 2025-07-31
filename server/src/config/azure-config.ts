@@ -1,8 +1,3 @@
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
 // Helper function to get environment variable with fallback
 const getEnvVar = (key: string, fallback: string = ''): string => {
   // Try with AZURE_ prefix first, then without
