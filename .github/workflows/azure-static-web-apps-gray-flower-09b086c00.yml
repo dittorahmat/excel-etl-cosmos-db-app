@@ -164,15 +164,16 @@ jobs:
           echo "Creating deployment package..."
           
           # Create deployment directory structure
-          mkdir -p deployment/dist
+          mkdir -p deployment
           
-          # Copy built files
+          # Copy built files while maintaining the dist/server structure
           echo "Copying built files..."
-          cp -r dist/server/* deployment/dist/
+          mkdir -p deployment/dist/server
+          cp -r dist/server/* deployment/dist/server/
           
           # Copy package.json with updated scripts
           echo "Preparing package.json..."
-          jq '.scripts.start = "node dist/server.js" | del(.devDependencies) | .engines.node = ">=16.0.0"' server/package.json > deployment/package.json
+          jq '.scripts.start = "node dist/server/src/server.js" | del(.devDependencies) | .engines.node = ">=16.0.0"' server/package.json > deployment/package.json
           
           # Install only production dependencies
           echo "Installing production dependencies..."
