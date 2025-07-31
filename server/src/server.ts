@@ -270,18 +270,52 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
-// Get the port from environment variable (required)
+// Get the port from environment variable with fallback
 const getPort = (): number => {
-  if (!process.env.PORT) {
-    throw new Error('PORT environment variable is required');
+  const port = process.env.PORT || '3000';
+  if (!port) {
+    const error = new Error('PORT environment variable is required');
+    logger.error(error.message);
+    throw error;
   }
-  return parseInt(process.env.PORT, 10);
+  return parseInt(port, 10);
 };
 
 /**
  * Start the Express server
  */
 async function startServer(port: number | string = getPort()): Promise<Server> {
+  // Log environment information
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isProduction = nodeEnv === 'production';
+  
+  logger.info(`Starting server in ${nodeEnv} mode`, {
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    pid: process.pid,
+    cwd: process.cwd(),
+    port,
+    isAzure: process.env.WEBSITE_SITE_NAME ? true : false,
+    nodeEnv
+  });
+  
+  // Log important environment variables (without sensitive values)
+  const envVarsToLog = [
+    'NODE_ENV', 'PORT', 'WEBSITE_SITE_NAME', 'WEBSITE_INSTANCE_ID',
+    'AZURE_COSMOS_ENDPOINT', 'AZURE_STORAGE_CONNECTION_STRING'
+  ];
+  
+  const envInfo: Record<string, string | undefined> = {};
+  envVarsToLog.forEach(key => {
+    if (process.env[key]) {
+      envInfo[key] = key.includes('KEY') || key.includes('SECRET') || key.includes('TOKEN') 
+        ? '***MASKED***' 
+        : process.env[key];
+    }
+  });
+  
+  logger.info('Environment configuration', envInfo);
   try {
     logger.info('Initializing Azure services...');
     console.log('Initializing Azure services...');
@@ -303,7 +337,19 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
     
     return new Promise((resolve, reject) => {
       const httpServer = expressApp.listen(port, () => {
-        logger.info(`🚀 Server ready at http://localhost:${port}`);
+        const address = httpServer.address();
+        const serverAddress = typeof address === 'string' 
+          ? address 
+          : `http://${address?.address === '::' ? 'localhost' : address?.address}:${address?.port}`;
+          
+        logger.info('🚀 Server started successfully', {
+          address: serverAddress,
+          pid: process.pid,
+          uptime: process.uptime(),
+          memoryUsage: process.memoryUsage()
+        });
+        
+        console.log(`🚀 Server running at ${serverAddress} (PID: ${process.pid})`);
         resolve(httpServer);
       });
       
