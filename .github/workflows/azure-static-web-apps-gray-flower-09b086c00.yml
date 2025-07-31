@@ -168,12 +168,20 @@ jobs:
           # Copy package.json and install production dependencies
           echo "Setting up Node.js dependencies..."
           cp server/package.json deployment/
-          cp server/package-lock.json deployment/ 2>/dev/null || echo "No package-lock.json found"
+          
+          # Change to deployment directory
+          cd deployment
           
           # Install only production dependencies
-          cd deployment
           echo "Installing production dependencies..."
-          npm ci --omit=dev
+          if [ -f "../server/package-lock.json" ]; then
+            echo "Using package-lock.json for deterministic install..."
+            cp ../server/package-lock.json .
+            npm ci --omit=dev
+          else
+            echo "No package-lock.json found, using npm install..."
+            npm install --omit=dev
+          fi
           
           # Verify the deployment package structure
           echo "Final deployment package structure:"
