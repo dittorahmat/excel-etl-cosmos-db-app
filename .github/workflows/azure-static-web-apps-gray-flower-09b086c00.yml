@@ -144,6 +144,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+      
       - name: Install and Build Backend
         working-directory: ./server
         run: |
@@ -157,27 +158,25 @@ jobs:
           # Verify the build output
           echo "Build output structure:"
           find ../dist -type f | sort
-          
-      - name: Prepare deployment package
+      
+      - name: Create deployment package
         run: |
-          echo "Preparing deployment package..."
+          echo "Creating deployment package..."
           
-          # Create deployment directory
-          mkdir -p deployment
+          # Create deployment directory structure
+          mkdir -p deployment/dist
           
-          # Copy built files from dist/server
+          # Copy built files
           echo "Copying built files..."
-          cp -r dist/server/* deployment/
+          cp -r dist/server/* deployment/dist/
           
-          # Copy package.json and install only production dependencies
-          echo "Setting up Node.js production dependencies..."
-          cp server/package.json deployment/
-          
-          # Change to deployment directory
-          cd deployment
+          # Copy package.json with updated scripts
+          echo "Preparing package.json..."
+          jq '.scripts.start = "node dist/server.js" | del(.devDependencies) | .engines.node = ">=16.0.0"' server/package.json > deployment/package.json
           
           # Install only production dependencies
           echo "Installing production dependencies..."
+          cd deployment
           npm install --omit=dev --prefer-offline --no-audit --progress=false
           
           # Clean up any remaining dev dependencies
@@ -189,30 +188,39 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
           package: deployment
           
       - name: Configure App Service
         uses: azure/CLI@v1
         with:
           inlineScript: |
+            # Set app settings
+            az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --settings \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+                WEBSITE_RUN_FROM_PACKAGE=0 \
+                WEBSITE_NODE_DEFAULT_VERSION=20.19.1 \
+                NODE_ENV=production
+            
             # Set the startup command
             az webapp config set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --startup-file "node dist/server.js"
             
-            # Set the Node.js version
-            az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --settings \
-                WEBSITE_NODE_DEFAULT_VERSION=20.19.1 \
-                NODE_ENV=production
+            # Restart the app to apply settings
+            az webapp restart --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
       
       - name: Update App Settings
         uses: azure/CLI@v1
