@@ -177,11 +177,22 @@ jobs:
           # Copy all built files to the correct location
           echo "Copying built files..."
           cp -r dist/server/server/src/* deployment/dist/server/src/
+          # Update the start command in package.json to point to the correct server file with logging
+          echo "Updating start script in package.json..."
+          echo '{
+            "name": "excel-etl-backend",
+            "version": "1.0.0",
+            "main": "dist/server/server/src/server.js",
+            "scripts": {
+              "start": "echo \"Starting server...\" && pwd && ls -la && echo \"--- dist/contents ---\" && ls -la dist/ && echo \"--- server/contents ---\" && ls -la dist/server/ && echo \"--- src/contents ---\" && ls -la dist/server/server/src/ && node dist/server/server/src/server.js"
+            },
+            "dependencies": {}
+          }' > package.json
           
-          # Copy package.json and other necessary files
-          echo "Copying package files..."
-          cp server/package.json deployment/
-          
+          # Copy the actual package.json content and update the start script
+          cp /github/workspace/server/package.json ./package.tmp.json
+          jq '.scripts.start = "echo \"Starting server...\" && pwd && ls -la && echo \"--- dist/contents ---\" && ls -la dist/ && echo \"--- server/contents ---\" && ls -la dist/server/ && echo \"--- src/contents ---\" && ls -la dist/server/server/src/ && node dist/server/server/src/server.js"' package.tmp.json > package.json
+          rm package.tmp.json
           # Update package.json with correct start script and ensure dotenv is in dependencies
           echo "Updating package.json..."
           cd deployment
@@ -206,12 +217,34 @@ jobs:
             if [ -d "node_modules/$dep" ]; then
               echo "✅ $dep is installed"
             else
-              echo "❌ $dep is MISSING from node_modules"
-              # Try to install missing dependencies as a fallback
-              echo "Attempting to install missing dependencies..."
-              npm install $dep --save --no-package-lock --no-audit --progress=false
+              echo "❌ $dep is MISSING - attempting to install..."
+              npm install $dep --save --no-package-lock --no-save
             fi
           done
+          
+          # Diagnostic logging
+          echo "\n=== Directory Structure ==="
+          find /home/site/wwwroot -type f -name "*.js" | sort
+          echo "=========================="
+          
+          echo "\n=== Checking winston installation ==="
+          ls -la /home/site/wwwroot/node_modules/winston || echo "winston not found"
+          echo "===================================="
+          
+          echo "\n=== Environment Variables ==="
+          printenv | sort
+          echo "============================"
+          
+          echo "\n=== Current working directory and files ==="
+          pwd
+          ls -la
+          echo "\n=== dist directory contents ==="
+          ls -la dist/ || echo "dist/ not found"
+          echo "\n=== server directory contents ==="
+          ls -la dist/server/ || echo "dist/server/ not found"
+          echo "\n=== src directory contents ==="
+          ls -la dist/server/server/src/ || echo "dist/server/server/src/ not found"
+          echo "========================"
           
           # List all installed dependencies for debugging
           echo "\nInstalled dependencies:"
