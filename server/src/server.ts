@@ -25,10 +25,15 @@ import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
 import type { AzureCosmosDB, AzureBlobStorage } from './types/azure.js';
 
-// Load environment variables from .env file
-dotenv.config();
-
-
+// Load environment variables from server/.env file
+const envPath = new URL('../../.env', import.meta.url);
+try {
+  dotenv.config({ path: fileURLToPath(envPath) });
+  console.log(`Loaded environment variables from: ${envPath.pathname}`);
+} catch (error) {
+  console.error(`Failed to load environment variables from ${envPath.pathname}:`, error);
+  process.exit(1);
+}
 
 // Environment flags - prefix with _ to indicate it's used in middleware
 
@@ -39,11 +44,8 @@ dotenv.config();
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 
-// Set the port from environment variable or default to 3001 for local development
-const PORT = process.env.PORT || 3001;
-
 // Azure App Service sets WEBSITE_SITE_NAME and WEBSITE_INSTANCE_ID
-const isAzureAppService = process.env.WEBSITE_SITE_NAME !== undefined;
+const _isAzureAppService = process.env.WEBSITE_SITE_NAME !== undefined;
 
 // Server instance
 let server: Server | null = null;
@@ -268,13 +270,12 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
-// Get the port from environment variable or use default
+// Get the port from environment variable (required)
 const getPort = (): number => {
-  const port = process.env.PORT || 3001;
-  if (typeof port === 'string') {
-    return parseInt(port, 10);
+  if (!process.env.PORT) {
+    throw new Error('PORT environment variable is required');
   }
-  return port;
+  return parseInt(process.env.PORT, 10);
 };
 
 /**
