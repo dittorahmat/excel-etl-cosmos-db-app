@@ -202,7 +202,7 @@ jobs:
           
           # Verify required dependencies are installed
           echo "\nVerifying required dependencies are installed..."
-          for dep in dotenv jwks-rsa jsonwebtoken; do
+          for dep in dotenv jwks-rsa jsonwebtoken winston; do
             if [ -d "node_modules/$dep" ]; then
               echo "✅ $dep is installed"
             else
