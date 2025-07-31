@@ -182,21 +182,27 @@ jobs:
           echo "Copying package files..."
           cp server/package.json deployment/
           
-          # Update package.json with correct start script
+          # Update package.json with correct start script and ensure dotenv is in dependencies
           echo "Updating package.json..."
           cd deployment
-          jq '.scripts.start = "node dist/server/src/server.js" | del(.devDependencies) | .engines.node = ">=16.0.0"' package.json > package.tmp && mv package.tmp package.json
+          jq '
+            .scripts.start = "node dist/server/src/server.js" |
+            .engines.node = ">=16.0.0" |
+            .dependencies.dotenv = "^16.4.4" |
+            del(.devDependencies)
+          ' package.json > package.tmp && mv package.tmp package.json
           
           # Install only production dependencies
           echo "Installing production dependencies..."
           npm install --omit=dev --prefer-offline --no-audit --progress=false
           
-          # Clean up any remaining dev dependencies
-          rm -rf node_modules/.cache
-          
           # Verify the deployment package structure
           echo "Final deployment package structure:"
           find . -type f | sort
+          
+          # Verify node_modules contains dotenv
+          echo "\nVerifying dotenv is installed..."
+          ls -la node_modules/dotenv/ || echo "dotenv not found in node_modules"
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
