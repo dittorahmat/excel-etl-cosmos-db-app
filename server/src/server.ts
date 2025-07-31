@@ -287,7 +287,6 @@ const getPort = (): number => {
 async function startServer(port: number | string = getPort()): Promise<Server> {
   // Log environment information
   const nodeEnv = process.env.NODE_ENV || 'development';
-  const isProduction = nodeEnv === 'production';
   
   logger.info(`Starting server in ${nodeEnv} mode`, {
     nodeVersion: process.version,
