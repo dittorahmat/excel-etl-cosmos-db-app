@@ -166,14 +166,19 @@ jobs:
           # Create deployment directory structure
           mkdir -p deployment
           
-          # Copy built files while maintaining the dist/server structure
+          # Copy built files - the TypeScript build outputs to dist/server
           echo "Copying built files..."
-          mkdir -p deployment/dist/server
-          cp -r dist/server/* deployment/dist/server/
+          cp -r dist/server/* deployment/
           
           # Copy package.json with updated scripts
           echo "Preparing package.json..."
-          jq '.scripts.start = "node dist/server/src/server.js" | del(.devDependencies) | .engines.node = ">=16.0.0"' server/package.json > deployment/package.json
+          jq '.scripts.start = "node src/server.js" | del(.devDependencies) | .engines.node = ">=16.0.0"' server/package.json > deployment/package.json
+          
+          # Copy .env file if it exists
+          if [ -f server/.env ]; then
+            echo "Copying .env file..."
+            cp server/.env deployment/
+          fi
           
           # Install only production dependencies
           echo "Installing production dependencies..."
