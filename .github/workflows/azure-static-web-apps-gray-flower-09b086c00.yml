@@ -200,9 +200,22 @@ jobs:
           echo "Final deployment package structure:"
           find . -type f | sort
           
-          # Verify node_modules contains dotenv
-          echo "\nVerifying dotenv is installed..."
-          ls -la node_modules/dotenv/ || echo "dotenv not found in node_modules"
+          # Verify required dependencies are installed
+          echo "\nVerifying required dependencies are installed..."
+          for dep in dotenv jwks-rsa jsonwebtoken; do
+            if [ -d "node_modules/$dep" ]; then
+              echo "✅ $dep is installed"
+            else
+              echo "❌ $dep is MISSING from node_modules"
+              # Try to install missing dependencies as a fallback
+              echo "Attempting to install missing dependencies..."
+              npm install $dep --save --no-package-lock --no-audit --progress=false
+            fi
+          done
+          
+          # List all installed dependencies for debugging
+          echo "\nInstalled dependencies:"
+          npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
