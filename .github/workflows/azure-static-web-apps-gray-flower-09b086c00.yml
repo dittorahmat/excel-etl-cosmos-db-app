@@ -179,20 +179,32 @@ jobs:
           cp -r dist/server/server/src/* deployment/dist/server/src/
           # Update the start command in package.json to point to the correct server file with logging
           echo "Updating start script in package.json..."
-          echo '{
-            "name": "excel-etl-backend",
-            "version": "1.0.0",
-            "main": "dist/server/server/src/server.js",
-            "scripts": {
-              "start": "echo \"Starting server...\" && pwd && ls -la && echo \"--- dist/contents ---\" && ls -la dist/ && echo \"--- server/contents ---\" && ls -la dist/server/ && echo \"--- src/contents ---\" && ls -la dist/server/server/src/ && node dist/server/server/src/server.js"
-            },
-            "dependencies": {}
-          }' > package.json
           
-          # Copy the actual package.json content and update the start script
-          cp /github/workspace/server/package.json ./package.tmp.json
-          jq '.scripts.start = "echo \"Starting server...\" && pwd && ls -la && echo \"--- dist/contents ---\" && ls -la dist/ && echo \"--- server/contents ---\" && ls -la dist/server/ && echo \"--- src/contents ---\" && ls -la dist/server/server/src/ && node dist/server/server/src/server.js"' package.tmp.json > package.json
-          rm package.tmp.json
+          # Create the deployment directory structure
+          mkdir -p deployment/dist/server/src
+          
+          # Copy the built files to the deployment directory
+          echo "Copying built files..."
+          cp -r dist/server/server/src/* deployment/dist/server/src/
+          
+          # Copy package.json to the deployment directory
+          echo "Copying package.json..."
+          cp server/package.json deployment/
+          
+          # Change to deployment directory
+          cd deployment
+          
+          # Update the start script in package.json
+          echo "Updating start script in package.json..."
+          jq '.scripts.start = "echo \"Starting server...\" && pwd && ls -la && echo \"--- dist/contents ---\" && ls -la dist/ && echo \"--- server/contents ---\" && ls -la dist/server/ && echo \"--- src/contents ---\" && ls -la dist/server/server/src/ && NODE_ENV=production node dist/server/server/src/server.js"' package.json > package.tmp.json && mv package.tmp.json package.json
+          
+          # Ensure all required dependencies are installed
+          echo "Installing production dependencies..."
+          npm install --omit=dev
+          
+          # Log the final package.json for verification
+          echo "Final package.json:"
+          cat package.json
           # Update package.json with correct start script and ensure dotenv is in dependencies
           echo "Updating package.json..."
           cd deployment
