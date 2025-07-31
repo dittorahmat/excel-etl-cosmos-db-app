@@ -270,9 +270,10 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 // Start the server if this file is run directly
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
-// Get the port from environment variable with fallback
+// Get the port from environment variable with fallback (3001 for backend, different from frontend's 3000)
 const getPort = (): number => {
-  const port = process.env.PORT || '3000';
+  // Use PORT from environment variable or fallback to 3001 (not 3000 which is for frontend)
+  const port = process.env.PORT || '3001';
   if (!port) {
     const error = new Error('PORT environment variable is required');
     logger.error(error.message);
