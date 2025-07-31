@@ -177,10 +177,8 @@ jobs:
           # Copy all built files to the correct location
           echo "Copying built files..."
           cp -r dist/server/server/src/* deployment/dist/server/src/
-          # Update the start command in package.json to point to the correct server file with logging
-          echo "Updating start script in package.json..."
-          
           # Create the deployment directory structure
+          echo "Creating deployment directory structure..."
           mkdir -p deployment/dist/server/src
           
           # Copy the built files to the deployment directory
@@ -191,11 +189,9 @@ jobs:
           echo "Copying package.json..."
           cp server/package.json deployment/
           
-          # Change to deployment directory
-          cd deployment
-          
           # Update the start script in package.json
           echo "Updating start script in package.json..."
+          cd deployment
           jq '.scripts.start = "echo \"Starting server...\" && pwd && ls -la && echo \"--- dist/contents ---\" && ls -la dist/ && echo \"--- server/contents ---\" && ls -la dist/server/ && echo \"--- src/contents ---\" && ls -la dist/server/server/src/ && NODE_ENV=production node dist/server/server/src/server.js"' package.json > package.tmp.json && mv package.tmp.json package.json
           
           # Ensure all required dependencies are installed
@@ -205,6 +201,9 @@ jobs:
           # Log the final package.json for verification
           echo "Final package.json:"
           cat package.json
+          
+          # Go back to the root directory
+          cd ..
           # Update package.json with correct start script and ensure dotenv is in dependencies
           echo "Updating package.json..."
           cd deployment
