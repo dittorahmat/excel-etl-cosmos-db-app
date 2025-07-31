@@ -166,18 +166,21 @@ jobs:
           # Create deployment directory structure
           mkdir -p deployment
           
-          # Copy built files - the TypeScript build outputs to dist/server
-          echo "Copying built files..."
+          # Show the actual build output structure for debugging
+          echo "Build output structure:"
+          find dist -type f | sort
           
-          # Create the correct directory structure
+          # Create the correct directory structure in the deployment package
+          echo "Creating deployment directory structure..."
           mkdir -p deployment/dist/server/src
           
           # Copy all built files to the correct location
-          cp -r dist/server/src/* deployment/dist/server/src/
+          echo "Copying built files..."
+          cp -r dist/server/server/src/* deployment/dist/server/src/
           
           # Copy package.json and other necessary files
+          echo "Copying package files..."
           cp server/package.json deployment/
-          cp server/package-lock.json deployment/ 2>/dev/null || true
           
           # Update package.json with correct start script
           echo "Updating package.json..."
