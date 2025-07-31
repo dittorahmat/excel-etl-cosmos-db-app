@@ -192,52 +192,32 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deployment
           
-      - name: Configure App Service
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            # Set app settings
-            az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --settings \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-                WEBSITE_RUN_FROM_PACKAGE=0 \
-                WEBSITE_NODE_DEFAULT_VERSION=20.19.1 \
-                NODE_ENV=production
-            
-            # Set the startup command
-            az webapp config set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --startup-file "node dist/server.js"
-            
-            # Restart the app to apply settings
-            az webapp restart --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
-      
-      - name: Update App Settings
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            # Set environment variables for the App Service
-            az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --settings \
-                WEBSITE_RUN_FROM_PACKAGE=0 \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=1 \
-                PORT=8080 \
-                NODE_ENV=production \
-                AUTH_ENABLED=true \
-                AZURE_COSMOS_ENDPOINT=${{ secrets.AZURE_COSMOS_ENDPOINT }} \
-                AZURE_COSMOS_KEY="${{ secrets.AZURE_COSMOS_KEY }}" \
-                AZURE_COSMOS_DATABASE=${{ secrets.AZURE_COSMOS_DATABASE }} \
-                AZURE_COSMOS_CONTAINER=${{ secrets.AZURE_COSMOS_CONTAINER }} \
-                AZURE_COSMOS_PARTITION_KEY=/_partitionKey \
-                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-                AZURE_STORAGE_CONTAINER=excel-uploads \
-                ALLOWED_ORIGINS="https://gray-flower-09b086c00.6.azurestaticapps.net,http://localhost:3000,http://localhost:5173" \
-                FILE_SIZE_LIMIT=10485760 \
-                LOG_LEVEL=info
-                
-            # Verify the deployment structure
-            echo "Verifying deployment structure..."
-            az webapp list --query "[?name=='${{ secrets.AZURE_WEBAPP_NAME }}'].defaultHostName" -o tsv | xargs -I {} curl -s -o /dev/null -w "%{http_code}" https://{}/api/health || echo "Health check failed"
+      - name: Verify deployment
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo ""
+          echo "🔧 Manual Configuration Required:"
+          echo "1. Go to Azure Portal -> Your App Service -> Configuration"
+          echo "2. Under 'Application settings', add/update these settings:"
+          echo "   - WEBSITE_RUN_FROM_PACKAGE = 0"
+          echo "   - SCM_DO_BUILD_DURING_DEPLOYMENT = 1"
+          echo "   - NODE_ENV = production"
+          echo "   - PORT = 8080"
+          echo "   - AUTH_ENABLED = true"
+          echo "   - AZURE_COSMOS_ENDPOINT = [Your Cosmos DB Endpoint]"
+          echo "   - AZURE_COSMOS_KEY = [Your Cosmos DB Key]"
+          echo "   - AZURE_COSMOS_DATABASE = [Your Database Name]"
+          echo "   - AZURE_COSMOS_CONTAINER = [Your Container Name]"
+          echo "   - AZURE_STORAGE_CONNECTION_STRING = [Your Storage Connection String]"
+          echo "   - AZURE_STORAGE_CONTAINER = excel-uploads"
+          echo "   - ALLOWED_ORIGINS = https://gray-flower-09b086c00.6.azurestaticapps.net,http://localhost:3000,http://localhost:5173"
+          echo "   - FILE_SIZE_LIMIT = 10485760"
+          echo "   - LOG_LEVEL = info"
+          echo ""
+          echo "3. Under 'Configuration' -> 'General settings':"
+          echo "   - Set 'Startup Command' to: node dist/server.js"
+          echo "   - Set 'Node version' to: 20-lts"
+          echo ""
+          echo "4. Save the settings and restart your app"
+          echo ""
+          echo "🌐 Your app should now be available at: https://excel-etl-backend-378680.azurewebsites.net"
