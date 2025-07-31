@@ -147,8 +147,16 @@ jobs:
       - name: Install and Build Backend
         working-directory: ./server
         run: |
+          # Install all dependencies including dev dependencies for build
           npm ci
+          
+          # Build the project
+          echo "Building TypeScript project..."
           npm run build
+          
+          # Verify the build output
+          echo "Build output structure:"
+          find ../dist -type f | sort
           
       - name: Prepare deployment package
         run: |
@@ -157,16 +165,12 @@ jobs:
           # Create deployment directory
           mkdir -p deployment
           
-          # Verify the dist directory structure
-          echo "Build output structure:"
-          find dist -type f | sort
-          
           # Copy built files from dist/server
           echo "Copying built files..."
           cp -r dist/server/* deployment/
           
-          # Copy package.json and install production dependencies
-          echo "Setting up Node.js dependencies..."
+          # Copy package.json and install only production dependencies
+          echo "Setting up Node.js production dependencies..."
           cp server/package.json deployment/
           
           # Change to deployment directory
@@ -174,14 +178,10 @@ jobs:
           
           # Install only production dependencies
           echo "Installing production dependencies..."
-          if [ -f "../server/package-lock.json" ]; then
-            echo "Using package-lock.json for deterministic install..."
-            cp ../server/package-lock.json .
-            npm ci --omit=dev
-          else
-            echo "No package-lock.json found, using npm install..."
-            npm install --omit=dev
-          fi
+          npm install --omit=dev --prefer-offline --no-audit --progress=false
+          
+          # Clean up any remaining dev dependencies
+          rm -rf node_modules/.cache
           
           # Verify the deployment package structure
           echo "Final deployment package structure:"
