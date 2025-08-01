@@ -281,23 +281,6 @@ jobs:
           # List all installed dependencies for debugging
           echo "\nInstalled dependencies:"
           npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
-      - name: Configure Azure App Service
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            # Set the startup command to use the PORT environment variable
-            az webapp config set --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-                                --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-                                --startup-file "node --enable-source-maps dist/server/src/server.js"
-            
-            # Set the Node.js version
-            az webapp config appsettings set --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-                                           --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-                                           --settings \
-                                             WEBSITE_NODE_DEFAULT_VERSION=20.19.1 \
-                                             NODE_ENV=production \
-                                             WEBSITE_RUN_FROM_PACKAGE=0 \
-                                             SCM_DO_BUILD_DURING_DEPLOYMENT=0
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
