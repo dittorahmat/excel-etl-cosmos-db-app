@@ -136,7 +136,7 @@ jobs:
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: production
+    
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -145,153 +145,45 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       
-      - name: Install and Build Backend
+      - name: Install dependencies
         working-directory: ./server
         run: |
-          # Install all dependencies including dev dependencies for build
           npm ci
           
-          # Build the project
-          echo "Building TypeScript project..."
+      - name: Build server
+        working-directory: ./server
+        run: |
           npm run build
           
-          # Verify the build output
+          # Verify the build output structure
           echo "Build output structure:"
-          find ../dist -type f | sort
-      
-      - name: Create deployment package
-        run: |
-          echo "=== Creating deployment package ==="
-          
-          # Create clean deployment directory
-          rm -rf deployment
-          mkdir -p deployment
-          
-          # Show the build output structure for debugging
-          echo "=== Build output structure ==="
           find dist -type f | sort
+      
+      - name: Run deployment script
+        working-directory: ./server
+        run: |
+          # Make the deployment script executable
+          chmod +x deploy.sh
           
-          # Create the correct directory structure in the deployment package
-          echo "=== Creating deployment directory structure ==="
-          mkdir -p deployment/dist/server/src
+          # Run the deployment script
+          ./deploy.sh
           
-          # Copy built files to the correct location
-          echo "=== Copying built files ==="
-          cp -r dist/server/server/src/* deployment/dist/server/src/
+          # Verify the deployment package
+          echo "=== Verifying deployment package ==="
+          ls -la deploy/
+          echo "\n=== Contents of deploy/dist ==="
+          ls -la deploy/dist/
+          echo "\n=== Contents of deploy/dist/server ==="
+          ls -la deploy/dist/server/
           
-          # Copy package.json and update it
-          echo "=== Preparing package.json ==="
-          cp server/package.json deployment/
-          cd deployment
-          
-          # Install all production dependencies
-          echo "=== Installing production dependencies ==="
-          npm install --omit=dev --no-package-lock --no-audit --progress=false
-          
-          # Update package.json with correct configuration
-          echo "=== Updating package.json configuration ==="
-          jq '{
-            name: .name,
-            version: .version,
-            description: .description,
-            main: "dist/server/src/server.js",
-            type: "module",
-            scripts: {
-              start: "node --enable-source-maps dist/server/src/server.js",
-              test: .scripts.test
-            },
-            engines: {
-              node: "20.19.1"
-            },
-            dependencies: .dependencies,
-            private: true
-          }' package.json > package.tmp.json && mv package.tmp.json package.json
-          
-          # Create a .env file with required environment variables
-          echo "NODE_ENV=production" > .env
-          echo "PORT=8080" >> .env
-          
-          # Create a startup command file for Azure
-          echo '#!/bin/bash
-          echo "Starting application with PORT: $PORT"
-          node --enable-source-maps dist/server/src/server.js' > startup.sh
-          chmod +x startup.sh
-          
-          # Install production dependencies
-          echo "=== Installing production dependencies ==="
-          npm install --omit=dev --no-package-lock --no-audit --progress=false
-          
-          # Copy node_modules to the correct location
-          echo "=== Copying node_modules ==="
-          cp -r node_modules/* ../node_modules/ 2>/dev/null || true
-          
-          # Show final directory structure
-          echo "=== Final deployment structure ==="
-          find . -type f | sort
-          
-          # Show node_modules contents
-          echo "=== node_modules contents ==="
-          ls -la node_modules/ || echo "No node_modules found"
-          
-          # Show the final package.json
-          echo "=== Final package.json ==="
-          cat package.json
-          
-          # Verify installation
-          echo "=== Verifying installation ==="
-          npm ls --omit=dev
-          
-          # Show final directory structure
-          echo "=== Final deployment structure ==="
-          find . -type f | sort
-          
-          # Log the final package.json for verification
-          echo "=== Final package.json ==="
-          cat package.json
-          
-          # Go back to the root directory
+          # Create a zip file for deployment
+          cd deploy
+          zip -r ../deployment.zip .
           cd ..
           
-          # Verify the deployment package structure
-          echo "Final deployment package structure:"
-          find . -type f | sort
-          
-          # Verify required dependencies are installed
-          echo "\nVerifying required dependencies are installed..."
-          for dep in dotenv jwks-rsa jsonwebtoken winston; do
-            if [ -d "node_modules/$dep" ]; then
-              echo "✅ $dep is installed"
-            else
-              echo "❌ $dep is MISSING - attempting to install..."
-              npm install $dep --save --no-package-lock --no-save
-            fi
-          done
-          
-          # Diagnostic logging
-          echo "\n=== Directory Structure ==="
-          find /home/site/wwwroot -type f -name "*.js" | sort
-          echo "=========================="
-          
-          echo "\n=== Checking winston installation ==="
-          ls -la /home/site/wwwroot/node_modules/winston || echo "winston not found"
-          echo "===================================="
-          
-          echo "\n=== Environment Variables ==="
-          printenv | sort
-          echo "============================"
-          
-          echo "\n=== Current working directory and files ==="
-          pwd
-          ls -la
-          echo "\n=== dist directory contents ==="
-          ls -la dist/ || echo "dist/ not found"
-          echo "\n=== server directory contents ==="
-          ls -la dist/server/ || echo "dist/server/ not found"
-          echo "\n=== src directory contents ==="
-          ls -la dist/server/server/src/ || echo "dist/server/server/src/ not found"
-          echo "========================"
-          
-          # List all installed dependencies for debugging
+          # Show the zip file info
+          echo "\n=== Deployment package created ==="
+          ls -lh deployment.zip
           echo "\nInstalled dependencies:"
           npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
       
