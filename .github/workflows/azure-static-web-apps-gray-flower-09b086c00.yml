@@ -196,7 +196,7 @@ jobs:
           npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
 
       - name: Print SCM_DO_BUILD_DURING_DEPLOYMENT
-        run: echo "SCM_DO_BUILD_DURING_DEPLOYMENT: ${{ env.SCM_DO_BUILD_DURING_DEPLOYMENT }}"
+        run: 'echo "SCM_DO_BUILD_DURING_DEPLOYMENT: $SCM_DO_BUILD_DURING_DEPLOYMENT"'
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
