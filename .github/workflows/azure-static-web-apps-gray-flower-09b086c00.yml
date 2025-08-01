@@ -184,6 +184,10 @@ jobs:
           cp server/package.json deployment/
           cd deployment
           
+          # Install all production dependencies
+          echo "=== Installing production dependencies ==="
+          npm install --omit=dev --no-package-lock --no-audit --progress=false
+          
           # Update package.json with correct configuration
           echo "=== Updating package.json configuration ==="
           jq '{
@@ -197,22 +201,15 @@ jobs:
               test: .scripts.test
             },
             engines: {
-              node: ">=16.0.0"
+              node: "20.19.1"
             },
-            dependencies: (.dependencies + {
-              "dotenv": "^16.4.4",
-              "winston": "^3.11.0",
-              "jwks-rsa": "^3.0.1",
-              "express": "^4.18.2",
-              "cors": "^2.8.5",
-              "helmet": "^7.1.0",
-              "express-rate-limit": "^7.2.0",
-              "express-validator": "^7.0.1",
-              "jsonwebtoken": "^9.0.2",
-              "multer": "^1.4.5-lts.1"
-            } | with_entries(select(.value != null))),
+            dependencies: .dependencies,
             private: true
           }' package.json > package.tmp.json && mv package.tmp.json package.json
+          
+          # Create a .env file with required environment variables
+          echo "NODE_ENV=production" > .env
+          echo "PORT=8080" >> .env
           
           # Create a startup command file for Azure
           echo '#!/bin/bash
@@ -222,7 +219,23 @@ jobs:
           
           # Install production dependencies
           echo "=== Installing production dependencies ==="
-          npm install --omit=dev --prefer-offline --no-audit --progress=false
+          npm install --omit=dev --no-package-lock --no-audit --progress=false
+          
+          # Copy node_modules to the correct location
+          echo "=== Copying node_modules ==="
+          cp -r node_modules/* ../node_modules/ 2>/dev/null || true
+          
+          # Show final directory structure
+          echo "=== Final deployment structure ==="
+          find . -type f | sort
+          
+          # Show node_modules contents
+          echo "=== node_modules contents ==="
+          ls -la node_modules/ || echo "No node_modules found"
+          
+          # Show the final package.json
+          echo "=== Final package.json ==="
+          cat package.json
           
           # Verify installation
           echo "=== Verifying installation ==="
