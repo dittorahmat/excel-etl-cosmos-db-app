@@ -4,10 +4,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { Server } from 'http';
+import fs from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { initializeAzureServices } from './config/azure-services.js';
-
 
 // Import v2 routes
 import { createV2Router } from './routes/v2/index.js';
@@ -30,28 +31,17 @@ const envPath = new URL('../../.env', import.meta.url);
 try {
   dotenv.config({ path: fileURLToPath(envPath) });
   console.log(`Loaded environment variables from: ${envPath.pathname}`);
-} catch (error) {
-  console.error(`Failed to load environment variables from ${envPath.pathname}:`, error);
-  process.exit(1);
+} catch (error: any) {
+  console.error(`Failed to load environment variables from ${envPath.pathname}:`, error.message);
+  // Do not exit in tests
+  if (process.env.NODE_ENV !== 'test') {
+    process.exit(1);
+  }
 }
-
-// Environment flags - prefix with _ to indicate it's used in middleware
-
-
-
-
-
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-
-// Azure App Service sets WEBSITE_SITE_NAME and WEBSITE_INSTANCE_ID
-const _isAzureAppService = process.env.WEBSITE_SITE_NAME !== undefined;
 
 // Server instance
 let server: Server | null = null;
 let app: Express | null = null;
-
-
 
 /**
  * Create and configure the Express application
@@ -98,7 +88,6 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   });
 
   // Rate limit configuration
-  
   const apiRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes in production
     max: 100, // Limit each IP to 100 requests per windowMs
@@ -124,7 +113,6 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 
   // Apply rate limiting to all API routes, but skip in development
   app.use('/api', (req, res, next) => {
-    
     if (process.env.NODE_ENV === 'development') {
       if (req.path.startsWith('/api/')) {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Rate limiting disabled in development`);
@@ -148,20 +136,9 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
     apiKeyUsageRepository: apiKeyUsageRepository
   });
 
-  
-  
-  // Public routes (no authentication required)
-  // Register auth route with conditional rate limiting
-  
-
-  
-
   // API v2 routes
   app.use('/api/v2', createV2Router(azureServices.cosmosDb));
-  
-  // Mount the v2 upload route at /api/v2/query/imports
-  // app.use('/api/v2/query/imports', uploadRoute);
-  
+
   // Fields endpoint (used by dashboard)
   console.log('server.ts: azureServices.cosmosDb before createFieldsRouter:', azureServices.cosmosDb);
   app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
@@ -171,12 +148,12 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 
   // Auth route (v2)
   app.use('/api/v2/auth', authRoute);
-  
+
   // Redirect root to API docs or health check
   app.get('/', (_req, res) => {
     res.redirect('/api/v2/health');
   });
-  
+
   // Health check endpoints
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', version: 'v1' }));
@@ -267,12 +244,8 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   return app;
 }
 
-// Start the server if this file is run directly
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
-
 // Get the port from environment variable with fallback (3001 for backend, different from frontend's 3000)
 const getPort = (): number => {
-  // Use PORT from environment variable or fallback to 3001 (not 3000 which is for frontend)
   const port = process.env.PORT || '3001';
   if (!port) {
     const error = new Error('PORT environment variable is required');
@@ -286,47 +259,166 @@ const getPort = (): number => {
  * Start the Express server
  */
 async function startServer(port: number | string = getPort()): Promise<Server> {
-  // Log environment information
-  const nodeEnv = process.env.NODE_ENV || 'development';
-  
-  logger.info(`Starting server in ${nodeEnv} mode`, {
-    nodeVersion: process.version,
-    platform: process.platform,
-    arch: process.arch,
-    pid: process.pid,
-    cwd: process.cwd(),
-    port,
-    isAzure: process.env.WEBSITE_SITE_NAME ? true : false,
-    nodeEnv
-  });
-  
-  // Log important environment variables (without sensitive values)
-  const envVarsToLog = [
-    'NODE_ENV', 'PORT', 'WEBSITE_SITE_NAME', 'WEBSITE_INSTANCE_ID',
-    'AZURE_COSMOS_ENDPOINT', 'AZURE_STORAGE_CONNECTION_STRING'
-  ];
-  
-  const envInfo: Record<string, string | undefined> = {};
-  envVarsToLog.forEach(key => {
-    if (process.env[key]) {
-      envInfo[key] = key.includes('KEY') || key.includes('SECRET') || key.includes('TOKEN') 
-        ? '***MASKED***' 
-        : process.env[key];
-    }
-  });
-  
-  logger.info('Environment configuration', envInfo);
   try {
+    // --- Azure Startup Diagnostics ---
+    console.log('--- Starting Azure App Service Diagnostics ---');
+    console.log(`Node.js version: ${process.version}`);
+    console.log(`Current working directory: ${process.cwd()}`);
+    
+    const wwwrootPath = path.resolve(process.cwd());
+    console.log(`Resolved wwwroot path: ${wwwrootPath}`);
+    console.log('Listing contents of wwwroot:');
+    try {
+      const rootContents = fs.readdirSync(wwwrootPath);
+      console.log(rootContents.join('\n'));
+    } catch (e: any) {
+      console.error('Could not read wwwroot directory:', e.message);
+    }
+
+    const distPath = path.resolve(process.cwd(), 'dist');
+    console.log(`\nChecking for dist directory at: ${distPath}`);
+    if (fs.existsSync(distPath)) {
+        console.log('`dist` directory exists. Contents:');
+        const distContents = fs.readdirSync(distPath);
+        console.log(distContents.join('\n'));
+    } else {
+        console.log('`dist` directory NOT FOUND.');
+    }
+
+    const serverJsPath = path.resolve(process.cwd(), 'dist/server/src/server.js');
+    console.log(`\nChecking for server entry file at: ${serverJsPath}`);
+    if (fs.existsSync(serverJsPath)) {
+        console.log('✅ server.js entry file found.');
+    } else {
+        console.log('❌ server.js entry file NOT FOUND.');
+    }
+
+    console.log('\nEnvironment Variables:');
+    console.log(`- PORT: ${process.env.PORT}`);
+    console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`- WEBSITE_RUN_FROM_PACKAGE: ${process.env.WEBSITE_RUN_FROM_PACKAGE}`);
+    console.log('--- End of Diagnostics ---');
+    // --- End of Azure Startup Diagnostics ---
+
     logger.info('Initializing Azure services...');
     console.log('Initializing Azure services...');
     const azureServices = await initializeAzureServices();
     console.log('Azure services initialized successfully');
 
-    // Create Express application
+    app = createApp(azureServices);
     
+    const expressApp = app;
+    if (!expressApp) {
+      throw new Error('Express app not initialized');
+    }
 
-    logger.info('Repositories initialized');
+    return new Promise((resolve, reject) => {
+      const httpServer = expressApp.listen(port, () => {
+        const address = httpServer.address();
+        const serverAddress = typeof address === 'string' 
+          ? address 
+          : `http://${address?.address === '::' ? 'localhost' : address?.address}:${address?.port}`;
+          
+        logger.info('🚀 Server started successfully', {
+          address: serverAddress,
+          pid: process.pid,
+          uptime: process.uptime(),
+          memoryUsage: process.memoryUsage()
+        });
+        
+        console.log(`🚀 Server running at ${serverAddress} (PID: ${process.pid})`);
+        resolve(httpServer);
+      });
+      
+      httpServer.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.syscall !== 'listen') {
+          logger.error('Server error:', error);
+          reject(error);
+          return;
+        }
 
+        switch (error.code) {
+          case 'EACCES': {
+            const eaccessError = new Error(`Port ${port} requires elevated privileges`);
+            logger.error(eaccessError.message);
+            reject(eaccessError);
+            break;
+          }
+          case 'EADDRINUSE': {
+            const eaddrinuseError = new Error(`Port ${port} is already in use`);
+            logger.error(eaddrinuseError.message);
+            reject(eaddrinuseError);
+            break;
+          }
+          default: {
+            logger.error('Server error:', error);
+            reject(error);
+          }
+        }
+      });
+    });
+  } catch (error: any) {
+    console.error('❌ Failed to start server:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Stop the Express server
+ */
+function stopServer(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (server) {
+      server.close((err) => {
+        if (err) {
+          logger.error('Error stopping server:', err);
+          return reject(err);
+        }
+        logger.info('Server stopped gracefully');
+        server = null;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+}
+
+// Graceful shutdown
+async function gracefulShutdown(signal: string) {
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
+  try {
+    await stopServer();
+    process.exit(0);
+  } catch (error: any) {
+    logger.error('Error during graceful shutdown:', error.message);
+    process.exit(1);
+  }
+}
+
+// Handle termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Start the server if this file is run directly
+const isMainModule = () => {
+    const mainFile = process.argv[1];
+    const currentFile = fileURLToPath(import.meta.url);
+    return mainFile === currentFile;
+}
+
+if (isMainModule()) {
+  (async () => {
+    try {
+      server = await startServer();
+    } catch (error: any) {
+      logger.error('Failed to start server:', error.message);
+      process.exit(1);
+    }
+  })();
+}
+
+export { createApp, startServer, stopServer, app };
     // Create Express app with initialized services
     app = createApp(azureServices);
     
