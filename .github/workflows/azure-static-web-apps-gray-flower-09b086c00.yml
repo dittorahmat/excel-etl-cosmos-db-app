@@ -145,58 +145,47 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install dependencies
-        working-directory: ./server
+      - name: Install dependencies and build
+        working-directory: .
         run: |
-          echo "--- Contents of ./server before npm ci ---"
-          ls -F ./
+          # Install root dependencies
           npm ci
-          echo "--- Contents of ./server/node_modules after npm ci ---"
-          ls -F ./node_modules/
-
-      - name: Build server
-        working-directory: ./server
-        run: |
+          
+          # Install server dependencies
+          cd server
+          npm ci
+          
+          # Install TypeScript globally for build
+          npm install -g typescript
+          
+          # Build the server
+          echo "Building server..."
           npm run build
-
-          # Verify the build output structure
+          
+          # Verify the build output
           echo "Build output structure:"
           find ../dist -type f | sort
-          echo "--- Contents of ../dist after build ---"
-          ls -F ../dist/
-          echo "--- Contents of ../dist/server after build ---"
-          ls -F ../dist/server/
-
-      - name: Run deployment script
-        working-directory: ./server
-        run: |
-          # Make the deployment script executable
-          chmod +x deploy.sh
-
-          # Run the deployment script
-          ./deploy.sh
-
-          # Verify the deployment package
-          echo "=== Verifying deployment package ==="
-          ls -la deploy/
-          echo "\n=== Contents of deploy/dist ==="
-          ls -la deploy/dist/
-          echo "\n=== Contents of deploy/dist/server ==="
-          ls -la deploy/dist/server/
-
-          # Create a zip file for deployment
-          cd deploy
+          
+          # Install production dependencies
+          echo "Installing production dependencies..."
+          npm ci --only=production
+          
+          # Create deployment directory
+          echo "Creating deployment package..."
+          mkdir -p deployment
+          
+          # Copy built files and production node_modules
+          cp -r dist deployment/
+          cp -r node_modules deployment/
+          cp package*.json deployment/
+          
+          # Create zip file
+          cd deployment
           zip -r ../deployment.zip .
           cd ..
-
-          # Show the zip file info
-          echo "\n=== Deployment package created ==="
+          
+          echo "Deployment package created:"
           ls -lh deployment.zip
-          echo "\nInstalled dependencies:"
-          npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
-
-      - name: Print SCM_DO_BUILD_DURING_DEPLOYMENT
-        run: 'echo "SCM_DO_BUILD_DURING_DEPLOYMENT: $SCM_DO_BUILD_DURING_DEPLOYMENT"'
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -204,7 +193,8 @@ jobs:
           app-name: 'excel-etl-backend-378680'
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server/deployment.zip
+          package: ./deployment.zip
+          enable-oryx-build: true
           
       - name: Configure Azure Web App Settings
         uses: azure/appservice-settings@v1
@@ -232,6 +222,16 @@ jobs:
                 "name": "WEBSITE_NODE_DEFAULT_VERSION",
                 "value": "20-lts",
                 "slotSetting": false
+              },
+              {
+                "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                "value": "1",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_RUN_FROM_PACKAGE",
+                "value": "0",
+                "slotSetting": false
               }
             ]
             
@@ -239,7 +239,11 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az webapp config set --resource-group IESR-DB --name excel-etl-backend-378680 --startup-file "node dist/server.js"
+            # Set the startup command to point to the correct server file
+            az webapp config set --resource-group IESR-DB --name excel-etl-backend-378680 --startup-file "node dist/server/src/server.js"
+            
+            # Restart the app to apply all settings
+            az webapp restart --name excel-etl-backend-378680 --resource-group IESR-DB
 
       - name: Verify deployment
         run: |
