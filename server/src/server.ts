@@ -12,16 +12,17 @@ import { initializeAzureServices } from './config/azure-services.js';
 
 // Import v2 routes
 import { createV2Router } from './routes/v2/index.js';
-
 import { createFieldsRouter } from './routes/fields.route.js';
 import { createApiKeyRouter } from './routes/apiKey.route.js';
 import authRoute from './routes/auth.route.js';
 
+// Middleware
 import { requireAuthOrApiKey } from './middleware/authMiddleware.js';
 import { authLogger, authErrorHandler } from './middleware/authLogger.js';
 import * as authMiddleware from './middleware/auth.js';
 import { logger, LogContext } from './utils/logger.js';
 
+// Repositories
 import { ApiKeyRepository } from './repositories/apiKeyRepository.js';
 import { ApiKeyUsageRepository } from './repositories/apiKeyUsageRepository.js';
 import type { AzureCosmosDB, AzureBlobStorage } from './types/azure.js';
@@ -92,9 +93,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
     windowMs: 15 * 60 * 1000, // 15 minutes in production
     max: 100, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again after 15 minutes',
-    keyGenerator: (req: Request) => {
-      return req.ip || 'unknown-ip';
-    },
+    keyGenerator: (req: Request) => req.ip || 'unknown-ip',
     handler: (req: Request, res: Response) => {
       res.setHeader('Retry-After', '900'); // 15 minutes
       res.status(429).json({
@@ -107,7 +106,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
     // Skip rate limiting for health check endpoints
     skip: (req: Request) => {
       const skipPaths = ['/api/health', '/api/auth/status'];
-      return skipPaths.some(path => req.path.startsWith(path));
+      return skipPaths.some(p => req.path.startsWith(p));
     }
   });
 
@@ -132,8 +131,8 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
 
   // Setup authentication middleware with required dependencies
   const authOrApiKeyMiddleware = requireAuthOrApiKey({
-    apiKeyRepository: apiKeyRepository,
-    apiKeyUsageRepository: apiKeyUsageRepository
+    apiKeyRepository,
+    apiKeyUsageRepository
   });
 
   // API v2 routes
@@ -144,7 +143,11 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
   app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
 
   // API Key routes (v2)
-  app.use('/api/v2/keys', authMiddleware.authenticateToken, authOrApiKeyMiddleware, createApiKeyRouter(azureServices));
+  app.use('/api/v2/keys', 
+    authMiddleware.authenticateToken, 
+    authOrApiKeyMiddleware, 
+    createApiKeyRouter(azureServices)
+  );
 
   // Auth route (v2)
   app.use('/api/v2/auth', authRoute);
@@ -185,7 +188,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
         path: req.path,
         status: res.statusCode,
         duration,
-        userId: req.user?.oid || 'anonymous',
+        userId: (req as any).user?.oid || 'anonymous',
       };
 
       if (res.statusCode >= 400) {
@@ -198,23 +201,23 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
     next();
   });
 
-  // Example of a protected route with role-based access
+  // Protected route example
   app.get('/api/protected', authMiddleware.authenticateToken, (req: Request, res: Response) => {
     res.json({
       message: 'This is a protected endpoint',
-      user: req.user,
+      user: (req as any).user,
     });
   });
 
   // Error handling middleware
   const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
     const logContext: LogContext = {
-      requestId: req.id,
+      requestId: (req as any).id || 'unknown',
       method: req.method,
       url: req.originalUrl,
       statusCode: 500,
       ip: req.ip,
-      userId: req.user?.oid || 'anonymous',
+      userId: (req as any).user?.oid || 'anonymous',
       error: {
         message: err.message,
         stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
@@ -227,7 +230,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
     res.status(500).json({
       success: false,
       error: 'Internal server error',
-      requestId: req.id
+      requestId: (req as any).id
     });
   };
 
@@ -241,6 +244,7 @@ function createApp(azureServices: { cosmosDb: AzureCosmosDB; blobStorage: AzureB
       message: 'The requested resource was not found.',
     });
   });
+
   return app;
 }
 
@@ -268,6 +272,7 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
     const wwwrootPath = path.resolve(process.cwd());
     console.log(`Resolved wwwroot path: ${wwwrootPath}`);
     console.log('Listing contents of wwwroot:');
+    
     try {
       const rootContents = fs.readdirSync(wwwrootPath);
       console.log(rootContents.join('\n'));
@@ -277,20 +282,31 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
 
     const distPath = path.resolve(process.cwd(), 'dist');
     console.log(`\nChecking for dist directory at: ${distPath}`);
+    
     if (fs.existsSync(distPath)) {
-        console.log('`dist` directory exists. Contents:');
+      console.log('`dist` directory exists. Contents:');
+      try {
         const distContents = fs.readdirSync(distPath);
         console.log(distContents.join('\n'));
+      } catch (e: any) {
+        console.error('Could not read dist directory:', e.message);
+      }
     } else {
-        console.log('`dist` directory NOT FOUND.');
+      console.log('`dist` directory NOT FOUND.');
     }
 
     const serverJsPath = path.resolve(process.cwd(), 'dist/server/src/server.js');
     console.log(`\nChecking for server entry file at: ${serverJsPath}`);
-    if (fs.existsSync(serverJsPath)) {
+    
+    try {
+      if (fs.existsSync(serverJsPath)) {
         console.log('✅ server.js entry file found.');
-    } else {
+        console.log(`File size: ${fs.statSync(serverJsPath).size} bytes`);
+      } else {
         console.log('❌ server.js entry file NOT FOUND.');
+      }
+    } catch (e: any) {
+      console.error('Error checking server entry file:', e.message);
     }
 
     console.log('\nEnvironment Variables:');
@@ -307,13 +323,12 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
 
     app = createApp(azureServices);
     
-    const expressApp = app;
-    if (!expressApp) {
-      throw new Error('Express app not initialized');
+    if (!app) {
+      throw new Error('Failed to create Express application');
     }
 
     return new Promise((resolve, reject) => {
-      const httpServer = expressApp.listen(port, () => {
+      const httpServer = app!.listen(port, () => {
         const address = httpServer.address();
         const serverAddress = typeof address === 'string' 
           ? address 
@@ -338,27 +353,22 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
         }
 
         switch (error.code) {
-          case 'EACCES': {
-            const eaccessError = new Error(`Port ${port} requires elevated privileges`);
-            logger.error(eaccessError.message);
-            reject(eaccessError);
+          case 'EACCES':
+            reject(new Error(`Port ${port} requires elevated privileges`));
             break;
-          }
-          case 'EADDRINUSE': {
-            const eaddrinuseError = new Error(`Port ${port} is already in use`);
-            logger.error(eaddrinuseError.message);
-            reject(eaddrinuseError);
+          case 'EADDRINUSE':
+            reject(new Error(`Port ${port} is already in use`));
             break;
-          }
-          default: {
-            logger.error('Server error:', error);
+          default:
             reject(error);
-          }
         }
       });
     });
   } catch (error: any) {
     console.error('❌ Failed to start server:', error.message);
+    if (error.stack) {
+      console.error(error.stack);
+    }
     throw error;
   }
 }
@@ -366,21 +376,21 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
 /**
  * Stop the Express server
  */
-function stopServer(): Promise<void> {
+async function stopServer(): Promise<void> {
+  if (!server) {
+    return Promise.resolve();
+  }
+
   return new Promise((resolve, reject) => {
-    if (server) {
-      server.close((err) => {
-        if (err) {
-          logger.error('Error stopping server:', err);
-          return reject(err);
-        }
-        logger.info('Server stopped gracefully');
-        server = null;
-        resolve();
-      });
-    } else {
+    server!.close((err) => {
+      if (err) {
+        logger.error('Error stopping server:', err);
+        return reject(err);
+      }
+      logger.info('Server stopped gracefully');
+      server = null;
       resolve();
-    }
+    });
   });
 }
 
@@ -402,11 +412,12 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Start the server if this file is run directly
 const isMainModule = () => {
-    const mainFile = process.argv[1];
-    const currentFile = fileURLToPath(import.meta.url);
-    return mainFile === currentFile;
-}
+  const mainFile = process.argv[1];
+  const currentFile = fileURLToPath(import.meta.url);
+  return mainFile === currentFile;
+};
 
+// Only start the server if this file is run directly
 if (isMainModule()) {
   (async () => {
     try {
@@ -419,124 +430,3 @@ if (isMainModule()) {
 }
 
 export { createApp, startServer, stopServer, app };
-    // Create Express app with initialized services
-    app = createApp(azureServices);
-    
-    // Start the HTTP server
-    const expressApp = app; // Create a local constant to help TypeScript with type narrowing
-    if (!expressApp) {
-      throw new Error('Express app not initialized');
-    }
-
-    return new Promise((resolve, reject) => {
-      const httpServer = expressApp.listen(port, () => {
-        const address = httpServer.address();
-        const serverAddress = typeof address === 'string' 
-          ? address 
-          : `http://${address?.address === '::' ? 'localhost' : address?.address}:${address?.port}`;
-          
-        logger.info('🚀 Server started successfully', {
-          address: serverAddress,
-          pid: process.pid,
-          uptime: process.uptime(),
-          memoryUsage: process.memoryUsage()
-        });
-        
-        console.log(`🚀 Server running at ${serverAddress} (PID: ${process.pid})`);
-        resolve(httpServer);
-      });
-      
-      httpServer.on('error', (error: NodeJS.ErrnoException) => {
-        if (error.syscall !== 'listen') {
-          logger.error('Server error:', error);
-          reject(error);
-          return;
-        }
-
-        // Handle specific listen errors with friendly messages
-        switch (error.code) {
-          case 'EACCES': {
-            const eaccessError = new Error(`Port ${port} requires elevated privileges`);
-            logger.error(eaccessError.message);
-            reject(eaccessError);
-            break;
-          }
-          case 'EADDRINUSE': {
-            const eaddrinuseError = new Error(`Port ${port} is already in use`);
-            logger.error(eaddrinuseError.message);
-            reject(eaddrinuseError);
-            break;
-          }
-          default: {
-            logger.error('Server error:', error);
-            reject(error);
-          }
-        }
-      });
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    throw error;
-  }
-}
-
-/**
- * Gracefully shut down the server
- */
-async function shutdown(signal: string): Promise<void> {
-  console.log(`\n${new Date().toISOString()} Received ${signal}. Shutting down gracefully...`);
-
-  try {
-    if (server) {
-      await new Promise<void>((resolve, reject) => {
-        server?.close((err) => {
-          if (err) {
-            console.error('Error closing server:', err);
-            reject(err);
-          } else {
-            console.log('HTTP server closed');
-            resolve();
-          }
-        });
-      });
-    }
-
-    console.log('Shutdown complete');
-    process.exit(0);
-  } catch (error) {
-    console.error('Error during shutdown:', error);
-    process.exit(1);
-  }
-}
-
-// Setup signal handlers for graceful shutdown
-process.on('SIGTERM', () => shutdown('SIGTERM').catch(console.error));
-process.on('SIGINT', () => shutdown('SIGINT').catch(console.error));
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Consider logging to an external service here
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  // Consider logging to an external service here
-  process.exit(1);
-});
-
-// Start the server if this file is run directly
-if (isMainModule) {
-  startServer()
-    .then((srv) => {
-      server = srv;
-    })
-    .catch((error) => {
-      console.error('Failed to start server:', error);
-      process.exit(1);
-    });
-}
-
-// Export the server instance and functions
-export { createApp, startServer, shutdown };

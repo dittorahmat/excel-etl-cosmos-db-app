@@ -119,7 +119,7 @@ jobs:
           VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
           VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
           VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE }}
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://exceletlfunc-jpnmx4ye.azurewebsites.net' }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net' }}
         run: |
           npm ci
           npm run build:client
@@ -136,7 +136,7 @@ jobs:
     needs: lint-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -144,30 +144,30 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         working-directory: ./server
         run: |
           npm ci
-          
+
       - name: Build server
         working-directory: ./server
         run: |
           npm run build
-          
+
           # Verify the build output structure
           echo "Build output structure:"
           find dist -type f | sort
-      
+
       - name: Run deployment script
         working-directory: ./server
         run: |
           # Make the deployment script executable
           chmod +x deploy.sh
-          
+
           # Run the deployment script
           ./deploy.sh
-          
+
           # Verify the deployment package
           echo "=== Verifying deployment package ==="
           ls -la deploy/
@@ -175,18 +175,18 @@ jobs:
           ls -la deploy/dist/
           echo "\n=== Contents of deploy/dist/server ==="
           ls -la deploy/dist/server/
-          
+
           # Create a zip file for deployment
           cd deploy
           zip -r ../deployment.zip .
           cd ..
-          
+
           # Show the zip file info
           echo "\n=== Deployment package created ==="
           ls -lh deployment.zip
           echo "\nInstalled dependencies:"
           npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
-      
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
@@ -194,7 +194,7 @@ jobs:
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./server/deployment.zip
-          
+
       - name: Verify deployment
         run: |
           echo "✅ Deployment completed successfully!"
