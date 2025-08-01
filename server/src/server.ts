@@ -436,10 +436,21 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
             reject(new Error(`Server startup timed out after 30 seconds`));
           }, 30000);
           
-          server = app!.listen(port, () => {
+          // Create a new server instance
+          if (!app) {
+            const error = new Error('Express application not initialized');
+            console.error('❌ Failed to start server:', error.message);
+            reject(error);
+            return;
+          }
+          
+          const httpServer = app.listen(port, () => {
             clearTimeout(startupTimeout);
             
-            const address = server?.address();
+            // Update the server variable after it's created
+            server = httpServer;
+            
+            const address = httpServer.address();
             const host = address && typeof address !== 'string' ? 
               `${address.address}:${address.port}` : 
               `port ${port}`;
@@ -480,8 +491,12 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
             console.log('\n✅ Server started successfully!');
             console.log('=== End of Startup Logs ===\n');
             
-            resolve(server);
+            // Resolve with the httpServer instance which is guaranteed to be defined here
+            resolve(httpServer);
           });
+          
+          // Assign the server to the module-level variable
+          server = httpServer;
           
           // Handle server errors
           server.on('error', (error: NodeJS.ErrnoException) => {
