@@ -205,6 +205,41 @@ jobs:
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./server/deployment.zip
+          
+      - name: Configure Azure Web App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: 'excel-etl-backend-378680'
+          slot-name: 'production'
+          app-settings-json: |
+            [
+              {
+                "name": "WEBSITES_PORT",
+                "value": "8181",
+                "slotSetting": false
+              },
+              {
+                "name": "PORT",
+                "value": "8181",
+                "slotSetting": false
+              },
+              {
+                "name": "NODE_ENV",
+                "value": "production",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                "value": "20-lts",
+                "slotSetting": false
+              }
+            ]
+            
+      - name: Configure Azure Web App Startup Command
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az webapp config set --resource-group IESR-DB --name excel-etl-backend-378680 --startup-file "node dist/server.js"
 
       - name: Verify deployment
         run: |
