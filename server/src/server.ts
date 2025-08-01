@@ -329,12 +329,13 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
 
     // Create Express app with initialized services
     app = createApp(azureServices);
+    
     // Start the HTTP server
     const expressApp = app; // Create a local constant to help TypeScript with type narrowing
     if (!expressApp) {
       throw new Error('Express app not initialized');
     }
-    
+
     return new Promise((resolve, reject) => {
       const httpServer = expressApp.listen(port, () => {
         const address = httpServer.address();
@@ -374,9 +375,10 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
             reject(eaddrinuseError);
             break;
           }
-          default:
+          default: {
             logger.error('Server error:', error);
             reject(error);
+          }
         }
       });
     });
