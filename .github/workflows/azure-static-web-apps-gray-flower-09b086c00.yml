@@ -161,11 +161,11 @@ jobs:
 
           # Verify the build output structure
           echo "Build output structure:"
-          find dist -type f | sort
-          echo "--- Contents of ./server/dist after build ---"
-          ls -F ./dist/
-          echo "--- Contents of ./server/dist/server after build ---"
-          ls -F ./dist/server/
+          find ../dist -type f | sort
+          echo "--- Contents of ../dist after build ---"
+          ls -F ../dist/
+          echo "--- Contents of ../dist/server after build ---"
+          ls -F ../dist/server/
 
       - name: Run deployment script
         working-directory: ./server
