@@ -9,6 +9,7 @@ Currently focused on resolving a persistent YAML syntax error in the GitHub Acti
 - Ensured all linting, type-checking, and tests pass, and the project builds successfully.
 - Attempted to fix a GitHub Actions workflow error related to `working-directory` and duplicate steps.
 - Attempted to fix a YAML syntax error in the GitHub Actions workflow file, specifically on line 60, by removing trailing spaces and re-indenting.
+- Resolved the `ERR_MODULE_NOT_FOUND` error for the `zod` package in Azure App Service by moving it from `devDependencies` to `dependencies` in `server/package.json` and updating its version.
 
 ## Important Patterns and Preferences
 - Strict adherence to linting and type-checking.
