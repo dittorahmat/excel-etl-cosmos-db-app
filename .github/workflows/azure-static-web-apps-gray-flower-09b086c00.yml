@@ -202,10 +202,23 @@ jobs:
             dependencies: (.dependencies + {
               "dotenv": "^16.4.4",
               "winston": "^3.11.0",
-              "jwks-rsa": "^3.0.1"
+              "jwks-rsa": "^3.0.1",
+              "express": "^4.18.2",
+              "cors": "^2.8.5",
+              "helmet": "^7.1.0",
+              "express-rate-limit": "^7.2.0",
+              "express-validator": "^7.0.1",
+              "jsonwebtoken": "^9.0.2",
+              "multer": "^1.4.5-lts.1"
             } | with_entries(select(.value != null))),
             private: true
           }' package.json > package.tmp.json && mv package.tmp.json package.json
+          
+          # Create a startup command file for Azure
+          echo '#!/bin/bash
+          echo "Starting application with PORT: $PORT"
+          node --enable-source-maps dist/server/src/server.js' > startup.sh
+          chmod +x startup.sh
           
           # Install production dependencies
           echo "=== Installing production dependencies ==="
@@ -268,6 +281,24 @@ jobs:
           # List all installed dependencies for debugging
           echo "\nInstalled dependencies:"
           npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
+      - name: Configure Azure App Service
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            # Set the startup command to use the PORT environment variable
+            az webapp config set --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+                                --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+                                --startup-file "node --enable-source-maps dist/server/src/server.js"
+            
+            # Set the Node.js version
+            az webapp config appsettings set --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+                                           --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+                                           --settings \
+                                             WEBSITE_NODE_DEFAULT_VERSION=20.19.1 \
+                                             NODE_ENV=production \
+                                             WEBSITE_RUN_FROM_PACKAGE=0 \
+                                             SCM_DO_BUILD_DURING_DEPLOYMENT=0
+      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
