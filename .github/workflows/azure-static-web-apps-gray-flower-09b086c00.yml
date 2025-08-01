@@ -148,7 +148,11 @@ jobs:
       - name: Install dependencies
         working-directory: ./server
         run: |
+          echo "--- Contents of ./server before npm ci ---"
+          ls -F ./
           npm ci
+          echo "--- Contents of ./server/node_modules after npm ci ---"
+          ls -F ./node_modules/
 
       - name: Build server
         working-directory: ./server
@@ -158,6 +162,10 @@ jobs:
           # Verify the build output structure
           echo "Build output structure:"
           find dist -type f | sort
+          echo "--- Contents of ./server/dist after build ---"
+          ls -F ./dist/
+          echo "--- Contents of ./server/dist/server after build ---"
+          ls -F ./dist/server/
 
       - name: Run deployment script
         working-directory: ./server
@@ -186,6 +194,9 @@ jobs:
           ls -lh deployment.zip
           echo "\nInstalled dependencies:"
           npm list --depth=0 --omit=dev || echo "Failed to list dependencies"
+
+      - name: Print SCM_DO_BUILD_DURING_DEPLOYMENT
+        run: echo "SCM_DO_BUILD_DURING_DEPLOYMENT: ${{ env.SCM_DO_BUILD_DURING_DEPLOYMENT }}"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
