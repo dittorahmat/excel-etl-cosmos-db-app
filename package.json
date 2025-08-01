@@ -15,7 +15,7 @@
     "preview": "vite preview",
     "dev:server": "NODE_ENV=development dotenv -e server/.env tsx watch server/src/server.ts",
     "debug:tsconfig": "tsc -p tsconfig.server.json --showConfig",
-    "build:server": "tsc -p tsconfig.server.json --skipLibCheck --skipDefaultLibCheck --noEmit false && npm run copy:test-script",
+    "build:server": "npm install --prefix server && tsc -p tsconfig.server.json --skipLibCheck --skipDefaultLibCheck --noEmit false && npm run copy:test-script",
     "copy:test-script": "mkdir -p dist/server/scripts && tsc server/scripts/test-cosmos-direct.ts --skipLibCheck --skipDefaultLibCheck --noEmit false --target es2020 --module es2020 --outDir dist/server/scripts --esModuleInterop true --resolveJsonModule true --moduleResolution node --typeRoots []",
     "start:server": "node dist/server/server.js",
     "dev": "concurrently \"npm:dev:client\" \"npm:dev:server\"",
