@@ -164,7 +164,7 @@ jobs:
           
           # Verify the build output
           echo "Build output structure:"
-          find ../dist -type f | sort
+          find dist -type f | sort
           
           # Install production dependencies
           echo "Installing production dependencies..."
@@ -179,13 +179,13 @@ jobs:
           cp -r node_modules deployment/
           cp package*.json deployment/
           
-          # Create zip file
+          # Create zip file from the deployment directory
           cd deployment
-          zip -r ../deployment.zip .
+          zip -r ../../deployment.zip .
           cd ..
           
           echo "Deployment package created:"
-          ls -lh deployment.zip
+          ls -lh ../../deployment.zip
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
