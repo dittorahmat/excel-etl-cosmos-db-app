@@ -4,6 +4,8 @@ A modern React dashboard application for uploading Excel files, visualizing data
 
 ## Features
 
+- **Dependency Fixes**: Resolved `ERR_MODULE_NOT_FOUND` for `zod` by moving it to production dependencies.
+
 - **Modern React Dashboard**: Built with Vite, TypeScript, and React 18 for a fast and responsive user experience.
 - **Secure Authentication**: Integrates Azure AD OAuth 2.0 with MSAL for robust user authentication and authorization. Supports both interactive (popup) and silent token acquisition.
 - **API Key Management**: Provides a dedicated frontend interface for users to securely generate, list, and revoke their API keys. Features include key naming, optional expiration dates, IP restrictions, and usage tracking.

@@ -68,8 +68,28 @@
     "typescript": "^5.2.2",
     "vite": "^5.0.12",
     "vite-tsconfig-paths": "^4.3.2",
-    "vitest": "^3.2.4",
-    "zod": "^3.22.4"
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "zod": "^4.0.14",
+    "@azure/cosmos": "^3.17.3",
+    "@azure/identity": "^4.1.0",
+    "@azure/storage-blob": "^12.17.0",
+    "core-util-is": "^1.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.4",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.2.0",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsbi": "^3.2.5",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
+    "multer": "^1.4.5-lts.1",
+    "node-abort-controller": "^3.1.1",
+    "universal-user-agent": "^6.0.1",
+    "uuid": "^9.0.1",
+    "winston": "^3.13.0"
   },
   "engines": {
     "node": ">=16.0.0"
