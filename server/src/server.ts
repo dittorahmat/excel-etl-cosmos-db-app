@@ -316,7 +316,7 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
         }
         console.log(`✓ ${pathToCheck} exists (${(stats.size / 1024).toFixed(2)} KB)`);
         return true;
-      } catch (error) {
+      } catch (_error) {
         console.error(`✗ ${pathToCheck} does not exist or is not accessible`);
         return false;
       }
@@ -426,10 +426,20 @@ async function startServer(port: number | string = getPort()): Promise<Server> {
             // Try to get the list of running processes using this port
             console.log('\nChecking for processes using this port...');
             try {
-              const { execSync } = require('child_process');
-              const result = execSync(`lsof -i :${port} || netstat -ano | findstr :${port}`, { stdio: 'pipe' });
-              console.log('Processes using this port:', result.toString());
-            } catch (e) {
+                    // Check for processes using the port
+              const checkPortProcesses = async () => {
+                try {
+                  const { execSync } = await import('child_process');
+                  const result = execSync(`lsof -i :${port} || netstat -ano | findstr :${port}`, { stdio: 'pipe' });
+                  console.log('Processes using this port:', result.toString());
+                } catch (_error: unknown) {
+                  console.log('Could not check for processes using the port');
+                }
+              };
+              
+              // Run the check without using top-level await
+              checkPortProcesses().catch(console.error);
+            } catch (_error: unknown) {
               console.log('Could not check for processes using the port');
             }
             
