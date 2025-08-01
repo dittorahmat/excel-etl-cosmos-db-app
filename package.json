@@ -20,7 +20,7 @@
     "start:server": "node dist/server/server.js",
     "dev": "concurrently \"npm:dev:client\" \"npm:dev:server\"",
     "build": "npm run build:client && npm run build:server",
-    "start": "node dist/server/src/server.js",
+    "start": "node start-server.js",
     "test": "npm run test:server && npm run test:client",
     "test:watch": "vitest --config vitest.optimized.config.ts watch",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
