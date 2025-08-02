@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, 'server');
 
 export default defineConfig({
   cacheDir: './node_modules/.vite',
@@ -14,8 +15,11 @@ export default defineConfig({
     typecheck: {
       include: ['**/*.test.ts'],
     },
-    
-    include: ['server/test/**/*.test.{js,ts}'],
+    root: root,
+    include: [
+      path.join(root, 'test/**/*.test.{js,ts}'),
+      path.join(root, '**/test/**/*.test.{js,ts}')
+    ],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -24,7 +28,7 @@ export default defineConfig({
       'vitest.setup.ts'
     ],
     
-    setupFiles: ['./server/test/setup.ts'],
+    setupFiles: [path.join(root, 'test/setup.ts')],
     
     environmentOptions: {
       NODE_ENV: 'test',
@@ -45,12 +49,7 @@ export default defineConfig({
     update: false,
     watch: false,
     
-    reporters: [
-      'default',
-      ['vitest-sonar-reporter', {
-        outputFile: 'test-results/sonar-report.xml'
-      }]
-    ],
+    reporters: ['default'],
     
     coverage: {
       enabled: true,

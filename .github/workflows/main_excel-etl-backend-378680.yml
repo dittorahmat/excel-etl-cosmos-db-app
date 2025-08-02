@@ -7,43 +7,114 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/main_excel-etl-backend-378680.yml'
   workflow_dispatch:
 
+env:
+  NODE_VERSION: '20.x'
+  AZURE_WEBAPP_NAME: 'excel-etl-backend-378680'
+  AZURE_WEBAPP_PACKAGE_PATH: 'server/.'
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'IESR-DB' }}
+
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20.x'
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: .
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
+    environment: production
     
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-      
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'excel-etl-backend-378680'
-          slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_02EACE2AFDA846C1B06636A2CC2FF43D }}
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      working-directory: server
+      run: |
+        npm ci
+        
+    - name: Build the app
+      working-directory: server
+      run: |
+        npm run build
+        
+    - name: Run linting
+      working-directory: server
+      run: npm run lint
+        
+    - name: Run tests
+      working-directory: server
+      env:
+        NODE_ENV: test
+        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
+      run: |
+        npm test
+        
+    - name: Run Cosmos DB connection test
+      working-directory: server
+      env:
+        NODE_OPTIONS: --experimental-vm-modules
+        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
+      run: |
+        echo "Testing Cosmos DB connection..."
+        npx tsx scripts/test-cosmos-direct.ts
+        
+    - name: Install production dependencies
+      working-directory: server
+      run: |
+        npm ci --omit=dev
+        
+    - name: Create deployment artifact
+      run: |
+        mkdir -p deployment
+        cp -r server/package*.json server/dist deployment/
+        cp -r server/node_modules deployment/
+        
+    - name: Upload artifact for deployment
+      uses: actions/upload-artifact@v4
+      with:
+        name: node-app
+        path: deployment
+        retention-days: 1
+
+  deploy:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v4
+      with:
+        name: node-app
+        
+    - name: 'Deploy to Azure Web App'
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        slot-name: 'Production'
+        package: .
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        
+    - name: Verify deployment
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo ""
+        echo "Your app should be available at: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+        echo ""
+        echo "If you encounter any issues, please check:"
+        echo "1. The GitHub Actions workflow logs"
+        echo "2. The Azure App Service logs in the Azure Portal"
