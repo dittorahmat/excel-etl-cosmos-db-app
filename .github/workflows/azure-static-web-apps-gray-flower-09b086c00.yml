@@ -173,9 +173,19 @@ jobs:
           echo "Installing dependencies..."
           npm ci
           
-          # Build the project
+          # Verify TypeScript is available
+          echo "TypeScript version:"
+          npx tsc --version || echo "TypeScript not found, installing..."
+          
+          # Install TypeScript globally in the runner if not found
+          if ! command -v tsc &> /dev/null; then
+            echo "Installing TypeScript globally..."
+            npm install -g typescript
+          fi
+          
+          # Build the project using the local TypeScript from node_modules
           echo "Building server..."
-          npx tsc --outDir ./dist
+          ./node_modules/.bin/tsc --outDir ./dist
           
           # Verify the build output
           echo "Build output structure:"
