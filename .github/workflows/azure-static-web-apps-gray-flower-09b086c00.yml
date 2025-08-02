@@ -1,360 +1,72 @@
-name: CI/CD Pipeline
+name: Deploy Frontend to Azure Static Web App
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
-  id-token: write
-  deployments: write
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend-deploy.yml'
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20'
-  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-  AZURE_STATIC_WEB_APP_NAME: ${{ secrets.AZURE_STATIC_WEB_APP_NAME || '' }}
-  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'IESR-DB' }}
+  AZURE_STATIC_WEB_APP_NAME: 'gray-flower-09b086c00'
+  API_BASE_URL: 'https://excel-etl-backend-378680.azurewebsites.net'
 
 jobs:
-  lint-and-test:
-    name: Lint and Test
+  build-and-deploy:
+    name: Build and Deploy Frontend
     runs-on: ubuntu-latest
-
+    environment: production
+    
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
 
-    - name: Use Node.js ${{ env.NODE_VERSION }}
+    - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
     - name: Install dependencies
-      run: |
-        npm ci --include=dev
-        npx tsc --version
-        npx eslint --version
+      run: npm ci
 
-    - name: Build server
-      run: |
-        # Build the server
-        npm run build:server
-        # Verify the build output structure
-        echo "Build output structure:"
-        find dist -type f | sort
-
-    - name: Verify build output
-      run: |
-        echo -e "\nChecking for Cosmos DB test script..."
-        if [ -f "server/scripts/test-cosmos-direct.ts" ]; then
-          echo "✅ Found TypeScript Cosmos DB direct test script"
-          ls -la server/scripts/
-        else
-          echo "❌ Cosmos DB direct test script not found"
-          exit 1
-        fi
-
-    - name: Run Cosmos DB connection test
-      working-directory: .
+    - name: Build frontend
       env:
-        NODE_OPTIONS: --experimental-vm-modules
-        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
-        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
-        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
-        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || env.API_BASE_URL }}
+        VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+        VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+        VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
+        VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE }}
       run: |
-        echo "Testing Cosmos DB connection..."
-        echo "- COSMOS_ENDPOINT: ${COSMOS_ENDPOINT:-Not set}"
-        echo "- COSMOS_DATABASE: ${COSMOS_DATABASE:-Not set}"
-        echo "- COSMOS_CONTAINER: ${COSMOS_CONTAINER:-Not set}"
-        echo "- COSMOS_KEY: ${COSMOS_KEY:+set (hidden for security)}"
+        npm run build:client
+        echo "Build output:"
+        ls -la dist
 
-        # Check for required environment variables
-        if [ -z "$COSMOS_ENDPOINT" ] || [ -z "$COSMOS_KEY" ]; then
-          echo "::error::Missing required environment variables: COSMOS_ENDPOINT and/or COSMOS_KEY"
-          exit 1
-        fi
-
-        # Run the TypeScript test script directly
-        echo -e "\nRunning TypeScript Cosmos DB direct connection test..."
-        npx tsx server/scripts/test-cosmos-direct.ts
-
-    - name: Lint codebase
-      working-directory: ./
-      run: npm run lint
-
-    - name: Run frontend tests
-      working-directory: ./
-      run: npm run test:client
-
-    - name: Run backend tests
-      working-directory: ./
-      run: npm run test:server
-
-    - name: Upload test coverage
-      uses: codecov/codecov-action@v4
-      if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    - name: Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage/coverage-final.json,./server/coverage/coverage-final.json
-        fail_ci_if_error: false
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "/"
+        app_build_command: "npm run build:client"
+        output_location: "dist"
 
-  deploy-frontend:
-    name: Deploy Frontend to Static Web App
-    needs: lint-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - name: Install and Build Frontend
-        env:
-          VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
-          VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
-          VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
-          VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE }}
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net' }}
-        run: |
-          npm ci
-          npm run build:client
-      - name: Deploy to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "dist"
-
-  deploy-backend:
-    name: Deploy Backend to App Service
-    needs: lint-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install build dependencies
-        working-directory: ./server
-        run: |
-          # Clean up first
-          echo "=== Cleaning up previous installations ==="
-          rm -rf node_modules package-lock.json
-
-          # Install TypeScript globally as a workaround
-          echo -e "\n=== Installing TypeScript globally ==="
-          npm install -g typescript@latest
-
-          # Install all dependencies including devDependencies
-          echo -e "\n=== Installing all dependencies ==="
-          npm install --include=dev
-
-          # Verify TypeScript installation
-          echo -e "\n=== Verifying TypeScript installation ==="
-          echo "Global TypeScript version:"
-          tsc --version || echo "Global TypeScript not found"
-
-          echo -e "\nLocal TypeScript version:"
-          npx tsc --version || echo "Local TypeScript not found"
-
-          # Ensure TypeScript is available in node_modules/.bin
-          if ! command -v tsc &> /dev/null; then
-            echo "TypeScript not found in PATH, installing locally..."
-            npm install --save-dev typescript
-          fi
-
-          # Verify tsc is available
-          echo -e "\n=== Verifying tsc availability ==="
-          npx tsc --version || (echo "Failed to verify TypeScript installation" && exit 1)
-
-      - name: Build and package server
-        working-directory: ./server
-        env:
-          NODE_ENV: production
-        run: |
-          # Debug: Show environment info
-          echo "=== Environment Information ==="
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          echo "Current directory: $(pwd)"
-
-          # Clean previous builds
-          echo -e "\n=== Cleaning previous builds ==="
-          rm -rf dist deployment
-
-          # Verify TypeScript is available
-          echo -e "\n=== Verifying TypeScript ==="
-          echo "TypeScript binary path:"
-          which tsc || echo "tsc not in PATH"
-          echo -e "\nNode modules TypeScript:"
-          ls -l node_modules/.bin/tsc || echo "No TypeScript binary in node_modules"
-
-          # Build using globally installed TypeScript
-          echo -e "\n=== Building with TypeScript ==="
-          echo "Building with: tsc --outDir ./dist --diagnostics"
-          tsc --outDir ./dist --diagnostics || {
-            echo "Build failed with TypeScript"
-            exit 1
-          }
-
-          # Verify build output
-          echo -e "\n=== Build output ==="
-          echo "Build output structure:"
-          find dist -type f | sort || {
-            echo "No build output found"
-            exit 1
-          }
-
-          # Create deployment package
-          echo -e "\n=== Creating deployment package ==="
-          mkdir -p deployment
-
-          # Copy built files
-          echo "Copying build output..."
-          cp -r dist deployment/
-
-          # Copy package files
-          echo "Copying package files..."
-          cp package*.json deployment/
-
-          # Install production dependencies
-          echo -e "\n=== Installing production dependencies ==="
-          cd deployment
-          # Use npm install with --omit=dev since we don't have package-lock.json here
-          npm install --omit=dev
-
-          # Install only production dependencies
-          npm install --omit=dev
-          
-          # Create zip file with proper path structure
-          echo -e "\n=== Creating deployment zip ==="
-          cd ..  # Back to server directory
-          
-          # Debug: Show current directory and contents
-          echo "Current directory: $(pwd)"
-          echo "Contents of current directory:"
-          ls -la
-          
-          # Create zip file from the deployment directory contents
-          echo -e "\nCreating zip file..."
-          cd deployment
-          zip -r ../deployment.zip .
-          cd ..
-          
-          # Verify the zip file was created
-          echo -e "\n=== Verification ==="
-          echo "Current directory: $(pwd)"
-          echo -e "\nFiles in current directory:"
-          ls -la
-          
-          # Check if zip file exists and show its details
-          if [ -f "deployment.zip" ]; then
-            echo -e "\n✅ deployment.zip created successfully"
-            echo -e "File details:"
-            ls -lh deployment.zip
-            
-            # Show first 20 files in zip
-            echo -e "\nFirst 20 files in deployment.zip:"
-            unzip -l deployment.zip | head -20
-            
-            # Show full path for verification
-            echo -e "\nFull path to zip file: $(pwd)/deployment.zip"
-          else
-            echo -e "\n❌ ERROR: deployment.zip was not created!"
-            echo "Current directory contents:"
-            ls -la
-            exit 1
-          fi
-
-      - name: Debug before deployment
-        run: |
-          echo "=== Debug: Before Deployment ==="
-          echo "Current directory: $(pwd)"
-          echo -e "\nFiles in current directory:"
-          ls -la
-          
-          # Check for zip in multiple locations
-          echo -e "\nChecking for deployment zip files..."
-          ZIP_FOUND=0
-          
-          # Check in current directory
-          if [ -f "deployment.zip" ]; then
-            echo "✅ Found deployment.zip in current directory"
-            echo "File details:"
-            ls -lh deployment.zip
-            echo -e "\nFull path: $(pwd)/deployment.zip"
-            ZIP_FOUND=1
-          fi
-          
-          # Check in server directory
-          if [ -f "server/deployment.zip" ]; then
-            echo "✅ Found server/deployment.zip"
-            echo "File details:"
-            ls -lh server/deployment.zip
-            echo -e "\nFull path: $(pwd)/server/deployment.zip"
-            ZIP_FOUND=1
-          fi
-          
-          # If no zip found, search the entire workspace
-          if [ "$ZIP_FOUND" -eq 0 ]; then
-            echo "❌ No deployment.zip found in common locations"
-            echo -e "\nSearching for zip files in workspace..."
-            find . -name "*.zip" -type f | while read -r f; do
-              echo "Found zip file: $f"
-              ls -lh "$f"
-            done
-            exit 1
-          fi
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'excel-etl-backend-378680'
-          slot-name: 'production'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ${{ github.workspace }}/server/deployment.zip
-
-      - name: Verify deployment
-        run: |
-          echo "✅ Deployment completed successfully!"
-          echo ""
-          echo "1. Go to Azure Portal -> Your App Service -> Configuration"
-          echo "2. Under 'Application settings', add/update these settings:"
-          echo "   - WEBSITE_RUN_FROM_PACKAGE = 1"
-          echo "   - SCM_DO_BUILD_DURING_DEPLOYMENT = 0"
-          echo "   - NODE_ENV = production"
-          echo "   - PORT = 8080"
-          echo "   - AUTH_ENABLED = true"
-          echo "   - AZURE_COSMOS_ENDPOINT = [Your Cosmos DB Endpoint]"
-          echo "   - AZURE_COSMOS_KEY = [Your Cosmos DB Key]"
-          echo "   - AZURE_COSMOS_DATABASE = [Your Database Name]"
-          echo "   - AZURE_COSMOS_CONTAINER = [Your Container Name]"
-          echo "   - AZURE_STORAGE_CONNECTION_STRING = [Your Storage Connection String]"
-          echo "   - AZURE_STORAGE_CONTAINER = excel-uploads"
-          echo "   - ALLOWED_ORIGINS = https://gray-flower-09b086c00.6.azurestaticapps.net,http://localhost:3000,http://localhost:5173"
-          echo "   - FILE_SIZE_LIMIT = 10485760"
-          echo "   - LOG_LEVEL = info"
-          echo ""
-          echo "3. Under 'Configuration' -> 'General settings':"
-          echo "   - Set 'Startup Command' to: node --require source-map-support/register dist/server/src/server.js"
-          echo "   - Set 'Node version' to: 20-lts"
-          echo "   - Set 'WEBSITE_RUN_FROM_PACKAGE' to: 1"
-          echo ""
-          echo "4. Save the settings and restart your app"
-          echo ""
-          echo "🌐 Your app should now be available at: https://excel-etl-backend-378680.azurewebsites.net"
-          echo "🔍 If you still see issues, check the logs in Azure Portal -> App Service -> Log stream"
+    - name: Verify deployment
+      run: |
+        echo "✅ Frontend deployment completed successfully!"
+        echo ""
+        echo "Your app should be available at: https://${{ env.AZURE_STATIC_WEB_APP_NAME }}.6.azurestaticapps.net"
+        echo ""
+        echo "If you encounter any issues, please check:"
+        echo "1. The GitHub Actions workflow logs"
+        echo "2. The Azure Static Web App logs in the Azure Portal"
