@@ -237,14 +237,19 @@ jobs:
           # Use npm install with --omit=dev since we don't have package-lock.json here
           npm install --omit=dev
 
-          # Set up start command for Azure
-          echo -e "\n=== Configuring Azure startup ==="
-          echo '{"scripts": {"start": "node dist/server/src/server.js"}}' > package.json
-
-          # Create zip file
-          cd ..
+          # Create deployment package
           echo -e "\n=== Creating deployment package ==="
-          zip -r ../deployment.zip deployment/*
+          cd deployment
+          
+          # Ensure package.json has the correct start script
+          if [ -f "package.json" ]; then
+            echo "Updating start script in package.json"
+            jq '.scripts.start = "node --require source-map-support/register dist/server/src/server.js"' package.json > package.tmp.json && mv package.tmp.json package.json
+          fi
+          
+          # Create zip file with proper path structure
+          echo -e "\n=== Creating deployment zip ==="
+          zip -r ../deployment.zip *
 
           echo -e "\n=== Deployment package created ==="
           ls -lh ../deployment.zip
@@ -279,9 +284,11 @@ jobs:
           echo "   - LOG_LEVEL = info"
           echo ""
           echo "3. Under 'Configuration' -> 'General settings':"
-          echo "   - Set 'Startup Command' to: node dist/server.js"
+          echo "   - Set 'Startup Command' to: node --require source-map-support/register dist/server/src/server.js"
           echo "   - Set 'Node version' to: 20-lts"
+          echo "   - Set 'WEBSITE_RUN_FROM_PACKAGE' to: 1"
           echo ""
           echo "4. Save the settings and restart your app"
           echo ""
           echo "🌐 Your app should now be available at: https://excel-etl-backend-378680.azurewebsites.net"
+          echo "🔍 If you still see issues, check the logs in Azure Portal -> App Service -> Log stream"

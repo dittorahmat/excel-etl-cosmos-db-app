@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, 'server', '.env') });
 
 // Import the server from the built files
-import('./dist/server/server/src/server.js')
+import('./dist/server/src/server.js')
   .then(({ startServer }) => {
     // Start the server
     return startServer();
