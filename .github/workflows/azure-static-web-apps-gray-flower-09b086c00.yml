@@ -155,26 +155,31 @@ jobs:
           echo "=== Cleaning up previous installations ==="
           rm -rf node_modules package-lock.json
           
+          # Install TypeScript globally as a workaround
+          echo -e "\n=== Installing TypeScript globally ==="
+          npm install -g typescript@latest
+          
           # Install all dependencies including devDependencies
           echo -e "\n=== Installing all dependencies ==="
           npm install --include=dev
           
           # Verify TypeScript installation
           echo -e "\n=== Verifying TypeScript installation ==="
-          echo "Node modules bin contents:"
-          ls -la node_modules/.bin/ || echo "No .bin directory found"
-          echo -e "\nTypeScript package:"
-          npm list typescript || echo "TypeScript not found"
+          echo "Global TypeScript version:"
+          tsc --version || echo "Global TypeScript not found"
           
-          # Verify we can run tsc
-          echo -e "\n=== Testing TypeScript execution ==="
-          if [ -f "node_modules/typescript/bin/tsc" ]; then
-            echo "Running TypeScript from node_modules/typescript/bin/tsc"
-            node node_modules/typescript/bin/tsc --version || echo "Failed to run TypeScript"
-          else
-            echo "TypeScript binary not found in expected location"
-            exit 1
+          echo -e "\nLocal TypeScript version:"
+          npx tsc --version || echo "Local TypeScript not found"
+          
+          # Ensure TypeScript is available in node_modules/.bin
+          if ! command -v tsc &> /dev/null; then
+            echo "TypeScript not found in PATH, installing locally..."
+            npm install --save-dev typescript
           fi
+          
+          # Verify tsc is available
+          echo -e "\n=== Verifying tsc availability ==="
+          npx tsc --version || (echo "Failed to verify TypeScript installation" && exit 1)
           
       - name: Build and package server
         working-directory: ./server
@@ -198,18 +203,13 @@ jobs:
           echo -e "\nNode modules TypeScript:"
           ls -l node_modules/.bin/tsc || echo "No TypeScript binary in node_modules"
           
-          # Build using direct path to TypeScript
+          # Build using globally installed TypeScript
           echo -e "\n=== Building with TypeScript ==="
-          if [ -f "node_modules/typescript/bin/tsc" ]; then
-            echo "Building with: node node_modules/typescript/bin/tsc --outDir ./dist"
-            node node_modules/typescript/bin/tsc --outDir ./dist --diagnostics || {
-              echo "Build failed with direct TypeScript path"
-              exit 1
-            }
-          else
-            echo "Error: TypeScript compiler not found in node_modules"
+          echo "Building with: tsc --outDir ./dist --diagnostics"
+          tsc --outDir ./dist --diagnostics || {
+            echo "Build failed with TypeScript"
             exit 1
-          fi
+          }
           
           # Verify build output
           echo -e "\n=== Build output ==="
