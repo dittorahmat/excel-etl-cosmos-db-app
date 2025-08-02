@@ -267,10 +267,17 @@ jobs:
           # Create zip file with proper path structure
           echo -e "\n=== Creating deployment zip ==="
           cd ..
-          zip -r deployment.zip deployment/*
-
+          
+          # Create zip file in the current directory
+          zip -r deployment.zip deployment
+          
+          # Verify the zip file was created
           echo -e "\n=== Deployment package created ==="
-          ls -lh ../deployment.zip
+          ls -lh deployment.zip
+          
+          # List contents to verify
+          echo -e "\n=== Deployment package contents ==="
+          unzip -l deployment.zip | head -20
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -278,7 +285,7 @@ jobs:
           app-name: 'excel-etl-backend-378680'
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./deployment.zip
+          package: deployment.zip
 
       - name: Verify deployment
         run: |
