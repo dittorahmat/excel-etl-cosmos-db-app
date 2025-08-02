@@ -35,14 +35,19 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    - name: Install all dependencies
+    - name: Install root dependencies
+      run: |
+        npm ci --include=dev
+        
+    - name: Install server dependencies
       working-directory: server
       run: |
         npm ci --include=dev
         
     - name: Run linting
       working-directory: server
-      run: npm run lint
+      run: |
+        npm run lint
         
     - name: Run type checking
       working-directory: server
