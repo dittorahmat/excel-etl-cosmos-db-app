@@ -148,14 +148,24 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Build and package server
+      - name: Install build dependencies
+        working-directory: ./server
+        run: |
+          # Install production dependencies first
+          npm ci --production=false
+          
+          # Install TypeScript and required type definitions
+          echo "Installing TypeScript and type definitions..."
+          npm install --save-dev typescript @types/node @types/uuid @types/cors @types/multer @types/express @types/xlsx @types/node-fetch
+          
+          # Verify TypeScript installation
+          npx tsc --version
+          
+      - name: Build server
         working-directory: ./server
         env:
           NODE_ENV: production
         run: |
-          # Install dependencies
-          npm ci
-          
           # Build the project
           echo "Building server..."
           npm run build
