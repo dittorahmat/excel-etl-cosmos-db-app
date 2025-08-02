@@ -166,53 +166,85 @@ jobs:
         env:
           NODE_ENV: production
         run: |
+          # Debug: Show environment info
+          echo "=== Debug Information ==="
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          
+          # Debug: Show package.json
+          echo -e "\n=== package.json ==="
+          cat package.json
+          
           # Clean any previous builds
+          echo -e "\n=== Cleaning previous builds ==="
           rm -rf dist deployment
           
           # Install all dependencies including devDependencies for building
-          echo "Installing dependencies..."
+          echo -e "\n=== Installing dependencies ==="
           npm ci
           
-          # Verify TypeScript is available
-          echo "TypeScript version:"
-          npx tsc --version || echo "TypeScript not found, installing..."
+          # Debug: Verify TypeScript installation
+          echo -e "\n=== TypeScript Check ==="
+          echo "Node modules directory contents:"
+          ls -la node_modules/
+          echo -e "\nTypeScript in package.json: $(grep '"typescript"' package.json || echo 'Not found')"
+          echo -e "\nLocal TypeScript version:"
+          ./node_modules/.bin/tsc --version || echo "Local tsc not found"
+          echo -e "\nGlobal TypeScript version:"
+          npx tsc --version || echo "npx tsc not found"
           
-          # Install TypeScript globally in the runner if not found
-          if ! command -v tsc &> /dev/null; then
-            echo "Installing TypeScript globally..."
-            npm install -g typescript
+          # Install TypeScript if not found
+          if ! [ -f "./node_modules/.bin/tsc" ]; then
+            echo -e "\n=== Installing TypeScript locally ==="
+            npm install --save-dev typescript
           fi
           
-          # Build the project using the local TypeScript from node_modules
-          echo "Building server..."
-          ./node_modules/.bin/tsc --outDir ./dist
+          # Build the project
+          echo -e "\n=== Building server ==="
+          echo "Running: npx tsc --outDir ./dist"
+          npx tsc --outDir ./dist || {
+            echo "Build failed. Node modules content:"
+            ls -la node_modules/
+            echo -e "\nTypeScript files in node_modules:"
+            find node_modules -name 'tsc' -o -name 'typescript'
+            exit 1
+          }
           
           # Verify the build output
+          echo -e "\n=== Build output ==="
           echo "Build output structure:"
-          find dist -type f | sort
+          find dist -type f | sort || echo "No build output found"
           
           # Create deployment directory
-          echo "Creating deployment package..."
+          echo -e "\n=== Creating deployment package ==="
           mkdir -p deployment
           
-          # Copy built files (only the dist directory and necessary files)
+          # Copy built files
+          echo "Copying build output..."
           cp -r dist deployment/
           
-          # Copy only production dependencies
+          # Copy package files
+          echo "Copying package files..."
           cp package*.json deployment/
           
-          # Install only production dependencies in deployment directory
+          # Install production dependencies
+          echo -e "\nInstalling production dependencies..."
           cd deployment
           npm ci --only=production
           
-          # Create a proper start command file for Azure
+          # Set up start command for Azure
+          echo -e "\n=== Configuring Azure startup ==="
           echo '{"scripts": {"start": "node dist/server/src/server.js"}}' > package.json
           
           # Create zip file
           cd ..
+          echo -e "\n=== Creating deployment package ==="
           zip -r ../deployment.zip deployment/*
           
-          echo "Deployment package created:"
+          echo -e "\n=== Deployment package created ==="
           ls -lh ../deployment.zip
 
       - name: Deploy to Azure Web App
