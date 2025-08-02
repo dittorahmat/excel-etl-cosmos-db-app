@@ -154,33 +154,33 @@ jobs:
           # Clean up first
           echo "=== Cleaning up previous installations ==="
           rm -rf node_modules package-lock.json
-          
+
           # Install TypeScript globally as a workaround
           echo -e "\n=== Installing TypeScript globally ==="
           npm install -g typescript@latest
-          
+
           # Install all dependencies including devDependencies
           echo -e "\n=== Installing all dependencies ==="
           npm install --include=dev
-          
+
           # Verify TypeScript installation
           echo -e "\n=== Verifying TypeScript installation ==="
           echo "Global TypeScript version:"
           tsc --version || echo "Global TypeScript not found"
-          
+
           echo -e "\nLocal TypeScript version:"
           npx tsc --version || echo "Local TypeScript not found"
-          
+
           # Ensure TypeScript is available in node_modules/.bin
           if ! command -v tsc &> /dev/null; then
             echo "TypeScript not found in PATH, installing locally..."
             npm install --save-dev typescript
           fi
-          
+
           # Verify tsc is available
           echo -e "\n=== Verifying tsc availability ==="
           npx tsc --version || (echo "Failed to verify TypeScript installation" && exit 1)
-          
+
       - name: Build and package server
         working-directory: ./server
         env:
@@ -191,18 +191,18 @@ jobs:
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
           echo "Current directory: $(pwd)"
-          
+
           # Clean previous builds
           echo -e "\n=== Cleaning previous builds ==="
           rm -rf dist deployment
-          
+
           # Verify TypeScript is available
           echo -e "\n=== Verifying TypeScript ==="
           echo "TypeScript binary path:"
           which tsc || echo "tsc not in PATH"
           echo -e "\nNode modules TypeScript:"
           ls -l node_modules/.bin/tsc || echo "No TypeScript binary in node_modules"
-          
+
           # Build using globally installed TypeScript
           echo -e "\n=== Building with TypeScript ==="
           echo "Building with: tsc --outDir ./dist --diagnostics"
@@ -210,7 +210,7 @@ jobs:
             echo "Build failed with TypeScript"
             exit 1
           }
-          
+
           # Verify build output
           echo -e "\n=== Build output ==="
           echo "Build output structure:"
@@ -218,34 +218,34 @@ jobs:
             echo "No build output found"
             exit 1
           }
-          
+
           # Create deployment package
           echo -e "\n=== Creating deployment package ==="
           mkdir -p deployment
-          
+
           # Copy built files
           echo "Copying build output..."
           cp -r dist deployment/
-          
+
           # Copy package files
           echo "Copying package files..."
           cp package*.json deployment/
-          
+
           # Install production dependencies
           echo -e "\n=== Installing production dependencies ==="
           cd deployment
           # Use npm install with --omit=dev since we don't have package-lock.json here
           npm install --omit=dev
-          
+
           # Set up start command for Azure
           echo -e "\n=== Configuring Azure startup ==="
           echo '{"scripts": {"start": "node dist/server/src/server.js"}}' > package.json
-          
+
           # Create zip file
           cd ..
           echo -e "\n=== Creating deployment package ==="
           zip -r ../deployment.zip deployment/*
-          
+
           echo -e "\n=== Deployment package created ==="
           ls -lh ../deployment.zip
 
@@ -256,34 +256,6 @@ jobs:
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./deployment.zip
-          # Set the startup command directly to avoid Oryx build
-          startup-command: 'node dist/server/src/server.js'
-
-      - name: Configure Azure Web App
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            # Configure app settings for production
-            az webapp config appsettings set \
-              --name excel-etl-backend-378680 \
-              --resource-group IESR-DB \
-              --settings \
-                WEBSITES_PORT=8181 \
-                PORT=8181 \
-                NODE_ENV=production \
-                WEBSITE_NODE_DEFAULT_VERSION=~20 \
-                WEBSITE_RUN_FROM_PACKAGE=1
-                
-            # Set the startup command
-            az webapp config set \
-              --name excel-etl-backend-378680 \
-              --resource-group IESR-DB \
-              --startup-file "node dist/server/src/server.js"
-            
-            # Restart the app to apply all settings
-            az webapp restart \
-              --name excel-etl-backend-378680 \
-              --resource-group IESR-DB
 
       - name: Verify deployment
         run: |
@@ -291,8 +263,8 @@ jobs:
           echo ""
           echo "1. Go to Azure Portal -> Your App Service -> Configuration"
           echo "2. Under 'Application settings', add/update these settings:"
-          echo "   - WEBSITE_RUN_FROM_PACKAGE = 0"
-          echo "   - SCM_DO_BUILD_DURING_DEPLOYMENT = 1"
+          echo "   - WEBSITE_RUN_FROM_PACKAGE = 1"
+          echo "   - SCM_DO_BUILD_DURING_DEPLOYMENT = 0"
           echo "   - NODE_ENV = production"
           echo "   - PORT = 8080"
           echo "   - AUTH_ENABLED = true"
