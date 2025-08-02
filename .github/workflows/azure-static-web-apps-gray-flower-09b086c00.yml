@@ -234,7 +234,8 @@ jobs:
           # Install production dependencies
           echo -e "\n=== Installing production dependencies ==="
           cd deployment
-          npm ci --only=production
+          # Use npm install with --omit=dev since we don't have package-lock.json here
+          npm install --omit=dev
           
           # Set up start command for Azure
           echo -e "\n=== Configuring Azure startup ==="
