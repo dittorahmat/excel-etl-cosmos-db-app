@@ -237,53 +237,28 @@ jobs:
           # Use npm install with --omit=dev since we don't have package-lock.json here
           npm install --omit=dev
 
-          # Create deployment package
-          echo -e "\n=== Creating deployment package ==="
-          
-          # Create deployment directory if it doesn't exist
-          mkdir -p deployment
-          
-          # Copy built files
-          echo "Copying build output..."
-          cp -r dist deployment/
-          
-          # Copy package files
-          echo "Copying package files..."
-          cp package*.json deployment/
-          
-          # Install production dependencies
-          echo -e "\n=== Installing production dependencies ==="
-          cd deployment
-          
-          # Ensure package.json has the correct start script
-          if [ -f "package.json" ]; then
-            echo "Updating start script in package.json"
-            jq '.scripts.start = "node --require source-map-support/register dist/server/src/server.js"' package.json > package.tmp.json && mv package.tmp.json package.json
-          fi
-          
           # Install only production dependencies
           npm install --omit=dev
           
           # Create zip file with proper path structure
           echo -e "\n=== Creating deployment zip ==="
+          cd ..  # Back to server directory
           
           # Debug: Show current directory and contents
           echo "Current directory: $(pwd)"
           echo "Contents of current directory:"
           ls -la
           
-          # Debug: Show contents of deployment directory
-          echo -e "\nContents of deployment directory:"
-          ls -la deployment/
-          
-          # Create zip file in the current directory
+          # Create zip file from the deployment directory contents
           echo -e "\nCreating zip file..."
-          zip -r deployment.zip deployment
+          cd deployment
+          zip -r ../deployment.zip .
+          cd ..
           
           # Verify the zip file was created
           echo -e "\n=== Verification ==="
-          echo "Current directory after zip: $(pwd)"
-          echo -e "\nFiles in current directory after zip:"
+          echo "Current directory: $(pwd)"
+          echo -e "\nFiles in current directory:"
           ls -la
           
           # Check if zip file exists and show its details
