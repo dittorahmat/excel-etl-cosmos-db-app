@@ -286,15 +286,33 @@ jobs:
           echo "Current directory: $(pwd)"
           echo -e "\nFiles in current directory:"
           ls -la
-          echo -e "\nLooking for deployment.zip..."
+          
+          # Check for zip in multiple locations
+          echo -e "\nChecking for deployment zip files..."
+          ZIP_FOUND=0
+          
+          # Check in current directory
           if [ -f "deployment.zip" ]; then
-            echo "✅ Found deployment.zip"
+            echo "✅ Found deployment.zip in current directory"
             echo "File details:"
             ls -lh deployment.zip
             echo -e "\nFull path: $(pwd)/deployment.zip"
-          else
-            echo "❌ deployment.zip not found!"
-            echo -e "\nSearching for zip files..."
+            ZIP_FOUND=1
+          fi
+          
+          # Check in server directory
+          if [ -f "server/deployment.zip" ]; then
+            echo "✅ Found server/deployment.zip"
+            echo "File details:"
+            ls -lh server/deployment.zip
+            echo -e "\nFull path: $(pwd)/server/deployment.zip"
+            ZIP_FOUND=1
+          fi
+          
+          # If no zip found, search the entire workspace
+          if [ "$ZIP_FOUND" -eq 0 ]; then
+            echo "❌ No deployment.zip found in common locations"
+            echo -e "\nSearching for zip files in workspace..."
             find . -name "*.zip" -type f | while read -r f; do
               echo "Found zip file: $f"
               ls -lh "$f"
@@ -308,7 +326,7 @@ jobs:
           app-name: 'excel-etl-backend-378680'
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ${{ github.workspace }}/deployment.zip
+          package: ${{ github.workspace }}/server/deployment.zip
 
       - name: Verify deployment
         run: |
