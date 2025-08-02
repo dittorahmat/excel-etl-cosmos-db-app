@@ -151,15 +151,30 @@ jobs:
       - name: Install build dependencies
         working-directory: ./server
         run: |
-          # Install production dependencies first
-          npm ci --production=false
+          # Clean up first
+          echo "=== Cleaning up previous installations ==="
+          rm -rf node_modules package-lock.json
           
-          # Install TypeScript and required type definitions
-          echo "Installing TypeScript and type definitions..."
-          npm install --save-dev typescript @types/node @types/uuid @types/cors @types/multer @types/express @types/xlsx @types/node-fetch
+          # Install all dependencies including devDependencies
+          echo -e "\n=== Installing all dependencies ==="
+          npm install --include=dev
           
           # Verify TypeScript installation
-          npx tsc --version
+          echo -e "\n=== Verifying TypeScript installation ==="
+          echo "Node modules bin contents:"
+          ls -la node_modules/.bin/ || echo "No .bin directory found"
+          echo -e "\nTypeScript package:"
+          npm list typescript || echo "TypeScript not found"
+          
+          # Verify we can run tsc
+          echo -e "\n=== Testing TypeScript execution ==="
+          if [ -f "node_modules/typescript/bin/tsc" ]; then
+            echo "Running TypeScript from node_modules/typescript/bin/tsc"
+            node node_modules/typescript/bin/tsc --version || echo "Failed to run TypeScript"
+          else
+            echo "TypeScript binary not found in expected location"
+            exit 1
+          fi
           
       - name: Build and package server
         working-directory: ./server
@@ -167,58 +182,44 @@ jobs:
           NODE_ENV: production
         run: |
           # Debug: Show environment info
-          echo "=== Debug Information ==="
+          echo "=== Environment Information ==="
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
           echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
           
-          # Debug: Show package.json
-          echo -e "\n=== package.json ==="
-          cat package.json
-          
-          # Clean any previous builds
+          # Clean previous builds
           echo -e "\n=== Cleaning previous builds ==="
           rm -rf dist deployment
           
-          # Install all dependencies including devDependencies for building
-          echo -e "\n=== Installing dependencies ==="
-          npm ci
+          # Verify TypeScript is available
+          echo -e "\n=== Verifying TypeScript ==="
+          echo "TypeScript binary path:"
+          which tsc || echo "tsc not in PATH"
+          echo -e "\nNode modules TypeScript:"
+          ls -l node_modules/.bin/tsc || echo "No TypeScript binary in node_modules"
           
-          # Debug: Verify TypeScript installation
-          echo -e "\n=== TypeScript Check ==="
-          echo "Node modules directory contents:"
-          ls -la node_modules/
-          echo -e "\nTypeScript in package.json: $(grep '"typescript"' package.json || echo 'Not found')"
-          echo -e "\nLocal TypeScript version:"
-          ./node_modules/.bin/tsc --version || echo "Local tsc not found"
-          echo -e "\nGlobal TypeScript version:"
-          npx tsc --version || echo "npx tsc not found"
-          
-          # Install TypeScript if not found
-          if ! [ -f "./node_modules/.bin/tsc" ]; then
-            echo -e "\n=== Installing TypeScript locally ==="
-            npm install --save-dev typescript
+          # Build using direct path to TypeScript
+          echo -e "\n=== Building with TypeScript ==="
+          if [ -f "node_modules/typescript/bin/tsc" ]; then
+            echo "Building with: node node_modules/typescript/bin/tsc --outDir ./dist"
+            node node_modules/typescript/bin/tsc --outDir ./dist --diagnostics || {
+              echo "Build failed with direct TypeScript path"
+              exit 1
+            }
+          else
+            echo "Error: TypeScript compiler not found in node_modules"
+            exit 1
           fi
           
-          # Build the project
-          echo -e "\n=== Building server ==="
-          echo "Running: npx tsc --outDir ./dist"
-          npx tsc --outDir ./dist || {
-            echo "Build failed. Node modules content:"
-            ls -la node_modules/
-            echo -e "\nTypeScript files in node_modules:"
-            find node_modules -name 'tsc' -o -name 'typescript'
+          # Verify build output
+          echo -e "\n=== Build output ==="
+          echo "Build output structure:"
+          find dist -type f | sort || {
+            echo "No build output found"
             exit 1
           }
           
-          # Verify the build output
-          echo -e "\n=== Build output ==="
-          echo "Build output structure:"
-          find dist -type f | sort || echo "No build output found"
-          
-          # Create deployment directory
+          # Create deployment package
           echo -e "\n=== Creating deployment package ==="
           mkdir -p deployment
           
@@ -231,7 +232,7 @@ jobs:
           cp package*.json deployment/
           
           # Install production dependencies
-          echo -e "\nInstalling production dependencies..."
+          echo -e "\n=== Installing production dependencies ==="
           cd deployment
           npm ci --only=production
           
