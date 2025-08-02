@@ -161,7 +161,7 @@ jobs:
           # Verify TypeScript installation
           npx tsc --version
           
-      - name: Build server
+      - name: Build and package server
         working-directory: ./server
         env:
           NODE_ENV: production
@@ -169,35 +169,41 @@ jobs:
           # Clean any previous builds
           rm -rf dist deployment
           
+          # Install all dependencies including devDependencies for building
+          echo "Installing dependencies..."
+          npm ci
+          
           # Build the project
           echo "Building server..."
           npx tsc --outDir ./dist
           
           # Verify the build output
           echo "Build output structure:"
-          find . -name "*.js" -o -name "*.d.ts" | sort
+          find dist -type f | sort
           
           # Create deployment directory
           echo "Creating deployment package..."
           mkdir -p deployment
           
-          # Copy built files
+          # Copy built files (only the dist directory and necessary files)
           cp -r dist deployment/
           
-          # Copy production dependencies
+          # Copy only production dependencies
           cp package*.json deployment/
           
-          # Install production dependencies in deployment directory
+          # Install only production dependencies in deployment directory
           cd deployment
           npm ci --only=production
           
+          # Create a proper start command file for Azure
+          echo '{"scripts": {"start": "node dist/server/src/server.js"}}' > package.json
+          
           # Create zip file
           cd ..
-          cd deployment
-          zip -r ../../deployment.zip .
+          zip -r ../deployment.zip deployment/*
           
           echo "Deployment package created:"
-          ls -lh ../../deployment.zip
+          ls -lh ../deployment.zip
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -206,7 +212,9 @@ jobs:
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./deployment.zip
-          enable-oryx-build: true
+          # Disable Oryx build since we're deploying pre-built code
+          start-deployment: true
+          enable-oryx-build: false
 
       - name: Configure Azure Web App
         uses: azure/CLI@v1
