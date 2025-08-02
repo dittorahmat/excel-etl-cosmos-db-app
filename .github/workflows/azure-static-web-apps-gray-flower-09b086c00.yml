@@ -166,20 +166,33 @@ jobs:
         env:
           NODE_ENV: production
         run: |
+          # Clean any previous builds
+          rm -rf dist deployment
+          
           # Build the project
           echo "Building server..."
-          npm run build
+          npx tsc --outDir ./dist
           
           # Verify the build output
           echo "Build output structure:"
-          find dist -type f | sort
+          find . -name "*.js" -o -name "*.d.ts" | sort
           
-          # Copy built files and production node_modules
+          # Create deployment directory
+          echo "Creating deployment package..."
+          mkdir -p deployment
+          
+          # Copy built files
           cp -r dist deployment/
-          cp -r node_modules deployment/
+          
+          # Copy production dependencies
           cp package*.json deployment/
           
+          # Install production dependencies in deployment directory
+          cd deployment
+          npm ci --only=production
+          
           # Create zip file
+          cd ..
           cd deployment
           zip -r ../../deployment.zip .
           
