@@ -239,6 +239,20 @@ jobs:
 
           # Create deployment package
           echo -e "\n=== Creating deployment package ==="
+          
+          # Create deployment directory if it doesn't exist
+          mkdir -p deployment
+          
+          # Copy built files
+          echo "Copying build output..."
+          cp -r dist deployment/
+          
+          # Copy package files
+          echo "Copying package files..."
+          cp package*.json deployment/
+          
+          # Install production dependencies
+          echo -e "\n=== Installing production dependencies ==="
           cd deployment
           
           # Ensure package.json has the correct start script
@@ -247,9 +261,13 @@ jobs:
             jq '.scripts.start = "node --require source-map-support/register dist/server/src/server.js"' package.json > package.tmp.json && mv package.tmp.json package.json
           fi
           
+          # Install only production dependencies
+          npm install --omit=dev
+          
           # Create zip file with proper path structure
           echo -e "\n=== Creating deployment zip ==="
-          zip -r ../deployment.zip *
+          cd ..
+          zip -r deployment.zip deployment/*
 
           echo -e "\n=== Deployment package created ==="
           ls -lh ../deployment.zip
