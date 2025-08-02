@@ -256,15 +256,14 @@ jobs:
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./deployment.zip
-          # Disable Oryx build since we're deploying pre-built code
-          start-deployment: true
-          enable-oryx-build: false
+          # Set the startup command directly to avoid Oryx build
+          startup-command: 'node dist/server/src/server.js'
 
       - name: Configure Azure Web App
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            # Set Node.js version and startup command
+            # Configure app settings for production
             az webapp config appsettings set \
               --name excel-etl-backend-378680 \
               --resource-group IESR-DB \
@@ -272,8 +271,8 @@ jobs:
                 WEBSITES_PORT=8181 \
                 PORT=8181 \
                 NODE_ENV=production \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=1 \
-                WEBSITE_RUN_FROM_PACKAGE=0
+                WEBSITE_NODE_DEFAULT_VERSION=~20 \
+                WEBSITE_RUN_FROM_PACKAGE=1
                 
             # Set the startup command
             az webapp config set \
