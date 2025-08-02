@@ -266,18 +266,66 @@ jobs:
           
           # Create zip file with proper path structure
           echo -e "\n=== Creating deployment zip ==="
-          cd ..
+          
+          # Debug: Show current directory and contents
+          echo "Current directory: $(pwd)"
+          echo "Contents of current directory:"
+          ls -la
+          
+          # Debug: Show contents of deployment directory
+          echo -e "\nContents of deployment directory:"
+          ls -la deployment/
           
           # Create zip file in the current directory
+          echo -e "\nCreating zip file..."
           zip -r deployment.zip deployment
           
           # Verify the zip file was created
-          echo -e "\n=== Deployment package created ==="
-          ls -lh deployment.zip
+          echo -e "\n=== Verification ==="
+          echo "Current directory after zip: $(pwd)"
+          echo -e "\nFiles in current directory after zip:"
+          ls -la
           
-          # List contents to verify
-          echo -e "\n=== Deployment package contents ==="
-          unzip -l deployment.zip | head -20
+          # Check if zip file exists and show its details
+          if [ -f "deployment.zip" ]; then
+            echo -e "\n✅ deployment.zip created successfully"
+            echo -e "File details:"
+            ls -lh deployment.zip
+            
+            # Show first 20 files in zip
+            echo -e "\nFirst 20 files in deployment.zip:"
+            unzip -l deployment.zip | head -20
+            
+            # Show full path for verification
+            echo -e "\nFull path to zip file: $(pwd)/deployment.zip"
+          else
+            echo -e "\n❌ ERROR: deployment.zip was not created!"
+            echo "Current directory contents:"
+            ls -la
+            exit 1
+          fi
+
+      - name: Debug before deployment
+        run: |
+          echo "=== Debug: Before Deployment ==="
+          echo "Current directory: $(pwd)"
+          echo -e "\nFiles in current directory:"
+          ls -la
+          echo -e "\nLooking for deployment.zip..."
+          if [ -f "deployment.zip" ]; then
+            echo "✅ Found deployment.zip"
+            echo "File details:"
+            ls -lh deployment.zip
+            echo -e "\nFull path: $(pwd)/deployment.zip"
+          else
+            echo "❌ deployment.zip not found!"
+            echo -e "\nSearching for zip files..."
+            find . -name "*.zip" -type f | while read -r f; do
+              echo "Found zip file: $f"
+              ls -lh "$f"
+            done
+            exit 1
+          fi
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -285,7 +333,7 @@ jobs:
           app-name: 'excel-etl-backend-378680'
           slot-name: 'production'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: deployment.zip
+          package: ${{ github.workspace }}/deployment.zip
 
       - name: Verify deployment
         run: |
