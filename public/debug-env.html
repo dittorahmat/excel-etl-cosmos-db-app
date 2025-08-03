@@ -33,7 +33,6 @@
   <script>
     // Collect all environment variables that start with VITE_
     const envVars = {};
-    const viteVars = {};
     
     // Get all environment variables from the window object
     for (const key in window) {
@@ -42,12 +41,11 @@
       }
     }
     
-    // Get all import.meta.env variables
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      for (const key in import.meta.env) {
-        if (key.startsWith('VITE_')) {
-          viteVars[key] = import.meta.env[key];
-        }
+    // Also check for variables that might be set directly on the window object
+    const windowVars = window.__env || {};
+    for (const key in windowVars) {
+      if (key.startsWith('VITE_')) {
+        envVars[key] = windowVars[key];
       }
     }
     
@@ -56,54 +54,44 @@
     const validationResults = document.getElementById('validation-results');
     
     function displayEnvVars() {
-      if (Object.keys(envVars).length === 0 && Object.keys(viteVars).length === 0) {
-        envVarsContainer.innerHTML = '<p class="error">No environment variables found. Make sure your build process is correctly injecting them.</p>';
+      if (Object.keys(envVars).length === 0) {
+        envVarsContainer.innerHTML = `
+          <div class="error">
+            <p>No VITE_* environment variables found in the window object.</p>
+            <p>This usually means your environment variables are not being injected into the client-side code.</p>
+            <p>Check the following:</p>
+            <ol>
+              <li>Make sure your environment variables are prefixed with VITE_</li>
+              <li>Verify the variables are set in your Azure Static Web App configuration</li>
+              <li>Check the browser's console for any build errors</li>
+            </ol>
+          </div>
+        `;
         return;
       }
       
-      let html = '<h2>Window Object (window.*)</h2>';
-      if (Object.keys(envVars).length > 0) {
-        html += Object.entries(envVars)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([key, value]) => {
-            const isInvalid = String(value).includes('your-') || 
-                            String(value).includes('YOUR_') || 
-                            String(value).includes('MISSING_');
-            const valueClass = isInvalid ? 'invalid' : 'valid';
-            return `
-              <div class="env-var ${valueClass}">
-                <div class="name">${key}</div>
-                <div class="value">${JSON.stringify(value, null, 2)}</div>
-                ${isInvalid ? '<div class="warning">Warning: Contains placeholder value</div>' : ''}
-              </div>
-            `;
-          })
-          .join('');
-      } else {
-        html += '<p>No VITE_* environment variables found in window object.</p>';
-      }
-      
-      html += '<h2>Vite Environment (import.meta.env.*)</h2>';
-      if (Object.keys(viteVars).length > 0) {
-        html += Object.entries(viteVars)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([key, value]) => {
-            const isInvalid = String(value).includes('your-') || 
-                            String(value).includes('YOUR_') || 
-                            String(value).includes('MISSING_');
-            const valueClass = isInvalid ? 'invalid' : 'valid';
-            return `
-              <div class="env-var ${valueClass}">
-                <div class="name">${key}</div>
-                <div class="value">${JSON.stringify(value, null, 2)}</div>
-                ${isInvalid ? '<div class="warning">Warning: Contains placeholder value</div>' : ''}
-              </div>
-            `;
-          })
-          .join('');
-      } else {
-        html += '<p>No VITE_* environment variables found in import.meta.env.</p>';
-      }
+      let html = '<h2>Environment Variables</h2>';
+      html += Object.entries(envVars)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => {
+          const isInvalid = typeof value === 'string' && (
+            value.includes('your-') || 
+            value.includes('YOUR_') || 
+            value.includes('MISSING_') ||
+            value === ''
+          );
+          const valueClass = isInvalid ? 'invalid' : 'valid';
+          const displayValue = isInvalid && !value ? 'EMPTY_STRING' : value;
+          
+          return `
+            <div class="env-var ${valueClass}">
+              <div class="name">${key}</div>
+              <div class="value">${JSON.stringify(displayValue, null, 2)}</div>
+              ${isInvalid ? '<div class="warning">Warning: Contains placeholder or empty value</div>' : ''}
+            </div>
+          `;
+        })
+        .join('');
       
       envVarsContainer.innerHTML = html;
       
@@ -123,11 +111,14 @@
       ];
       
       requiredVars.forEach(varName => {
-        const value = envVars[varName] || viteVars[varName];
+        const value = envVars[varName];
         const isMissing = !value || 
-                         String(value).includes('your-') || 
-                         String(value).includes('YOUR_') || 
-                         String(value).includes('MISSING_');
+                         (typeof value === 'string' && (
+                           value.includes('your-') || 
+                           value.includes('YOUR_') || 
+                           value.includes('MISSING_') ||
+                           value === ''
+                         ));
                          
         validations.push({
           name: varName,
