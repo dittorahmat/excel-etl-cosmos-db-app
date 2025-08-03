@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -20,6 +21,17 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default defineConfig({
+  plugins: [
+    tsconfigPaths(),
+    ...(process.env.NODE_ENV !== 'test' ? [
+      react({
+        jsxImportSource: '@emotion/react',
+        babel: {
+          plugins: ['@emotion/babel-plugin'],
+        },
+      })
+    ] : [])
+  ],
   test: {
     // Test configuration
     globals: true,
