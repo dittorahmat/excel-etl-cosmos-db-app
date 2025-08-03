@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react'; // Force deploy
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
