@@ -24,13 +24,30 @@ const redirectUri = getEnv('VITE_AZURE_REDIRECT_URI') || getOrigin();
 const apiScope = getEnv('VITE_API_SCOPE') || `api://${clientId}/access_as_user`;
 
 // Validate required configuration values
-if (!clientId || clientId.includes('your-') || clientId === 'YOUR_CLIENT_ID') {
-  throw new Error('Invalid Azure AD Client ID. Please check your environment variables.');
+if (!clientId) {
+  throw new Error('Azure AD Client ID is missing. Please set VITE_AZURE_CLIENT_ID or VITE_PUBLIC_AZURE_CLIENT_ID in your environment variables.');
 }
 
-if (!tenantId || tenantId.includes('your-') || tenantId === 'YOUR_TENANT_ID') {
-  throw new Error('Invalid Azure AD Tenant ID. Please check your environment variables.');
+if (clientId.includes('your-') || clientId === 'YOUR_CLIENT_ID') {
+  throw new Error(`Invalid Azure AD Client ID: "${clientId}". Please replace with your actual Azure AD Application (Client) ID from the Azure Portal.`);
 }
+
+if (!tenantId) {
+  throw new Error('Azure AD Tenant ID is missing. Please set VITE_AZURE_TENANT_ID or VITE_PUBLIC_AZURE_TENANT_ID in your environment variables.');
+}
+
+if (tenantId.includes('your-') || tenantId === 'YOUR_TENANT_ID') {
+  throw new Error(`Invalid Azure AD Tenant ID: "${tenantId}". Please replace with your actual Azure AD Directory (Tenant) ID from the Azure Portal.`);
+}
+
+// Debug: Log the configuration being used (redacting sensitive info)
+console.log('Azure AD Configuration:', {
+  clientId: clientId ? `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}` : 'MISSING',
+  tenantId: tenantId || 'MISSING',
+  redirectUri: redirectUri || 'MISSING',
+  apiScope: apiScope ? '***' : 'MISSING',
+  env: process.env.NODE_ENV
+});
 
 // Azure AD Configuration
 export const azureAdConfig = {
