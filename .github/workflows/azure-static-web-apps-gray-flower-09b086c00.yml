@@ -38,6 +38,16 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+      
+    - name: Debug environment variables
+      run: |
+        echo "=== Environment Variables ==="
+        echo "VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID != '' && '***' || 'NOT SET' }}"
+        echo "VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID != '' && '***' || 'NOT SET' }}"
+        echo "VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'NOT SET' }}"
+        echo "VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE || 'NOT SET' }}"
+        echo "VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || env.API_BASE_URL || 'NOT SET' }}"
+        echo "==========================="
 
     - name: Build frontend
       env:
