@@ -17,7 +17,7 @@
     "format": "prettier --write \"**/*.{ts,js,json,md}\"",
     "monitor:auth": "node --experimental-modules --es-module-specifier-resolution=node scripts/monitor-auth.js"
   },
-  "dependencies": {
+    "dependencies": {
     "@azure/cosmos": "^3.17.3",
     "@azure/identity": "^4.1.0",
     "@azure/storage-blob": "^12.17.0",
@@ -36,7 +36,40 @@
     "universal-user-agent": "^6.0.1",
     "uuid": "^9.0.1",
     "winston": "^3.13.0",
-    "zod": "^4.0.14"
+    "zod": "^4.0.14",
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/express-validator": "^3.0.0",
+    "@types/jest": "^29.5.12",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/logform": "^1.2.0",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.19.1",
+    "@types/node-fetch": "^2.6.12",
+    "@types/supertest": "^6.0.3",
+    "@types/uuid": "^9.0.7",
+    "@types/winston": "^2.4.4",
+    "@types/xlsx": "^0.0.36",
+    "@vitest/coverage-v8": "^3.2.4",
+    "csv-parser": "^3.2.0",
+    "isarray": "^1.0.0",
+    "jest-mock-extended": "^4.0.0",
+    "node-fetch": "^3.3.2",
+    "prettier": "^3.2.5",
+    "process-nextick-args": "^2.0.1",
+    "supertest": "^6.3.4",
+    "tinyrainbow": "^2.0.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.1",
+    "vite": "^5.0.12",
+    "vite-tsconfig-paths": "^4.3.2",
+    "vitest": "^3.2.4",
+    "vitest-sonar-reporter": "^0.5.0"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
