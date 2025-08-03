@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Environment Variables Debug</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+    h1 { color: #333; }
+    .env-var { margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    .env-var.invalid { background-color: #ffebee; border-left: 4px solid #f44336; }
+    .env-var.valid { background-color: #e8f5e9; border-left: 4px solid #4caf50; }
+    .name { font-weight: bold; color: #1976d2; }
+    .value { font-family: monospace; word-break: break-all; }
+    .warning { color: #f57c00; font-weight: bold; }
+    .error { color: #d32f2f; font-weight: bold; }
+    .success { color: #388e3c; }
+  </style>
+</head>
+<body>
+  <h1>Environment Variables Debug</h1>
+  <p>This page shows the environment variables available to your frontend application.</p>
+  
+  <div id="env-vars">
+    <p>Loading environment variables...</p>
+  </div>
+
+  <div id="validation">
+    <h2>Validation</h2>
+    <div id="validation-results"></div>
+  </div>
+
+  <script>
+    // Collect all environment variables that start with VITE_
+    const envVars = {};
+    const viteVars = {};
+    
+    // Get all environment variables from the window object
+    for (const key in window) {
+      if (key.startsWith('VITE_')) {
+        envVars[key] = window[key];
+      }
+    }
+    
+    // Get all import.meta.env variables
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      for (const key in import.meta.env) {
+        if (key.startsWith('VITE_')) {
+          viteVars[key] = import.meta.env[key];
+        }
+      }
+    }
+    
+    // Display the environment variables
+    const envVarsContainer = document.getElementById('env-vars');
+    const validationResults = document.getElementById('validation-results');
+    
+    function displayEnvVars() {
+      if (Object.keys(envVars).length === 0 && Object.keys(viteVars).length === 0) {
+        envVarsContainer.innerHTML = '<p class="error">No environment variables found. Make sure your build process is correctly injecting them.</p>';
+        return;
+      }
+      
+      let html = '<h2>Window Object (window.*)</h2>';
+      if (Object.keys(envVars).length > 0) {
+        html += Object.entries(envVars)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, value]) => {
+            const isInvalid = String(value).includes('your-') || 
+                            String(value).includes('YOUR_') || 
+                            String(value).includes('MISSING_');
+            const valueClass = isInvalid ? 'invalid' : 'valid';
+            return `
+              <div class="env-var ${valueClass}">
+                <div class="name">${key}</div>
+                <div class="value">${JSON.stringify(value, null, 2)}</div>
+                ${isInvalid ? '<div class="warning">Warning: Contains placeholder value</div>' : ''}
+              </div>
+            `;
+          })
+          .join('');
+      } else {
+        html += '<p>No VITE_* environment variables found in window object.</p>';
+      }
+      
+      html += '<h2>Vite Environment (import.meta.env.*)</h2>';
+      if (Object.keys(viteVars).length > 0) {
+        html += Object.entries(viteVars)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, value]) => {
+            const isInvalid = String(value).includes('your-') || 
+                            String(value).includes('YOUR_') || 
+                            String(value).includes('MISSING_');
+            const valueClass = isInvalid ? 'invalid' : 'valid';
+            return `
+              <div class="env-var ${valueClass}">
+                <div class="name">${key}</div>
+                <div class="value">${JSON.stringify(value, null, 2)}</div>
+                ${isInvalid ? '<div class="warning">Warning: Contains placeholder value</div>' : ''}
+              </div>
+            `;
+          })
+          .join('');
+      } else {
+        html += '<p>No VITE_* environment variables found in import.meta.env.</p>';
+      }
+      
+      envVarsContainer.innerHTML = html;
+      
+      // Run validations
+      runValidations();
+    }
+    
+    function runValidations() {
+      const validations = [];
+      
+      // Check for required variables
+      const requiredVars = [
+        'VITE_AZURE_CLIENT_ID',
+        'VITE_AZURE_TENANT_ID',
+        'VITE_AZURE_REDIRECT_URI',
+        'VITE_API_BASE_URL'
+      ];
+      
+      requiredVars.forEach(varName => {
+        const value = envVars[varName] || viteVars[varName];
+        const isMissing = !value || 
+                         String(value).includes('your-') || 
+                         String(value).includes('YOUR_') || 
+                         String(value).includes('MISSING_');
+                         
+        validations.push({
+          name: varName,
+          valid: !isMissing,
+          message: isMissing 
+            ? `❌ ${varName} is missing or contains a placeholder value.`
+            : `✅ ${varName} is properly set.`
+        });
+      });
+      
+      // Display validation results
+      const validCount = validations.filter(v => v.valid).length;
+      const totalCount = validations.length;
+      
+      let validationHtml = `
+        <div class="${validCount === totalCount ? 'success' : 'error'}">
+          ${validCount} of ${totalCount} required environment variables are properly configured.
+        </div>
+        <ul style="list-style-type: none; padding: 0;">
+          ${validations.map(v => 
+            `<li style="margin: 8px 0; padding: 8px; background: ${v.valid ? '#e8f5e9' : '#ffebee'}; border-left: 4px solid ${v.valid ? '#4caf50' : '#f44336'};">
+              ${v.message}
+              ${v.valid ? '' : '<div style="font-size: 0.9em; margin-top: 4px; color: #d32f2f;">This will cause authentication to fail. Please check your environment configuration.</div>'}
+            </li>`
+          ).join('')}
+        </ul>
+      `;
+      
+      validationResults.innerHTML = validationHtml;
+    }
+    
+    // Run when the page loads
+    document.addEventListener('DOMContentLoaded', displayEnvVars);
+  </script>
+</body>
+</html>
