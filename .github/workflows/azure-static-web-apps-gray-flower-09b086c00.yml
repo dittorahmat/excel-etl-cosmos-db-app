@@ -47,16 +47,33 @@ jobs:
         echo "VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'NOT SET' }}"
         echo "VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE || 'NOT SET' }}"
         echo "VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || env.API_BASE_URL || 'NOT SET' }}"
+        echo "VITE_PUBLIC_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID != '' && '***' || 'NOT SET' }}"
+        echo "VITE_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID != '' && '***' || 'NOT SET' }}"
+        echo "VITE_PUBLIC_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'NOT SET' }}"
         echo "==========================="
+        
+        # Verify Vite environment variables
+        echo "=== Vite Environment Variables ==="
+        echo "VITE_PUBLIC_AZURE_TENANT_ID: ${{ 'VITE_PUBLIC_AZURE_TENANT_ID' != '' && '***' || 'NOT SET' }}"
+        echo "VITE_PUBLIC_AZURE_CLIENT_ID: ${{ 'VITE_PUBLIC_AZURE_CLIENT_ID' != '' && '***' || 'NOT SET' }}"
+        echo "VITE_PUBLIC_AZURE_REDIRECT_URI: ${{ 'VITE_PUBLIC_AZURE_REDIRECT_URI' || 'NOT SET' }}"
+        echo "================================"
 
     - name: Build frontend
       env:
+        # Expose all required environment variables to the build process
         VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || env.API_BASE_URL }}
         VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
         VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
         VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
         VITE_AZURE_AUTHORITY: https://login.microsoftonline.com/${{ secrets.VITE_AZURE_TENANT_ID }}
         VITE_API_SCOPE: ${{ format('{0}', secrets.VITE_API_SCOPE || format('api://{0}/access_as_user', secrets.VITE_AZURE_CLIENT_ID)) }}
+        # Ensure Vite knows these are public env vars
+        VITE_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+        VITE_PUBLIC_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+        VITE_PUBLIC_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net' }}
+        VITE_PUBLIC_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net' }}
+        VITE_PUBLIC_API_SCOPE: ${{ format('{0}', secrets.VITE_API_SCOPE || format('api://{0}/access_as_user', secrets.VITE_AZURE_CLIENT_ID)) }}
       run: |
         # Verify required environment variables
         if [ -z "$VITE_AZURE_CLIENT_ID" ] || [ "$VITE_AZURE_CLIENT_ID" = "" ]; then

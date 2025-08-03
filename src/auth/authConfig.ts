@@ -6,32 +6,45 @@ const getOrigin = (): string => {
   if (typeof window !== 'undefined' && window.location) {
     return window.location.origin;
   }
-  return env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000';
+  // Try public variables first, then fall back to non-public ones
+  return env.VITE_PUBLIC_AZURE_REDIRECT_URI || env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000';
 };
 
 import { LogLevel } from '@azure/msal-browser';
 
-// Validate required environment variables
-const requiredVars = ['VITE_AZURE_CLIENT_ID', 'VITE_AZURE_TENANT_ID'] as const;
-const missingVars = requiredVars.filter(varName => !env[varName]);
+// Helper to get environment variables with fallback to public variables
+const getEnv = (key: string, fallback = ''): string => {
+  return env[key] || env[`VITE_PUBLIC_${key}`] || fallback;
+};
 
-if (missingVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+// Get configuration values with public variable fallback
+const clientId = getEnv('VITE_AZURE_CLIENT_ID');
+const tenantId = getEnv('VITE_AZURE_TENANT_ID');
+const redirectUri = getEnv('VITE_AZURE_REDIRECT_URI') || getOrigin();
+const apiScope = getEnv('VITE_API_SCOPE') || `api://${clientId}/access_as_user`;
+
+// Validate required configuration values
+if (!clientId || clientId.includes('your-') || clientId === 'YOUR_CLIENT_ID') {
+  throw new Error('Invalid Azure AD Client ID. Please check your environment variables.');
+}
+
+if (!tenantId || tenantId.includes('your-') || tenantId === 'YOUR_TENANT_ID') {
+  throw new Error('Invalid Azure AD Tenant ID. Please check your environment variables.');
 }
 
 // Azure AD Configuration
 export const azureAdConfig = {
-  clientId: env.VITE_AZURE_CLIENT_ID,
-  tenantId: env.VITE_AZURE_TENANT_ID,
-  redirectUri: env.VITE_AZURE_REDIRECT_URI || getOrigin(),
-  scopes: (env.VITE_AZURE_SCOPES || 'User.Read openid profile email').split(' '),
-  // Use tenant-specific authority
-  authority: `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID}`,
-  // Known authorities for the tenant
+  clientId,
+  tenantId,
+  redirectUri,
+  scopes: (getEnv('VITE_AZURE_SCOPES', 'User.Read openid profile email')).split(' '),
+  authority: `https://login.microsoftonline.com/${tenantId}`,
   knownAuthorities: [
     'login.microsoftonline.com',
-    `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID}`
-  ]
+    `https://login.microsoftonline.com/${tenantId}`
+  ],
+  // Add API scope for backend access
+  apiScope
 } as const;
 
 // Log the actual configuration being used (safely)

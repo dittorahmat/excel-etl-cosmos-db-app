@@ -9,16 +9,35 @@ const loadEnvVars = (mode: string) => {
   // Load all environment variables from .env files and process.env
   const env = loadEnv(mode, process.cwd(), '');
   
-  
-  
+  // Log environment variables in development
+  if (mode === 'development') {
+    console.log('Environment variables:', {
+      VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID ? '***' + env.VITE_AZURE_TENANT_ID.slice(-4) : 'NOT SET',
+      VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID ? '***' + env.VITE_AZURE_CLIENT_ID.slice(-4) : 'NOT SET',
+      VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || 'NOT SET',
+      VITE_PUBLIC_AZURE_TENANT_ID: env.VITE_PUBLIC_AZURE_TENANT_ID ? '***' + env.VITE_PUBLIC_AZURE_TENANT_ID.slice(-4) : 'NOT SET',
+      VITE_PUBLIC_AZURE_CLIENT_ID: env.VITE_PUBLIC_AZURE_CLIENT_ID ? '***' + env.VITE_PUBLIC_AZURE_CLIENT_ID.slice(-4) : 'NOT SET',
+      VITE_PUBLIC_AZURE_REDIRECT_URI: env.VITE_PUBLIC_AZURE_REDIRECT_URI || 'NOT SET'
+    });
+  }
+
   // Use environment variables with fallbacks
   return {
-    VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || process.env.VITE_AZURE_TENANT_ID || '',
-    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID || process.env.VITE_AZURE_CLIENT_ID || '',
-    VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || process.env.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net',
-    VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || process.env.VITE_AZURE_SCOPES || 'User.Read openid profile email',
-    VITE_API_SCOPE: env.VITE_API_SCOPE || process.env.VITE_API_SCOPE || '',
-    VITE_API_BASE_URL: env.VITE_API_BASE_URL || process.env.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net',
+    // Public variables (exposed to client)
+    VITE_PUBLIC_AZURE_TENANT_ID: env.VITE_PUBLIC_AZURE_TENANT_ID || env.VITE_AZURE_TENANT_ID || '',
+    VITE_PUBLIC_AZURE_CLIENT_ID: env.VITE_PUBLIC_AZURE_CLIENT_ID || env.VITE_AZURE_CLIENT_ID || '',
+    VITE_PUBLIC_AZURE_REDIRECT_URI: env.VITE_PUBLIC_AZURE_REDIRECT_URI || env.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net',
+    VITE_PUBLIC_AZURE_AUTHORITY: `https://login.microsoftonline.com/${env.VITE_PUBLIC_AZURE_TENANT_ID || env.VITE_AZURE_TENANT_ID || ''}`,
+    VITE_PUBLIC_API_SCOPE: env.VITE_API_SCOPE || `api://${env.VITE_PUBLIC_AZURE_CLIENT_ID || env.VITE_AZURE_CLIENT_ID || ''}/access_as_user`,
+    VITE_PUBLIC_API_BASE_URL: env.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net',
+    
+    // Backward compatibility
+    VITE_AZURE_TENANT_ID: env.VITE_PUBLIC_AZURE_TENANT_ID || env.VITE_AZURE_TENANT_ID || '',
+    VITE_AZURE_CLIENT_ID: env.VITE_PUBLIC_AZURE_CLIENT_ID || env.VITE_AZURE_CLIENT_ID || '',
+    VITE_AZURE_REDIRECT_URI: env.VITE_PUBLIC_AZURE_REDIRECT_URI || env.VITE_AZURE_REDIRECT_URI || 'https://gray-flower-09b086c00.6.azurestaticapps.net',
+    VITE_AZURE_AUTHORITY: `https://login.microsoftonline.com/${env.VITE_PUBLIC_AZURE_TENANT_ID || env.VITE_AZURE_TENANT_ID || ''}`,
+    VITE_API_SCOPE: env.VITE_API_SCOPE || `api://${env.VITE_PUBLIC_AZURE_CLIENT_ID || env.VITE_AZURE_CLIENT_ID || ''}/access_as_user`,
+    VITE_API_BASE_URL: env.VITE_API_BASE_URL || 'https://excel-etl-backend-378680.azurewebsites.net',
   };
 };
 
