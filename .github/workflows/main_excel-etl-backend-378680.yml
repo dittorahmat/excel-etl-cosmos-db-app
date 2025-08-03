@@ -148,8 +148,8 @@ jobs:
           fi
           
           echo "✅ Deployment verification complete"
-        echo "Your app should be available at: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
-        echo ""
-        echo "If you encounter any issues, please check:"
-        echo "1. The GitHub Actions workflow logs"
-        echo "2. The Azure App Service logs in the Azure Portal"
+          echo "Your app should be available at: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo ""
+          echo "If you encounter any issues, please check:"
+          echo "1. The GitHub Actions workflow logs"
+          echo "2. The Azure App Service logs in the Azure Portal"
