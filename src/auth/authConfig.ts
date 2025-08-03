@@ -11,37 +11,41 @@ const getOrigin = (): string => {
 
 import { LogLevel } from '@azure/msal-browser';
 
+// Validate required environment variables
+const requiredVars = ['VITE_AZURE_CLIENT_ID', 'VITE_AZURE_TENANT_ID'] as const;
+const missingVars = requiredVars.filter(varName => !env[varName]);
+
+if (missingVars.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+}
+
 // Azure AD Configuration
 export const azureAdConfig = {
-  clientId: env.VITE_AZURE_CLIENT_ID || '',
-  tenantId: env.VITE_AZURE_TENANT_ID || 'organizations',
+  clientId: env.VITE_AZURE_CLIENT_ID,
+  tenantId: env.VITE_AZURE_TENANT_ID,
   redirectUri: env.VITE_AZURE_REDIRECT_URI || getOrigin(),
   scopes: (env.VITE_AZURE_SCOPES || 'User.Read openid profile email').split(' '),
-  // Use tenant-specific authority for single-tenant applications
-  authority: `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'organizations'}`,
-  // Known authorities for both the tenant and common endpoints
+  // Use tenant-specific authority
+  authority: `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID}`,
+  // Known authorities for the tenant
   knownAuthorities: [
     'login.microsoftonline.com',
-    `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID || 'common'}`
+    `https://login.microsoftonline.com/${env.VITE_AZURE_TENANT_ID}`
   ]
 } as const;
 
-// Log the actual configuration being used
-console.log('Azure AD Configuration:', {
-  clientId: azureAdConfig.clientId ? '***' + azureAdConfig.clientId.slice(-4) : 'MISSING',
-  tenantId: azureAdConfig.tenantId,
-  redirectUri: azureAdConfig.redirectUri,
-  authority: azureAdConfig.authority,
-  scopes: azureAdConfig.scopes,
-  knownAuthorities: azureAdConfig.knownAuthorities,
-  env: {
-    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID ? '***' + String(env.VITE_AZURE_CLIENT_ID).slice(-4) : 'MISSING',
-    VITE_AZURE_TENANT_ID: env.VITE_AZURE_TENANT_ID || 'MISSING',
-    VITE_AZURE_REDIRECT_URI: env.VITE_AZURE_REDIRECT_URI || 'MISSING',
-    VITE_AZURE_SCOPES: env.VITE_AZURE_SCOPES || 'DEFAULT_SCOPES'
-  },
-  location: window.location.href
-});
+// Log the actual configuration being used (safely)
+if (typeof window !== 'undefined') {
+  console.log('Azure AD Configuration:', {
+    clientId: '***' + azureAdConfig.clientId.slice(-4),
+    tenantId: azureAdConfig.tenantId,
+    redirectUri: azureAdConfig.redirectUri,
+    authority: azureAdConfig.authority,
+    scopes: azureAdConfig.scopes,
+    knownAuthorities: azureAdConfig.knownAuthorities,
+    location: window.location.href
+  });
+}
 
 // Validate required configuration
 if (!azureAdConfig.clientId) {
