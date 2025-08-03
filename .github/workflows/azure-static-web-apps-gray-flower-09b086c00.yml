@@ -7,116 +7,42 @@ on:
       - 'src/**'
       - 'public/**'
       - 'vite.config.ts'
+      - 'vitest.server.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/azure-static-web-apps-gray-flower-09b086c00.yml'
   workflow_dispatch:
 
-env:
-  NODE_VERSION: '20'
-  AZURE_STATIC_WEB_APP_NAME: 'gray-flower-09b086c00'
-  API_BASE_URL: 'https://excel-etl-backend-378680.azurewebsites.net'
-
 jobs:
-  build-and-deploy:
-    name: Build and Deploy Frontend
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    environment: production
-
+    name: Build and Deploy Job
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Debug environment variables
-      run: |
-        echo "=== Environment Variables ==="
-        echo "VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID != '' && '***' || 'NOT SET' }}"
-        echo "VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID != '' && '***' || 'NOT SET' }}"
-        echo "VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'NOT SET' }}"
-        echo "VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE || 'NOT SET' }}"
-        echo "VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || env.API_BASE_URL || 'NOT SET' }}"
-        echo "VITE_PUBLIC_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID != '' && '***' || 'NOT SET' }}"
-        echo "VITE_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID != '' && '***' || 'NOT SET' }}"
-        echo "VITE_PUBLIC_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'NOT SET' }}"
-        echo "==========================="
-        
-        # Verify Vite environment variables
-        echo "=== Vite Environment Variables ==="
-        echo "VITE_PUBLIC_AZURE_TENANT_ID: ${{ 'VITE_PUBLIC_AZURE_TENANT_ID' != '' && '***' || 'NOT SET' }}"
-        echo "VITE_PUBLIC_AZURE_CLIENT_ID: ${{ 'VITE_PUBLIC_AZURE_CLIENT_ID' != '' && '***' || 'NOT SET' }}"
-        echo "VITE_PUBLIC_AZURE_REDIRECT_URI: ${{ 'VITE_PUBLIC_AZURE_REDIRECT_URI' || 'NOT SET' }}"
-        echo "================================"
-
-    - name: Debug environment variables in workflow
-      run: |
-        echo "=== Environment Variables in Workflow ==="
-        echo "VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID != '' && '***' || 'NOT SET' }}"
-        echo "VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID != '' && '***' || 'NOT SET' }}"
-        echo "VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI || 'NOT SET' }}"
-        echo "VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'NOT SET' }}"
-        echo "VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE || 'NOT SET' }}"
-        echo "======================================"
-
-    - name: Create .env file
-      run: |
-        echo "VITE_AZURE_CLIENT_ID=${{ secrets.VITE_AZURE_CLIENT_ID }}" >> .env
-        echo "VITE_AZURE_TENANT_ID=${{ secrets.VITE_AZURE_TENANT_ID }}" >> .env
-        echo "VITE_AZURE_REDIRECT_URI=${{ secrets.VITE_AZURE_REDIRECT_URI }}" >> .env
-        echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
-        echo "VITE_API_SCOPE=${{ secrets.VITE_API_SCOPE }}" >> .env
-        echo "VITE_PUBLIC_AZURE_CLIENT_ID=${{ secrets.VITE_AZURE_CLIENT_ID }}" >> .env
-        echo "VITE_PUBLIC_AZURE_TENANT_ID=${{ secrets.VITE_AZURE_TENANT_ID }}" >> .env
-        echo "VITE_PUBLIC_AZURE_REDIRECT_URI=${{ secrets.VITE_AZURE_REDIRECT_URI }}" >> .env
-        echo "VITE_PUBLIC_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
-        echo "VITE_PUBLIC_API_SCOPE=${{ secrets.VITE_API_SCOPE }}" >> .env
-
-    - name: Build frontend
-      run: |
-        npm run build:client
-
-        # Verify the build output
-        if [ ! -d "dist" ]; then
-          echo "::error::Build failed - dist directory not found"
-          exit 1
-        fi
-
-        echo "Build output:"
-        ls -la dist
-
-        # Verify the built config.js has the correct values
-        if [ -f "dist/config.js" ]; then
-          echo "Config.js content:"
-          cat dist/config.js
-        fi
-
-    - name: Deploy to Azure Static Web Apps
-      uses: Azure/static-web-apps-deploy@v1
-      with:
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: "upload"
-        app_location: "/"
-        app_build_command: "npm run build:client"
-        output_location: "dist"
-
-    - name: Verify deployment
-      run: |
-        echo "✅ Frontend deployment completed successfully!"
-        echo ""
-        echo "Your app should be available at: https://${{ env.AZURE_STATIC_WEB_APP_NAME }}.6.azurestaticapps.net"
-        echo ""
-        echo "If you encounter any issues, please check:"
-        echo "1. The GitHub Actions workflow logs"
-        echo "2. The Azure Static Web App logs in the Azure Portal"
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
+          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
+          app_location: "/" # App source code path
+          api_location: "" # Api source code path - optional
+          output_location: "dist" # Built app content directory - optional
+          ###### End of Repository/Build Configurations ######
+        env:
+          VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+          VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+          VITE_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE }}
+          VITE_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+          VITE_PUBLIC_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+          VITE_PUBLIC_AZURE_REDIRECT_URI: ${{ secrets.VITE_AZURE_REDIRECT_URI }}
+          VITE_PUBLIC_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_PUBLIC_API_SCOPE: ${{ secrets.VITE_API_SCOPE }}
