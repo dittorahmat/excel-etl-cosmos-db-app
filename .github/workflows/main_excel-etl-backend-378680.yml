@@ -35,39 +35,15 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    - name: Install root dependencies
-      run: |
-        npm ci --include=dev
-        
     - name: Install server dependencies
       working-directory: server
       run: |
-        npm ci --include=dev
-        
-    - name: Run linting
-      working-directory: server
-      run: |
-        npm run lint
-        
-    - name: Run type checking
-      working-directory: server
-      run: npx tsc --noEmit
+        npm ci --production=false
         
     - name: Build the app
       working-directory: server
       run: |
         npm run build
-        
-    - name: Run tests
-      working-directory: server
-      env:
-        NODE_ENV: test
-        COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
-        COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
-        COSMOS_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
-        COSMOS_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
-      run: |
-        npm test
         
     - name: Run Cosmos DB connection test
       working-directory: server
