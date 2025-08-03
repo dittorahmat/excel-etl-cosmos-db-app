@@ -15,7 +15,7 @@ export default defineConfig({
     typecheck: {
       include: ['**/*.test.ts'],
     },
-    root: root,
+    
     include: [
       path.join(root, 'test/**/*.test.{js,ts}'),
       path.join(root, '**/test/**/*.test.{js,ts}')

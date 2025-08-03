@@ -137,27 +137,11 @@ export const loginRequest = {
   prompt: 'select_account',
 };
 
-// Type for the runtime configuration
-interface RuntimeConfig {
-  VITE_API_BASE_URL?: string;
-  [key: string]: unknown;
-}
-
-declare global {
-  interface Window {
-    __APP_CONFIG__?: RuntimeConfig;
-  }
-}
-
-// Get runtime config, falling back to build-time env vars
-const getRuntimeConfig = (): RuntimeConfig => (window.__APP_CONFIG__ || import.meta.env) as RuntimeConfig;
-
 // API Configuration
 export const getApiConfig = () => {
-  const runtimeConfig = getRuntimeConfig();
   return {
-    scopes: [`api://exceletlfunc-wqp03jun.azurewebsites.net/access_as_user`],
-    uri: runtimeConfig.VITE_API_BASE_URL || '/api',
+    scopes: [apiScope],
+    uri: getEnv('VITE_API_BASE_URL', '/api'),
   };
 };
 

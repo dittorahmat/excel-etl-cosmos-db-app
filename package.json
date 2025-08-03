@@ -7,11 +7,9 @@
     "server"
   ],
   "scripts": {
-    "dev:client": "npm run generate:config && vite --force",
-    "generate:config": "node scripts/generate-config.js",
-    "prebuild:client": "npm run generate:config",
-    "build:client": "npm run generate:config && vite build",
-    "postbuild:client": "cp public/config.js dist/ 2>/dev/null || :",
+    
+    "dev:client": "vite --force",
+    "build:client": "vite build",
     "preview": "vite preview",
     "dev:server": "NODE_ENV=development dotenv -e server/.env tsx watch server/src/server.ts",
     "debug:tsconfig": "tsc -p tsconfig.server.json --showConfig",
