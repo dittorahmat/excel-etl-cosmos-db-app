@@ -1,30 +1,30 @@
 ## Current Status
 
-The application is stable and the critical production login issue has been resolved. The frontend and backend are successfully deployed, and authentication is working as expected in the live Azure environment.
-
-The immediate task is complete. The project is in a clean, verified state, ready for the next development task.
+The application is currently in a state where core functionality is not yet fully operational in the Azure environment. We are actively debugging deployment and communication issues between the frontend and backend.
 
 ## Recent Changes & Fixes
 
-The primary focus of the last session was to diagnose and fix a critical authentication failure in the production environment. The error `Invalid Azure AD Client ID: "your-client-id"` indicated that the frontend was being built with placeholder values instead of the correct production secrets.
+The primary focus has been on diagnosing and resolving deployment and configuration issues.
 
-The debugging process involved several steps:
+1.  **Frontend Deployment:** The GitHub Actions workflow for the frontend is consistently showing successful deployments. However, the `config.js` 404 error and `AADSTS500011` error persist on the user's browser, suggesting a caching issue or a deeper problem with the deployed frontend.
+    *   **Action Taken:** Made cosmetic changes to `src/App.tsx` to force redeployments, updated `authConfig.ts` to use `import.meta.env.VITE_API_SCOPE`, and explicitly set `NODE_VERSION: 20.x` in the workflow's `env` block for Oryx.
+2.  **Backend Deployment:**
+    *   The backend App Service is running, and its build status is reported as successful in the Deployment Center.
+    *   Backend logs showed "Connection refused" errors, and "tsc: not found" during deployment, indicating a missing TypeScript compiler.
+    *   **Action Taken:** Moved `typescript` from `devDependencies` to `dependencies` in `server/package.json` and pushed the changes to trigger a new backend deployment.
 
-1.  **Initial Diagnosis:** Incorrectly assumed the environment variables were not set in the Azure Static Web App configuration. This was proven wrong by the user providing a screenshot.
-2.  **Code Inspection:** Analysis of `vite.config.ts` and `authConfig.ts` revealed a complex and redundant configuration system. The application was attempting to load configuration at both build-time (via `import.meta.env`) and run-time (via a custom `config.js` file), which was the source of the confusion.
-3.  **CI/CD Pipeline Analysis:** The root cause was discovered in the `.github/workflows/azure-static-web-apps-gray-flower-09b086c00.yml` file. The workflow was building the application manually but then using the `Azure/static-web-apps-deploy@v1` action, which performed its own isolated build *without* access to the necessary secrets. This resulted in a broken build being deployed.
-4.  **Test Environment Fix:** A secondary issue was discovered where server-side tests were failing due to an incorrect `root` path in `vitest.server.config.ts`, which prevented Vitest from finding its own modules.
+## Problems Faced
 
-**The following actions were taken to resolve these issues:**
-
--   **Simplified Configuration:** The entire run-time configuration system (`config.js` and related scripts) was removed.
--   **Refactored Code:** `vite.config.ts` and `src/auth/authConfig.ts` were refactored to rely exclusively on Vite's standard build-time environment variable replacement.
--   **Corrected CI/CD Workflow:** The GitHub Actions workflow was completely rewritten to pass the secrets directly to the `env` of the `Azure/static-web-apps-deploy@v1` action. This is the correct and standard method.
--   **Fixed Tests:** The incorrect `root` setting was removed from `vitest.server.config.ts`, allowing all server-side tests to pass.
--   **Verified Changes:** The entire project was validated by running linting, type-checking, all tests, and a full build before the final changes were committed and pushed.
+-   **Persistent Frontend Caching/Stale Deployment:** Even after successful GitHub Actions deployments, the frontend served by Azure Static Web Apps seems to be a cached/stale version, leading to `config.js` 404 and `AADSTS500011` errors (specifically, `api:/` in the scope, indicating `VITE_API_SCOPE` is not being correctly injected).
+-   **Backend Communication Issues:** The frontend is still unable to communicate with the backend, resulting in CORS errors and 503 Service Unavailable responses. This indicates issues with the backend application's runtime or its CORS configuration.
+-   **Node.js Version Mismatch (Frontend Build):** The Oryx build process was using Node.js 18.x despite `actions/setup-node@v3` being set to 20.x, causing `EBADENGINE` warnings. This has been addressed by explicitly setting `NODE_VERSION` in the workflow's `env` block.
+-   **YAML Workflow Validation:** Encountered an "invalid workflow file" error due to a semantic YAML issue, which required careful manual inspection and correction.
 
 ## Key Learnings & Decisions
 
--   **Frontend Environment Variables:** All frontend environment variables, especially secrets, must be passed directly to the `env` block of the `Azure/static-web-apps-deploy@v1` action in the CI/CD workflow. Manual builds and `.env` file creation within the workflow are unreliable and should be avoided.
--   **Configuration Simplicity:** The project now uses a single, standard method for handling environment variables in the frontend (`import.meta.env`), which simplifies the build process and makes it easier to maintain.
--   **Vitest Root Configuration:** When using Vitest in a monorepo-like structure, avoid setting the `test.root` configuration property if the tests are being run from the actual project root. This ensures Vitest can correctly resolve its own dependencies.
+-   **Frontend Caching:** Azure Static Web Apps deployments can be aggressively cached, leading to stale content being served. Clearing browser cache is a necessary first step for verification.
+-   **Backend Port Configuration:** Azure App Service's internal proxy might override specified `PORT` settings, requiring explicit configuration of `WEBSITES_PORT` or matching the observed binding port (e.g., `8181`).
+-   **Dependency Management:** Critical build-time dependencies like `typescript` should be explicitly listed in `dependencies` rather than `devDependencies` to ensure their availability during deployment.
+-   **Node.js Version in CI/CD:** Explicitly setting the Node.js version in the GitHub Actions workflow (`actions/setup-node`) and in the `env` block for Oryx is crucial to avoid `EBADENGINE` warnings and ensure compatibility with project dependencies.
+-   **YAML Syntax vs. Semantics:** `yamllint` only checks basic YAML syntax. Deeper issues related to GitHub Actions workflow structure or logic require careful manual review.
+

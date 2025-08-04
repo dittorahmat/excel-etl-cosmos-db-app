@@ -139,10 +139,18 @@ export const loginRequest = {
 
 // API Configuration
 export const getApiConfig = () => {
-  return {
+  const config = {
     scopes: [apiScope],
     uri: getEnv('VITE_API_BASE_URL', '/api'),
   };
+  // Log the API configuration for debugging in development and production
+  if (typeof window !== 'undefined') {
+    console.log('API Config (Runtime):', {
+      scope: config.scopes[0],
+      uri: config.uri
+    });
+  }
+  return config;
 };
 
 // Log the API configuration for debugging in development only

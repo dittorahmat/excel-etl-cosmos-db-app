@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load all environment variables
-  const envVars = loadEnvVars(mode);
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
   
   
 
@@ -91,7 +91,7 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    define: Object.entries(envVars).reduce((acc, [key, value]) => {
+    define: Object.entries(env).reduce((acc, [key, value]) => {
       if (key.startsWith('VITE_')) {
         acc[`import.meta.env.${key}`] = JSON.stringify(value);
       }
