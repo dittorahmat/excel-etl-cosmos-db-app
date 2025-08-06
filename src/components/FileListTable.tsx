@@ -1,17 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { api, getAuthToken } from '../utils/api';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
-import { Button } from './ui/button';
-import { format } from 'date-fns';
-import { FileText, Download, Trash2, Loader2 } from 'lucide-react';
+import { api } from '../utils/api';
+import { FileText, Download, Loader2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+
+// Simple formatting utilities
+const formatBytes = (bytes: number, decimals = 2): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
+
+const formatDate = (dateString: string): string => {
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+  } catch (error) {
+    return 'Unknown date';
+  }
+};
 
 interface ImportMetadata {
   id: string;
@@ -19,17 +27,17 @@ interface ImportMetadata {
   fileName: string;
   fileSize?: number;
   mimeType?: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status?: 'pending' | 'processing' | 'completed' | 'failed';
   rowCount?: number;
   totalRows?: number;
   validRows?: number;
   errorRows?: number;
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
-  processedAt?: string;
+  processedAt: string;
   error?: string;
-  metadata?: Record<string, unknown>;
-  [key: string]: unknown; // Allow additional properties
+  blobUrl?: string;
+  [key: string]: unknown;
 }
 
 interface FileData {
@@ -45,6 +53,7 @@ interface FileData {
   updatedAt: string;
   error?: string;
   metadata: Record<string, unknown>;
+  downloadUrl: string;
   downloadFileName: string;
 }
 
@@ -57,13 +66,9 @@ export function FileListTable() {
   const pageSize = 10;
   const isMounted = useRef(true);
 
-  
-
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
-      // Build the query string manually to avoid TypeScript issues with params
-      const queryString = `?page=${page}&pageSize=${pageSize}`;
       const response = await api.get<{ 
         data: {
           items: ImportMetadata[];
@@ -72,37 +77,26 @@ export function FileListTable() {
           pageSize: number;
           totalPages: number;
         };
-        pagination: {
-          total: number;
-          limit: number;
-          offset: number;
-          continuationToken?: string;
-          hasMoreResults: boolean;
-        };
-      }>(`/api/v2/query/imports${queryString}`);
+      }>('/api/v2/query/imports');
       
       if (response?.data?.items) {
-        const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => {
-          // Ensure we have valid data for all required fields
-          const fileData: FileData = {
-            id: item.id || item._importId || '',
-            name: item.fileName || 'Untitled',
-            size: item.fileSize || 0,
-            mimeType: item.mimeType || 'application/octet-stream',
-            uploadedAt: item.createdAt || new Date().toISOString(),
-            status: item.status || 'completed',
-            recordCount: item.rowCount || item.totalRows || 0,
-            processedCount: item.validRows || 0,
-            errorCount: item.errorRows || 0,
-            updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-            error: item.error,
-            metadata: item,
-            downloadFileName: item.fileName ? `${item.fileName}.xlsx` : `file-${item.id || 'unknown'}.xlsx`
-          };
-          return fileData;
-        });
-        
-        console.log('Total files from backend:', response.data.total);
+        const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => ({
+          id: item.id || item._importId || '',
+          name: item.fileName || 'Untitled',
+          size: item.fileSize || 0,
+          mimeType: item.mimeType || 'application/octet-stream',
+          uploadedAt: item.processedAt || item.createdAt || new Date().toISOString(),
+          status: item.status || 'completed',
+          recordCount: item.rowCount || item.totalRows || 0,
+          processedCount: item.validRows || 0,
+          errorCount: item.errorRows || 0,
+          updatedAt: item.updatedAt || item.processedAt || item.createdAt || new Date().toISOString(),
+          error: item.error,
+          metadata: item,
+          downloadUrl: item.blobUrl || '',
+          downloadFileName: item.fileName || `file-${item.id || 'unknown'}.xlsx`
+        }));
+
         setFiles(mappedFiles);
         setTotalPages(response.data.totalPages || 1);
         setError(null);
@@ -126,66 +120,42 @@ export function FileListTable() {
     };
   }, [page, fetchFiles]);
 
-  const handleDownload = async (fileId: string, fileName: string) => {
+  const handleDownload = async (file: FileData) => {
     try {
-      if (!fileId) {
-        throw new Error('File ID is missing');
+      if (!file.downloadUrl) {
+        console.error('No download URL available for file:', file.id);
+        return;
       }
-
-      // Ensure we don't have duplicate 'import_' prefixes in the URL
-      const cleanFileId = fileId.startsWith('import_import_') 
-        ? fileId.replace('import_import_', 'import_')
-        : fileId;
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v2/query/imports/${cleanFileId}/download`, {
+      
+      // For direct blob URL access (if blobs are publicly accessible)
+      if (file.downloadUrl.startsWith('http')) {
+        window.open(file.downloadUrl, '_blank');
+        return;
+      }
+      
+      // If we need to go through the API for authentication
+      const response = await fetch(file.downloadUrl, {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Accept': 'application/octet-stream',
         },
       });
-
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to download file: ${response.statusText}`);
+        throw new Error(`Failed to download file: ${response.statusText}`);
       }
-
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      // Use the provided file name or generate a default one
-      const downloadFileName = fileName || `file-${fileId}.xlsx`;
-      a.download = downloadFileName;
-      document.body.appendChild(a);
-      a.click();
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.downloadFileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch (err) {
-      console.error('Download error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to download file. Please try again.');
+    } catch (error) {
+      console.error('Download failed:', error);
     }
-  };
-
-  const handleDelete = async (fileId: string) => {
-    if (window.confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
-      try {
-        await api.delete(`/api/v2/query/imports/${fileId}`);
-        // Refresh the file list after deletion with a small delay
-        setTimeout(() => {
-          fetchFiles();
-        }, 500);
-      } catch (err) {
-        console.error('Error deleting file:', err);
-        setError(err instanceof Error ? err.message : 'Failed to delete file. Please try again.');
-      }
-    }
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   if (loading && files.length === 0) {
@@ -197,7 +167,6 @@ export function FileListTable() {
     );
   }
 
-
   return (
     <div className="w-full">
       {error && (
@@ -207,116 +176,106 @@ export function FileListTable() {
       )}
 
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Records</TableHead>
-              <TableHead>Uploaded</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {files.map((file) => (
-              <TableRow key={file.id}>
-                
-
-                <TableCell className="font-medium">
-                  <div className="flex items-center">
-                    <FileText className="h-4 w-4 mr-2" />
-                    <Link to={`/files/${file.id}`} className="hover:underline">
-                      {file.name}
-                    </Link>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {loading && files.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading files...</span>
                   </div>
-                </TableCell>
-                <TableCell>{formatFileSize(file.size)}</TableCell>
-                <TableCell>
-                  {file.status === 'completed' ? (
-                    <span className="font-medium">{file.processedCount.toLocaleString()}</span>
-                  ) : file.status === 'processing' ? (
-                    <span className="text-blue-600">Processing {file.processedCount.toLocaleString()} of {file.recordCount.toLocaleString()}</span>
-                  ) : (
-                    <span>{file.recordCount.toLocaleString()}</span>
-                  )}
-                  {file.errorCount > 0 && (
-                    <span className="ml-1 text-red-600">({file.errorCount} errors)</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(file.uploadedAt), 'MMM d, yyyy HH:mm')}
-                </TableCell>
-                <TableCell>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    file.status === 'completed'
-                      ? 'bg-green-100 text-green-800'
-                      : file.status === 'processing' || file.status === 'pending'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {file.status}
-                    {file.errorCount > 0 && (
-                      <span className="ml-1 text-xs opacity-75">({file.errorCount} errors)</span>
-                    )}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(file.id, file.name)}
-                    disabled={file.status !== 'completed'}
-                    data-testid={`download-button-${file.id}`}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-800"
-                    onClick={() => handleDelete(file.id)}
-                    data-testid={`delete-button-${file.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {files.length === 0 && !loading && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground" data-testid="no-files-message">
-                  No files uploaded yet. Upload a file to get started.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
+            ) : files.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                  No files uploaded yet.
+                </td>
+              </tr>
+            ) : (
+              files.map((file) => (
+                <tr key={file.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-900">{file.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {file.recordCount} records
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <span
+                        className={`h-2 w-2 rounded-full mr-2 ${
+                          file.status === 'completed'
+                            ? 'bg-green-500'
+                            : file.status === 'failed'
+                            ? 'bg-red-500'
+                            : 'bg-yellow-500'
+                        }`}
+                      />
+                      <span className="text-sm text-gray-900 capitalize">
+                        {file.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatBytes(file.size)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(file.uploadedAt)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleDownload(file)}
+                        disabled={!file.downloadUrl}
+                        title={file.downloadUrl ? 'Download file' : 'Download not available'}
+                        className="text-indigo-600 hover:text-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1 || loading}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
-          </Button>
-          <span className="text-sm">
+          </button>
+          <span className="text-sm text-gray-700">
             Page {page} of {totalPages}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages || loading}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
-          </Button>
+          </button>
         </div>
       )}
     </div>
