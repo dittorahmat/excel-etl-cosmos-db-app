@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { TokenPayload } from './auth.js';
 
 /**
- * Logs authentication attempts and errors
+ * Logs requests for debugging purposes
  */
 export const authLogger = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
@@ -10,24 +9,18 @@ export const authLogger = (req: Request, res: Response, next: NextFunction) => {
   const userAgent = req.get('user-agent') || 'unknown';
 
   // Log request start
-  console.log(`[Auth] ${new Date().toISOString()} - ${method} ${originalUrl} - IP: ${ip} - User-Agent: ${userAgent}`);
+  console.log(`[Request] ${new Date().toISOString()} - ${method} ${originalUrl} - IP: ${ip} - User-Agent: ${userAgent}`);
 
   // Capture response finish
   res.on('finish', () => {
     const duration = Date.now() - start;
     const { statusCode } = res;
-    const userId = (req.user as TokenPayload)?.oid || 'anonymous';
     
-    // Log authentication result
+    // Log request completion
     if (statusCode >= 400) {
-      console.error(`[Auth] ${new Date().toISOString()} - FAILED - Status: ${statusCode} - User: ${userId} - ${duration}ms`);
-      
-      // Log additional error details if available
-      if (res.locals.authError) {
-        console.error(`[Auth] Error Details:`, res.locals.authError);
-      }
+      console.error(`[Request] ${new Date().toISOString()} - ERROR - Status: ${statusCode} - ${duration}ms`);
     } else if (req.path.includes('/api/')) {
-      console.log(`[Auth] ${new Date().toISOString()} - SUCCESS - Status: ${statusCode} - User: ${userId} - ${duration}ms`);
+      console.log(`[Request] ${new Date().toISOString()} - COMPLETE - Status: ${statusCode} - ${duration}ms`);
     }
   });
 
@@ -35,31 +28,23 @@ export const authLogger = (req: Request, res: Response, next: NextFunction) => {
 };
 
 /**
- * Error handler for authentication failures
+ * Basic error handler for requests
  */
 export const authErrorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-  if (err.name === 'UnauthorizedError') {
-    // Log the error
-    console.error(`[Auth] ${new Date().toISOString()} - Authentication Error:`, {
-      error: err.message,
-      path: req.path,
-      method: req.method,
-      ip: req.ip,
-    });
+  // Log the error
+  console.error(`[Error] ${new Date().toISOString()} - Request Error:`, {
+    error: err.message,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+  });
 
-    // Set error in response locals for the logger
-    res.locals.authError = {
-      message: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    };
-
-    // Send appropriate error response
-    res.status(401).json({
-      error: 'Authentication Failed',
-      message: 'Invalid or expired authentication token',
-      code: 'UNAUTHORIZED',
-    });
-  } else {
-    next(err);
-  }
+  // Send error response
+  res.status(500).json({
+    success: false,
+    error: 'Internal Server Error',
+    message: 'An error occurred while processing your request',
+    ...(process.env.NODE_ENV === 'development' && { details: err.message }),
+  });
 };

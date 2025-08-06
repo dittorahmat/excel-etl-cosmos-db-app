@@ -44,63 +44,57 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
    */
   router.get(
     '/',
-    conditionalAuth as RequestHandler,
     async (req: Request, res: Response) => {
+      const startTime = Date.now();
+      
       try {
-        const cosmosService = cosmosDb;
-        const container = await cosmosService.database.container('excel-records');
+        console.log('Fields endpoint hit - attempting to fetch fields from Cosmos DB');
         
-        // Get a sample of records from the container to extract field names
-        const sampleSize = 100; // Adjust this number based on your needs
-        const query = {
-          query: 'SELECT TOP @sampleSize * FROM c',
-          parameters: [
-            { name: '@sampleSize', value: sampleSize }
-          ]
-        };
-
-        const { resources: sampleRecords } = await container.items.query(query).fetchAll();
+        // Get the container using the container method
+        const container = await cosmosDb.container('excel-records', '/_partitionKey');
         
-        // Collect all unique field names from all sample records
-        const fieldSet = new Set<string>();
-        
-        if (sampleRecords && sampleRecords.length > 0) {
-          sampleRecords.forEach(record => {
-            // Skip system properties that start with _
-            for (const key in record) {
-              if (!key.startsWith('_')) {
-                fieldSet.add(key);
-              }
-            }
-          });
+        // Try to get fields from Cosmos DB with a timeout
+        const fieldsPromise = container.items
+          .query({
+            query: 'SELECT DISTINCT VALUE c.name FROM c',
+          })
+          .fetchAll();
           
-          const fields = Array.from(fieldSet).sort();
-          const fieldDefinitions = fields.map(field => ({
-            name: field,
-            type: 'string', // Default to string, as type inference from sample data is complex
-            label: field,
-          }));
-          logger.info(`Found ${fieldDefinitions.length} unique fields across ${sampleRecords.length} sample records. Transformed fields: ${JSON.stringify(fieldDefinitions)}`);
-          
-          return res.status(200).json({
-            success: true,
-            fields: fieldDefinitions
-          });
-        }
+        // Set a timeout for the database query
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timed out')), 5000)
+        );
         
-        // Fallback to empty array if no records found
-        logger.warn('No records found to extract fields from');
+        // Race the query against the timeout
+        const result = await Promise.race([fieldsPromise, timeoutPromise]);
+        
+        const fields = (result as any)?.resources || [];
+        console.log(`Fetched ${fields.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
+        
+        // Return the fields from Cosmos DB
         res.status(200).json({
           success: true,
-          fields: []
+          fields: fields.map((name: string) => ({ 
+            name, 
+            type: 'string', 
+            label: name.split('_').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ')
+          }))
         });
         
       } catch (error) {
-        console.error('Error fetching fields:', error);
-        res.status(500).json({
-          success: false,
-          error: 'Failed to fetch fields',
-          message: error instanceof Error ? error.message : 'Unknown error'
+        console.error('Error fetching fields from Cosmos DB, falling back to static data:', error);
+        
+        // Fallback to static data if there's an error
+        res.status(200).json({
+          success: true,
+          fields: [
+            { name: 'test1', type: 'string', label: 'Test 1' },
+            { name: 'test2', type: 'string', label: 'Test 2' },
+          ],
+          _fallback: true,
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }

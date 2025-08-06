@@ -25,8 +25,12 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // Keep the original filename but ensure uniqueness to prevent overwrites
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 0xFFFF).toString(16);
+    const ext = path.extname(file.originalname);
+    const baseName = path.basename(file.originalname, ext);
+    // Format: originalname-timestamp-random.extension
+    cb(null, `${baseName}-${uniqueSuffix}${ext}`);
   },
 });
 
@@ -152,9 +156,27 @@ async function uploadHandler(req: Request, res: Response) {
   const requestId = req.id?.toString() || `req_${uuidv4()}`;
   const userId = req.user?.oid || 'anonymous';
   
+  logger.info('Upload handler started', { 
+    requestId, 
+    userId,
+    hasFile: !!req.file,
+    fileInfo: req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      encoding: req.file.encoding,
+      fieldname: req.file.fieldname
+    } : undefined
+  });
+  
   // Check if file exists
   if (!req.file) {
-    logger.error('No file uploaded', { requestId, userId });
+    logger.error('No file uploaded', { 
+      requestId, 
+      userId,
+      headers: req.headers,
+      body: req.body
+    });
     return res.status(400).json(
       createErrorResponse(400, 'No file uploaded', 'Please upload a file')
     );
@@ -221,12 +243,36 @@ async function uploadHandler(req: Request, res: Response) {
 
   try {
     // Process the file using the ingestion service
+    logger.info('Starting file import with ingestion service', {
+      requestId,
+      filePath,
+      fileName,
+      fileType,
+      fileSize: req.file.size,
+      userId
+    });
+    
     const importMetadata = await ingestionService.importFile(
       filePath,
       fileName,
       fileType,
       userId
-    );
+    ).catch(error => {
+      logger.error('Error in ingestionService.importFile', {
+        requestId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error; // Re-throw to be caught by the outer try-catch
+    });
+    
+    logger.info('File import completed successfully', {
+      requestId,
+      importId: importMetadata.id,
+      fileName,
+      duration: Date.now() - startTime,
+      rowsProcessed: importMetadata.totalRows
+    });
 
     // Log successful import
     logger.info('File import completed', {
@@ -252,14 +298,26 @@ async function uploadHandler(req: Request, res: Response) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     
-    // Log the error
+    // Log detailed error information
     logger.error('File import failed', {
       requestId,
       fileName,
       error: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: errorStack,
       duration: Date.now() - startTime,
+      fileExists: await fs.access(filePath).then(() => true).catch(() => false),
+      fileSize: req.file?.size,
+      fileType: req.file?.mimetype,
+      originalFileName: req.file?.originalname,
+      headers: req.headers,
+      body: req.body ? JSON.stringify(req.body).substring(0, 500) + '...' : 'No body',
+      errorDetails: error instanceof Error ? 
+        Object.getOwnPropertyNames(error).reduce((acc, key) => ({
+          ...acc,
+          [key]: (error as any)[key]
+        }), {}) : 'No error details'
     });
 
     // Return error response

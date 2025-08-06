@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import { fileParserService } from '../file-parser/file-parser.service.js';
-import { initialize as initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
+import { initializeCosmosDB } from '../cosmos-db/cosmos-db.service.js';
 import type { AzureCosmosDB } from '../../types/azure.js';
 import { uploadToBlobStorage } from '../blob-storage/upload-to-blob-storage.js';
 import type { CosmosRecord } from '../../types/azure.js';
@@ -68,9 +68,37 @@ export class IngestionService {
     const importId = `import_${uuidv4()}`;
     const importStartTime = new Date();
     let blobUrl = '';
+    
+    this.logger.info('Starting file import', {
+      importId,
+      fileName,
+      fileType,
+      filePath,
+      userId,
+      timestamp: importStartTime.toISOString()
+    });
 
     // Read file from disk to get its size and for blob upload
-    const fileBuffer = await fs.readFile(filePath);
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await fs.readFile(filePath);
+      this.logger.debug('File read successfully', {
+        importId,
+        filePath,
+        fileSize: fileBuffer.length,
+        fileExists: true
+      });
+    } catch (error) {
+      this.logger.error('Failed to read file', {
+        importId,
+        filePath,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        fileExists: await fs.access(filePath).then(() => true).catch(() => false)
+      });
+      throw new Error(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
     const fileSize = fileBuffer.length;
 
     const importMetadata: ImportMetadata = {
@@ -97,15 +125,46 @@ export class IngestionService {
 
     try {
       // Upload the original file to blob storage
-      this.logger.info('Uploading file to blob storage', { fileName, fileType, fileSize: fileBuffer.length });
-      blobUrl = await uploadToBlobStorage(fileBuffer, `${importId}_${fileName}`, fileType);
-      this.logger.info('File uploaded to blob storage', { fileName, blobUrl });
+      this.logger.info('Uploading file to blob storage', { 
+        importId,
+        fileName, 
+        fileType, 
+        fileSize: fileBuffer.length 
+      });
+      
+      try {
+        blobUrl = await uploadToBlobStorage(fileBuffer, `${importId}_${fileName}`, fileType);
+        this.logger.info('File uploaded to blob storage successfully', { 
+          importId,
+          fileName, 
+          fileType,
+          blobUrl: blobUrl ? 'URL received' : 'No URL returned',
+          blobUrlLength: blobUrl?.length || 0
+        });
+      } catch (error) {
+        this.logger.error('Failed to upload file to blob storage', {
+          importId,
+          fileName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        throw new Error(`Failed to upload file to blob storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
       
       // Update metadata with blob URL
       importMetadata['blobUrl'] = blobUrl;
 
       // Parse the file
-      const parseResult = await fileParserService.parseFile(filePath, fileType, {
+      this.logger.info('Starting file parsing', {
+        importId,
+        filePath,
+        fileType,
+        fileSize: fileBuffer.length
+      });
+      
+      let parseResult;
+      try {
+        parseResult = await fileParserService.parseFile(filePath, fileType, {
         transformRow: (row, rowIndex) => {
           // Add system fields to each row
           return {
@@ -116,6 +175,24 @@ export class IngestionService {
             _importedBy: userId,
           };
         },
+        });
+      } catch (parseError) {
+        this.logger.error('Failed to parse file', {
+          importId,
+          filePath,
+          fileType,
+          error: parseError instanceof Error ? parseError.message : 'Unknown error',
+          stack: parseError instanceof Error ? parseError.stack : undefined
+        });
+        throw new Error(`Failed to parse file: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+      }
+      
+      this.logger.info('File parsing completed', {
+        importId,
+        totalRows: parseResult.totalRows,
+        validRows: parseResult.validRows,
+        errorRows: parseResult.errors.length,
+        headers: parseResult.headers
       });
 
       // Update metadata with parse results
@@ -124,10 +201,40 @@ export class IngestionService {
       importMetadata.validRows = parseResult.validRows;
       importMetadata.errorRows = parseResult.errors.length;
       importMetadata.errors = parseResult.errors;
+      
+      if (parseResult.errors.length > 0) {
+        this.logger.warn('Parse completed with errors', {
+          importId,
+          errorCount: parseResult.errors.length,
+          firstFewErrors: parseResult.errors.slice(0, 5) // Log first 5 errors to avoid log flooding
+        });
+      }
 
       if (parseResult.rows.length > 0) {
-        // Save rows to Cosmos DB in batches
-        await this.saveRows(parseResult.rows as RowData[], cosmosDb);
+        this.logger.info('Saving rows to Cosmos DB', {
+          importId,
+          rowCount: parseResult.rows.length,
+          firstRowId: parseResult.rows[0]?._rowNumber,
+          lastRowId: parseResult.rows[parseResult.rows.length - 1]?._rowNumber
+        });
+        
+        try {
+          await this.saveRows(parseResult.rows as RowData[], cosmosDb);
+          this.logger.info('Successfully saved rows to Cosmos DB', {
+            importId,
+            rowCount: parseResult.rows.length
+          });
+        } catch (error) {
+          this.logger.error('Failed to save rows to Cosmos DB', {
+            importId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            rowCount: parseResult.rows.length
+          });
+          throw error;
+        }
+      } else {
+        this.logger.warn('No rows to save to Cosmos DB', { importId });
       }
 
       // Update import status to completed

@@ -287,8 +287,15 @@ export function initializeMockCosmosDB(): MockCosmosDB {
     } as unknown as Database,
     
     // Implement AzureCosmosDB methods
-    container: async (containerName: string, _partitionKey: string = '/id') => {
-      return createMockContainer(containerName, _partitionKey);
+    container: async (containerName: string, partitionKeyPath: string = '/id') => {
+      // Create or get the container with the specified partition key path
+      if (!mockDataStore[containerName]) {
+        mockDataStore[containerName] = {};
+      }
+      
+      // Create a mock container with the specified partition key path
+      const container = createMockContainer(containerName, partitionKeyPath);
+      return container;
     },
     
     upsertRecord: async <T extends CosmosRecord>(record: T, containerName = 'default') => {

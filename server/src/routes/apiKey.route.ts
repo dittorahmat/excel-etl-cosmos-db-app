@@ -4,7 +4,7 @@ import { body, param } from 'express-validator';
 
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import { validateRequest } from '../middleware/validateRequest.js';
-import * as authMiddleware from '../middleware/auth.js';
+import * as authMiddleware from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimit.js';
 
 import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
