@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
+import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 import { logger } from '../../../../utils/logger.js';
 import { AZURE_CONFIG } from '../../../../config/azure-config.js';
 import { AzureCosmosDB } from '../../../../types/azure.js';
@@ -8,30 +8,63 @@ import { AzureCosmosDB } from '../../../../types/azure.js';
 let blobServiceClient: BlobServiceClient | undefined;
 let containerClient: ContainerClient | undefined;
 
-try {
-  if (!AZURE_CONFIG.storage.connectionString) {
-    throw new Error('Azure Storage connection string is not configured');
+/**
+ * Initialize Azure Blob Storage client
+ * @returns Promise that resolves when initialization is complete
+ */
+async function initializeBlobStorage() {
+  try {
+    const { connectionString, containerName } = AZURE_CONFIG.storage;
+    
+    logger.info('Initializing Azure Blob Storage client', {
+      hasConnectionString: !!connectionString,
+      containerName,
+      connectionStringPreview: connectionString ? `${connectionString.substring(0, 20)}...` : 'undefined'
+    });
+
+    if (!connectionString) {
+      throw new Error('Azure Storage connection string is not configured');
+    }
+    
+    if (!containerName) {
+      throw new Error('Azure Storage container name is not configured');
+    }
+    
+    // Initialize the BlobServiceClient
+    blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // Test the connection
+    const exists = await containerClient.exists();
+    logger.info(`Azure Blob Storage container '${containerName}' ${exists ? 'exists' : 'does not exist'}`);
+    
+    if (!exists) {
+      logger.warn(`Container '${containerName}' does not exist in the storage account`);
+    }
+    
+    return { blobServiceClient, containerClient };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Failed to initialize Azure Blob Storage client', {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
+    // Re-throw with more context
+    const initError = new Error(`Azure Blob Storage initialization failed: ${errorMessage}`);
+    (initError as any).originalError = error;
+    throw initError;
   }
-  
-  if (!AZURE_CONFIG.storage.containerName) {
-    throw new Error('Azure Storage container name is not configured');
-  }
-  
-  logger.info(`Initializing BlobServiceClient with container: ${AZURE_CONFIG.storage.containerName}`);
-  blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_CONFIG.storage.connectionString);
-  containerClient = blobServiceClient.getContainerClient(AZURE_CONFIG.storage.containerName);
-  
-  // Test the connection
-  containerClient.exists().then((exists: boolean) => {
-    logger.info(`Container ${AZURE_CONFIG.storage.containerName} exists: ${exists}`);
-  }).catch((error: Error) => {
-    logger.error('Failed to check container existence:', error);
-  });
-  
-} catch (error: unknown) {
-  logger.error('Failed to initialize Azure Blob Storage client:', error);
-  throw error; // Fail fast if we can't initialize the client
 }
+
+// Initialize on module load
+initializeBlobStorage().catch(error => {
+  logger.error('Error during Azure Blob Storage initialization', {
+    error: error instanceof Error ? error.message : 'Unknown error',
+    stack: error instanceof Error ? error.stack : undefined
+  });
+  // Don't throw here to allow the app to start, but the first request will fail
+});
 
 interface ImportMetadata {
   id: string;
@@ -48,6 +81,33 @@ export class DownloadImportHandler {
   }
 
   async handle(req: Request, res: Response): Promise<Response | void> {
+    const requestId = (req as any).id || 'unknown';
+    
+    // Ensure Blob Storage is initialized
+    if (!blobServiceClient || !containerClient) {
+      try {
+        logger.warn('Blob Storage client not initialized, attempting to initialize...', { requestId });
+        await initializeBlobStorage();
+        
+        if (!blobServiceClient || !containerClient) {
+          throw new Error('Failed to initialize Blob Storage client');
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Failed to initialize Blob Storage client for request', {
+          requestId,
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to initialize storage service',
+          details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+          requestId
+        });
+      }
+    }
     try {
       const { importId } = req.params;
       

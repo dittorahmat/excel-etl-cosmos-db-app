@@ -115,19 +115,43 @@ export abstract class BaseQueryHandler {
     logger.debug('Executing count query', {
       query: countQuery,
       parameters,
+      containerName: this.containerName,
+      partitionKey: this.partitionKey
     });
 
-    const cosmosDb = this.cosmosDb;
-    const container = await cosmosDb.container(this.containerName, this.partitionKey);
-    
-    const response = await container.items
-      .query({
+    try {
+      // Log the Cosmos DB service instance details before making the call
+      logger.debug('Cosmos DB service instance in getTotalCount', {
+        hasCosmosDb: !!this.cosmosDb,
+        cosmosDbMethods: this.cosmosDb ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.cosmosDb)) : [],
+        hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
+      });
+
+      const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
+      
+      // Log the container instance details
+      logger.debug('Container instance details', {
+        containerId: container?.id,
+        containerMethods: container ? Object.getOwnPropertyNames(Object.getPrototypeOf(container)) : []
+      });
+
+      const response = await container.items.query({
+        query: countQuery,
+        parameters: parameters as SqlParameter[]
+      }).fetchAll();
+
+      return response.resources[0] as number || 0;
+    } catch (error) {
+      logger.error('Error in getTotalCount', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
         query: countQuery,
         parameters,
-      })
-      .fetchAll();
-
-    return response.resources[0] as number || 0;
+        containerName: this.containerName,
+        partitionKey: this.partitionKey
+      });
+      throw error;
+    }
   }
 
   /**

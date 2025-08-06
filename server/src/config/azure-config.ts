@@ -1,29 +1,87 @@
-// Helper function to get environment variable with fallback
-const getEnvVar = (key: string, fallback: string = ''): string => {
-  // Try with AZURE_ prefix first, then without
-  return process.env[`AZURE_${key}`] || process.env[key] || fallback;
+// Import the environment variables
+import { env } from './env.js';
+
+// Define the Azure configuration type
+type AzureConfig = {
+  storage: {
+    connectionString: string;
+    containerName: string;
+  };
+  cosmos: {
+    connectionString: string;
+    endpoint: string;
+    key: string;
+    databaseName: string;
+    containerName: string;
+    partitionKey: string;
+  };
 };
 
-// Azure service configuration
-export const AZURE_CONFIG = {
-  storage: {
-    connectionString: getEnvVar('STORAGE_CONNECTION_STRING'),
-    containerName: getEnvVar('STORAGE_CONTAINER', 'excel-uploads'),
-  } as const,
-  cosmos: {
-    connectionString: getEnvVar('COSMOS_CONNECTION_STRING'),
-    endpoint: getEnvVar('COSMOS_ENDPOINT'),
-    key: getEnvVar('COSMOS_KEY'),
-    databaseName: getEnvVar('COSMOS_DATABASE', 'excel-upload-db'),
-    containerName: getEnvVar('COSMOS_CONTAINER', 'excel-records'),
-    partitionKey: getEnvVar('COSMOS_PARTITION_KEY', '/id'),
-  } as const,
-} as const;
+// Cache for the configuration
+let configCache: AzureConfig | null = null;
 
-// Temporarily log Cosmos DB configuration for debugging
-console.log('Cosmos DB Configuration:');
-console.log('  Connection String:', AZURE_CONFIG.cosmos.connectionString ? '*****' : 'Not set');
-console.log('  Endpoint:', AZURE_CONFIG.cosmos.endpoint ? AZURE_CONFIG.cosmos.endpoint : 'Not set');
-console.log('  Key:', AZURE_CONFIG.cosmos.key ? '*****' : 'Not set'); // Masking key for security
-console.log('  Database Name:', AZURE_CONFIG.cosmos.databaseName);
-console.log('  Container Name:', AZURE_CONFIG.cosmos.containerName);
+/**
+ * Get the Azure configuration, initializing it if necessary
+ */
+function getAzureConfig(): AzureConfig {
+  // Return cached config if available
+  if (configCache) {
+    return configCache;
+  }
+
+  // Debug: Log the environment variables we care about
+  console.log('[azure-config.ts] Loading Azure configuration...');
+  
+  // Validate required environment variables
+  const missingVars = [];
+  if (!env.AZURE_STORAGE_CONNECTION_STRING) missingVars.push('AZURE_STORAGE_CONNECTION_STRING');
+  if (!env.AZURE_COSMOSDB_ENDPOINT) missingVars.push('AZURE_COSMOSDB_ENDPOINT');
+  if (!env.AZURE_COSMOSDB_KEY) missingVars.push('AZURE_COSMOSDB_KEY');
+
+  if (missingVars.length > 0) {
+    const errorMsg = `Missing required environment variables: ${missingVars.join(', ')}`;
+    console.error(`[azure-config.ts] ERROR: ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  // Create the configuration object
+  const config: AzureConfig = {
+    storage: {
+      connectionString: env.AZURE_STORAGE_CONNECTION_STRING,
+      containerName: env.AZURE_STORAGE_CONTAINER || 'excel-uploads',
+    },
+    cosmos: {
+      connectionString: '', // Not used in this configuration
+      endpoint: env.AZURE_COSMOSDB_ENDPOINT,
+      key: env.AZURE_COSMOSDB_KEY,
+      databaseName: env.AZURE_COSMOSDB_DATABASE || 'excel-upload-db',
+      containerName: env.AZURE_COSMOSDB_CONTAINER || 'excel-records',
+      partitionKey: env.AZURE_COSMOSDB_PARTITION_KEY || '/id',
+    },
+  };
+
+  // Log the configuration (without sensitive values)
+  console.log('[azure-config.ts] Azure Configuration loaded:', {
+    storage: {
+      hasConnectionString: !!config.storage.connectionString,
+      containerName: config.storage.containerName,
+    },
+    cosmos: {
+      hasEndpoint: !!config.cosmos.endpoint,
+      hasKey: !!config.cosmos.key,
+      databaseName: config.cosmos.databaseName,
+      containerName: config.cosmos.containerName,
+      partitionKey: config.cosmos.partitionKey,
+    },
+  });
+
+  // Cache the configuration for future use
+  configCache = config;
+
+  return config;
+}
+
+// For backward compatibility
+const AZURE_CONFIG = getAzureConfig();
+
+export { getAzureConfig, AZURE_CONFIG };

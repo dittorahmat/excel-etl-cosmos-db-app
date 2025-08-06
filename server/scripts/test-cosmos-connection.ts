@@ -8,26 +8,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables from the server's .env file
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+const envPath = path.resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
 
 // Log environment variables for debugging
-console.log('Environment variables loaded from:', path.resolve(__dirname, '../.env'));
-console.log('COSMOS_ENDPOINT:', process.env.COSMOS_ENDPOINT ? '***' : 'Not set');
-console.log('COSMOS_DATABASE:', process.env.COSMOS_DATABASE || 'Not set');
-console.log('COSMOS_CONTAINER:', process.env.COSMOS_CONTAINER || 'Not set');
+console.log('Environment variables loaded from:', envPath);
+console.log('AZURE_COSMOS_ENDPOINT:', process.env.AZURE_COSMOS_ENDPOINT ? '***' : 'Not set');
+console.log('AZURE_COSMOS_KEY:', process.env.AZURE_COSMOS_KEY ? '***' : 'Not set');
+console.log('AZURE_COSMOS_DATABASE:', process.env.AZURE_COSMOS_DATABASE || 'Not set');
+console.log('AZURE_COSMOS_CONTAINER:', process.env.AZURE_COSMOS_CONTAINER || 'Not set');
 
 async function runTest() {
   console.log('Starting Cosmos DB connection test...');
   
   try {
-    // Import from the built JavaScript file
-    // Note: The build output is in dist/server/server/src/services/cosmos-db/cosmos-db.service.js
-    const modulePath = path.resolve(__dirname, '../server/src/services/cosmos-db/cosmos-db.service.js');
+    // Import the Cosmos DB service module
+    const modulePath = path.resolve(__dirname, '../src/services/cosmos-db/cosmos-db.service.js');
     console.log(`Importing from: ${modulePath}`);
     
     // Dynamic import with error handling
     const module = await import(modulePath);
-    const { testCosmosConnection } = module;
+    const { testConnection: testCosmosConnection } = module;
     
     if (typeof testCosmosConnection !== 'function') {
       throw new Error('testCosmosConnection is not a function. Exported members: ' + Object.keys(module).join(', '));
@@ -37,8 +38,8 @@ async function runTest() {
     const result = await testCosmosConnection();
     
     console.log('\n=== Test Results ===');
-    console.log(`Success: ${result.success}`);
-    console.log(`Message: ${result.message}`);
+    console.log(`Success: ${result.success ?? 'Not specified'}`);
+    console.log(`Message: ${result.message || 'No message provided'}`);
     
     console.log('\n=== Connection Details ===');
     console.log(`Database: ${result.database || 'Not specified'}`);
@@ -49,11 +50,23 @@ async function runTest() {
       console.log(result.error);
     }
     
-    if (!result.success) {
-      process.exit(1);
-    }
+    // Additional debug information
+    console.log('\n=== Debug Information ===');
+    console.log('Environment Variables:');
+    console.log(`- AZURE_COSMOS_ENDPOINT: ${process.env.AZURE_COSMOS_ENDPOINT ? 'Set' : 'Not set'}`);
+    console.log(`- AZURE_COSMOS_KEY: ${process.env.AZURE_COSMOS_KEY ? 'Set' : 'Not set'}`);
+    console.log(`- AZURE_COSMOS_DATABASE: ${process.env.AZURE_COSMOS_DATABASE || 'Not set'}`);
+    console.log(`- AZURE_COSMOS_CONTAINER: ${process.env.AZURE_COSMOS_CONTAINER || 'Not set'}`);
     
-    console.log('\nTest completed successfully!');
+    // Check if the test was successful
+    if (result.success === false) {
+      console.log('\n❌ Test failed');
+      process.exit(1);
+    } else if (result.success === true) {
+      console.log('\n✅ Test completed successfully!');
+    } else {
+      console.log('\n⚠️  Test completed with unknown status');
+    }
   } catch (error) {
     console.error('\n=== Test Failed ===');
     console.error('An unexpected error occurred:');

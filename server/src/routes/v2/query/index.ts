@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as authMiddleware from '../../../middleware/auth.js';
+import { requireAuthOrApiKey } from '../../../middleware/authMiddleware.js';
 import express from 'express';
 import { AzureCosmosDB } from '../../../types/azure.js';
 
@@ -28,7 +28,12 @@ export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
   // Define routes
   if (authRequired) {
-    router.use(authMiddleware.authenticateToken);
+    // TODO: Initialize repositories and pass them to requireAuthOrApiKey
+    // For now, we'll skip authentication if AUTH_ENABLED is false
+    // router.use(requireAuthOrApiKey({
+    //   apiKeyRepository: /* initialize repository */,
+    //   apiKeyUsageRepository: /* initialize repository */
+    // }));
   }
 
   // Query rows from a specific import

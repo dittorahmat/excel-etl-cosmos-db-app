@@ -34,14 +34,15 @@ export function UploadPage() {
         throw new Error('No authentication token available. Please sign in again.');
       }
       
-      // Use the authenticated API client with v2 query imports endpoint for consistency
+      // Use the direct upload endpoint instead of the v2 query imports endpoint
       interface UploadResponse {
-        data: {
-          rowCount?: number;
-        };
+        success: boolean;
+        message: string;
+        rowCount?: number;
+        filename?: string;
       }
       
-                  const response = await api.post<UploadResponse>('/api/v2/query/imports', formData, {
+      const response = await api.post<UploadResponse>('/api/v2/upload', formData, {
         // Don't set Content-Type header - let the browser set it with the correct boundary
         // The API client will automatically add the Authorization header
         onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & { 
@@ -57,11 +58,16 @@ export function UploadPage() {
       });
 
       // Handle successful upload
-      const rowCount = response.data?.rowCount || 0;
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Upload failed');
+      }
+      
+      const rowCount = response.data.rowCount || 0;
+      const message = response.data.message || `Successfully uploaded ${file.name}`;
       
       toast({
         title: 'Upload Successful',
-        description: `Successfully uploaded ${file.name}. Processed ${rowCount} rows.`,
+        description: `${message}${rowCount ? ` Processed ${rowCount} rows.` : ''}`,
         action: (
           <ToastAction altText="View" onClick={() => {
             // Navigate to the dashboard to see the uploaded file

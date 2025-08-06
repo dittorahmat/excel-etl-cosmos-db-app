@@ -23,6 +23,45 @@ export class ListImportsHandler extends BaseQueryHandler {
       query: isPostRequest ? 'POST body' : req.query,
     });
 
+    // Enhanced logging for Cosmos DB service instance
+    try {
+      logger.info('Cosmos DB service instance in ListImportsHandler - START', {
+        ...logContext,
+        hasCosmosDb: !!this.cosmosDb,
+        cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
+        cosmosDbConstructor: this.cosmosDb ? this.cosmosDb.constructor.name : 'undefined',
+        hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
+        cosmosDbMethods: this.cosmosDb ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.cosmosDb)) : [],
+        cosmosDbOwnProperties: this.cosmosDb ? Object.getOwnPropertyNames(this.cosmosDb) : [],
+        isCosmosDbInstance: this.cosmosDb ? this.cosmosDb instanceof Object : false,
+        isCosmosDbContainer: this.cosmosDb ? 'container' in this.cosmosDb : false,
+      });
+
+      // Test if we can call the container method directly
+      if (this.cosmosDb && typeof this.cosmosDb.container === 'function') {
+        try {
+          const testContainer = await this.cosmosDb.container('test', '/test');
+          logger.info('Successfully called cosmosDb.container()', {
+            ...logContext,
+            containerId: testContainer?.id,
+            containerMethods: testContainer ? Object.getOwnPropertyNames(Object.getPrototypeOf(testContainer)) : []
+          });
+        } catch (containerError) {
+          logger.warn('Error calling cosmosDb.container()', {
+            ...logContext,
+            error: containerError instanceof Error ? containerError.message : 'Unknown error',
+            stack: containerError instanceof Error ? containerError.stack : undefined
+          });
+        }
+      }
+    } catch (logError) {
+      logger.error('Error logging Cosmos DB service details', {
+        ...logContext,
+        error: logError instanceof Error ? logError.message : 'Unknown error',
+        stack: logError instanceof Error ? logError.stack : undefined
+      });
+    }
+
     try {
       // For POST requests, use the request body, otherwise use query parameters
       const inputParams = isPostRequest ? req.body : req.query;
