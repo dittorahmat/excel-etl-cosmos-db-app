@@ -7,16 +7,15 @@
     "server"
   ],
   "scripts": {
-
     "dev:client": "vite --force",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently -n 'CLIENT,SERVER' -c 'bgBlue.bold,bgGreen.bold' \"npm run dev:client\" \"npm run dev:server\"",
     "build:client": "vite build",
     "preview": "vite preview",
-    "dev:server": "NODE_ENV=development dotenv -e server/.env tsx watch server/src/index.ts",
     "debug:tsconfig": "tsc -p tsconfig.server.json --showConfig",
     "build:server": "npm install --prefix server && tsc -p tsconfig.server.json --skipLibCheck --skipDefaultLibCheck --noEmit false && npm run copy:test-script",
     "copy:test-script": "mkdir -p dist/server/scripts && tsc server/scripts/test-cosmos-direct.ts --skipLibCheck --skipDefaultLibCheck --noEmit false --target es2020 --module es2020 --outDir dist/server/scripts --esModuleInterop true --resolveJsonModule true --moduleResolution node --typeRoots []",
     "start:server": "node dist/server/server.js",
-    "dev": "concurrently \"npm:dev:client\" \"npm:dev:server\"",
     "build": "npm run build:client && npm run build:server",
     "start": "node start-server.js",
     "test": "npm run test:server && npm run test:client",

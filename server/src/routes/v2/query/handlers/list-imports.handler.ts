@@ -9,7 +9,43 @@ import { QueryParams } from '../types/query.types.js';
 
 export class ListImportsHandler extends BaseQueryHandler {
   constructor(cosmosDb: AzureCosmosDB) {
-    super(cosmosDb, 'excel-records', '/_partitionKey');
+    // Log detailed information about the Cosmos DB client instance
+    const logDetails = {
+      hasCosmosDb: !!cosmosDb,
+      cosmosDbType: cosmosDb ? typeof cosmosDb : 'undefined',
+      cosmosDbConstructor: cosmosDb?.constructor?.name || 'unknown',
+      availableMethods: cosmosDb ? Object.getOwnPropertyNames(cosmosDb) : [],
+      hasContainerMethod: cosmosDb ? typeof cosmosDb.container === 'function' : false,
+      hasDatabase: cosmosDb ? 'database' in cosmosDb : false,
+      databaseType: cosmosDb && 'database' in cosmosDb ? typeof cosmosDb.database : 'n/a',
+      hasDatabaseContainer: cosmosDb && 'database' in cosmosDb 
+        ? 'container' in cosmosDb.database 
+        : false
+    };
+    
+    logger.debug('ListImportsHandler constructor called', logDetails);
+    
+    try {
+      // Use 'excel-records' as the container name and 'imports' as the partition key value
+      super(cosmosDb, 'excel-records', 'imports');
+      
+      // Log after super() call to ensure all properties are initialized
+      logger.debug('ListImportsHandler initialized', {
+        containerName: this.containerName,
+        partitionKey: this.partitionKey,
+        hasCosmosDb: !!this.cosmosDb,
+        cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
+        hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
+        hasDatabase: this.cosmosDb ? 'database' in this.cosmosDb : false,
+        hasDatabaseContainer: this.cosmosDb && 'database' in this.cosmosDb 
+          ? 'container' in this.cosmosDb.database 
+          : false
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Error in ListImportsHandler constructor:', { error: errorMessage });
+      throw error;
+    }
   }
 
   public async handle(req: Request, res: Response): Promise<Response | void> {
@@ -22,45 +58,6 @@ export class ListImportsHandler extends BaseQueryHandler {
       url: req.originalUrl,
       query: isPostRequest ? 'POST body' : req.query,
     });
-
-    // Enhanced logging for Cosmos DB service instance
-    try {
-      logger.info('Cosmos DB service instance in ListImportsHandler - START', {
-        ...logContext,
-        hasCosmosDb: !!this.cosmosDb,
-        cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
-        cosmosDbConstructor: this.cosmosDb ? this.cosmosDb.constructor.name : 'undefined',
-        hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
-        cosmosDbMethods: this.cosmosDb ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.cosmosDb)) : [],
-        cosmosDbOwnProperties: this.cosmosDb ? Object.getOwnPropertyNames(this.cosmosDb) : [],
-        isCosmosDbInstance: this.cosmosDb ? this.cosmosDb instanceof Object : false,
-        isCosmosDbContainer: this.cosmosDb ? 'container' in this.cosmosDb : false,
-      });
-
-      // Test if we can call the container method directly
-      if (this.cosmosDb && typeof this.cosmosDb.container === 'function') {
-        try {
-          const testContainer = await this.cosmosDb.container('test', '/test');
-          logger.info('Successfully called cosmosDb.container()', {
-            ...logContext,
-            containerId: testContainer?.id,
-            containerMethods: testContainer ? Object.getOwnPropertyNames(Object.getPrototypeOf(testContainer)) : []
-          });
-        } catch (containerError) {
-          logger.warn('Error calling cosmosDb.container()', {
-            ...logContext,
-            error: containerError instanceof Error ? containerError.message : 'Unknown error',
-            stack: containerError instanceof Error ? containerError.stack : undefined
-          });
-        }
-      }
-    } catch (logError) {
-      logger.error('Error logging Cosmos DB service details', {
-        ...logContext,
-        error: logError instanceof Error ? logError.message : 'Unknown error',
-        stack: logError instanceof Error ? logError.stack : undefined
-      });
-    }
 
     try {
       // For POST requests, use the request body, otherwise use query parameters
@@ -112,13 +109,52 @@ export class ListImportsHandler extends BaseQueryHandler {
       const { whereClauses, parameters } = this.buildQueryParts(queryParamsWithContinuation);
       const totalCount = await this.getTotalCount(whereClauses, parameters);
 
+      // Execute the optimized Cosmos DB query
+      const querySpec = {
+        query: `
+          SELECT c.fileName, c.processedAt, c.blobUrl
+          FROM c 
+          WHERE IS_DEFINED(c.id) 
+            AND IS_DEFINED(c.fileName) 
+            AND c._partitionKey = 'imports'
+          ORDER BY c.processedAt DESC
+        `
+      };
+
+      // Get the container reference with partition key
+      let container;
+      try {
+        container = await this.cosmosDb.container('excel-records', 'imports');
+        logger.info('Successfully accessed Cosmos DB container', {
+          ...logContext,
+          containerName: 'excel-records',
+          partitionKey: 'imports'
+        });
+      } catch (containerError) {
+        const errorMessage = containerError instanceof Error ? containerError.message : 'Unknown error';
+        logger.error('Failed to access Cosmos DB container', {
+          ...logContext,
+          error: errorMessage,
+          containerName: 'excel-records',
+          partitionKey: '/_partitionKey',
+          stack: containerError instanceof Error ? containerError.stack : undefined
+        });
+        
+        return res.status(500).json({
+          success: false,
+          error: 'Database connection error',
+          message: 'Failed to connect to the database',
+          details: {
+            containerName: 'excel-records',
+            error: errorMessage
+          }
+        });
+      }
+      
       // Execute the query
-      const { items, requestCharge, continuationToken, hasMoreResults } = 
-        await this.executeQuery<Record<string, unknown>>(
-          queryParamsWithContinuation,
-          [],
-          []
-        );
+      const { resources: items, requestCharge, continuationToken, hasMoreResults } = 
+        await container.items.query(querySpec, { maxItemCount: queryParams.limit || 10 })
+          .fetchNext();
 
       logger.info('listImports - Found imports', { 
         ...logContext,

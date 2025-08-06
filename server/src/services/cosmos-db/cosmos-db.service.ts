@@ -65,12 +65,38 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
   
   try {
     // First, check if the database exists or create it
-    logger.debug(`Checking if database ${databaseName} exists...`);
+    logger.debug(`Checking if database ${databaseName} exists...`, {
+      endpoint: endpoint ? 'provided' : 'missing',
+      key: key ? 'provided' : 'missing',
+      databaseName,
+      containerName: defaultContainerName,
+      partitionKey
+    });
+    
     const databaseResponse: DatabaseResponse = await cosmosClient.databases.createIfNotExists({ 
       id: databaseName 
     });
+    
+    logger.debug('Database response received:', {
+      statusCode: databaseResponse.statusCode,
+      database: {
+        id: databaseResponse.database?.id,
+        url: databaseResponse.database?.url,
+        client: databaseResponse.database?.client ? 'exists' : 'missing'
+      },
+      headers: Object.keys(databaseResponse.headers)
+    });
+    
     const db = databaseResponse.database;
-    logger.info(`Database ${databaseName} is ready`);
+    if (!db) {
+      throw new Error('Failed to get database instance from the response');
+    }
+    
+    logger.info(`Database ${databaseName} is ready`, {
+      databaseId: db.id,
+      url: db.url,
+      client: db.client ? 'exists' : 'missing'
+    });
     
     // Create container if it doesn't exist
     const containerDefinition: ContainerDefinition = {
@@ -81,13 +107,49 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
       }
     };
     
+    logger.debug('Creating/verifying container with definition:', {
+      containerName: defaultContainerName,
+      partitionKey,
+      definition: containerDefinition
+    });
+    
+    let container: Container;
     try {
       logger.debug(`Checking if container ${defaultContainerName} exists...`);
-      const containerResponse: ContainerResponse = await db.containers.createIfNotExists(containerDefinition);
-      logger.info(`Container ${defaultContainerName} is ready with partition key ${partitionKey}`);
+      const containerResponse = await db.containers.createIfNotExists(containerDefinition);
+      
+      logger.debug('Container response received:', {
+        statusCode: containerResponse.statusCode,
+        container: {
+          id: containerResponse.container?.id,
+          url: containerResponse.container?.url,
+          database: containerResponse.container?.database ? 'exists' : 'missing'
+        },
+        headers: Object.keys(containerResponse.headers || {})
+      });
+      
+      container = containerResponse.container;
+      if (!container) {
+        throw new Error('Failed to get container instance from the response');
+      }
+      
+      logger.info(`Container ${defaultContainerName} is ready with partition key ${partitionKey}`, {
+        containerId: container.id,
+        url: container.url,
+        database: container.database ? 'exists' : 'missing'
+      });
+      
+      // Verify the container is accessible
+      try {
+        await container.read();
+        logger.debug(`Successfully accessed container: ${defaultContainerName}`);
+      } catch (accessError) {
+        logger.error(`Failed to access container ${defaultContainerName}:`, accessError);
+        throw new Error(`Container ${defaultContainerName} exists but is not accessible: ${(accessError as Error).message}`);
+      }
     } catch (containerError) {
-      logger.error(`Error creating container ${defaultContainerName}:`, containerError);
-      throw new Error(`Error creating container ${defaultContainerName}: ${(containerError as Error).message}`);
+      logger.error(`Error creating/accessing container ${defaultContainerName}:`, containerError);
+      throw new Error(`Error with container ${defaultContainerName}: ${(containerError as Error).message}`);
     }
 
     // Initialize the Cosmos DB service with all required methods
@@ -176,24 +238,6 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
             return undefined; // Not found
           }
           logger.error(`Failed to get item ${id}:`, error);
-          throw new Error(`Failed to get item ${id}: ${(error as Error).message}`);
-        }
-      },
-      
-      /**
-       * Upsert a record into Cosmos DB
-       */
-      upsertRecord: async <T extends CosmosRecord>(
-        record: T,
-        containerName: string = defaultContainerName
-      ): Promise<ItemResponse<T>> => {
-        try {
-          const { container } = await db.container(containerName).read();
-          const item = {
-            ...record,
-            id: record.id || uuidv4(),
-            _partitionKey: (record as any)._partitionKey || partitionKey,
-            _ts: Math.floor(Date.now() / 1000)
           };
           return await container.items.upsert<T>(item);
         } catch (error) {

@@ -133,7 +133,8 @@ export class IngestionService {
       });
       
       try {
-        blobUrl = await uploadToBlobStorage(fileBuffer, `${importId}_${fileName}`, fileType);
+        // Use the original filename without the import ID prefix
+        blobUrl = await uploadToBlobStorage(fileBuffer, fileName, fileType);
         this.logger.info('File uploaded to blob storage successfully', { 
           importId,
           fileName, 

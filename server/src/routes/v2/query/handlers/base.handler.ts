@@ -18,9 +18,38 @@ export abstract class BaseQueryHandler {
   protected cosmosDb: AzureCosmosDB;
 
   constructor(cosmosDb: AzureCosmosDB, containerName: string, partitionKey: string) {
+    // Log detailed information about the Cosmos DB client instance
+    const logDetails = {
+      containerName,
+      partitionKey,
+      hasCosmosDb: !!cosmosDb,
+      cosmosDbType: cosmosDb ? typeof cosmosDb : 'undefined',
+      cosmosDbConstructor: cosmosDb?.constructor?.name || 'unknown',
+      availableMethods: cosmosDb ? Object.getOwnPropertyNames(cosmosDb) : [],
+      hasContainerMethod: cosmosDb ? typeof cosmosDb.container === 'function' : false,
+      hasDatabase: cosmosDb ? 'database' in cosmosDb : false,
+      databaseType: cosmosDb && 'database' in cosmosDb ? typeof cosmosDb.database : 'n/a',
+      databaseMethods: cosmosDb && 'database' in cosmosDb ? Object.getOwnPropertyNames(cosmosDb.database) : []
+    };
+    
+    logger.debug('BaseQueryHandler constructor called', logDetails);
+    
     this.containerName = containerName;
     this.partitionKey = partitionKey;
     this.cosmosDb = cosmosDb;
+    
+    // Log after assignment to ensure no reference issues
+    logger.debug('BaseQueryHandler initialized', {
+      containerName: this.containerName,
+      partitionKey: this.partitionKey,
+      hasCosmosDb: !!this.cosmosDb,
+      cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
+      hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
+      hasDatabase: this.cosmosDb ? 'database' in this.cosmosDb : false,
+      hasDatabaseContainer: this.cosmosDb && 'database' in this.cosmosDb 
+        ? 'container' in this.cosmosDb.database 
+        : false
+    });
   }
 
   /**
@@ -66,29 +95,57 @@ export abstract class BaseQueryHandler {
     logger.debug('Executing Cosmos DB query', {
       query: finalQuery,
       parameters: allParams,
+      containerName: this.containerName
     });
 
-    const cosmosDb = this.cosmosDb;
-    const container = await cosmosDb.container(this.containerName, this.partitionKey);
+    // Get container reference using the container method from AzureCosmosDB interface
+    const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
     
     const queryOptions = {
       maxItemCount: params.limit,
       continuationToken: params.continuationToken
     };
 
-    const queryIterator = container.items.query(
-      { query: finalQuery, parameters: allParams },
-      queryOptions
-    );
-
-    const response = await queryIterator.fetchNext();
-    
-    return {
-      items: response.resources as T[],
-      requestCharge: response.requestCharge,
-      continuationToken: response.continuationToken,
-      hasMoreResults: response.hasMoreResults
+    // Execute the query
+    const querySpec = {
+      query: finalQuery,
+      parameters: allParams
     };
+
+    logger.debug('Executing Cosmos DB query with spec', {
+      querySpec,
+      queryOptions,
+      containerName: this.containerName,
+      partitionKey: this.partitionKey
+    });
+
+    try {
+      const queryIterator = container.items.query(querySpec, queryOptions);
+      const response = await queryIterator.fetchNext();
+      
+      logger.debug('Received response from Cosmos DB', {
+        requestCharge: response.requestCharge,
+        hasMoreResults: response.hasMoreResults,
+        itemCount: response.resources?.length || 0
+      });
+      
+      return {
+        items: response.resources as T[],
+        requestCharge: response.requestCharge,
+        continuationToken: response.continuationToken,
+        hasMoreResults: response.hasMoreResults
+      };
+    } catch (error) {
+      logger.error('Error executing Cosmos DB query', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        query: finalQuery,
+        parameters: allParams,
+        containerName: this.containerName,
+        partitionKey: this.partitionKey
+      });
+      throw error;
+    }
   }
 
   /**
@@ -106,41 +163,91 @@ export abstract class BaseQueryHandler {
     whereClauses: string[],
     parameters: SqlParameter[]
   ): Promise<number> {
-    if (whereClauses.length === 0) {
-      whereClauses.push('1=1');
-    }
+    const countQuery = `
+      SELECT VALUE COUNT(1)
+      FROM c
+      ${whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+    `;
 
-    const countQuery = `SELECT VALUE COUNT(1) FROM c WHERE ${whereClauses.join(' AND ')}`;
-    
-    logger.debug('Executing count query', {
-      query: countQuery,
+    // Log detailed information about the Cosmos DB client and query
+    const logContext = {
+      countQuery,
       parameters,
       containerName: this.containerName,
-      partitionKey: this.partitionKey
-    });
+      partitionKey: this.partitionKey,
+      hasCosmosDb: !!this.cosmosDb,
+      cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
+      cosmosDbConstructor: this.cosmosDb?.constructor?.name || 'unknown',
+      availableMethods: this.cosmosDb ? Object.getOwnPropertyNames(this.cosmosDb) : [],
+      hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
+      hasDatabase: this.cosmosDb ? 'database' in this.cosmosDb : false,
+      databaseType: this.cosmosDb && 'database' in this.cosmosDb ? typeof this.cosmosDb.database : 'n/a',
+      hasDatabaseContainer: this.cosmosDb && 'database' in this.cosmosDb 
+        ? 'container' in this.cosmosDb.database 
+        : false
+    };
+
+    logger.debug('Executing count query', logContext);
 
     try {
-      // Log the Cosmos DB service instance details before making the call
-      logger.debug('Cosmos DB service instance in getTotalCount', {
-        hasCosmosDb: !!this.cosmosDb,
-        cosmosDbMethods: this.cosmosDb ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.cosmosDb)) : [],
-        hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
-      });
-
-      const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
+      // Validate Cosmos DB client
+      if (!this.cosmosDb) {
+        logger.error('CosmosDB client is undefined in getTotalCount');
+        throw new Error('CosmosDB client not properly initialized (undefined)');
+      }
       
-      // Log the container instance details
-      logger.debug('Container instance details', {
-        containerId: container?.id,
-        containerMethods: container ? Object.getOwnPropertyNames(Object.getPrototypeOf(container)) : []
+      // Check if database is available
+      if (!('database' in this.cosmosDb)) {
+        logger.error('CosmosDB client is missing database property', {
+          availableProperties: Object.getOwnPropertyNames(this.cosmosDb)
+        });
+        throw new Error('CosmosDB client is missing database property');
+      }
+      
+      const { database } = this.cosmosDb;
+      
+      // Check if container method is available on the database
+      if (typeof database.container !== 'function') {
+        logger.error('Database does not have container method', {
+          databaseType: typeof database,
+          databaseMethods: Object.getOwnPropertyNames(database),
+          hasContainer: 'container' in database,
+          containerType: 'container' in database ? typeof database.container : 'n/a'
+        });
+        throw new Error('Database does not have container method');
+      }
+      
+      // Get the container reference
+      const container = database.container(this.containerName);
+      logger.debug('Successfully accessed container in base handler', {
+        containerName: this.containerName,
+        containerType: typeof container,
+        containerMethods: container ? Object.getOwnPropertyNames(container) : []
       });
-
-      const response = await container.items.query({
+      
+      if (!container) {
+        throw new Error(`Container '${this.containerName}' not found in CosmosDB`);
+      }
+      
+      // Execute the count query
+      const querySpec = {
         query: countQuery,
-        parameters: parameters as SqlParameter[]
-      }).fetchAll();
+        parameters: parameters
+      };
 
-      return response.resources[0] as number || 0;
+      logger.debug('Executing Cosmos DB query', {
+        query: querySpec.query,
+        parameters: querySpec.parameters
+      });
+      
+      const result = await container.items.query(querySpec).fetchAll();
+      logger.debug('Query result', {
+        resourceCount: result.resources.length,
+        hasResults: result.resources.length > 0,
+        firstResult: result.resources[0]
+      });
+      
+      return result.resources[0] as number || 0;
     } catch (error) {
       logger.error('Error in getTotalCount', {
         error: error instanceof Error ? error.message : 'Unknown error',

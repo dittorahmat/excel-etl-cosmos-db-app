@@ -36,10 +36,27 @@ export function UploadPage() {
       
       // Use the direct upload endpoint instead of the v2 query imports endpoint
       interface UploadResponse {
-        success: boolean;
-        message: string;
+        success?: boolean;
+        message?: string;
+        importId?: string;
+        fileName?: string;
+        totalRows?: number;
         rowCount?: number;
-        filename?: string;
+        validRows?: number;
+        errorRows?: number;
+        errors?: Array<{ row: number; error: string }>;
+        // Axios wraps the response in a data property
+        data?: {
+          success: boolean;
+          message: string;
+          importId?: string;
+          fileName?: string;
+          totalRows?: number;
+          rowCount?: number;
+          validRows?: number;
+          errorRows?: number;
+          errors?: Array<{ row: number; error: string }>;
+        };
       }
       
       const response = await api.post<UploadResponse>('/api/v2/upload', formData, {
@@ -58,12 +75,21 @@ export function UploadPage() {
       });
 
       // Handle successful upload
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Upload failed');
+      if (!response) {
+        throw new Error('No response from server');
       }
       
-      const rowCount = response.data.rowCount || 0;
-      const message = response.data.message || `Successfully uploaded ${file.name}`;
+      // Handle different response structures
+      const responseData = response.data || response;
+      
+      // If we have a success flag, check it
+      if (responseData.success === false) {
+        throw new Error(responseData.message || 'Upload failed');
+      }
+      
+      // If we got here, consider it a success
+      const rowCount = responseData.totalRows || responseData.rowCount || 0;
+      const message = responseData.message || `Successfully uploaded ${file.name}`;
       
       toast({
         title: 'Upload Successful',
