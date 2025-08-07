@@ -12,7 +12,9 @@ import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
 
 export function createApp(azureServices: { 
   cosmosDb: AzureCosmosDB; 
-  blobStorage: AzureBlobStorage 
+  blobStorage: AzureBlobStorage; 
+  database: any; 
+  cosmosClient: any; 
 }): Express {
   const app = express();
   const env = process.env;

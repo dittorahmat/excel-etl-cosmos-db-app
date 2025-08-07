@@ -238,8 +238,20 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
             return undefined; // Not found
           }
           logger.error(`Failed to get item ${id}:`, error);
-          };
-          return await container.items.upsert<T>(item);
+          throw new Error(`Failed to get item ${id}: ${(error as Error).message}`);
+        }
+      },
+
+      /**
+       * Upsert a record in Cosmos DB
+       */
+      upsertRecord: async <T extends CosmosRecord>(
+        record: T,
+        containerName: string = defaultContainerName
+      ): Promise<ItemResponse<T>> => {
+        try {
+          const { container } = await db.container(containerName).read();
+          return await container.items.upsert<T>(record);
         } catch (error) {
           logger.error(`Failed to upsert record:`, { record, error });
           throw new Error(`Failed to upsert record: ${(error as Error).message}`);
