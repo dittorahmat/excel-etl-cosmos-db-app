@@ -3,7 +3,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { logger } from '../utils/logger.js';
 import { authLogger, authErrorHandler } from '../middleware/authLogger.js';
-import { requireAuthOrApiKey } from '../middleware/authMiddleware.js';
+
 import { createV2Router } from '../routes/v2/index.js';
 import { createFieldsRouter } from '../routes/fields.route.js';
 import { createApiKeyRouter } from '../routes/apiKey.route.js';

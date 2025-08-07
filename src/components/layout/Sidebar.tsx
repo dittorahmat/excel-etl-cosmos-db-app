@@ -6,8 +6,6 @@ import {
   LayoutDashboard,
   Upload,
   Database,
-  Settings,
-  History,
   ChevronDown,
   ChevronRight,
   KeyRound,
@@ -25,29 +23,11 @@ const menuItems = [
     path: '/upload',
     icon: Upload,
   },
-  {
-    title: 'Data Management',
-    icon: Database,
-    subItems: [
-      { title: 'View All Data', path: '/data', icon: Database },
-      { title: 'Add New', path: '/data/new', icon: Database },
-    ],
-  },
-  {
-    title: 'History',
-    path: '/history',
-    icon: History,
-  },
 ];
 
 
 
 const adminMenuItems = [
-  {
-    title: 'Settings',
-    path: '/settings',
-    icon: Settings,
-  },
   {
     title: 'API Keys',
     path: '/api-keys',

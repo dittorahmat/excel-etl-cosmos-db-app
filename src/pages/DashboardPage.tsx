@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { QueryBuilder } from '../components/QueryBuilder/QueryBuilder';
-import { DataChart } from '../components/DataChart';
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileListTable } from '../components/FileListTable';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -63,7 +63,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="query">Query Builder</TabsTrigger>
             <TabsTrigger value="results">Results</TabsTrigger>
-            <TabsTrigger value="charts">Charts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="files" className="space-y-4">
@@ -174,38 +173,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="charts">
-            <Card>
-              <CardHeader>
-                <CardTitle>Charts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {queryResult.items.length > 0 ? (
-                  <DataChart 
-                    data={queryResult.items.map(item => {
-                      // Ensure all values are string | number | null | undefined
-                      const mapped: Record<string, string | number | null | undefined> = {};
-                      for (const key in item) {
-                        const val = item[key];
-                        mapped[key] = (typeof val === 'string' || typeof val === 'number' || val == null) ? val : String(val);
-                      }
-                      return mapped;
-                    })}
-                    onExport={() => {
-                      // Implement export functionality
-                    }}
-                  />
-                ) : (
-                  <div className="rounded-md bg-blue-50 p-4">
-                    <h3 className="text-sm font-medium text-blue-800">No results found</h3>
-                    <div className="mt-2 text-sm text-blue-700">
-                      <p>Try adjusting your search or filter criteria</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          
         </Tabs>
       </div>
     </div>

@@ -1,21 +1,13 @@
 import { Router } from 'express';
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import { logger } from '../utils/logger.js';
-import * as authMiddleware from '../middleware/auth.js';
+import type { Request, Response } from 'express';
+
+
 import { AzureCosmosDB } from '../types/azure.js';
 
 export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
   const router = Router();
 
-  // Conditional auth middleware that only validates tokens if AUTH_ENABLED is true
-  const conditionalAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (process.env.AUTH_ENABLED === 'true') {
-      // Use the authenticateToken middleware which handles token extraction and validation
-      return authMiddleware.authenticateToken(req, res, next);
-    }
-    // If auth is not enabled, just proceed
-    next();
-  };
+  
 
   /**
    * @openapi

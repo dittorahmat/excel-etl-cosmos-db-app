@@ -1,15 +1,13 @@
-import { v4 as uuidv4 } from 'uuid';
+
 import { 
   CosmosClient, 
-  Database,
   Container,
   ItemResponse,
   SqlQuerySpec,
   type CosmosClientOptions,
   type SqlParameter,
   type ContainerDefinition,
-  type DatabaseResponse,
-  type ContainerResponse
+    type DatabaseResponse
 } from '@azure/cosmos';
 import type { AzureCosmosDB, CosmosRecord } from '../../types/azure.js';
 import { AZURE_CONFIG } from '../../config/azure-config.js';
@@ -167,7 +165,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
        * @param {string} partitionKey - The partition key path (e.g., '/id' or '/userId')
        * @returns {Promise<Container>} A promise that resolves to the container
        */
-      container: async <T extends CosmosRecord>(
+      container: async <_T extends CosmosRecord>(
         containerName: string,
         partitionKey: string
       ): Promise<Container> => {

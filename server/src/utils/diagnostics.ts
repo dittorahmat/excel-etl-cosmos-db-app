@@ -17,8 +17,8 @@ export function checkPath(pathToCheck: string, isDir = true): PathCheckResult {
       size: stats.size,
       isDirectory: stats.isDirectory(),
     };
-  } catch (error: any) {
-    return { exists: false, error: error.message };
+  } catch (error: unknown) {
+    return { exists: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -31,8 +31,8 @@ export function logDirectoryStructure() {
   try {
     console.log('\nRoot contents:');
     console.log(fs.readdirSync(cwd).join('\n'));
-  } catch (e: any) {
-    console.error('Error reading directory:', e.message);
+  } catch (_e: unknown) {
+    console.error('Error reading directory:', _e instanceof Error ? _e.message : String(_e));
   }
 
   // Check dist directory
@@ -45,8 +45,8 @@ export function logDirectoryStructure() {
       const serverJsPath = path.join(distPath, 'server.js');
       const serverJsCheck = checkPath(serverJsPath, false);
       console.log(`Server entry: ${serverJsCheck.exists ? '✓' : '✗'}`);
-    } catch (e: any) {
-      console.error('Error checking server entry:', e.message);
+    } catch (_e: unknown) {
+      console.error('Error checking server entry:', _e instanceof Error ? _e.message : String(_e));
     }
   }
 }

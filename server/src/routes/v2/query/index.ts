@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuthOrApiKey } from '../../../middleware/authMiddleware.js';
+
 import express from 'express';
 import { AzureCosmosDB } from '../../../types/azure.js';
 

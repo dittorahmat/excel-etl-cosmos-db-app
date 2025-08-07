@@ -30,7 +30,7 @@ export const authLogger = (req: Request, res: Response, next: NextFunction) => {
 /**
  * Basic error handler for requests
  */
-export const authErrorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+export const authErrorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
   // Log the error
   console.error(`[Error] ${new Date().toISOString()} - Request Error:`, {
     error: err.message,
