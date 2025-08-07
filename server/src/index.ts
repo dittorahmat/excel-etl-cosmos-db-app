@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { startServer } from './config/server';
-import { logger } from './utils/logger';
+import { startServer } from './config/server.js';
+import { logger } from './utils/logger.js';
 
 /**
  * Main entry point for the application

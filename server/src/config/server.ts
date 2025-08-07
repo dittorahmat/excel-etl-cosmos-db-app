@@ -3,10 +3,11 @@ import { logger } from '../utils/logger.js';
 import { getPort } from '../utils/port-utils.js';
 import { initializeAzureServices } from './azure-services.js';
 import { createApp } from './app.js';
+import type { Express } from 'express';
 
 
 let server: Server | null = null;
-let app: any = null;
+let app: Express | null = null;
 
 export async function startServer(port: number | string = getPort()): Promise<Server> {
   try {
@@ -16,8 +17,14 @@ export async function startServer(port: number | string = getPort()): Promise<Se
     logger.info('Creating Express application...');
     app = createApp(azureServices);
     
+    if (!app) {
+      const error = new Error('Failed to initialize Express application');
+      logger.error(error.message);
+      throw error;
+    }
+
     return new Promise<Server>((resolve, reject) => {
-      const httpServer = app.listen(port, () => {
+      const httpServer = app!.listen(port, () => {
         server = httpServer;
         logger.info(`Server running on port ${port}`);
         resolve(httpServer);

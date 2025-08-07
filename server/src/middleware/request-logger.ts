@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.js';
 import crypto from 'crypto';
 
+// Uses the extended Express Request type from error-handler.ts
+
 interface LogContext {
   requestId: string;
   method: string;
@@ -42,7 +44,7 @@ export function requestLogger() {
         path: req.path,
         status: res.statusCode,
         duration,
-        userId: (req as any).user?.oid || 'anonymous',
+        userId: req.user?.oid || 'anonymous',
       };
 
       if (res.statusCode >= 400) {

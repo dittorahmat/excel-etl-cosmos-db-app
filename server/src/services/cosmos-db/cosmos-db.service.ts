@@ -59,11 +59,11 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
     },
   };
 
-  const cosmosClient = new CosmosClient(clientOptions);
+  const _cosmosClient = new CosmosClient(clientOptions);
   
   try {
     // First, check if the database exists or create it
-    logger.debug(`Checking if database ${databaseName} exists...`, {
+    logger.debug('Initializing Cosmos DB client with config:', {
       endpoint: endpoint ? 'provided' : 'missing',
       key: key ? 'provided' : 'missing',
       databaseName,
@@ -71,7 +71,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
       partitionKey
     });
     
-    const databaseResponse: DatabaseResponse = await cosmosClient.databases.createIfNotExists({ 
+    const databaseResponse: DatabaseResponse = await _cosmosClient.databases.createIfNotExists({ 
       id: databaseName 
     });
     
@@ -153,7 +153,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
     // Initialize the Cosmos DB service with all required methods
     const cosmosDb: AzureCosmosDB = {
       // The underlying CosmosClient instance
-      cosmosClient,
+      cosmosClient: _cosmosClient,
       
       // The Cosmos DB database instance
       database: db,
@@ -191,11 +191,6 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         }
       },
       
-      // Add a direct container accessor for backward compatibility
-      getContainer: async (containerName: string, partitionKey: string): Promise<Container> => {
-        return cosmosDb.container(containerName, partitionKey);
-      },
-      
       /**
        * Query records from Cosmos DB
        */
@@ -231,8 +226,9 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
           const { container } = await db.container(containerName).read();
           const { resource } = await container.item(id, partitionKeyValue).read<T>();
           return resource || undefined;
-        } catch (error) {
-          if ((error as any).code === 404) {
+        } catch (error: unknown) {
+          const cosmosError = error as { code?: number };
+          if (cosmosError.code === 404) {
             return undefined; // Not found
           }
           logger.error(`Failed to get item ${id}:`, error);
@@ -261,19 +257,19 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
        */
       deleteRecord: async (
         id: string,
-        partitionKeyValue: string,
+        partitionKey: string,
         containerName: string = defaultContainerName
-      ): Promise<boolean> => {
+      ): Promise<void> => {
         try {
           const { container } = await db.container(containerName).read();
-          const { statusCode } = await container.item(id, partitionKeyValue).delete();
-          return statusCode === 204; // 204 means successfully deleted
-        } catch (error) {
-          if ((error as any).code === 404) {
-            return false; // Not found, consider it deleted
+          await container.item(id, partitionKey).delete();
+        } catch (error: unknown) {
+          const cosmosError = error as { code?: number };
+          if (cosmosError.code !== 404) { // Only log and rethrow if it's not a not-found error
+            logger.error(`Failed to delete item ${id}:`, error);
+            throw new Error(`Failed to delete item ${id}: ${(error as Error).message}`);
           }
-          logger.error(`Failed to delete item ${id}:`, error);
-          throw new Error(`Failed to delete item ${id}: ${(error as Error).message}`);
+          // If it's a 404, we consider it already deleted
         }
       }
     };
@@ -291,16 +287,25 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
  */
 export async function testCosmosConnection() {
   try {
-    const { cosmosClient, database, container: defaultContainer } = await initializeCosmosDB();
+    const { database } = await initializeCosmosDB();
+    
+    // Get a reference to the default container
+    const containerResponse = await database.containers.createIfNotExists({
+      id: AZURE_CONFIG.cosmos.containerName,
+      partitionKey: { paths: ['/id'] }
+    });
+    
+    // Get the container reference
+    const container = database.container(containerResponse.container.id);
     
     // Test query to verify the connection
-    const { resources } = await database.container(defaultContainer.id).items.query('SELECT 1').fetchAll();
+    const { resources } = await container.items.query('SELECT 1').fetchAll();
     
     return {
       success: true,
       message: 'Successfully connected to Cosmos DB',
       database: database.id,
-      container: defaultContainer.id,
+      container: container.id,
       endpoint: AZURE_CONFIG.cosmos.endpoint,
       testQueryResult: resources[0]
     };

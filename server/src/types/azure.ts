@@ -1,12 +1,21 @@
-// Import only the types we need
+// Import types from @azure/cosmos for local use
 import type { 
-  Container, 
-  CosmosClient,
-  SqlQuerySpec,
-  ItemResponse,
-  Database
+  Container as AzureContainer, 
+  CosmosClient as AzureCosmosClient,
+  SqlQuerySpec as AzureSqlQuerySpec,
+  ItemResponse as AzureItemResponse,
+  Database as AzureDatabase,
+  Resource 
 } from '@azure/cosmos';
 
+// Re-export the types for external use
+export type { 
+  AzureContainer as Container, 
+  AzureCosmosClient as CosmosClient,
+  AzureSqlQuerySpec as SqlQuerySpec,
+  AzureItemResponse as ItemResponse,
+  AzureDatabase as Database
+};
 
 // Express Multer File type
 export interface MulterFile {
@@ -18,10 +27,7 @@ export interface MulterFile {
   size: number;
 }
 
-
 // Base type for all Cosmos DB records
-import type { Resource } from '@azure/cosmos';
-
 export interface CosmosRecord extends Partial<Resource> {
   id: string;
   _partitionKey?: string;
@@ -45,10 +51,10 @@ export interface AzureBlobStorage {
  */
 export interface AzureCosmosDB {
   /** The underlying CosmosClient instance */
-  cosmosClient: CosmosClient;
+  cosmosClient: AzureCosmosClient;
 
   /** The Cosmos DB database instance */
-  database: Database;
+  database: AzureDatabase;
 
   /**
    * Get a reference to a Cosmos DB container
@@ -58,7 +64,7 @@ export interface AzureCosmosDB {
   container: (
     containerName: string,
     partitionKey: string
-  ) => Promise<Container>;
+  ) => Promise<AzureContainer>;
 
   /**
    * Upsert a record into Cosmos DB
@@ -68,7 +74,7 @@ export interface AzureCosmosDB {
   upsertRecord: <T extends CosmosRecord>(
     record: T,
     containerName?: string
-  ) => Promise<ItemResponse<T>>;
+  ) => Promise<AzureItemResponse<T>>;
 
   /**
    * Query records from Cosmos DB
@@ -124,9 +130,9 @@ export interface MockCosmosDB extends AzureCosmosDB {
     upsert: <T extends CosmosRecord>(
       record: T, 
       containerName?: string
-    ) => Promise<ItemResponse<T>>;
+    ) => Promise<AzureItemResponse<T>>;
     query: <T extends CosmosRecord>(
-      query: string | SqlQuerySpec, 
+      query: string | AzureSqlQuerySpec, 
       parameters?: Array<{ name: string; value: unknown }>, 
       containerName?: string
     ) => Promise<T[]>;
@@ -143,19 +149,19 @@ export interface MockCosmosDB extends AzureCosmosDB {
   };
   
   // Database operations
-  database: Database;
+  database: AzureDatabase;
   
   // Container operations
-  container: (containerName: string, partitionKey?: string) => Promise<Container>;
+  container: (containerName: string, partitionKey?: string) => Promise<AzureContainer>;
   
   // Document operations
   upsert: <T extends CosmosRecord>(
     record: T, 
     containerName?: string
-  ) => Promise<ItemResponse<T>>;
+  ) => Promise<AzureItemResponse<T>>;
   
   query: <T extends CosmosRecord>(
-    query: string | SqlQuerySpec, 
+    query: string | AzureSqlQuerySpec, 
     parameters?: Array<{ name: string; value: unknown }>, 
     containerName?: string
   ) => Promise<T[]>;

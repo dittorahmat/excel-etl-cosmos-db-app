@@ -8,13 +8,13 @@ import { createV2Router } from '../routes/v2/index.js';
 import { createFieldsRouter } from '../routes/fields.route.js';
 import { createApiKeyRouter } from '../routes/apiKey.route.js';
 import authRoute from '../routes/auth.route.js';
-import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
+import type { AzureCosmosDB, AzureBlobStorage, CosmosClient, Database } from '../types/azure.js';
 
 export function createApp(azureServices: { 
   cosmosDb: AzureCosmosDB; 
   blobStorage: AzureBlobStorage; 
-  database: any; 
-  cosmosClient: any; 
+  database: Database; 
+  cosmosClient: CosmosClient; 
 }): Express {
   const app = express();
   const env = process.env;
@@ -112,7 +112,7 @@ export function createApp(azureServices: {
   });
 
   // Error handler
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: Error & { statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {
     logger.error('Unhandled error:', { error: err });
     
     const statusCode = err.statusCode || 500;
