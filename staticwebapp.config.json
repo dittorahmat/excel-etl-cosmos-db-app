@@ -19,7 +19,8 @@
       "route": "/api/*",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       "allowedRoles": ["authenticated"],
-      "rewrite": "/api/"
+      "rewrite": "/api/",
+      "backend": "excel-etl-backend-378680"
     }
   ],
   "platform": {
@@ -47,13 +48,4 @@
     },
     "configFilePath": "auth.json"
   },
-  "cors": {
-    "allowedOrigins": [
-      "https://*.azurestaticapps.net",
-      "http://localhost:5173"
-    ],
-    "allowedMethods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    "allowedHeaders": ["Content-Type", "Authorization", "x-ms-client-request-id"],
-    "allowCredentials": true
-  }
 }

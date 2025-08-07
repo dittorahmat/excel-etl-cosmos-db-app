@@ -20,8 +20,14 @@ export function createApp(azureServices: {
   const env = process.env;
 
   // CORS configuration
+  const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : [];
+  const frontendUrl = env.FRONTEND_URL || 'https://gray-flower-09b086c00.6.azurestaticapps.net';
+  if (allowedOrigins.indexOf(frontendUrl) === -1) {
+    allowedOrigins.push(frontendUrl);
+  }
+
   app.use(cors({
-    origin: env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : [],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true

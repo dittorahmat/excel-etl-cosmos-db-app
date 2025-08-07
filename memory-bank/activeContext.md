@@ -1,29 +1,27 @@
 # Active Context
 
 ## Current Focus
-Addressing server-side issues, specifically CosmosDB initialization, module resolution, and aligning build configurations. Also, updating the `/api/fields` endpoint to fetch headers from Cosmos DB.
+Resolving a file upload issue where the process hangs. The investigation has revealed that the file upload process is synchronous, causing the client to wait for the entire file processing to complete. The current focus is on making the file upload process asynchronous to provide a better user experience.
 
 ## Recent Changes
-- **CosmosDB Initialization:**
-    - Fixed syntax error in `server/src/services/cosmos-db/cosmos-db.service.ts` (`getById` and `upsertRecord`).
-    - Modified `server/src/routes/v2/query/handlers/base.handler.ts` to correctly check for the `database` property.
-    - Updated `server/src/config/azure-services.ts` to explicitly return `database` and `cosmosClient` objects.
-    - Adjusted `server/src/config/app.ts` to reflect the updated `azureServices` type.
-    - Modified all query handlers (`list-imports.handler.ts`, `query-import-rows.handler.ts`, `query-all-rows.handler.ts`, `get-import-metadata.handler.ts`, `query-rows-exact.handler.ts`, `query-rows-get.handler.ts`) to pass `cosmosDb.database` directly to the `BaseQueryHandler` constructor.
-- **Module Resolution:**
-    - Corrected import paths in `server/src/routes/v2/index.ts` for `upload` and `query` routers (from `.js` extensions to no extension, and then to correct file names like `upload.route.js`).
-    - Fixed `SyntaxError` by changing `createUploadRouter` import to `uploadRouterV2` in `server/src/routes/v2/index.ts` to match the actual named export.
-- **Build Script Alignment:**
-    - Aligned `server/package.json`'s `build` script to use `tsc -p ../tsconfig.server.json` for consistency with the root `build:server` command.
-- **API Fields Endpoint:**
-    - Modified `server/src/routes/fields.route.ts` to query `SELECT c.headers FROM c WHERE c._partitionKey = 'imports'` and process the results to return a unique list of headers.
+- **Asynchronous Upload:**
+    - Modified `server/src/services/ingestion/ingestion.service.ts` to split the `importFile` method into `startImport` (synchronous) and `processImport` (asynchronous).
+    - The `startImport` method now returns an immediate response to the client, while the `processImport` method handles the file processing in the background.
+    - Updated `server/src/routes/v2/upload.route.ts` to call the new `startImport` method.
+    - Created a new route `server/src/routes/v2/import.route.ts` to allow the client to poll for the status of the import.
+    - Added the new import route to the main router in `server/src/routes/v2/index.ts`.
+- **Bug Fixes:**
+    - Fixed a syntax error in `server/src/routes/v2/index.ts` where an `import` statement was incorrectly placed inside a function.
+    - Fixed a bug in `server/src/routes/v2/upload.route.ts` where a `finally` block was prematurely deleting the temporary file before the asynchronous processing was complete.
+    - Corrected the `saveRows` method in `server/src/services/ingestion/ingestion.service.ts` to explicitly pass the container name to the `upsertRecord` method.
+    - Fixed a syntax error in `server/src/routes/v2/upload.route.ts` by removing an extra closing brace.
 
 ## Problems Faced
-- Persistent "CosmosDB client is missing database property" error, which required deeper investigation into how the `cosmosDb` object and its `database` property were being passed and accessed across different layers of the application.
-- Multiple module resolution errors (`ERR_MODULE_NOT_FOUND`, `SyntaxError: The requested module does not provide an export named...`) due to incorrect import paths and mismatched export names. This required careful inspection of file system structure and module exports.
-- User cancelled dependency update command, so dependencies are still outdated.
+- **Synchronous Upload Process:** The initial implementation of the file upload process was synchronous, causing the client to hang while waiting for the server to process the entire file.
+- **Syntax Errors:** Introduced several syntax errors while refactoring the code, which caused the server to fail to start.
+- **Premature File Deletion:** The temporary file was being deleted before the asynchronous processing was complete, causing an `ENOENT` error.
 
 ## Next Steps
-1.  Re-attempt dependency updates across all `package.json` files.
-2.  Verify server startup without errors.
-3.  Confirm the `/api/fields` endpoint correctly returns the unique list of headers from Cosmos DB.
+1.  Verify that the asynchronous file upload process is working correctly.
+2.  Test the new `/api/v2/import/status/:importId` endpoint to ensure it returns the correct import status.
+3.  Update the frontend to poll the new status endpoint and provide feedback to the user on the progress of the import.
