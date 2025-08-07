@@ -56,7 +56,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         // Try to get fields from Cosmos DB with a timeout
         const fieldsPromise = container.items
           .query({
-            query: 'SELECT DISTINCT VALUE c.name FROM c',
+            query: "SELECT c.headers FROM c WHERE c._partitionKey = 'imports'",
           })
           .fetchAll();
           
@@ -68,13 +68,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         // Race the query against the timeout
         const result = await Promise.race([fieldsPromise, timeoutPromise]);
         
-        const fields = (result as any)?.resources || [];
-        console.log(`Fetched ${fields.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
+        const headers = (result as any)?.resources || [];
+        const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers))];
+        console.log(`Fetched ${uniqueHeaders.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
         
         // Return the fields from Cosmos DB
         res.status(200).json({
           success: true,
-          fields: fields.map((name: string) => ({ 
+          fields: uniqueHeaders.map((name: string) => ({ 
             name, 
             type: 'string', 
             label: name.split('_').map(word => 
