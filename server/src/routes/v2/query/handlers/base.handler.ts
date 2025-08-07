@@ -3,7 +3,7 @@ import { logger } from '../../../../utils/logger.js';
 
 import { QueryParams, ErrorResponse } from '../types/query.types.js';
 import { buildCosmosQuery } from '../utils/query-builder.js';
-import { SqlParameter } from '@azure/cosmos';
+import { SqlParameter, Database } from '@azure/cosmos';
 import { AzureCosmosDB } from '../../../../types/azure.js';
 
 
@@ -16,8 +16,9 @@ export abstract class BaseQueryHandler {
   protected containerName: string;
   protected partitionKey: string;
   protected cosmosDb: AzureCosmosDB;
+  protected database: Database;
 
-  constructor(cosmosDb: AzureCosmosDB, containerName: string, partitionKey: string) {
+  constructor(cosmosDb: AzureCosmosDB, database: Database, containerName: string, partitionKey: string) {
     // Log detailed information about the Cosmos DB client instance
     const logDetails = {
       containerName,
@@ -27,9 +28,7 @@ export abstract class BaseQueryHandler {
       cosmosDbConstructor: cosmosDb?.constructor?.name || 'unknown',
       availableMethods: cosmosDb ? Object.getOwnPropertyNames(cosmosDb) : [],
       hasContainerMethod: cosmosDb ? typeof cosmosDb.container === 'function' : false,
-      hasDatabase: cosmosDb ? 'database' in cosmosDb : false,
-      databaseType: cosmosDb && 'database' in cosmosDb ? typeof cosmosDb.database : 'n/a',
-      databaseMethods: cosmosDb && 'database' in cosmosDb ? Object.getOwnPropertyNames(cosmosDb.database) : []
+      hasDatabase: !!database
     };
     
     logger.debug('BaseQueryHandler constructor called', logDetails);
@@ -37,6 +36,7 @@ export abstract class BaseQueryHandler {
     this.containerName = containerName;
     this.partitionKey = partitionKey;
     this.cosmosDb = cosmosDb;
+    this.database = database;
     
     // Log after assignment to ensure no reference issues
     logger.debug('BaseQueryHandler initialized', {
@@ -45,10 +45,7 @@ export abstract class BaseQueryHandler {
       hasCosmosDb: !!this.cosmosDb,
       cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
       hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
-      hasDatabase: this.cosmosDb ? 'database' in this.cosmosDb : false,
-      hasDatabaseContainer: this.cosmosDb && 'database' in this.cosmosDb 
-        ? 'container' in this.cosmosDb.database 
-        : false
+      hasDatabase: !!this.database
     });
   }
 
@@ -197,7 +194,7 @@ export abstract class BaseQueryHandler {
       }
       
       // Check if database is available
-      if (!('database' in this.cosmosDb)) {
+      if (!this.cosmosDb || !this.cosmosDb.database) {
         logger.error('CosmosDB client is missing database property', {
           availableProperties: Object.getOwnPropertyNames(this.cosmosDb)
         });

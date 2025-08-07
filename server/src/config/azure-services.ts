@@ -12,6 +12,8 @@ import { logger } from '../utils/logger.js';
 export async function initializeAzureServices(): Promise<{
   blobStorage: AzureBlobStorage;
   cosmosDb: AzureCosmosDB;
+  database: any;
+  cosmosClient: any;
 }> {
   const useMocks = process.env.NODE_ENV === 'test';
   logger.info('Initializing Azure services...', { useMocks });
@@ -113,6 +115,8 @@ export async function initializeAzureServices(): Promise<{
     return {
       blobStorage: blobStorageInstance,
       cosmosDb: cosmosDbInstance,
+      database: cosmosDbInstance.database,
+      cosmosClient: cosmosDbInstance.cosmosClient
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

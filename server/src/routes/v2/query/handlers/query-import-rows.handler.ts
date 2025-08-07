@@ -6,7 +6,7 @@ import { queryParamsSchema } from '../schemas/query.schemas.js';
 
 export class QueryImportRowsHandler extends BaseQueryHandler {
   constructor(cosmosDb: AzureCosmosDB) {
-    super(cosmosDb, 'excel-records', '/_partitionKey');
+    super(cosmosDb, cosmosDb.database, 'excel-records', '/_partitionKey');
   }
 
   public async handle(req: Request, res: Response): Promise<Response | void> {

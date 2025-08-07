@@ -1,19 +1,21 @@
 import { Router } from 'express';
-import { createQueryRouter } from './query/index.js';
 import { uploadRouterV2 } from './upload.route.js';
-import { AzureCosmosDB } from '../../types/azure.js';
+import { createQueryRouter } from './query/index.js';
+import { AzureBlobStorage, AzureCosmosDB } from '../../types/azure.js';
 
-export function createV2Router(cosmosDb: AzureCosmosDB): Router {
+export function createV2Router(azureServices: { 
+  blobStorage: AzureBlobStorage, 
+  cosmosDb: AzureCosmosDB,
+  database: any,
+  cosmosClient: any
+}): Router {
   const router = Router();
 
-  // Mount query routes
-  router.use('/query', createQueryRouter(cosmosDb));
-  
-  // Mount upload route
+  // Upload router
   router.use('/upload', uploadRouterV2);
 
-  // Add other v2 routes here as needed
-  // router.use('/other', otherRouter);
+  // Query router
+  router.use('/query', createQueryRouter(azureServices.cosmosDb));
 
   return router;
 }

@@ -18,16 +18,14 @@ export class ListImportsHandler extends BaseQueryHandler {
       hasContainerMethod: cosmosDb ? typeof cosmosDb.container === 'function' : false,
       hasDatabase: cosmosDb ? 'database' in cosmosDb : false,
       databaseType: cosmosDb && 'database' in cosmosDb ? typeof cosmosDb.database : 'n/a',
-      hasDatabaseContainer: cosmosDb && 'database' in cosmosDb 
-        ? 'container' in cosmosDb.database 
-        : false
+      databaseMethods: cosmosDb && 'database' in cosmosDb && cosmosDb.database ? Object.getOwnPropertyNames(cosmosDb.database) : []
     };
     
     logger.debug('ListImportsHandler constructor called', logDetails);
     
     try {
       // Use 'excel-records' as the container name and 'imports' as the partition key value
-      super(cosmosDb, 'excel-records', 'imports');
+      super(cosmosDb, cosmosDb.database, 'excel-records', 'imports');
       
       // Log after super() call to ensure all properties are initialized
       logger.debug('ListImportsHandler initialized', {
@@ -36,10 +34,7 @@ export class ListImportsHandler extends BaseQueryHandler {
         hasCosmosDb: !!this.cosmosDb,
         cosmosDbType: this.cosmosDb ? typeof this.cosmosDb : 'undefined',
         hasContainerMethod: this.cosmosDb ? typeof this.cosmosDb.container === 'function' : false,
-        hasDatabase: this.cosmosDb ? 'database' in this.cosmosDb : false,
-        hasDatabaseContainer: this.cosmosDb && 'database' in this.cosmosDb 
-          ? 'container' in this.cosmosDb.database 
-          : false
+        hasDatabase: !!this.database
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
