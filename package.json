@@ -17,7 +17,7 @@
     "copy:test-script": "mkdir -p dist/server/scripts && tsc server/scripts/test-cosmos-direct.ts --skipLibCheck --skipDefaultLibCheck --noEmit false --target es2020 --module es2020 --outDir dist/server/scripts --esModuleInterop true --resolveJsonModule true --moduleResolution node --typeRoots []",
     "start:server": "node dist/server/server.js",
     "build": "npm run build:client && npm run build:server",
-    "start": "node start-server.js",
+    "start": "node dist/server/server.js",
     "test": "npm run test:server && npm run test:client",
     "test:watch": "vitest --config vitest.optimized.config.ts watch",
     "test:coverage": "npm run test:server:coverage && npm run test:client:coverage",
