@@ -1,9 +1,9 @@
 import { Server } from 'http';
 import { logger } from '../utils/logger.js';
-import { getPort, isPortInUse } from '../utils/port-utils.js';
+import { getPort } from '../utils/port-utils.js';
 import { initializeAzureServices } from './azure-services.js';
 import { createApp } from './app.js';
-import { env } from './env.js';
+
 
 let server: Server | null = null;
 let app: any = null;

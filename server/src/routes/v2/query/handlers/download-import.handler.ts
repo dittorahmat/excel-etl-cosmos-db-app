@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
+import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import { logger } from '../../../../utils/logger.js';
 import { AZURE_CONFIG } from '../../../../config/azure-config.js';
 import { AzureCosmosDB } from '../../../../types/azure.js';
