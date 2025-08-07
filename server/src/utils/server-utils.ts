@@ -1,5 +1,6 @@
 import fs from 'fs';
-
+import net from 'net';
+import { exec } from 'child_process';
 import { logger } from './logger.js';
 
 /**
@@ -54,7 +55,6 @@ export function checkPath(pathToCheck: string, isDir = true): boolean {
  */
 export async function isPortInUse(port: number): Promise<boolean> {
   return new Promise((resolve) => {
-    import net from 'net';
     const server = net.createServer()
       .once('error', () => {
         resolve(true);
@@ -74,12 +74,11 @@ export async function isPortInUse(port: number): Promise<boolean> {
  */
 export async function getProcessIdOnPort(port: number): Promise<string | null> {
   return new Promise((resolve) => {
-    import { exec } from 'child_process';
     const command = process.platform === 'win32'
       ? `netstat -ano | findstr :${port}`
       : `lsof -i :${port} -t`;
 
-    exec(command, (error: Error, stdout: string, stderr: string) => {
+    exec(command, { encoding: 'utf8' }, (error, stdout, stderr) => {
       if (error || stderr) {
         logger.error(`Error finding process on port ${port}:`, { error, stderr });
         return resolve(null);

@@ -1,4 +1,12 @@
 import { Request, Response } from 'express';
+
+// Extend the Express Request type to include our custom properties
+declare module 'express-serve-static-core' {
+  interface Request {
+    id?: string;
+    [key: string]: unknown;
+  }
+}
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import { logger } from '../../../../utils/logger.js';
 import { AZURE_CONFIG } from '../../../../config/azure-config.js';
@@ -52,7 +60,7 @@ async function initializeBlobStorage() {
     
     // Re-throw with more context
     const initError = new Error(`Azure Blob Storage initialization failed: ${errorMessage}`);
-    (initError as any).originalError = error;
+    (initError as Error & { originalError?: unknown }).originalError = error;
     throw initError;
   }
 }
@@ -81,7 +89,7 @@ export class DownloadImportHandler {
   }
 
   async handle(req: Request, res: Response): Promise<Response | void> {
-    const requestId = (req as any).id || 'unknown';
+    const requestId = req.id || 'unknown';
     
     // Ensure Blob Storage is initialized
     if (!blobServiceClient || !containerClient) {

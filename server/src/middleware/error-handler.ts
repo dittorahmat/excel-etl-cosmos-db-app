@@ -1,6 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger.js';
+import { logger, type AuthUser } from '../utils/logger.js';
 import { env } from '../config/env.js';
+
+// Extend the Express Request type to include our custom properties
+declare module 'express-serve-static-core' {
+  interface Request {
+    id?: string;
+    user?: AuthUser;
+  }
+}
 
 interface LogContext {
   requestId?: string;
@@ -26,12 +34,12 @@ export function errorHandler(
   _next: NextFunction
 ) {
   const logContext: LogContext = {
-    requestId: (req as any).id || 'unknown',
+    requestId: req.id || 'unknown',
     method: req.method,
     url: req.originalUrl,
     statusCode: 500,
     ip: req.ip,
-    userId: (req as any).user?.oid || 'anonymous',
+    userId: req.user?.oid || 'anonymous',
     error: {
       message: err.message,
       stack: env.NODE_ENV === 'production' ? undefined : err.stack,
@@ -44,7 +52,7 @@ export function errorHandler(
   res.status(500).json({
     success: false,
     error: 'Internal server error',
-    requestId: (req as any).id,
+    requestId: req.id,
   });
 }
 

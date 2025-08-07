@@ -252,7 +252,7 @@ async function uploadHandler(req: Request, res: Response) {
       userId
     });
     
-    const importMetadata = await ingestionService.importFile(
+    const importMetadata = await ingestionService.startImport(
       filePath,
       fileName,
       fileType,
@@ -314,10 +314,15 @@ async function uploadHandler(req: Request, res: Response) {
       headers: req.headers,
       body: req.body ? JSON.stringify(req.body).substring(0, 500) + '...' : 'No body',
       errorDetails: error instanceof Error ? 
-        Object.getOwnPropertyNames(error).reduce((acc, key) => ({
-          ...acc,
-          [key]: (error as any)[key]
-        }), {}) : 'No error details'
+        Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
+          // Use type assertion to access the property in a type-safe way
+          // First cast to unknown, then to the target type to ensure type safety
+          const errorRecord = error as unknown as Record<string, unknown>;
+          return {
+            ...acc,
+            [key]: errorRecord[key]
+          };
+        }, {}) : 'No error details'
     });
 
     // Return error response
@@ -328,9 +333,6 @@ async function uploadHandler(req: Request, res: Response) {
         `Failed to process file: ${errorMessage}`
       )
     );
-  } finally {
-    // Always delete the temporary file
-    await fs.unlink(filePath).catch(err => logger.error('Failed to delete temp file in finally', { filePath, error: err }));
   }
 }
 

@@ -16,7 +16,7 @@ const formatBytes = (bytes: number, decimals = 2): string => {
 const formatDate = (dateString: string): string => {
   try {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-  } catch (error) {
+  } catch (_error) {
     return 'Unknown date';
   }
 };
@@ -77,7 +77,12 @@ export function FileListTable() {
           pageSize: number;
           totalPages: number;
         };
-      }>('/api/v2/query/imports');
+      }>('/api/v2/query/imports', {
+        params: {
+          page,
+          pageSize
+        }
+      });
       
       if (response?.data?.items) {
         const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => ({

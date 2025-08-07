@@ -60,16 +60,21 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         // Race the query against the timeout
         const result = await Promise.race([fieldsPromise, timeoutPromise]);
         
-        const headers = (result as any)?.resources || [];
-        const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers))];
+        // Type the Cosmos DB response
+        interface CosmosFieldResult {
+          resources: Array<{ headers: string[] }>;
+        }
+        
+        const headers = (result as CosmosFieldResult)?.resources || [];
+        const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers))];
         console.log(`Fetched ${uniqueHeaders.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
         
         // Return the fields from Cosmos DB
         res.status(200).json({
           success: true,
-          fields: uniqueHeaders.map((name: string) => ({ 
-            name, 
-            type: 'string', 
+          fields: uniqueHeaders.map(name => ({
+            name,
+            type: 'string',
             label: name.split('_').map(word => 
               word.charAt(0).toUpperCase() + word.slice(1)
             ).join(' ')

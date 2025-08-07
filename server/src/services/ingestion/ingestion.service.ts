@@ -57,9 +57,9 @@ export class IngestionService {
   private readonly metadataPartitionKey = 'imports';
 
   /**
-   * Process and import a file into Cosmos DB
+   * Start the file import process
    */
-  async importFile(
+  async startImport(
     filePath: string,
     fileName: string,
     fileType: string,
@@ -67,7 +67,6 @@ export class IngestionService {
   ): Promise<ImportMetadata> {
     const importId = `import_${uuidv4()}`;
     const importStartTime = new Date();
-    let blobUrl = '';
     
     this.logger.info('Starting file import', {
       importId,
@@ -123,6 +122,39 @@ export class IngestionService {
     // Save initial import metadata
     await this.saveImportMetadata(importMetadata, cosmosDb);
 
+    // Don't wait for the import to finish
+    this.processImport(
+      importId,
+      filePath,
+      fileName,
+      fileType,
+      userId,
+      fileBuffer,
+      importMetadata,
+      cosmosDb
+    ).catch(error => {
+      this.logger.error('Error in background import process', { 
+        importId, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    });
+
+    return importMetadata;
+  }
+
+  /**
+   * Process the import asynchronously
+   */
+  async processImport(
+    importId: string,
+    filePath: string,
+    fileName: string,
+    fileType: string,
+    userId: string,
+    fileBuffer: Buffer,
+    importMetadata: ImportMetadata,
+    cosmosDb: AzureCosmosDB
+  ): Promise<void> {
     try {
       // Upload the original file to blob storage
       this.logger.info('Uploading file to blob storage', { 
@@ -132,6 +164,7 @@ export class IngestionService {
         fileSize: fileBuffer.length 
       });
       
+      let blobUrl = '';
       try {
         // Use the original filename without the import ID prefix
         blobUrl = await uploadToBlobStorage(fileBuffer, fileName, fileType);
@@ -249,7 +282,6 @@ export class IngestionService {
         errorRows: importMetadata.errorRows,
       });
 
-      return importMetadata;
     } catch (error) {
       // Update import status to failed
       importMetadata.status = 'failed';
@@ -273,8 +305,9 @@ export class IngestionService {
         fileName,
         error,
       });
-
-      throw error;
+    } finally {
+      // Always delete the temporary file
+      await fs.unlink(filePath).catch(err => this.logger.error('Failed to delete temp file in finally', { filePath, error: err }));
     }
   }
 
@@ -376,7 +409,7 @@ export class IngestionService {
             this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId}`, rowLogData);
             
             // Execute the upsert operation
-            return cosmosDb.upsertRecord(record).then(result => {
+            return cosmosDb.upsertRecord(record, this.dataContainerName).then(result => {
               this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
                 rowId: record.id,
                 statusCode: result.statusCode,

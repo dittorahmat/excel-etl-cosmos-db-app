@@ -1,15 +1,12 @@
-import { env } from '../config/env.js';
-
 /**
  * Get the port number from environment variables or use default
  * @returns The port number to use for the server
  */
 export function getPort(): number {
   // Check for Azure App Service specific port
-  const azurePort = env.WEBSITES_PORT || env.PORT;
-  const port = azurePort || '3001';
+  const port = process.env.WEBSITES_PORT || process.env.PORT || '3001';
   
-  console.log(`Using port: ${port} (from ${azurePort ? 'AZURE' : 'DEFAULT'})`);
+  console.log(`Using port: ${port} (from ${process.env.WEBSITES_PORT ? 'AZURE' : process.env.PORT ? 'ENV' : 'DEFAULT'})`);
   
   if (!port) {
     const error = new Error('PORT environment variable is required');

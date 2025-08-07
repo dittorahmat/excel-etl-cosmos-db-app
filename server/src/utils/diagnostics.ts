@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { env } from '../config/env.js';
+// Environment variables are accessed directly via process.env
 
 interface PathCheckResult {
   exists: boolean;
@@ -53,7 +53,7 @@ export function logDirectoryStructure() {
 
 export function logEnvironmentConfig() {
   console.log('\n=== Environment ===');
-  console.log(`NODE_ENV: ${env.NODE_ENV || 'development'}`);
-  console.log(`PORT: ${env.PORT || 'Not set'}`);
-  console.log(`WEBSITES_PORT: ${env.WEBSITES_PORT || 'Not set'}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`PORT: ${process.env.PORT || 'Not set'}`);
+  console.log(`WEBSITES_PORT: ${process.env.WEBSITES_PORT || 'Not set'}`);
 }

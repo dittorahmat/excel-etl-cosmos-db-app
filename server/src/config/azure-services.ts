@@ -2,7 +2,7 @@ import { initializeBlobStorageAsync, initializeMockBlobStorage } from '../servic
 import { initializeCosmosDB, initializeMockCosmosDB } from '../services/index.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { AZURE_CONFIG } from './azure-config.js';
-import type { AzureBlobStorage, AzureCosmosDB } from '../types/azure.js';
+import type { AzureBlobStorage, AzureCosmosDB, Database, CosmosClient } from '../types/azure.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -12,8 +12,8 @@ import { logger } from '../utils/logger.js';
 export async function initializeAzureServices(): Promise<{
   blobStorage: AzureBlobStorage;
   cosmosDb: AzureCosmosDB;
-  database: any;
-  cosmosClient: any;
+  database: Database;
+  cosmosClient: CosmosClient;
 }> {
   const useMocks = process.env.NODE_ENV === 'test';
   logger.info('Initializing Azure services...', { useMocks });
@@ -63,7 +63,7 @@ export async function initializeAzureServices(): Promise<{
         hasDatabase: 'database' in cosmosDbInstance,
         databaseType: 'database' in cosmosDbInstance ? typeof cosmosDbInstance.database : 'n/a',
         databaseId: 'database' in cosmosDbInstance && cosmosDbInstance.database ? 
-          (cosmosDbInstance.database as any).id || 'unknown' : 'n/a',
+          (cosmosDbInstance.database as { id?: string }).id || 'unknown' : 'n/a',
         hasContainerMethod: typeof cosmosDbInstance.container === 'function',
         availableMethods: Object.getOwnPropertyNames(cosmosDbInstance)
       });
@@ -80,7 +80,13 @@ export async function initializeAzureServices(): Promise<{
           });
           
           // Log the database methods
-          const db = cosmosDbInstance.database as any;
+          const db = cosmosDbInstance.database as unknown as {
+            container?: unknown;
+            containers?: unknown;
+            user?: unknown;
+            users?: unknown;
+            client?: unknown;
+          };
           logger.debug('Cosmos DB database methods:', {
             container: typeof db.container === 'function' ? 'function' : 'not a function',
             containers: typeof db.containers === 'object' ? 'object' : 'not an object',
@@ -91,7 +97,7 @@ export async function initializeAzureServices(): Promise<{
         } else {
           logger.error('Cosmos DB instance does not have a database property or it is null/undefined', {
             hasDatabaseProperty: 'database' in cosmosDbInstance,
-            databaseValue: (cosmosDbInstance as any).database
+            databaseValue: (cosmosDbInstance as { database?: unknown }).database
           });
         }
       } catch (dbError) {
@@ -102,7 +108,7 @@ export async function initializeAzureServices(): Promise<{
             type: typeof cosmosDbInstance,
             properties: Object.getOwnPropertyNames(cosmosDbInstance),
             hasDatabase: 'database' in cosmosDbInstance,
-            databaseType: 'database' in cosmosDbInstance ? typeof (cosmosDbInstance as any).database : 'n/a'
+            databaseType: 'database' in cosmosDbInstance ? typeof (cosmosDbInstance as { database: unknown }).database : 'n/a'
           }
         });
         throw new Error(`Failed to access Cosmos DB database: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);

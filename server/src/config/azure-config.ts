@@ -33,7 +33,7 @@ function getAzureConfig(): AzureConfig {
   console.log('[azure-config.ts] Loading Azure configuration...');
   
   // Validate required environment variables
-  const missingVars = [];
+  const missingVars: string[] = [];
   if (!env.AZURE_STORAGE_CONNECTION_STRING) missingVars.push('AZURE_STORAGE_CONNECTION_STRING');
   if (!env.AZURE_COSMOSDB_ENDPOINT) missingVars.push('AZURE_COSMOSDB_ENDPOINT');
   if (!env.AZURE_COSMOSDB_KEY) missingVars.push('AZURE_COSMOSDB_KEY');
