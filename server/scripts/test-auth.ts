@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { PublicClientApplication, AuthenticationResult } from '@azure/msal-node';
+import { PublicClientApplication, LogLevel } from '@azure/msal-node';
 import axios from 'axios';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,7 +26,7 @@ const pca = new PublicClientApplication({
   auth: config.auth,
   system: {
     loggerOptions: {
-      loggerCallback: (logLevel: any, message: string) => {
+      loggerCallback: (logLevel: LogLevel, message: string) => {
         console.log(message);
       },
       piiLoggingEnabled: false,
@@ -47,8 +47,12 @@ async function acquireToken(): Promise<string | null> {
       },
     });
     return result?.accessToken || null;
-  } catch (error) {
-    console.error('Error acquiring token:', error);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Error acquiring token:', error.message);
+    } else {
+      console.error('An unknown error occurred while acquiring token');
+    }
     return null;
   }
 }
@@ -64,8 +68,14 @@ async function testProtectedEndpoint(token: string): Promise<void> {
       },
     });
     console.log('Protected endpoint response:', response.data);
-  } catch (error: any) {
-    console.error('Error testing protected endpoint:', error.response?.data || error.message);
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Error testing protected endpoint:', error.response?.data || error.message);
+    } else if (error instanceof Error) {
+      console.error('Error testing protected endpoint:', error.message);
+    } else {
+      console.error('An unknown error occurred while testing protected endpoint');
+    }
   }
 }
 
@@ -98,4 +108,11 @@ async function main() {
 }
 
 // Run the test
-main().catch(console.error);
+main().catch((error: unknown) => {
+  if (error instanceof Error) {
+    console.error('Error in main function:', error.message);
+  } else {
+    console.error('An unknown error occurred in main function');
+  }
+  process.exit(1);
+});

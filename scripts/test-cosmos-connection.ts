@@ -58,25 +58,27 @@ async function testConnection() {
       interface CosmosDocument {
         id: string;
         _partitionKey?: string;
-        [key: string]: any; // Allow other properties
+        [key: string]: unknown; // Use unknown instead of any for type safety
       }
 
       // Helper function to extract partition key value from a document
-      const getPartitionKeyValue = (doc: CosmosDocument) => {
+      const getPartitionKeyValue = (doc: CosmosDocument): string => {
         if (partitionKeyPath === '/_partitionKey') {
-          return doc._partitionKey || 'default';
+          return (doc._partitionKey as string) || 'default';
         }
         // Handle nested partition keys if needed
         const keys = partitionKeyPathWithoutSlash.split('.');
-        let value = doc;
+        let value: unknown = doc;
+        
         for (const key of keys) {
           if (value && typeof value === 'object' && key in value) {
-            value = value[key];
+            value = (value as Record<string, unknown>)[key];
           } else {
             return 'default';
           }
         }
-        return value || 'default';
+        
+        return typeof value === 'string' ? value : 'default';
       };
       
       // Try to insert a test document with dynamic partition key
@@ -266,49 +268,30 @@ async function testConnection() {
       };
       
       // Enhanced error logging for container access issues
-      const errorDetails = {
-        containerName,
-        databaseName,
-        error: containerError.message,
-        code: containerError.code,
-        name: containerError.name,
-        statusCode: containerError.statusCode,
-        request: containerError.request,
-        stack: containerError.stack,
-        // Add response details if available
-        ...(containerError.response && {
-          response: {
-            statusCode: containerError.response.statusCode,
-            headers: containerError.response.headers,
-            activityId: containerError.response.headers?.['x-ms-activity-id'],
-            substatus: containerError.response.headers?.['x-ms-substatus']
-          }
-        }),
-        // Add Cosmos DB specific error details if available
-        ...(containerError.body && {
-          cosmosError: {
-            code: containerError.body.code,
-            message: containerError.body.message,
-            additionalErrorInfo: containerError.body.additionalErrorInfo
-          }
-        })
+      const errorInfo: Record<string, unknown> = {
+        message: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+        name: error.name,
+        request: error.request,
+        response: error.response ? {
+          statusCode: error.response.statusCode,
+          headers: error.response.headers,
+          body: error.response.body
+        } : undefined
       };
       
-      logger.error('Error accessing container:', errorDetails);
+      logger.error('Error accessing container:', errorInfo);
       
       // Log the full error object for debugging
       try {
-        const errorObj: Record<string, unknown> = {};
-        Object.getOwnPropertyNames(containerError).forEach(key => {
-          errorObj[key] = (containerError as Record<string, unknown>)[key];
-        });
-        logger.error('Full error object:', JSON.stringify(errorObj, null, 2));
+        logger.error('Full error object:', JSON.stringify(error, null, 2));
       } catch (e) {
         logger.error('Could not stringify error object:', e);
       }
       
       // Check if the error is due to missing container and suggest creating it
-      if (containerError.code === 404) {
+      if (error.code === '404' || error.statusCode === 404) {
         logger.warn('Container not found. You may need to create it with the correct partition key.');
         logger.warn('Example command:');
         logger.warn(`  az cosmosdb sql container create \
@@ -324,11 +307,20 @@ async function testConnection() {
     
     return { success: true };
   } catch (error) {
-    logger.error('Cosmos DB connection test failed:', {
-      error: error.message,
+    const errorInfo: Record<string, unknown> = {
+      message: error.message,
       code: error.code,
-      stack: error.stack
-    });
+      statusCode: error.statusCode,
+      name: error.name,
+      request: error.request,
+      response: error.response ? {
+        statusCode: error.response.statusCode,
+        headers: error.response.headers,
+        body: error.response.body
+      } : undefined
+    };
+    
+    logger.error('Cosmos DB connection test failed:', errorInfo);
     return { success: false, error: error.message };
   }
 }

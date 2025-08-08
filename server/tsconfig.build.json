@@ -3,8 +3,16 @@
   "compilerOptions": {
     "noEmit": false,
     "composite": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["../common/*"]
+    }
   },
+  "include": [
+    "src/**/*.ts",
+    "../common/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",

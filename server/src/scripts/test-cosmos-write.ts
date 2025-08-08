@@ -65,12 +65,15 @@ async function testCosmosWrite() {
       console.log(`✅ Container ${container.id} is ready`);
       // Note: partitionKey is not directly accessible from the container instance
       console.log(`   Using partition key path: ${PARTITION_KEY}`);
-    } catch (error: any) {
-      console.error('❌ Failed to access container:', error.message);
-      if (error.code === 403) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'UNKNOWN';
+      
+      console.error('❌ Failed to access container:', errorMessage);
+      if (errorCode === '403') {
         console.error('  - Check if the Cosmos DB key has write permissions');
         console.error('  - Verify the key is not read-only');
-      } else if (error.code === 400) {
+      } else if (errorCode === '400') {
         console.error('  - Check if the container name is valid');
         console.error('  - Verify the partition key matches the container definition');
       }
@@ -102,14 +105,17 @@ async function testCosmosWrite() {
       } else {
         console.error('❌ Failed to write test record: No resource returned');
       }
-    } catch (error: any) {
-      console.error('❌ Failed to write test record:', error.message);
-      if (error.code === 400) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'UNKNOWN';
+      
+      console.error('❌ Failed to write test record:', errorMessage);
+      if (errorCode === '400') {
         console.error('  - Check if the partition key value is valid');
         console.error('  - Verify the document structure matches the container schema');
-      } else if (error.code === 403) {
+      } else if (errorCode === '403') {
         console.error('  - Check if the Cosmos DB key has write permissions');
-      } else if (error.code === 409) {
+      } else if (errorCode === '409') {
         console.error('  - A document with the same ID already exists');
       }
       throw error;

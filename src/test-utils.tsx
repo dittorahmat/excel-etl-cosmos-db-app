@@ -1,82 +1,70 @@
 import { render as rtlRender } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
 import { MemoryRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+import { PublicClientApplication } from '@azure/msal-browser';
+import { MsalProvider } from '@azure/msal-react';
 import { AuthProvider } from './auth/AuthProvider';
-
-
-
-// Suppress act() warnings globally
-const originalError = console.error;
-beforeAll(() => {
-  vi.spyOn(console, 'error').mockImplementation((...args) => {
-    if (typeof args[0] === 'string' &&
-        /Warning: An update to .* inside a test was not wrapped in act/.test(args[0])) {
-      return;
-    }
-    originalError.call(console, ...args);
-  });
-});
-
-afterAll(() => {
-  vi.restoreAllMocks();
-});
-
-
+import { customTestCleanup, waitForRender } from './test-utils-core';
 
 // Type for the wrapper component props
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type WrapperProps = {
+// This type is used internally by the TestProviders component
+type _WrapperProps = {
   children: React.ReactNode;
   initialEntries?: string[];
 };
 
-// Wrapper component that includes all necessary providers
-const AllTheProviders = ({ children }) => {
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  );
+// Export components and hooks separately to avoid Fast Refresh warnings
+const TestProviders = {
+  AllTheProviders: ({ children }: { children: React.ReactNode }) => (
+    <AuthProvider>{children}</AuthProvider>
+  ),
+  DefaultWrapper: ({ children, initialEntries = ['/'] }: { children: React.ReactNode; initialEntries?: string[] }) => {
+    const mockMsalInstance = new PublicClientApplication({
+      auth: {
+        clientId: 'test-client-id',
+        authority: 'https://login.microsoftonline.com/test-tenant-id',
+        redirectUri: 'http://localhost:3000',
+      },
+      cache: {
+        cacheLocation: 'sessionStorage',
+        storeAuthStateInCookie: false,
+      },
+    });
+
+    return (
+      <MsalProvider instance={mockMsalInstance}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <TestProviders.AllTheProviders>{children}</TestProviders.AllTheProviders>
+        </MemoryRouter>
+      </MsalProvider>
+    );
+  }
 };
 
+
+
 // Custom render function that wraps components with all necessary providers
-const customRender = (ui, options = {}) => {
+const customRender = (
+  ui: React.ReactElement,
+  options: {
+    initialEntries?: string[];
+    wrapper?: React.ComponentType<{ children: React.ReactNode }>;
+    userEventOptions?: Parameters<typeof userEvent.setup>[0];
+  } = {}
+) => {
   const { 
-    // initialEntries is destructured but not used, keeping for API compatibility
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    initialEntries = ['/'], 
+    // initialEntries is used in the TestProviders.DefaultWrapper component
+    initialEntries: _initialEntries = ['/'], 
     wrapper: WrapperComponent, 
-    // userEventOptions is destructured but not used, keeping for API compatibility
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     userEventOptions = {},
     ...renderOptions 
   } = options;
 
-  const mockMsalInstance = new PublicClientApplication({
-    auth: {
-      clientId: 'test-client-id',
-      authority: 'https://login.microsoftonline.com/test-tenant-id',
-      redirectUri: 'http://localhost:3000',
-    },
-    cache: {
-      cacheLocation: 'sessionStorage',
-      storeAuthStateInCookie: false,
-    },
-  });
+  // Mock MSAL instance is created in the TestProviders.DefaultWrapper component
 
-  const DefaultWrapper = ({ children, initialEntries }) => (
-    <MsalProvider instance={mockMsalInstance}>
-      <MemoryRouter initialEntries={initialEntries}>
-        <AllTheProviders>
-          {children}
-        </AllTheProviders>
-      </MemoryRouter>
-    </MsalProvider>
-  );
-
-  const FinalWrapper = WrapperComponent || DefaultWrapper;
-  const user = userEvent.setup(userEventOptions);
+  const FinalWrapper = WrapperComponent || TestProviders.DefaultWrapper;
+  const user: UserEvent = userEvent.setup(userEventOptions);
   
   return {
     user,
@@ -84,55 +72,23 @@ const customRender = (ui, options = {}) => {
   };
 };
 
-// Custom cleanup function
-const customCleanup = async () => {
-  // Clean up any rendered components
-  // Clean up any rendered components
-  // No need to render a new component just for cleanup, RTL's cleanup is sufficient
-};
+// Export our custom render method and cleanup
+export const render = customRender;
+export const cleanup = customTestCleanup;
 
-// Cleanup function to ensure proper cleanup between tests
-const customTestCleanup = async () => {
-  try {
-    // First clean up any test-utils specific cleanup
-    await customCleanup();
-
-    // Clear all mocks and reset state
-    vi.clearAllMocks();
-    vi.resetAllMocks();
-    vi.resetModules();
-
-    // Clear storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Reset any timers
-    vi.useRealTimers();
-
-    // Wait for any pending promises to resolve
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    // Wait for any pending React updates to complete with act
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    });
-  } catch (error) {
-    console.error('Error during test cleanup:', error);
-  }
-};
-
-// Helper function to wait for the next render cycle
-export const waitForRender = async (ms = 0) => {
-  await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, ms));
-  });
-};
+// Export test utilities
+export { waitForRender };
 
 // Export userEvent from @testing-library/user-event for convenience
 export { userEvent };
 
-// Re-export everything from @testing-library/react
-export * from '@testing-library/react';
-
-// Export our custom render method and cleanup
-export { customRender as render, customTestCleanup as cleanup };
+// Export testing-library utilities directly to avoid Fast Refresh issues
+import * as testingLibrary from '@testing-library/react';
+export const {
+  // Re-export specific testing-library exports to avoid Fast Refresh warnings
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+  // Add other exports as needed
+} = testingLibrary;
