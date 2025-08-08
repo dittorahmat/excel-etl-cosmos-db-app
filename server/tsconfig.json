@@ -1,40 +1,25 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "../dist/server",
-    "rootDir": "../",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "resolveJsonModule": true,
-    "noEmit": false,
-    "baseUrl": "../",
+    "outDir": "./dist",
+    "rootDir": ".",
+    "composite": true,
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["server/src/*"],
-      "@common/*": ["common/*"]
-    },
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
-    ],
-    "allowSyntheticDefaultImports": true,
-    "moduleDetection": "force",
-    "verbatimModuleSyntax": false
+      "@/server/*": ["src/*"],
+      "@/server/test-utils/*": ["src/test-utils/*"],
+      "@common/*": ["../common/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "../common/**/*.ts", "scripts/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "test/**/*.ts",
+    "../common/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
-    "dist",
-    "src/routes/upload.route.ts",
-    "**/__tests__/**",
-    "**/test/**"
-  ],
-  "references": [],
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
-  }
+    "dist"
+  ]
 }
