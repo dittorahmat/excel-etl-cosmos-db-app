@@ -1,46 +1,25 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "composite": true,
-    "target": "ES2020",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "./dist/server",
+    "outDir": "./dist",
     "rootDir": ".",
+    "composite": true,
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "paths": {
-      "@/server/*": ["./server/src/*"],
-      "@/server/test-utils/*": ["./server/src/test-utils/*"],
-      "@common/*": ["./common/*"]
-    },
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "typeRoots": [
-      "./node_modules/@types"
-    ],
-    "isolatedModules": true,
-    "allowSyntheticDefaultImports": true,
-    "noEmit": false,
-    "noImplicitAny": false,
-    "strictNullChecks": true,
-    "types": ["node"],
-    "allowJs": true,
-    "checkJs": false,
-    "noEmitOnError": false
+      "@/server/*": ["server/src/*"],
+      "@/server/test-utils/*": ["server/src/test-utils/*"],
+      "@common/*": ["common/*"]
+    }
   },
   "include": [
     "server/src/**/*.ts",
+    "server/src/**/*.d.ts",
     "server/test/**/*.ts",
-    "server/src/**/*.tsx",
-    "server/test/**/*.tsx",
-    "server/test/test-types.d.ts",
-    "common/types/*.ts"
+    "common/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
   ]
 }

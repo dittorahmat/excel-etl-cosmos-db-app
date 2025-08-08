@@ -62,29 +62,14 @@ jobs:
       run: |
         npm ci --omit=dev
         
-    - name: Create deployment artifact
+    - name: Prepare deployment artifact
       run: |
         mkdir -p deployment
-        # Copy package files and built files
-        cp -r server/package*.json deployment/
-        cp -r dist/server deployment/
-        
-        # Create a new package.json in the root of the deployment
-        echo '{
-          "name": "excel-etl-backend",
-          "version": "1.0.0",
-          "description": "Excel to Cosmos DB ETL Backend",
-          "main": "server/server.js",
-          "scripts": {
-            "start": "node server/server.js"
-          },
-          "dependencies": {}
-        }' > deployment/package.json
-        
-        # Install only production dependencies in the deployment directory
+        cp server/package.json deployment/
+        cp server/package-lock.json deployment/
+        cp -r server/dist deployment/
         cd deployment
-        npm install --omit=dev
-        cd ..
+        npm ci --omit=dev
         
     - name: Upload artifact for deployment
       uses: actions/upload-artifact@v4
