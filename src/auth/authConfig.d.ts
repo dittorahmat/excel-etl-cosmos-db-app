@@ -1,7 +1,18 @@
+import { LogLevel } from '@azure/msal-browser';
+export declare const azureAdConfig: {
+    readonly clientId: string;
+    readonly tenantId: string;
+    readonly redirectUri: string;
+    readonly scopes: string[];
+    readonly authority: `https://login.microsoftonline.com/${string}`;
+    readonly knownAuthorities: readonly ["login.microsoftonline.com", `https://login.microsoftonline.com/${string}`];
+    readonly apiScope: string;
+};
 export declare const msalConfig: {
     auth: {
         clientId: string;
-        authority: string;
+        authority: `https://login.microsoftonline.com/${string}`;
+        knownAuthorities: readonly ["login.microsoftonline.com", `https://login.microsoftonline.com/${string}`];
         redirectUri: string;
         postLogoutRedirectUri: string;
         navigateToLoginRequestUrl: boolean;
@@ -13,21 +24,15 @@ export declare const msalConfig: {
     system: {
         loggerOptions: {
             loggerCallback: (level: number, message: string, containsPii: boolean) => void;
-            logLevel: string;
+            logLevel: LogLevel;
         };
     };
 };
 export declare const loginRequest: {
-    scopes: any;
+    scopes: string[];
     prompt: string;
-    extraQueryParameters: {
-        client_id: string;
-        response_type: string;
-        response_mode: string;
-        domain_hint: string;
-    };
 };
-export declare const apiConfig: {
+export declare const getApiConfig: () => {
     scopes: string[];
     uri: string;
 };

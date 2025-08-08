@@ -183,7 +183,6 @@ afterAll(() => {
         // Restore console methods using the original console
         console.error = originalConsole.error;
         console.warn = originalConsole.warn;
-        console.warn = originalConsole.warn;
         // Clean up any remaining timers
         vi.useRealTimers();
     }

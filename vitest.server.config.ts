@@ -2,11 +2,13 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, 'server');
 
 export default defineConfig({
+  plugins: [tsconfigPaths({ projects: ['server/tsconfig.spec.json'] })],
   cacheDir: './node_modules/.vite',
   
   test: {

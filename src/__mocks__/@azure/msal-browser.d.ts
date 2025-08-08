@@ -1,4 +1,4 @@
-export declare const PublicClientApplication: import("vitest").Mock<any, any>;
+export declare const PublicClientApplication: import("vitest").Mock<(...args: any[]) => any>;
 export declare const InteractionRequiredAuthError: {
     new (message: string, errorCode?: string): {
         errorCode: string;
@@ -47,13 +47,13 @@ export declare const EventType: {
     ACQUIRE_TOKEN_NETWORK_END: string;
 };
 export declare const EventMessageUtils: {
-    getInteractionStatusFromEvent: import("vitest").Mock<any, any>;
-    getEventType: import("vitest").Mock<any, any>;
+    getInteractionStatusFromEvent: import("vitest").Mock<(...args: any[]) => any>;
+    getEventType: import("vitest").Mock<(...args: any[]) => any>;
 };
 export declare const EventError: {
-    createNoWindowObjectError: import("vitest").Mock<any, any>;
+    createNoWindowObjectError: import("vitest").Mock<(...args: any[]) => any>;
 };
 export declare const UrlString: {
-    getHash: import("vitest").Mock<any, any>;
-    getDeserializedHash: import("vitest").Mock<any, any>;
+    getHash: import("vitest").Mock<(...args: any[]) => any>;
+    getDeserializedHash: import("vitest").Mock<(...args: any[]) => any>;
 };

@@ -1,20 +1,22 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Only apply React plugin when not in test environment
-const plugins = [];
-if (process.env.NODE_ENV !== 'test') {
-    plugins.push(react({
-        jsxImportSource: '@emotion/react',
-        babel: {
-            plugins: ['@emotion/babel-plugin'],
-        },
-    }));
-}
 export default defineConfig({
+    plugins: [
+        tsconfigPaths(),
+        ...(process.env.NODE_ENV !== 'test' ? [
+            react({
+                jsxImportSource: '@emotion/react',
+                babel: {
+                    plugins: ['@emotion/babel-plugin'],
+                },
+            })
+        ] : [])
+    ],
     test: {
         // Test configuration
         globals: true,
@@ -23,6 +25,7 @@ export default defineConfig({
         sequence: { shuffle: false },
         // Test setup files - only load what's needed
         setupFiles: [
+            './vitest.setup.ts',
             './src/setupTests.ts',
             ...(process.env.NODE_ENV !== 'test' ? [] : ['./src/test/setup/testSetup.ts'])
         ],
@@ -83,7 +86,6 @@ export default defineConfig({
         },
         extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
     },
-    plugins,
     // Add build-specific settings
     build: {
         // Enable source maps for better debugging
