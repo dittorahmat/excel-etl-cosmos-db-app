@@ -1,0 +1,32 @@
+# Ignore server-side JavaScript files from TypeScript processing
+server/**/*.js
+server/test-*.js
+server/**/test-*.js
+**/test-*.js
+
+# Ignore build and dependency directories
+**/node_modules/**
+**/dist/**
+**/coverage/**
+**/.next/**
+**/out/**
+
+# Ignore environment files
+.env*
+!.env.example
+
+# Ignore IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+*.swp
+*.swo
+
+# Ignore OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

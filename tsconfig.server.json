@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",
+    "baseUrl": ".",
     "composite": true,
     "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "paths": {
@@ -14,8 +15,15 @@
   "include": [
     "server/src/**/*.ts",
     "server/src/**/*.d.ts",
-    "server/test/**/*.ts",
     "common/**/*.ts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "server/test/**/*"
   ],
   "references": [
     {

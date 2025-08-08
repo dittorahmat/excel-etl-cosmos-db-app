@@ -165,7 +165,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
        * @param {string} partitionKey - The partition key path (e.g., '/id' or '/userId')
        * @returns {Promise<Container>} A promise that resolves to the container
        */
-      container: async <_T extends CosmosRecord>(
+      container: async (
         containerName: string,
         partitionKey: string
       ): Promise<Container> => {

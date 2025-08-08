@@ -95,7 +95,9 @@ export class ApiKeyRepository {
       }
 
       // Don't return the key hash in the response
-      const { keyHash: _keyHash, ...keyWithoutHash } = apiKey;
+      // The keyHash is intentionally destructured but not used
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { keyHash, ...keyWithoutHash } = apiKey;
       return { isValid: true, key: keyWithoutHash };
     } catch (error) {
       console.error('Error validating API key:', error);
