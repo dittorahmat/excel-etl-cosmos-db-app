@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "build:server": "tsc -b server/tsconfig.server.build.json",
     "start:server": "node server/dist/src/server.js",
-    "build": "npm run build:client && npm run build:server",
+    "build": "rm -rf dist-node && rm -rf server/dist && npm run build:client && npm run build:server",
     "clean": "rm -rf common/dist server/dist",
     "start": "node server/dist/src/server.js",
     "test": "npm run test:server && npm run test:client",

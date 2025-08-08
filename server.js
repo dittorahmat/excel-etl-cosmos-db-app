@@ -49,7 +49,7 @@ const server = http.createServer((req, res) => {
         if (error) {
             if (error.code === 'ENOENT') {
                 // Page not found
-                fs.readFile('./404.html', (error, content) => {
+                fs.readFile('./404.html', (_error, _content) => {
                     res.writeHead(404, { 'Content-Type': 'text/html' });
                     res.end('404 Not Found', 'utf-8');
                 });

@@ -87,9 +87,34 @@ module.exports = {
         'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       }
     },
-    // TypeScript files
+    // Server-side TypeScript files
+    {
+      files: ['server/**/*.ts', 'server/scripts/**/*.ts'],
+      extends: [
+        'eslint:recommended',
+        'plugin:@typescript-eslint/recommended',
+      ],
+      parser: '@typescript-eslint/parser',
+      parserOptions: {
+        project: ['./server/tsconfig.json', './server/tsconfig.server.build.json'],
+        tsconfigRootDir: __dirname,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        createDefaultProgram: true,
+      },
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'warn',
+        'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      },
+      env: {
+        node: true,
+        es2021: true
+      }
+    },
+    // Client-side TypeScript files
     {
       files: ['**/*.ts', '**/*.tsx'],
+      excludedFiles: ['server/**/*.ts', 'server/scripts/**/*.ts'],
       extends: [
         'eslint:recommended',
         'plugin:react-hooks/recommended',

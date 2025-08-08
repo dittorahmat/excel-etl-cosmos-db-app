@@ -34,7 +34,8 @@
   "include": [
     "src/**/*.ts",
     "test/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "../common/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

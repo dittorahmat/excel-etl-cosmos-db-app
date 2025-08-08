@@ -2,7 +2,8 @@ import {
   BlobServiceClient, 
   StorageSharedKeyCredential,
   BlobSASPermissions,
-  generateBlobSASQueryParameters
+  generateBlobSASQueryParameters,
+  BlockBlobClient
 } from '@azure/storage-blob';
 import { AZURE_CONFIG } from '../src/config/azure-config.js';
 import { writeFileSync, unlinkSync } from 'fs';
@@ -12,7 +13,7 @@ import fetch from 'node-fetch';
 
 async function testDownload() {
   let testFilePath: string | null = null;
-  let blockBlobClient: any = null;
+  let blockBlobClient: BlockBlobClient | null = null;
   
   try {
     console.log('Starting download test...');

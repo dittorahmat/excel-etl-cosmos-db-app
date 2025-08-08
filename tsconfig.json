@@ -7,12 +7,26 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "NodeNext",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["common/src/*"],
+      "@server/*": ["server/src/*"]
+    }
   },
   "files": [],
-  "include": [],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
   "references": [
     { "path": "./common" },
-    { "path": "./server" },
+    { "path": "./server" }
   ]
 }
