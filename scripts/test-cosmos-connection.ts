@@ -54,8 +54,15 @@ async function testConnection() {
         _self: containerProps._self
       });
       
+      // Define a basic document type with common Cosmos DB fields
+      interface CosmosDocument {
+        id: string;
+        _partitionKey?: string;
+        [key: string]: any; // Allow other properties
+      }
+
       // Helper function to extract partition key value from a document
-      const getPartitionKeyValue = (doc: any) => {
+      const getPartitionKeyValue = (doc: CosmosDocument) => {
         if (partitionKeyPath === '/_partitionKey') {
           return doc._partitionKey || 'default';
         }
@@ -147,7 +154,17 @@ async function testConnection() {
               });
             }
           }
-        } catch (readError) {
+        } catch (error) {
+          const readError = error as Error & {
+            code?: string;
+            statusCode?: number;
+            headers?: {
+              [key: string]: string | undefined;
+              'x-ms-activity-id'?: string;
+              'x-ms-substatus'?: string;
+            };
+          };
+          
           logger.error('Error reading document:', {
             error: readError.message,
             code: readError.code,
@@ -175,7 +192,16 @@ async function testConnection() {
                 expectedPartitionKey: testDoc._partitionKey
               });
             }
-          } catch (queryError) {
+          } catch (error) {
+            const queryError = error as Error & {
+              code?: string;
+              statusCode?: number;
+              headers?: {
+                [key: string]: string | undefined;
+                'x-ms-activity-id'?: string;
+              };
+            };
+            
             logger.error('Error querying document:', {
               error: queryError.message,
               code: queryError.code,
@@ -218,9 +244,29 @@ async function testConnection() {
         throw docError;
       }
       
-    } catch (containerError: any) {
+    } catch (error) {
+      const containerError = error as Error & {
+        code?: string;
+        statusCode?: number;
+        name?: string;
+        request?: unknown;
+        response?: {
+          statusCode?: number;
+          headers?: {
+            [key: string]: string | undefined;
+            'x-ms-activity-id'?: string;
+            'x-ms-substatus'?: string;
+          };
+        };
+        body?: {
+          code?: string;
+          message?: string;
+          additionalErrorInfo?: unknown;
+        };
+      };
+      
       // Enhanced error logging for container access issues
-      const errorDetails: Record<string, any> = {
+      const errorDetails = {
         containerName,
         databaseName,
         error: containerError.message,
@@ -228,35 +274,33 @@ async function testConnection() {
         name: containerError.name,
         statusCode: containerError.statusCode,
         request: containerError.request,
-        stack: containerError.stack
+        stack: containerError.stack,
+        // Add response details if available
+        ...(containerError.response && {
+          response: {
+            statusCode: containerError.response.statusCode,
+            headers: containerError.response.headers,
+            activityId: containerError.response.headers?.['x-ms-activity-id'],
+            substatus: containerError.response.headers?.['x-ms-substatus']
+          }
+        }),
+        // Add Cosmos DB specific error details if available
+        ...(containerError.body && {
+          cosmosError: {
+            code: containerError.body.code,
+            message: containerError.body.message,
+            additionalErrorInfo: containerError.body.additionalErrorInfo
+          }
+        })
       };
-      
-      // Add response details if available
-      if (containerError.response) {
-        errorDetails.response = {
-          statusCode: containerError.response.statusCode,
-          headers: containerError.response.headers,
-          activityId: containerError.response.headers?.['x-ms-activity-id'],
-          substatus: containerError.response.headers?.['x-ms-substatus']
-        };
-      }
-      
-      // Add additional Cosmos DB specific error details
-      if (containerError.body) {
-        errorDetails.cosmosError = {
-          code: containerError.body.code,
-          message: containerError.body.message,
-          additionalErrorInfo: containerError.body.additionalErrorInfo
-        };
-      }
       
       logger.error('Error accessing container:', errorDetails);
       
       // Log the full error object for debugging
       try {
-        const errorObj: Record<string, any> = {};
+        const errorObj: Record<string, unknown> = {};
         Object.getOwnPropertyNames(containerError).forEach(key => {
-          errorObj[key] = containerError[key];
+          errorObj[key] = (containerError as Record<string, unknown>)[key];
         });
         logger.error('Full error object:', JSON.stringify(errorObj, null, 2));
       } catch (e) {

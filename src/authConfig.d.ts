@@ -11,7 +11,13 @@ export declare const msalConfig: {
     };
 };
 export declare const loginRequest: {
-    scopes: string[];
+    scopes: (string | undefined)[];
+};
+export declare const protectedResources: {
+    api: {
+        endpoint: string;
+        scopes: (string | undefined)[];
+    };
 };
 export declare const graphConfig: {
     graphMeEndpoint: string;

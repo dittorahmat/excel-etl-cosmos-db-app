@@ -1,5 +1,22 @@
 {
   "extends": "../tsconfig.json",
+  /**
+   * Compiler options for tsconfig.json of the server.
+   *
+   * @property {string} outDir - Specify an output folder for all emitted files.
+   * @property {string} rootDir - Specify the root directory of input files.  Use to control the output
+   * directory structure with --outDir.
+   * @property {boolean} composite - Enable composite projects.  This allows TS to incremental build
+   * projects composed of other projects.  This is very important for the server, because it allows
+   * the server to be built incrementally, which is much faster than rebuilding the entire server
+   * every time.
+   * @property {string} tsBuildInfoFile - Specify the path to the tsconfig.tsbuildinfo file.  This file is
+   * used by tsc to track incremental builds.
+   * @property {string} baseUrl - Specify the base directory to resolve non-relative module names.
+   * @property {Object.<string, string[]>} paths - Specify a series of entries that re-map imports to
+   * lookup locations relative to the baseUrl.
+   * @property {string[]} types - List of names of type declarations to include.
+   */
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "..",
@@ -11,18 +28,22 @@
       "@/server/test-utils/*": ["src/test-utils/*"],
       "@common/*": ["../common/*"]
     },
-    "types": ["node", "vitest/globals"]
+    "types": ["node"],
+    "lib": ["ES2023"]
   },
   "include": [
     "src/**/*.ts",
-    "src/**/*.d.ts",
     "test/**/*.ts",
-    "../common/**/*.ts"
+    "scripts/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    "test",
     "dist",
     "**/*.test.ts",
     "**/*.spec.ts"
+  ],
+  "references": [
+    { "path": "../common" }
   ]
 }

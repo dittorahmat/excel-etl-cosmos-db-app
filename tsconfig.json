@@ -7,28 +7,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "NodeNext",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "types": ["node", "vite/client"],
-    "paths": {
-      "@/*": ["./src/*"],
-      "@/server/*": ["./server/src/*"],
-      "@common/*": ["./common/*"]
-    }
+    "resolveJsonModule": true
   },
-  "include": [
-    "vite-env.d.ts",
-    "src",
-    "common",
-    "server/src",
-    "server/scripts"
-  ],
-  "exclude": ["node_modules", "dist"],
+  "files": [],
+  "include": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.server.json" }
+    { "path": "./common" },
+    { "path": "./server" },
   ]
 }

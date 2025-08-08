@@ -3,10 +3,6 @@ import { MemoryRouter } from 'react-router-dom';
 import ApiKeyManagementPage from '../ApiKeyManagementPage';
 import { api } from '../../utils/api';
 
-vi.mock('../../components/ApiQueryBuilder/ApiQueryBuilder', () => ({
-  ApiQueryBuilder: () => <div>ApiQueryBuilder Mock</div>,
-}));
-
 // Mock the API utility
 vi.mock('../../utils/api', () => ({
   api: {
@@ -14,6 +10,11 @@ vi.mock('../../utils/api', () => ({
     post: vi.fn(),
     delete: vi.fn(),
   },
+}));
+
+// Mock the ApiQueryBuilder component
+vi.mock('../../components/ApiQueryBuilder/ApiQueryBuilder', () => ({
+  ApiQueryBuilder: () => <div>ApiQueryBuilder Mock</div>,
 }));
 
 // Mock the toast hook
@@ -46,13 +47,13 @@ describe('ApiKeyManagementPage', () => {
   beforeEach(() => {
     console.log("[ApiKeyManagementPage.test.tsx] beforeEach - Start");
     // Reset mocks before each test
-    api.get.mockReset();
-    api.post.mockReset();
-    api.delete.mockReset();
+    (api.get as vi.Mock).mockReset();
+    (api.post as vi.Mock).mockReset();
+    (api.delete as vi.Mock).mockReset();
     mockToast.mockReset();
 
     // Explicitly mock api.get for initial fetch to ensure it resolves
-    api.get.mockResolvedValue({ success: true, keys: [] });
+    (api.get as vi.Mock).mockResolvedValue({ success: true, keys: [] });
     console.log("[ApiKeyManagementPage.test.tsx] beforeEach - api.get mocked to resolve with empty keys, timers run");
   });
 
@@ -77,7 +78,7 @@ describe('ApiKeyManagementPage', () => {
   };
 
   it('renders loading state initially', async () => {
-    api.get.mockReturnValueOnce(new Promise(() => {})); // Never resolve to keep loading
+    (api.get as vi.Mock).mockReturnValueOnce(new Promise(() => {})); // Never resolve to keep loading
     await act(async () => {
       await renderComponent();
     });
@@ -85,7 +86,7 @@ describe('ApiKeyManagementPage', () => {
   });
 
   it('renders error message if fetching API keys fails', async () => {
-    api.get.mockResolvedValueOnce({ success: false, message: 'Failed to fetch' });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: false, message: 'Failed to fetch' });
     await act(async () => {
       await renderComponent();
     });
@@ -93,7 +94,7 @@ describe('ApiKeyManagementPage', () => {
   });
 
   it('renders no API keys message if none exist', async () => {
-    api.get.mockResolvedValueOnce({ success: true, keys: [] });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [] });
     await act(async () => {
       await renderComponent();
     });
@@ -118,7 +119,7 @@ describe('ApiKeyManagementPage', () => {
         allowedIps: [],
       },
     ];
-    api.get.mockResolvedValueOnce({ success: true, keys: mockKeys });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: mockKeys });
     await act(async () => {
       await renderComponent();
     });
@@ -134,9 +135,9 @@ describe('ApiKeyManagementPage', () => {
   });
 
   it('creates a new API key successfully', async () => {
-    api.get.mockResolvedValueOnce({ success: true, keys: [] }); // Initial fetch
-    api.post.mockResolvedValueOnce({ success: true, key: 'new-api-key-value', message: 'Key created' });
-    api.get.mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [] }); // Initial fetch
+    (api.post as vi.Mock).mockResolvedValueOnce({ success: true, key: 'new-api-key-value', message: 'Key created' });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] });
 
     await act(async () => {
       await renderComponent();
@@ -155,8 +156,8 @@ describe('ApiKeyManagementPage', () => {
   });
 
   it('handles API key creation failure', async () => {
-    api.get.mockResolvedValueOnce({ success: true, keys: [] });
-    api.post.mockResolvedValueOnce({ success: false, message: 'Creation failed' });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [] });
+    (api.post as vi.Mock).mockResolvedValueOnce({ success: false, message: 'Creation failed' });
 
     await act(async () => {
       await renderComponent();
@@ -176,9 +177,9 @@ describe('ApiKeyManagementPage', () => {
 
   it('revokes an API key successfully', async () => {
     const mockKey = { id: '1', name: 'Revoke Me', createdAt: new Date().toISOString(), isActive: true };
-    api.get.mockResolvedValueOnce({ success: true, keys: [mockKey] }); // Initial fetch
-    api.delete.mockResolvedValueOnce({ success: true, message: 'Key revoked' });
-    api.get.mockResolvedValueOnce({ success: true, keys: [{ ...mockKey, isActive: false }] }); // After revoke fetch
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [mockKey] }); // Initial fetch
+    (api.delete as vi.Mock).mockResolvedValueOnce({ success: true, message: 'Key revoked' });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [{ ...mockKey, isActive: false }] }); // After revoke fetch
 
     await act(async () => {
       await renderComponent();
@@ -201,8 +202,8 @@ describe('ApiKeyManagementPage', () => {
 
   it('handles API key revocation failure', async () => {
     const mockKey = { id: '1', name: 'Revoke Me', createdAt: new Date().toISOString(), isActive: true };
-    api.get.mockResolvedValueOnce({ success: true, keys: [mockKey] });
-    api.delete.mockResolvedValueOnce({ success: false, message: 'Revocation failed' });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [mockKey] });
+    (api.delete as vi.Mock).mockResolvedValueOnce({ success: false, message: 'Revocation failed' });
 
     await act(async () => {
       await renderComponent();
@@ -223,9 +224,9 @@ describe('ApiKeyManagementPage', () => {
   });
 
   it('copies generated API key to clipboard', async () => {
-    api.get.mockResolvedValueOnce({ success: true, keys: [] });
-    api.post.mockResolvedValueOnce({ success: true, key: 'key-to-copy', message: 'Key created' });
-    api.get.mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [] });
+    (api.post as vi.Mock).mockResolvedValueOnce({ success: true, key: 'key-to-copy', message: 'Key created' });
+    (api.get as vi.Mock).mockResolvedValueOnce({ success: true, keys: [{ id: '3', name: 'New Key', createdAt: new Date().toISOString(), isActive: true }] });
 
     await renderComponent();
     await act(async () => {
