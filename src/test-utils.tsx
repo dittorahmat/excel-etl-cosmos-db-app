@@ -1,12 +1,8 @@
-import { render as rtlRender, RenderOptions, act } from '@testing-library/react';
+import { render as rtlRender } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-
-
+import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import { AuthProvider } from './auth/AuthProvider';
-import { MsalProvider } from '@azure/msal-react';
-import { PublicClientApplication } from '@azure/msal-browser';
 
 
 
@@ -28,6 +24,8 @@ afterAll(() => {
 
 
 
+// Type for the wrapper component props
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type WrapperProps = {
   children: React.ReactNode;
   initialEntries?: string[];
@@ -45,8 +43,12 @@ const AllTheProviders = ({ children }) => {
 // Custom render function that wraps components with all necessary providers
 const customRender = (ui, options = {}) => {
   const { 
+    // initialEntries is destructured but not used, keeping for API compatibility
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     initialEntries = ['/'], 
     wrapper: WrapperComponent, 
+    // userEventOptions is destructured but not used, keeping for API compatibility
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     userEventOptions = {},
     ...renderOptions 
   } = options;

@@ -49,7 +49,9 @@ export async function initializeAzureServices(): Promise<{
               isObject: typeof cosmosDbInstance[key as keyof typeof cosmosDbInstance] === 'object',
               value: cosmosDbInstance[key as keyof typeof cosmosDbInstance]
             };
-          } catch (_e) {
+          } catch (error) {
+            // Log the error for debugging
+            logger.warn(`Could not access Cosmos DB property '${String(key)}':`, error);
             acc[key] = { error: 'Could not access property' };
           }
           return acc;

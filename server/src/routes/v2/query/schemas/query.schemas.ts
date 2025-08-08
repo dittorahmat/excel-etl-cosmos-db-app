@@ -7,7 +7,9 @@ export const parseFilter = (filter: unknown): Record<string, unknown> | undefine
   if (typeof filter === 'string') {
     try {
       return JSON.parse(filter);
-    } catch (_e) {
+    } catch (error) {
+      // Log the error for debugging
+      console.debug('Failed to parse filter:', error);
       return undefined;
     }
   }
@@ -22,7 +24,9 @@ export const queryParamsSchema = z.object({
     z.string().transform((val, ctx) => {
       try {
         return JSON.parse(val);
-      } catch (_e) {
+      } catch (error) {
+        // Log the error for debugging
+        console.debug('Failed to parse filter string:', error);
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Filter must be a valid JSON object or stringified JSON',
