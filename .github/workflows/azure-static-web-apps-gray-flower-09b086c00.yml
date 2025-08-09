@@ -10,6 +10,8 @@ on:
       - 'vitest.server.config.ts'
       - 'package.json'
       - 'package-lock.json'
+      - 'index.html'
+      - 'staticwebapp.config.json'
       - '.github/workflows/azure-static-web-apps-gray-flower-09b086c00.yml'
   workflow_dispatch:
 
