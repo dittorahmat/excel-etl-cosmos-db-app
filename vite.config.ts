@@ -18,10 +18,32 @@ export default defineConfig(({ mode }) => {
   return {
     base: '/',
     publicDir: 'public',
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom'],
+      esbuildOptions: {
+        // Fix for Radix UI
+        jsx: 'automatic',
+      },
+    },
     plugins: [
-      react()
+      react({
+        // Use React 17+ automatic JSX transform
+        jsxImportSource: '@emotion/react',
+        // Ensure React is in the same scope
+        jsxRuntime: 'automatic',
+      })
     ],
     build: {
+      // Ensure React is not bundled multiple times
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
       outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: mode !== 'production',
@@ -41,6 +63,8 @@ export default defineConfig(({ mode }) => {
           assetFileNames: (assetInfo: { name?: string }) => {
             // Keep config.js at the root
             if (assetInfo.name === 'config.js') return '[name][extname]';
+            // CSS files in assets directory with proper extension
+            if (assetInfo.name?.endsWith('.css')) return 'assets/[name][extname]';
             // All other assets in assets directory
             return 'assets/[name].[hash][extname]';
           },
@@ -84,13 +108,6 @@ export default defineConfig(({ mode }) => {
             }
             // No chunking for non-node_modules
             return undefined;
-          },
-          // Preserve the exact filename for config.js
-          entryFileNames: '[name].[hash].js',
-          chunkFileNames: '[name].[hash].js',
-          assetFileNames: (assetInfo) => {
-            if (assetInfo.name === 'config.js') return 'config.js';
-            return 'assets/[name].[hash][ext]';
           }
         }
       },
@@ -111,11 +128,6 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.PROD': mode === 'production',
       'import.meta.env.DEV': mode !== 'production',
-    },
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
     },
 
     server: {
