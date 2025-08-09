@@ -63,8 +63,8 @@ export default defineConfig(({ mode }) => {
           assetFileNames: (assetInfo: { name?: string }) => {
             // Keep config.js at the root
             if (assetInfo.name === 'config.js') return '[name][extname]';
-            // CSS files in assets directory with proper extension
-            if (assetInfo.name?.endsWith('.css')) return 'assets/[name][extname]';
+            // CSS files in assets directory with proper extension, handling unusual extensions
+            if (assetInfo.name?.includes('.css') || assetInfo.name?.endsWith('W1Mdea1icss')) return 'assets/[name].css';
             // All other assets in assets directory
             return 'assets/[name].[hash][extname]';
           },
