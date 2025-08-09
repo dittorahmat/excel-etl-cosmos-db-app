@@ -3,32 +3,45 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-
-
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load all environment variables
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  
-  
 
   return {
     base: '/',
     publicDir: 'public',
     resolve: {
-      dedupe: ['react', 'react-dom'],
+      dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
         '@': path.resolve(__dirname, './src'),
+        // Ensure single instance of React and ReactDOM
+        'react': path.resolve(__dirname, './node_modules/react'),
+        'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
+        // Add any Radix UI components that might cause issues
+        '@radix-ui/react-dialog': path.resolve(__dirname, './node_modules/@radix-ui/react-dialog'),
+        '@radix-ui/react-dropdown-menu': path.resolve(__dirname, './node_modules/@radix-ui/react-dropdown-menu'),
       },
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+      include: [
+        'react',
+        'react-dom',
+        '@radix-ui/react-dialog',
+        '@radix-ui/react-dropdown-menu',
+        // Add other Radix UI components you're using
+        '@radix-ui/react-avatar',
+        '@radix-ui/react-popover',
+        '@radix-ui/react-select',
+        '@radix-ui/react-slot',
+        '@radix-ui/react-toast',
+      ],
       esbuildOptions: {
-        // Fix for Radix UI
+        // Fix for Radix UI and React 18
         jsx: 'automatic',
+        target: 'es2020',
       },
     },
     plugins: [
@@ -37,6 +50,14 @@ export default defineConfig(({ mode }) => {
         jsxImportSource: '@emotion/react',
         // Ensure React is in the same scope
         jsxRuntime: 'automatic',
+        // Ensure Babel doesn't process node_modules
+        babel: {
+          babelrc: false,
+          configFile: false,
+          plugins: [
+            // Add any necessary Babel plugins here
+          ],
+        },
       })
     ],
     build: {
