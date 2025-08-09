@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      include: ['react', 'react-dom'],
+      include: ['react', 'react-dom', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
       esbuildOptions: {
         // Fix for Radix UI
         jsx: 'automatic',
@@ -54,17 +54,24 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2000,
       // Configure Rollup options for bundling
       rollupOptions: {
+        external: ['react', 'react-dom'],
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
         output: {
+          globals: {
+            react: 'React',
+            'react-dom': 'ReactDOM',
+          },
           entryFileNames: 'assets/[name].[hash].js',
           chunkFileNames: 'assets/[name].[hash].js',
-          assetFileNames: (assetInfo: { name?: string }) => {
+          assetFileNames: (assetInfo: { name?: string, type: string }) => {
             // Keep config.js at the root
             if (assetInfo.name === 'config.js') return '[name][extname]';
-            // CSS files in assets directory with proper extension, handling unusual extensions
-            if (assetInfo.name?.includes('.css') || assetInfo.name?.endsWith('W1Mdea1icss')) return 'assets/[name].css';
+            // CSS files in assets directory with proper extension
+            if (assetInfo.name?.endsWith('.css')) {
+              return 'assets/[name][extname]';
+            }
             // All other assets in assets directory
             return 'assets/[name].[hash][extname]';
           },
