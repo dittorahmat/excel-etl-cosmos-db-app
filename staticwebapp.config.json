@@ -1,20 +1,34 @@
 {
+  "$schema": "https://aka.ms/azure/static-web-apps-orchestration/schema",
+  "platform": {
+    "apiRuntime": "node:18"
+  },
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}",
+      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,webp,avif,woff,woff2,ttf,eot,map}",
       "/api/*",
       "/assets/*",
+      "/_next/*",
       "/*.css"
     ]
   },
   "responseOverrides": {
+    "400": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    },
     "401": {
       "redirect": "/.auth/login/aad",
       "statusCode": 302
     },
+    "403": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    },
     "404": {
-      "rewrite": "/index.html"
+      "rewrite": "/index.html",
+      "statusCode": 200
     }
   },
   "mimeTypes": {
