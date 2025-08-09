@@ -3,16 +3,23 @@
     "rewrite": "/index.html",
     "exclude": [
       "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}",
-      "/api/*"
+      "/api/*",
+      "/assets/*"
     ]
   },
   "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad",
+      "statusCode": 302
+    },
     "404": {
       "rewrite": "/index.html"
     }
   },
   "mimeTypes": {
-    ".json": "text/json"
+    ".json": "text/json",
+    ".css": "text/css",
+    ".js": "application/javascript"
   },
   "routes": [
     {
