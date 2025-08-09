@@ -4,7 +4,8 @@
     "exclude": [
       "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}",
       "/api/*",
-      "/assets/*"
+      "/assets/*",
+      "/*.css"
     ]
   },
   "responseOverrides": {
@@ -18,9 +19,12 @@
   },
   "mimeTypes": {
     ".json": "application/json",
-    ".css": "text/css",
-    ".js": "application/javascript",
-    ".html": "text/html",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".jsx": "application/javascript; charset=utf-8",
+    ".ts": "application/typescript; charset=utf-8",
+    ".tsx": "application/typescript; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
