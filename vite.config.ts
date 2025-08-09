@@ -23,19 +23,28 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       outDir: 'dist',
-      assetsDir: '.',
+      assetsDir: 'assets',
       sourcemap: mode !== 'production',
       minify: 'terser',
       emptyOutDir: true,
       copyPublicDir: true,
       assetsInlineLimit: 0, // Ensure all assets are copied as files
       chunkSizeWarningLimit: 2000,
+      // Configure Rollup options for bundling
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
         output: {
-          manualChunks(id: string): string | undefined {
+          entryFileNames: 'assets/[name].[hash].js',
+          chunkFileNames: 'assets/[name].[hash].js',
+          assetFileNames: (assetInfo: { name?: string }) => {
+            // Keep config.js at the root
+            if (assetInfo.name === 'config.js') return '[name][extname]';
+            // All other assets in assets directory
+            return 'assets/[name].[hash][extname]';
+          },
+          manualChunks: (id: string) => {
             if (id.includes('node_modules')) {
               if (id.includes('@azure/cosmos')) {
                 return 'vendor-azure-cosmos';
@@ -91,17 +100,18 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    define: Object.entries(env).reduce((acc, [key, value]) => {
-      if (key.startsWith('VITE_')) {
-        acc[`import.meta.env.${key}`] = JSON.stringify(value);
-      }
-      return acc;
-    }, {
+    define: {
+      ...Object.entries(env).reduce<Record<string, string>>((acc, [key, value]) => {
+        if (key.startsWith('VITE_')) {
+          acc[`import.meta.env.${key}`] = JSON.stringify(value);
+        }
+        return acc;
+      }, {}),
       'process.env': {},
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.PROD': mode === 'production',
       'import.meta.env.DEV': mode !== 'production',
-    }),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -134,8 +144,8 @@ export default defineConfig(({ mode }) => {
         },
       },
       // Custom middleware for history API fallback
-      configureServer(app) {
-        app.use((req, res, next) => {
+      configureServer(app: any) {
+        app.use((req: any, _res: any, next: () => void) => {
           // Check if the request is for a file (has an extension)
           if (req.url && !req.url.includes('.') && req.url !== '/' && !req.url.startsWith('/api')) {
             req.url = '/index.html';
