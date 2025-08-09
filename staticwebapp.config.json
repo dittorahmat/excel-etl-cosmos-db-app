@@ -4,7 +4,7 @@
     "apiRuntime": "node:20"
   },
   "navigationFallback": {
-    "rewrite": "/index.html",
+    "rewrite": "index.html",
     "exclude": [
       "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,webp,avif,woff,woff2,ttf,eot,map}",
       "/api/*",
@@ -15,7 +15,7 @@
   },
   "responseOverrides": {
     "400": {
-      "rewrite": "/index.html",
+      "rewrite": "index.html",
       "statusCode": 200
     },
     "401": {
@@ -23,11 +23,11 @@
       "statusCode": 302
     },
     "403": {
-      "rewrite": "/index.html",
+      "rewrite": "index.html",
       "statusCode": 200
     },
     "404": {
-      "rewrite": "/index.html",
+      "rewrite": "index.html",
       "statusCode": 200
     }
   },

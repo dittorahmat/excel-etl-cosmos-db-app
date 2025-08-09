@@ -8,9 +8,6 @@
     <meta name="description" content="IESR Excel Cosmos DB Dashboard & API" />
     <title>IESR Excel Cosmos DB Dashboard & API</title>
     
-    <!-- Preload critical assets -->
-    <link rel="preload" href="/src/main.tsx" as="script" />
-    
     <!-- Load the runtime config first -->
     <script src="/config.js" data-vite-ignore></script>
     
@@ -32,19 +29,6 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    
-    <!-- Load React first -->
     <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Azure Static Web Apps configuration -->
-    <script>
-      // Ensure authentication state is properly handled
-      document.addEventListener('DOMContentLoaded', function() {
-        // Add any Azure Static Web Apps specific initialization here
-        if (window.location.hostname.endsWith('.azurestaticapps.net')) {
-          console.log('Running in Azure Static Web Apps environment');
-        }
-      });
-    </script>
   </body>
 </html>
