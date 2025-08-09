@@ -75,15 +75,10 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2000,
       // Configure Rollup options for bundling
       rollupOptions: {
-        external: ['react', 'react-dom'],
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
         output: {
-          globals: {
-            react: 'React',
-            'react-dom': 'ReactDOM',
-          },
           entryFileNames: 'assets/[name].[hash].js',
           chunkFileNames: 'assets/[name].[hash].js',
           assetFileNames: (assetInfo: { name?: string, type: string }) => {
@@ -98,45 +93,10 @@ export default defineConfig(({ mode }) => {
           },
           manualChunks: (id: string) => {
             if (id.includes('node_modules')) {
-              if (id.includes('@azure/cosmos')) {
-                return 'vendor-azure-cosmos';
-              }
-              if (id.includes('xlsx')) {
-                return 'vendor-xlsx';
-              }
-              if (id.includes('uuid')) {
-                return 'vendor-uuid';
-              }
-              if (id.includes('date-fns')) {
-                return 'vendor-date-fns';
-              }
-              if (id.includes('recharts')) {
-                return 'vendor-recharts';
-              }
-              if (id.includes('cors') || id.includes('express') || id.includes('helmet') || id.includes('multer')) {
-                return 'vendor-server';
-              }
-              if (id.includes('@radix-ui')) {
-                return 'vendor-radix-ui';
-              }
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-                return 'vendor-react';
-              }
-              if (id.includes('msal')) {
-                return 'vendor-msal';
-              }
-              if (id.includes('axios')) {
-                return 'vendor-axios';
-              }
-              if (id.includes('lodash')) {
-                return 'vendor-lodash';
-              }
-              // Default vendor chunk for other node_modules
+              // Group all node_modules into a single vendor file
               return 'vendor';
             }
-            // No chunking for non-node_modules
-            return undefined;
-          }
+          },
         }
       },
       terserOptions: {
