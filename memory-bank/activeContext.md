@@ -4,21 +4,17 @@
 The primary focus is on resolving a critical deployment issue with the Azure Static Web App. The application works locally but fails in the production environment with a `Uncaught TypeError: Cannot read properties of undefined (reading 'useLayoutEffect')` error.
 
 ## Recent Changes
-- Investigated the `useLayoutEffect` error and determined it was caused by an incorrect Vite build configuration (`vite.config.ts`) that was not bundling React with its dependencies correctly.
-- Modified `vite.config.ts` to remove the `external` and `globals` configuration for React and simplified the `manualChunks` logic to create a single vendor bundle.
-- Rebuilt the application and deployed the changes to Azure.
-- The error persisted, leading to further investigation.
-- Identified that the root `index.html` file, which is intended for development, was likely being served in production.
-- Discovered that the `staticwebapp.config.json` file contains multiple `rewrite` rules pointing to `index.html`, which is likely the cause of the issue.
-- Corrected the `staticwebapp.config.json` file by:
-  - Changing all occurrences of `"rewrite": "index.html"` to `"rewrite": "/index.html"`.
-  - Removing a duplicate `platform` key.
-- Realized that removing the `<script type="module" src="/src/main.tsx"></script>` from the root `index.html` was a mistake, as it is needed for the Vite development server. The script tag has been restored.
+- Investigated the `useLayoutEffect` error and determined it was caused by `vendor-radix-ui` loading before `vendor-react`.
+- Corrected the `staticwebapp.config.json` file to ensure the production `index.html` from the `dist` directory is served.
+- Restored the `<script type="module" src="/src/main.tsx"></script>` in the root `index.html` for local development.
+- Attempted various `vite.config.ts` configurations (`manualChunks`, `rollupOptions.input`, `external`, removing `@vitejs/plugin-react`) to control bundling and loading order, but these were consistently ignored by Vite, leading to the same multiple vendor bundles.
+- Implemented an automated solution: created `scripts/add-cdn-scripts.cjs` to inject React and ReactDOM CDN script tags into `dist/index.html` after the build, ensuring they load before other bundled scripts.
+- Updated `package.json` to run `scripts/add-cdn-scripts.cjs` as part of the `postbuild:client` script.
 
 ## Problems Faced
-- **Incorrect Production Asset Serving:** The Azure Static Web App was serving the development `index.html` from the repository root instead of the production-ready `index.html` from the `dist` directory. The corrections to `staticwebapp.config.json` are intended to fix this.
+- **Vite Bundling Issues:** Vite's bundling behavior is not respecting `rollupOptions` configurations, leading to multiple React-related vendor bundles being loaded in an incorrect order, causing the `useLayoutEffect` error. This required a workaround by manually injecting CDN scripts.
 
 ## Next Steps
-1.  **Commit and Push:** The changes to `staticwebapp.config.json` and `index.html` need to be committed and pushed to the repository.
-2.  **Rebuild and Redeploy:** Pushing the changes will trigger a new deployment on Azure Static Web Apps.
+1.  **Commit and Push:** The changes to `scripts/add-cdn-scripts.cjs`, `package.json`, and `index.html` need to be committed and pushed to the repository.
+2.  **Redeploy and Verify:** Pushing the changes will trigger a new deployment on Azure Static Web Apps.
 3.  **Verify Deployment:** Thoroughly test the deployed application to ensure the issue is resolved.

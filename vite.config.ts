@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   return {
     base: '/',
     publicDir: 'public',
-    resolve: {
+        resolve: {
       dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -93,7 +93,6 @@ export default defineConfig(({ mode }) => {
           },
           manualChunks: (id: string) => {
             if (id.includes('node_modules')) {
-              // Group all node_modules into a single vendor file
               return 'vendor';
             }
           },
