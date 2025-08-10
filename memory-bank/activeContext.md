@@ -1,20 +1,40 @@
 # Active Context
 
-## Current Focus
-The primary focus is on resolving a critical deployment issue with the Azure Static Web App. The application works locally but fails in the production environment with a `Uncaught TypeError: Cannot read properties of undefined (reading 'useLayoutEffect')` error.
+## Current Work Focus
+The primary focus is on resolving client-side build and runtime errors, and ensuring a stable development environment.
 
 ## Recent Changes
-- Investigated the `useLayoutEffect` error and determined it was caused by `vendor-radix-ui` loading before `vendor-react`.
-- Corrected the `staticwebapp.config.json` file to ensure the production `index.html` from the `dist` directory is served.
-- Restored the `<script type="module" src="/src/main.tsx"></script>` in the root `index.html` for local development.
-- Attempted various `vite.config.ts` configurations (`manualChunks`, `rollupOptions.input`, `external`, removing `@vitejs/plugin-react`) to control bundling and loading order, but these were consistently ignored by Vite, leading to the same multiple vendor bundles.
-- Implemented an automated solution: created `scripts/add-cdn-scripts.cjs` to inject React and ReactDOM CDN script tags into `dist/index.html` after the build, ensuring they load before other bundled scripts.
-- Updated `package.json` to run `scripts/add-cdn-scripts.cjs` as part of the `postbuild:client` script.
+-   Resolved Tailwind CSS compilation errors by removing problematic `@apply` directives from `src/index.css`.
+-   Applied global `bg-background` and `text-foreground` classes directly to the `<body>` tag in `index.html`.
+-   Resolved `Cannot find module` errors by deleting `node_modules` and `package-lock.json` and reinstalling dependencies.
+-   Resolved `Uncaught TypeError: Cannot read properties of undefined (reading 'useLayoutEffect')` by identifying and removing the conflicting React 18 CDN script injection (`scripts/add-cdn-scripts.cjs`) which was causing a React version mismatch with the project's React 19.
 
 ## Problems Faced
-- **Vite Bundling Issues:** Vite's bundling behavior is not respecting `rollupOptions` configurations, leading to multiple React-related vendor bundles being loaded in an incorrect order, causing the `useLayoutEffect` error. This required a workaround by manually injecting CDN scripts.
+-   Initial Tailwind CSS `@apply` issues with custom colors.
+-   Inconsistent `node_modules` leading to module not found errors.
+-   React version conflict caused by a post-build script injecting an older React CDN, leading to `useLayoutEffect` errors.
 
 ## Next Steps
-1.  **Commit and Push:** The changes to `scripts/add-cdn-scripts.cjs`, `package.json`, and `index.html` need to be committed and pushed to the repository.
-2.  **Redeploy and Verify:** Pushing the changes will trigger a new deployment on Azure Static Web Apps.
-3.  **Verify Deployment:** Thoroughly test the deployed application to ensure the issue is resolved.
+1.  **Commit and Push:** Commit the resolved changes to the repository.
+2.  **Verify Deployment:** Thoroughly test the deployed application to ensure the issues are resolved in the production environment.
+3.  **Core ETL Logic:**
+    -   Refine Excel parsing logic in the Azure Function to handle various data types and structures.
+    -   Implement robust data validation and transformation rules.
+    -   Integrate with Azure Blob Storage for temporary file persistence.
+    -   Implement Cosmos DB loading with proper error handling and batching.
+4.  **Frontend Implementation:**
+    -   Develop frontend component for file selection and upload.
+    -   Implement status reporting and logging for ETL jobs.
+5.  **Security:** Address authentication and authorization for production environment.
+
+## Important Patterns and Preferences
+-   Prioritize serverless and managed Azure services.
+-   Strong emphasis on TypeScript for type safety.
+-   Modular and testable code.
+-   Clear separation of concerns between frontend, API, and ETL logic.
+
+## Learnings and Project Insights
+-   Careful management of dependencies and build processes is crucial to avoid subtle conflicts, especially with library versions.
+-   Azure AD setup for personal accounts (Gmail) in a test environment requires specific considerations and might lead to permission issues, hence authentication is temporarily disabled.
+-   Careful planning of Cosmos DB partitioning keys is crucial for performance and cost.
+-   Excel parsing can be complex due to varied user inputs; robust validation is key.
