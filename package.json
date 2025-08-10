@@ -11,7 +11,7 @@
     "dev:server": "cd server && npm run dev",
     "dev": "concurrently -n 'CLIENT,SERVER' -c 'bgBlue.bold,bgGreen.bold' \"npm run dev:client\" \"npm run dev:server\"",
     "build:client": "vite build",
-    "postbuild:client": "node scripts/fix-css-name.cjs",
+    "postbuild:client": "node scripts/fix-css-name.cjs && npm run postbuild:client:cdn",
     "preview": "vite preview",
     "build:server": "tsc -b server/tsconfig.server.build.json",
     "start:server": "node server/dist/src/server.js",
@@ -31,7 +31,8 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --ignore-pattern '**/node_modules/*' --ignore-pattern '**/dist/*' --ignore-pattern '**/coverage/*'",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "type-check": "tsc --noEmit",
-    "dev:swa": "swa start http://localhost:3000 --run \"npm run dev\" --swa-config-location ./staticwebapp.mock.config.json"
+    "dev:swa": "swa start http://localhost:3000 --run \"npm run dev\" --swa-config-location ./staticwebapp.mock.config.json",
+    "postbuild:client:cdn": "node scripts/add-cdn-scripts.cjs"
   },
   "dependencies": {
     "@azure/cosmos": "^4.4.1",
