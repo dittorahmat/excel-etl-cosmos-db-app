@@ -40,6 +40,10 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      - name: Run fix-css-name.cjs
+        run: node scripts/fix-css-name.cjs
+        working-directory: .
+
       - name: Verify Build Output
         run: |
           ls -la dist/
