@@ -13,7 +13,12 @@ export default defineConfig(({ mode }) => {
   return {
     base: '/',
     publicDir: 'public',
-        resolve: {
+    server: {
+      headers: {
+        'Content-Type': 'text/css; charset=utf-8',
+      },
+    },
+    resolve: {
       dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -61,9 +66,13 @@ export default defineConfig(({ mode }) => {
       })
     ],
     build: {
+      // Ensure proper MIME types for assets
+      assetsInlineLimit: 0,
       // Ensure React is not bundled multiple times
       commonjsOptions: {
         transformMixedEsModules: true,
+        include: [/node_modules/],
+        exclude: ['**/node_modules/process-es6/**'],
       },
       outDir: 'dist',
       assetsDir: 'assets',
@@ -86,10 +95,10 @@ export default defineConfig(({ mode }) => {
             if (assetInfo.name === 'config.js') return '[name][extname]';
             // CSS files in assets directory with proper extension
             if (assetInfo.name?.endsWith('.css')) {
-              return 'assets/[name].[hash][extname]';
+              return 'assets/[name][extname]?[hash]';
             }
             // All other assets in assets directory
-            return 'assets/[name].[hash][extname]';
+            return 'assets/[name][extname]?[hash]';
           },
           manualChunks: (id: string) => {
             if (id.includes('node_modules')) {
