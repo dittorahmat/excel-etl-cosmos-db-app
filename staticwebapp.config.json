@@ -38,6 +38,24 @@
     ".ttf": "font/ttf",
     ".eot": "application/vnd.ms-fontobject"
   },
+  "responseOverrides": {
+    "400": {
+      "rewrite": "/index.html"
+    },
+    "401": {
+      "rewrite": "/index.html"
+    },
+    "404": {
+      "rewrite": "/index.html"
+    },
+    "CSS": {
+      "rewrite": "/index.html",
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": "text/css; charset=utf-8"
+      }
+    }
+  },
   "routes": [
     {
       "route": "/api/*",

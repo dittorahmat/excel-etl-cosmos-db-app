@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
       include: [
         'react',
         'react-dom',
+        'react/jsx-runtime',
         '@radix-ui/react-dialog',
         '@radix-ui/react-dropdown-menu',
         // Add other Radix UI components you're using
@@ -46,7 +47,18 @@ export default defineConfig(({ mode }) => {
       esbuildOptions: {
         // Fix for Radix UI and React 18
         jsx: 'automatic',
+        jsxDev: false, // Disable dev mode in production
         target: 'es2020',
+        // Ensure React is treated as external
+        define: {
+          'process.env.NODE_ENV': '"production"',
+        },
+        banner: {
+          js: `
+            // React version: ${require('react/package.json').version}
+            // React DOM version: ${require('react-dom/package.json').version}
+          `
+        }
       },
     },
     plugins: [
