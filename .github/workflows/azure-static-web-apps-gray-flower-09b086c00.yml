@@ -45,6 +45,13 @@ jobs:
           ls -la dist/
           echo "Build output verified"
           
+      - name: Copy staticwebapp.config.json to dist
+        run: |
+          # Ensure the dist directory exists
+          mkdir -p dist
+          # Copy the config to the dist directory before cleanup
+          cp staticwebapp.config.json dist/
+          
       - name: Prepare deployment files
         run: |
           # Create a temporary directory for the deployment
@@ -72,7 +79,7 @@ jobs:
           mv deployment/* .
           rmdir deployment
           
-          # Remove unnecessary files
+          # Remove unnecessary files, but keep staticwebapp.config.json
           rm -rf node_modules
           rm -rf .git
           rm -rf .github
@@ -80,15 +87,11 @@ jobs:
           rm -rf tests
           rm -f *.md
           rm -f .*rc
-          rm -f *.config.*
+          # Only remove config files that aren't our staticwebapp.config.json
+          find . -maxdepth 1 -type f -name '*.config.*' ! -name 'staticwebapp.config.json' -delete
           
           echo "Final directory size:"
           du -sh .
-
-      - name: Copy staticwebapp.config.json to dist
-        run: |
-          # Copy the config to the dist directory
-          cp staticwebapp.config.json dist/
           
       - name: Deploy to Azure Static Web App
         id: builddeploy
