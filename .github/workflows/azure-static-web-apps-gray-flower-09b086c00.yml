@@ -154,14 +154,6 @@ jobs:
           output_location: ''         # Root of the built app
           skip_app_build: true        # We're building manually above
           skip_api_build: true        # No API in this build
-          # Configure MIME types and routing
-          mime_types: |
-            {
-              ".css": "text/css; charset=utf-8",
-              ".js": "application/javascript; charset=utf-8",
-              ".json": "application/json; charset=utf-8",
-              ".html": "text/html; charset=utf-8"
-            }
           app_artifact_location: 'dist'
           # Configure for single page application
           
