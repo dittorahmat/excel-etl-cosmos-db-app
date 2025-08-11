@@ -47,13 +47,6 @@
     },
     "404": {
       "rewrite": "/index.html"
-    },
-    "CSS": {
-      "rewrite": "/index.html",
-      "statusCode": 200,
-      "headers": {
-        "Content-Type": "text/css; charset=utf-8"
-      }
     }
   },
   "routes": [
