@@ -5,7 +5,19 @@
       "/css/*",
       "/js/*",
       "/assets/*",
-      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}"
+      "/*.css",
+      "/*.scss",
+      "/*.js",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.gif",
+      "/*.ico",
+      "/*.svg",
+      "/*.woff",
+      "/*.woff2",
+      "/*.ttf",
+      "/*.eot"
     ]
   },
   "mimeTypes": {
