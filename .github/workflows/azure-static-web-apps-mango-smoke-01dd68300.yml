@@ -52,7 +52,7 @@ jobs:
       - name: Check MIME type of main.css
         run: |
           # Find the main.css file (or its hashed equivalent)
-          CSS_FILE=$(find dist/assets -name "main.*.css" | head -n 1)
+          CSS_FILE=$(find dist/assets -name "*.css" | head -n 1)
           if [ -f "$CSS_FILE" ]; then
             echo "MIME type of $CSS_FILE:"
             file --mime-type "$CSS_FILE"
