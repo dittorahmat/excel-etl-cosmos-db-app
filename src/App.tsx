@@ -1,5 +1,20 @@
+// Debugging React version and environment
+console.log('React version:', React.version);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Build time:', new Date().toISOString());
+
+// Log React features to help diagnose issues
+if (typeof window !== 'undefined') {
+  console.log('React features:', {
+    useLayoutEffect: typeof React.useLayoutEffect,
+    useState: typeof React.useState,
+    useEffect: typeof React.useEffect,
+    version: React.version
+  });
+}
+
 // Force new vendor bundle hash
-import React, { lazy, Suspense, useEffect } from 'react'; // Triggering new build for Azure
+import { lazy, Suspense, useEffect } from 'react'; // Triggering new build for Azure
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
