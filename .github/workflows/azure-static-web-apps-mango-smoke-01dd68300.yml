@@ -44,6 +44,21 @@ jobs:
         run: |
           ls -la dist/
           echo "Build output verified"
+
+      - name: List dist contents recursively
+        run: |
+          ls -R dist/
+
+      - name: Check MIME type of main.css
+        run: |
+          # Find the main.css file (or its hashed equivalent)
+          CSS_FILE=$(find dist/assets -name "main.*.css" | head -n 1)
+          if [ -f "$CSS_FILE" ]; then
+            echo "MIME type of $CSS_FILE:"
+            file --mime-type "$CSS_FILE"
+          else
+            echo "main.css (or hashed equivalent) not found in dist/assets."
+          fi
           
       - name: Prepare deployment files
         run: |
