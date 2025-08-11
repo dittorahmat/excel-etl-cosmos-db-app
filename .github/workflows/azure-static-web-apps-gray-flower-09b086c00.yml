@@ -28,11 +28,14 @@ jobs:
         with:
           node-version: '20.x'
       - name: Install Dependencies
-        run: npm ci --omit=dev
+        run: npm ci
         working-directory: .
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Build Client
-        run: npm run build:client
+        run: |
+          npx vite build
         working-directory: .
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -49,6 +52,11 @@ jobs:
           
           # Copy only the necessary files to the deployment directory
           cp -r dist/* deployment/
+          
+          # Copy only production dependencies
+          npm ci --omit=dev
+          
+          # Copy package files
           cp package.json deployment/
           cp package-lock.json deployment/
           
