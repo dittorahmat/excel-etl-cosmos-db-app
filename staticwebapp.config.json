@@ -13,7 +13,19 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,webp,avif,woff,woff2,ttf,eot,map,json}",
+      "/*.css",
+      "/*.js",
+      "/*.json",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.gif",
+      "/*.ico",
+      "/*.svg",
+      "/*.woff",
+      "/*.woff2",
+      "/*.ttf",
+      "/*.eot",
       "/assets/*"
     ]
   },
