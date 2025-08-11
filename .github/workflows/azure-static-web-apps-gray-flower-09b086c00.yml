@@ -27,19 +27,36 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '20.x'
-      - name: Build And Deploy
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Build Client
+        run: npm run build:client
+        working-directory: .
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Verify Build Output
+        run: |
+          ls -la dist/
+          echo "Build output verified"
+
+      - name: Deploy to Azure Static Web App
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
-          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
-          app_location: "/" # App source code path
-          api_location: "" # Api source code path - optional
-          output_location: "dist" # Built app content directory - optional
-          ###### End of Repository/Build Configurations ######
+          action: 'upload'
+          app_location: '/'           # Root of the source code
+          output_location: 'dist'     # Built app content directory
+          skip_app_build: true        # We're building manually above
+          skip_api_build: true        # No API in this build
+          verbose: true               # More detailed logs
+          # Enable SPA fallback routing
+          app_build_command: 'npm run build:client'
+          app_artifact_location: 'dist'
         env:
           VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
           VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}

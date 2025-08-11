@@ -6,11 +6,8 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,webp,avif,woff,woff2,ttf,eot,map}",
-      "/api/*",
-      "/assets/*",
-      "/_next/*",
-      "/*.css"
+      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,webp,avif,woff,woff2,ttf,eot,map,json}",
+      "/assets/*"
     ]
   },
   "responseOverrides": {
@@ -58,7 +55,6 @@
       "backend": "excel-etl-backend-378680"
     }
   ],
-  
   "auth": {
     "identityProviders": {
       "azureActiveDirectory": {
@@ -80,5 +76,5 @@
       }
     },
     "configFilePath": "auth.json"
-  },
+  }
 }
