@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '20.x'
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --omit=dev
         working-directory: .
 
       - name: Build Client
@@ -41,6 +41,41 @@ jobs:
         run: |
           ls -la dist/
           echo "Build output verified"
+          
+      - name: Prepare deployment files
+        run: |
+          # Create a temporary directory for the deployment
+          mkdir -p deployment
+          
+          # Copy only the necessary files to the deployment directory
+          cp -r dist/* deployment/
+          cp package.json deployment/
+          cp package-lock.json deployment/
+          
+          # List the files to be deployed
+          echo "Files to be deployed:"
+          find deployment -type f | sort
+          
+          # Show the size of the deployment directory
+          echo "Deployment directory size:"
+          du -sh deployment/
+          
+          # Move the deployment directory to the root
+          mv deployment/* .
+          rmdir deployment
+          
+          # Remove unnecessary files
+          rm -rf node_modules
+          rm -rf .git
+          rm -rf .github
+          rm -rf server
+          rm -rf tests
+          rm -f *.md
+          rm -f .*rc
+          rm -f *.config.*
+          
+          echo "Final directory size:"
+          du -sh .
 
       - name: Deploy to Azure Static Web App
         id: builddeploy
@@ -53,10 +88,11 @@ jobs:
           output_location: 'dist'     # Built app content directory
           skip_app_build: true        # We're building manually above
           skip_api_build: true        # No API in this build
-          verbose: true               # More detailed logs
           # Enable SPA fallback routing
           app_build_command: 'npm run build:client'
           app_artifact_location: 'dist'
+          # Configure for single page application
+          routes_location: 'staticwebapp.config.json'
         env:
           VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
           VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
