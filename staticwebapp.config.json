@@ -1,15 +1,4 @@
 {
-  "$schema": "https://aka.ms/azure/static-web-apps-orchestration/schema",
-  "platform": {
-    "apiRuntime": "node:20"
-  },
-
-  "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; img-src 'self' https: data:; connect-src 'self' https:;",
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block"
-  },
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
@@ -25,27 +14,8 @@
       "/*.woff",
       "/*.woff2",
       "/*.ttf",
-      "/*.eot",
-      "/assets/*"
+      "/*.eot"
     ]
-  },
-  "responseOverrides": {
-    "400": {
-      "rewrite": "/index.html",
-      "statusCode": 200
-    },
-    "401": {
-      "redirect": "/.auth/login/aad",
-      "statusCode": 302
-    },
-    "403": {
-      "rewrite": "/index.html",
-      "statusCode": 200
-    },
-    "404": {
-      "rewrite": "/index.html",
-      "statusCode": 200
-    }
   },
   "mimeTypes": {
     ".json": "application/json; charset=utf-8",
