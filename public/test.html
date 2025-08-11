@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        h1 { color: #0078d4; }
+    </style>
+</head>
+<body>
+    <h1>Azure Static Web App Test</h1>
+    <p>If you can see this, static file serving is working!</p>
+    <p>Now checking JavaScript...</p>
+    <div id="js-status">JavaScript is not working</div>
+    <script>
+        document.getElementById('js-status').textContent = 'JavaScript is working!';
+        console.log('Test script executed successfully');
+    </script>
+</body>
+</html>
