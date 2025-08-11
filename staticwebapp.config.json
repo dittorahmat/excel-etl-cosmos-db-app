@@ -3,6 +3,13 @@
   "platform": {
     "apiRuntime": "node:20"
   },
+
+  "globalHeaders": {
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; img-src 'self' https: data:; connect-src 'self' https:;",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block"
+  },
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
@@ -29,7 +36,7 @@
     }
   },
   "mimeTypes": {
-    ".json": "application/json",
+    ".json": "application/json; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".js": "application/javascript; charset=utf-8",
     ".jsx": "application/javascript; charset=utf-8",
