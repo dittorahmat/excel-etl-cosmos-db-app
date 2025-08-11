@@ -2,19 +2,22 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/*.css",
-      "/*.js",
-      "/*.json",
-      "/*.png",
-      "/*.jpg",
-      "/*.jpeg",
-      "/*.gif",
-      "/*.ico",
-      "/*.svg",
-      "/*.woff",
-      "/*.woff2",
-      "/*.ttf",
-      "/*.eot"
+      "/css/*",
+      "/js/*",
+      "/assets/*",
+      "/*.css*",
+      "/*.js*",
+      "/*.json*",
+      "/*.png*",
+      "/*.jpg*",
+      "/*.jpeg*",
+      "/*.gif*",
+      "/*.ico*",
+      "/*.svg*",
+      "/*.woff*",
+      "/*.woff2*",
+      "/*.ttf*",
+      "/*.eot*"
     ]
   },
   "mimeTypes": {
