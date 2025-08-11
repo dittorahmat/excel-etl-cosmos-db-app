@@ -27,45 +27,18 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '20.x'
-      - name: Install Node.js and npm
-        run: |
-          echo "Node.js version: $(node -v)"
-          echo "npm version: $(npm -v)"
-          
       - name: Install Dependencies
-        run: |
-          # Install all dependencies including devDependencies
-          npm ci --include=dev
-          # Explicitly install Vite
-          npm install vite@5.4.19 --save-dev
-          # Verify Vite installation
-          npx vite --version
+        run: npm ci
         working-directory: .
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Build Client
         run: |
-          # Debug: Show current directory structure
-          echo "Current directory structure:"
-          ls -la
-          
-          # Debug: Show node_modules/vite
-          echo "Vite installation:"
-          ls -la node_modules | grep vite || echo "Vite not found in node_modules"
-          
-          # Clear any existing build artifacts
-          rm -rf dist
-          
-          # Build the application
-          npx vite build --mode production
-          
-          # Verify the built CSS files
-          find dist -name "*.css" -exec sh -c 'echo "Checking MIME type for $1" && file -b --mime-type "$1" | grep -q "text/css" || (echo "Incorrect MIME type for $1" && exit 1)' _ {} \;
+          npx vite build
         working-directory: .
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-          NODE_ENV: production
 
       - name: Verify Build Output
         run: |
@@ -150,12 +123,12 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GRAY_FLOWER_09B086C00 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          app_location: 'dist'        # Built app directory
-          output_location: ''         # Root of the built app
+          app_location: '/'           # Root of the source code
+          output_location: 'dist'     # Built app content directory
           skip_app_build: true        # We're building manually above
           skip_api_build: true        # No API in this build
+          app_build_command: 'npm run build:client'
           app_artifact_location: 'dist'
-          # Configure for single page application
           
         env:
           VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
