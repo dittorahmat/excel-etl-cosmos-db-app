@@ -11,7 +11,7 @@
     "dev:server": "cd server && npm run dev",
     "dev": "concurrently -n 'CLIENT,SERVER' -c 'bgBlue.bold,bgGreen.bold' \"npm run dev:client\" \"npm run dev:server\"",
     "build:client": "vite build",
-    "postbuild:client": "node scripts/fix-css-name.cjs",
+    
     "preview": "vite preview",
     "build:server": "tsc -b server/tsconfig.server.build.json",
     "start:server": "node server/dist/src/server.js",
