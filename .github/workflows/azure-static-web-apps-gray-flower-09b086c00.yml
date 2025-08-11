@@ -85,34 +85,8 @@ jobs:
           echo "Final directory size:"
           du -sh .
 
-      - name: Create staticwebapp.config.json
+      - name: Copy staticwebapp.config.json to dist
         run: |
-          cat > staticwebapp.config.json << 'EOL'
-          {
-            "mimeTypes": {
-              ".css": "text/css; charset=utf-8"
-            },
-            "navigationFallback": {
-              "rewrite": "/index.html",
-              "exclude": ["/assets/*", "/*.*"]
-            },
-            "responseOverrides": {
-              "400": {
-                "rewrite": "/index.html"
-              },
-              "404": {
-                "rewrite": "/index.html"
-              }
-            },
-            "globalHeaders": {
-              "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; img-src 'self' https: data:; connect-src 'self' https:;",
-              "X-Content-Type-Options": "nosniff",
-              "X-Frame-Options": "DENY",
-              "X-XSS-Protection": "1; mode=block"
-            }
-          }
-          EOL
-          
           # Copy the config to the dist directory
           cp staticwebapp.config.json dist/
           
