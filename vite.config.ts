@@ -13,11 +13,6 @@ export default defineConfig(({ mode }) => {
   return {
     base: '/',
     publicDir: 'public',
-    server: {
-      headers: {
-        'Content-Type': 'text/css; charset=utf-8',
-      },
-    },
     resolve: {
       dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
@@ -79,7 +74,7 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       // Ensure proper MIME types for assets
-      assetsInlineLimit: 0,
+      assetsInlineLimit: 0, // Ensure all assets are copied as files
       // Ensure React is not bundled multiple times
       commonjsOptions: {
         transformMixedEsModules: true,
@@ -92,7 +87,6 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       emptyOutDir: true,
       copyPublicDir: true,
-      assetsInlineLimit: 0, // Ensure all assets are copied as files
       chunkSizeWarningLimit: 2000,
       // Configure Rollup options for bundling
       rollupOptions: {
@@ -141,6 +135,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       open: true,
+      headers: {
+        'Content-Type': 'text/css; charset=utf-8',
+      },
       proxy: {
         '/api': {
           target: 'http://localhost:3001',
