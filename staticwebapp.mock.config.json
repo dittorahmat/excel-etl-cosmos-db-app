@@ -2,19 +2,10 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/*.css",
-      "/*.scss",
-      "/*.js",
-      "/*.png",
-      "/*.jpg",
-      "/*.jpeg",
-      "/*.gif",
-      "/*.ico",
-      "/*.svg",
-      "/*.woff",
-      "/*.woff2",
-      "/*.ttf",
-      "/*.eot"
+      "/css/*",
+      "/js/*",
+      "/assets/*",
+      "/*.{css,scss,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}"
     ]
   },
   "mimeTypes": {
