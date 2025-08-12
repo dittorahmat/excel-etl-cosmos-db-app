@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import dotenvExpand from 'dotenv-expand';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,16 +12,10 @@ export function loadEnv() {
   console.log('[env.ts] Current working directory:', process.cwd());
   console.log('[env.ts] Module directory:', __dirname);
 
+  // Try to load environment variables from multiple possible .env file locations
   const envPath = path.resolve(process.cwd(), '.env');
   console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
-  const result = dotenv.config({ path: envPath, override: true });
-
-  // Manually set process.env with the parsed values to ensure they're available
-  if (result.parsed) {
-    for (const [key, value] of Object.entries(result.parsed)) {
-      process.env[key] = value;
-    }
-  }
+  dotenv.config({ path: envPath });
 
   // Create and return the env object
   const env = {
