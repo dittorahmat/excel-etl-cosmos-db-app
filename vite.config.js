@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -29,43 +30,8 @@ export default defineConfig(({ mode }) => {
                 output: {
                     manualChunks(id) {
                         if (id.includes('node_modules')) {
-                            if (id.includes('@azure/cosmos')) {
-                                return 'vendor-azure-cosmos';
-                            }
-                            if (id.includes('xlsx')) {
-                                return 'vendor-xlsx';
-                            }
-                            if (id.includes('uuid')) {
-                                return 'vendor-uuid';
-                            }
-                            if (id.includes('date-fns')) {
-                                return 'vendor-date-fns';
-                            }
-                            if (id.includes('recharts')) {
-                                return 'vendor-recharts';
-                            }
-                            if (id.includes('cors') || id.includes('express') || id.includes('helmet') || id.includes('multer')) {
-                                return 'vendor-server';
-                            }
-                            if (id.includes('@radix-ui')) {
-                                return 'vendor-radix-ui';
-                            }
-                            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-                                return 'vendor-react';
-                            }
-                            if (id.includes('msal')) {
-                                return 'vendor-msal';
-                            }
-                            if (id.includes('axios')) {
-                                return 'vendor-axios';
-                            }
-                            if (id.includes('lodash')) {
-                                return 'vendor-lodash';
-                            }
-                            // Default vendor chunk for other node_modules
                             return 'vendor';
                         }
-                        // No chunking for non-node_modules
                         return undefined;
                     },
                     // Preserve the exact filename for config.js
