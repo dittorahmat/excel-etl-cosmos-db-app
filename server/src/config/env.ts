@@ -13,9 +13,20 @@ export function loadEnv() {
   console.log('[env.ts] Module directory:', __dirname);
 
   // Try to load environment variables from multiple possible .env file locations
-  const envPath = path.resolve(process.cwd(), '.env');
+  const envPath = path.resolve(__dirname, '../../../.env');
   console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
-  dotenv.config({ path: envPath });
+  const result = dotenv.config({ path: envPath, override: true });
+
+  // Manually set process.env with the parsed values to ensure they're available
+  if (result.parsed) {
+    for (const [key, value] of Object.entries(result.parsed)) {
+      process.env[key] = value;
+    }
+  }
+
+  console.log('[env.ts] Debugging AZURE_STORAGE_CONNECTION_STRING:', process.env.AZURE_STORAGE_CONNECTION_STRING);
+  console.log('[env.ts] Debugging AZURE_COSMOSDB_ENDPOINT:', process.env.AZURE_COSMOSDB_ENDPOINT);
+  console.log('[env.ts] Debugging AZURE_COSMOSDB_KEY:', process.env.AZURE_COSMOSDB_KEY);
 
   // Create and return the env object
   const env = {
