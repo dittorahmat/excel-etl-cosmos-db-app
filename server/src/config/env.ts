@@ -13,72 +13,9 @@ export function loadEnv() {
   console.log('[env.ts] Module directory:', __dirname);
 
   // Try to load environment variables from multiple possible .env file locations
-  const possibleEnvPaths = [
-    path.resolve(process.cwd(), '.env'),       // Current working directory (server/)
-    path.resolve(process.cwd(), '..', '.env'), // Project root
-    path.resolve(__dirname, '../../.env'),     // Server directory (src/config/../../.env)
-    path.resolve(__dirname, '../../../.env'),  // Project root (alternative path)
-    '/home/ditto/Documents/work-with-hendra/etl-excel-to-cosmos-db/my-app/server/.env' // Absolute path as fallback
-  ];
-
-  let envLoaded = false;
-  let lastError: Error | null = null;
-
-  // Try each path until we successfully load the .env file
-  for (const envPath of possibleEnvPaths) {
-    try {
-      console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
-      // Load with override: true to ensure we get the latest values
-      const result = dotenv.config({ path: envPath, override: true });
-      
-      // If we got a result and no error, the file was loaded successfully
-      if (result.parsed) {
-        console.log(`[env.ts] Successfully loaded .env from: ${envPath}`);
-        // Manually set process.env with the parsed values to ensure they're available
-        for (const [key, value] of Object.entries(result.parsed)) {
-          if (!process.env[key]) {
-            process.env[key] = value;
-          }
-        }
-        envLoaded = true;
-        break;
-      }
-      
-      if (result.error) {
-        lastError = result.error;
-        console.error(`[env.ts] Error loading .env from ${envPath}:`, result.error);
-        continue;
-      }
-      
-      console.log(`[env.ts] Successfully loaded .env from: ${envPath}`);
-      console.log('[env.ts] Loaded environment variables:', Object.keys(result.parsed || {}).join(', '));
-      
-      // Log specific variables we care about (without values for security)
-      const importantVars = [
-        'AZURE_COSMOSDB_ENDPOINT',
-        'AZURE_COSMOSDB_KEY',
-        'AZURE_STORAGE_CONNECTION_STRING',
-        'AZURE_STORAGE_CONTAINER'
-      ];
-      
-      importantVars.forEach(varName => {
-        console.log(`[env.ts] ${varName}: ${process.env[varName] ? '***' : 'Not set'}`);
-      });
-      
-      envLoaded = true;
-      break;
-    } catch (error) {
-      lastError = error as Error;
-      console.error(`[env.ts] Error loading .env from ${envPath}:`, error);
-    }
-  }
-
-  if (!envLoaded) {
-    console.warn('[env.ts] WARNING: Failed to load .env file from any location');
-    if (lastError) {
-      console.error('[env.ts] Last error:', lastError);
-    }
-  }
+  const envPath = path.resolve(process.cwd(), '.env');
+  console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
+  dotenv.config({ path: envPath });
 
   // Create and return the env object
   const env = {
