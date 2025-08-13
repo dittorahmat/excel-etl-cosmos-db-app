@@ -4,7 +4,15 @@
     "types": ["node"],
     "composite": true,
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": false,
+    "skipLibCheck": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ]
   },
   "include": [
     "src/**/*.ts",
@@ -14,10 +22,24 @@
     "node_modules",
     "dist",
     "**/*.test.ts",
+    "**/*.test.tsx",
     "**/*.spec.ts",
-    "**/test/**"
+    "**/*.spec.tsx",
+    "**/__tests__",
+    "**/__mocks__",
+    "**/test",
+    "**/tests",
+    "**/test-utils",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/vitest.config.*",
+    "**/vitest.setup.*",
+    "**/jest.config.*",
+    "**/jest.setup.*"
   ],
   "references": [
-    { "path": "../common" }
+    { 
+      "path": "../common/tsconfig.json"
+    }
   ]
 }

@@ -60,6 +60,9 @@ interface ErrorResponseData {
   [key: string]: unknown;
 }
 
+// Get API base URL from environment variables with fallback
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 // Rate limiting configuration
 const _RATE_LIMIT_RETRY_ATTEMPTS = import.meta.env.DEV ? 0 : 3;
 
@@ -525,14 +528,24 @@ if (typeof window !== 'undefined') {
 }
 
 export const api: ApiClient = {
-  get: <T = unknown>(endpoint: string, options: Omit<RequestOptions, 'body' | 'method'> = {}) => 
-    authFetch<T>(endpoint, { ...options, method: 'GET' }),
-    
+  get: <T = unknown>(
+    endpoint: string, 
+    options: Omit<RequestOptions, 'body' | 'method'> = {}
+  ): Promise<T> => {
+    // Prepend API_BASE_URL to the endpoint if it's a relative URL
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+    return authFetch<T>(url, {
+      ...options,
+      method: 'GET',
+    });
+  },  
   post: <T = unknown, D = unknown>(
     endpoint: string, 
     data?: D, 
     options: Omit<RequestOptions, 'body' | 'method'> = {}
-  ) => {
+  ): Promise<T> => {
+    // Prepend API_BASE_URL to the endpoint if it's a relative URL
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
     const isFormData = data instanceof FormData;
     const body = isFormData ? data : (data ? JSON.stringify(data) : undefined);
     
@@ -573,7 +586,7 @@ export const api: ApiClient = {
     if (body instanceof FormData) {
       // Remove any existing content-type header to let the browser set it with the boundary
       const { 'content-type': _unusedContentType, ...headersWithoutContentType } = headers;
-      return authFetch<T>(endpoint, {
+      return authFetch<T>(url, {
         ...options,
         headers: headersWithoutContentType as HeadersInit,
         method: 'POST',
@@ -581,7 +594,7 @@ export const api: ApiClient = {
       });
     }
 
-    return authFetch<T>(endpoint, {
+    return authFetch<T>(url, {
       ...options,
       headers: headers as HeadersInit,
       method: 'POST',
@@ -593,9 +606,11 @@ export const api: ApiClient = {
     endpoint: string, 
     data?: D, 
     options: Omit<RequestOptions, 'body' | 'method'> = {}
-  ) => {
+  ): Promise<T> => {
+    // Prepend API_BASE_URL to the endpoint if it's a relative URL
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
     const body = data ? JSON.stringify(data) : undefined;
-    return authFetch<T>(endpoint, {
+    return authFetch<T>(url, {
       ...options,
       method: 'PUT',
       body,
@@ -605,9 +620,12 @@ export const api: ApiClient = {
   delete: <T = unknown>(
     endpoint: string, 
     options: Omit<RequestOptions, 'body' | 'method'> = {}
-  ) => 
-    authFetch<T>(endpoint, {
+  ): Promise<T> => {
+    // Prepend API_BASE_URL to the endpoint if it's a relative URL
+    const url = endpoint.startsWith('http') ? endpoint : `${process.env.API_BASE_URL}${endpoint}`;
+    return authFetch<T>(url, {
       ...options,
       method: 'DELETE',
-    }),
+    });
+  },
 };

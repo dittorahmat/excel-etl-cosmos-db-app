@@ -4,5 +4,13 @@
     "lib": ["ES2023", "DOM"],
     "types": ["node", "vitest/globals"]
   },
-  "include": ["test/**/*.ts", "src/**/*.ts"]
+  "include": ["test/**/*.ts", "src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/__tests__/*",
+    "**/__mocks__/*"
+  ]
 }

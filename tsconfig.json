@@ -1,13 +1,22 @@
 {
   "compilerOptions": {
-    "module": "NodeNext",
-    "target": "ES2022",
-    "esModuleInterop": true,
-    "strict": true,
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
       "@common/*": ["common/src/*"],
@@ -17,16 +26,31 @@
   "files": [],
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "src"
   ],
   "exclude": [
-    "node_modules",
-    "dist",
+    "**/node_modules",
+    "**/dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/__tests__",
+    "**/__mocks__",
+    "**/test",
+    "**/tests",
+    "**/test-utils",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/vitest.config.*",
+    "**/vitest.setup.*"
   ],
   "references": [
     { "path": "./common" },
-    { "path": "./server" }
-  ]
+    { "path": "./server" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
 }

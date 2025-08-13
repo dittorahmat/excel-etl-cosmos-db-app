@@ -70,7 +70,7 @@ export function createApp(azureServices: {
     max: 100, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again after 15 minutes',
     keyGenerator: (req: Request) => req.ip || 'unknown-ip',
-    handler: (req: Request, res: Response) => {
+    handler: (_req: Request, res: Response) => {
       res.setHeader('Retry-After', '900'); // 15 minutes
       res.status(429).json({
         success: false,
@@ -98,7 +98,7 @@ export function createApp(azureServices: {
   app.use('/api/v2', createV2Router(azureServices));
   
   // Temporary: Bypass auth for fields endpoint during debugging
-  app.use('/api/fields', (req, res, next) => {
+  app.use('/api/fields', (_req, _res, next) => {
     console.log('Fields endpoint accessed - auth bypassed');
     next();
   }, createFieldsRouter(azureServices.cosmosDb));

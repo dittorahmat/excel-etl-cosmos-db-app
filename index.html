@@ -6,31 +6,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="IESR Excel Cosmos DB Dashboard & API" />
-    <title>IESR Excel Cosmos DB Dashboard & API - 2025-08-11 22:53</title>
+    <title>2025-08-13 08:00 -IESR Excel Cosmos DB Dashboard & API</title>
 
-    <!-- Load the runtime config first -->
-    <script src="/config.js" data-vite-ignore></script>
-
-    <!-- Ensure global object is available for all scripts -->
+    <!-- Set a flag to prevent MSAL initialization before config loads -->
     <script>
+      console.log('Initializing application...');
+
+      // Set a flag to indicate we want to control MSAL initialization
+      window.SKIP_MSAL_INIT = true;
+      console.log('SKIP_MSAL_INIT set to:', window.SKIP_MSAL_INIT);
+
       // Ensure global is defined for Node.js like environments
       window.global = window.global || window;
 
       // Ensure process is defined for libraries that expect it
       window.process = window.process || { env: {} };
 
+      // Initialize environment variables if not already set
+      window.ENV = {
+        // Default all environment variables to ensure they're available
+        VITE_AUTH_ENABLED: 'false',
+        AUTH_ENABLED: 'false',
+        NODE_ENV: 'production',
+        MODE: 'production',
+        // Add other environment variables that might be needed
+        VITE_AZURE_CLIENT_ID: '',
+        VITE_AZURE_TENANT_ID: '',
+        VITE_AZURE_REDIRECT_URI: window.location.origin,
+        VITE_API_SCOPE: '',
+        VITE_API_BASE_URL: ''
+      };
+
+      // Override with any existing ENV values
+      if (window.ENV_OVERRIDE) {
+        Object.assign(window.ENV, window.ENV_OVERRIDE);
+      }
+
+      // Force disable authentication for now
+      window.ENV.VITE_AUTH_ENABLED = 'false';
+      window.ENV.AUTH_ENABLED = 'false';
+
+      // Set a global flag to force dummy auth
+      window.FORCE_DUMMY_AUTH = true;
+
       // Error boundary for better error handling
       window.onerror = function(message, source, lineno, colno, error) {
         console.error('Global error:', { message, source, lineno, colno, error });
         return false; // Let the default handler run too
       };
+
+      console.log('Environment variables initialized:', window.ENV);
     </script>
-    <!-- CDN Cache Busting: 2025-08-11-1 -->
+
+    <!-- Load the runtime config first -->
+    <script>
+      // Add an error handler for the config.js script
+      function handleConfigError(event) {
+        console.error('Error loading config.js:', event);
+        // Set default values if config.js fails to load
+        window.USE_DUMMY_AUTH = true;
+        window.APP_CONFIG = {
+          auth: {
+            enabled: false,
+            useDummyAuth: true,
+            dummyUser: {
+              name: 'User',
+              username: 'user@example.com',
+              roles: ['user']
+            }
+          },
+          azure: null
+        };
+        console.log('Using fallback configuration due to config.js load error');
+      }
+
+      // Create a script element to load config.js
+      const configScript = document.createElement('script');
+      configScript.src = '/config.js';
+      configScript.onerror = handleConfigError;
+      configScript.onload = function() {
+        console.log('config.js loaded successfully');
+        console.log('USE_DUMMY_AUTH:', window.USE_DUMMY_AUTH);
+        console.log('APP_CONFIG:', window.APP_CONFIG);
+      };
+
+      // Load config.js synchronously to ensure it runs before other scripts
+      document.write(configScript.outerHTML);
+    </script>
+
+    <!-- CDN Cache Busting: 2025-08-12-1 -->
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-        </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

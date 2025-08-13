@@ -2,12 +2,14 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
+    "outDir": "./dist",
     "composite": true,
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
       "@common/*": ["../common/*"]
-    }
+    },
+    "rootDirs": ["./src", "../common"]
   },
   "include": [
     "src/**/*.ts",
@@ -17,7 +19,19 @@
     "node_modules",
     "dist",
     "**/*.test.ts",
+    "**/*.test.tsx",
     "**/*.spec.ts",
-    "**/test/**"
+    "**/*.spec.tsx",
+    "**/__tests__",
+    "**/__mocks__",
+    "**/test",
+    "**/tests",
+    "**/test-utils",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/vitest.config.*",
+    "**/vitest.setup.*",
+    "**/jest.config.*",
+    "**/jest.setup.*"
   ]
 }

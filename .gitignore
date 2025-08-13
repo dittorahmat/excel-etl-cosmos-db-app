@@ -25,6 +25,7 @@ coverage/
 # Environment variables
 .env
 .env.*
+.env.production
 !.env.example
 
 # Backup files
@@ -43,3 +44,8 @@ coverage/
 *.njsproj
 *.sln
 *.sw?
+.env.production
+.env.production
+.env.production
+.env.production
+.env.production
