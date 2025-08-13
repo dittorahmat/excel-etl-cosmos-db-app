@@ -1,9 +1,13 @@
 
 import React from 'react';
-import { vi, beforeAll, afterEach, afterAll, beforeEach } from 'vitest';
+import { vi, beforeAll, afterEach, afterAll, beforeEach, expect } from 'vitest';
 import { cleanup as rtlCleanup, act } from '@testing-library/react';
-import '@testing-library/jest-dom/vitest';
 import { cleanup as customCleanup } from './test-utils';
+
+// Configure Vitest's expect with DOM matchers
+expect.extend({
+  // Add any custom matchers here if needed
+});
 
 // Configure global test environment for React 18
 const originalConsole = { ...console };

@@ -12,14 +12,41 @@ export function loadEnv() {
   console.log('[env.ts] Current working directory:', process.cwd());
   console.log('[env.ts] Module directory:', __dirname);
 
-  // Try to load environment variables from multiple possible .env file locations
-  const envPath = path.resolve(__dirname, '../../../.env');
-  console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
-  const result = dotenv.config({ path: envPath, override: true });
+  // Try to load environment variables from the server/.env file first, then fall back to the root .env
+  const envPaths = [
+    path.resolve(__dirname, '../../.env'),  // server/.env
+    path.resolve(process.cwd(), '.env')     // root .env
+  ];
+  
+  // Initialize result with proper type
+  let result: { parsed: { [key: string]: string } | undefined } = { parsed: undefined };
+  
+  // Try each path until we find a valid .env file
+  for (const envPath of envPaths) {
+    console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
+    try {
+      const envConfig = dotenv.config({ path: envPath });
+      if (!envConfig.error && envConfig.parsed) {
+        result = { parsed: envConfig.parsed };
+        console.log(`[env.ts] Successfully loaded .env from: ${envPath}`);
+        break;
+      } else if (envConfig.error) {
+        console.log(`[env.ts] Failed to load .env from ${envPath}: ${envConfig.error.message}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[env.ts] Error loading .env from ${envPath}:`, errorMessage);
+    }
+  }
+  
+  if (!result.parsed) {
+    console.warn('[env.ts] No .env file found. Using environment variables from process.env');
+    result.parsed = {}; // Initialize as empty object to prevent null reference
+  }
 
   // Manually set process.env with the parsed values to ensure they're available
-  if (result.parsed) {
-    for (const [key, value] of Object.entries(result.parsed)) {
+  for (const [key, value] of Object.entries(result.parsed)) {
+    if (value !== undefined) {
       process.env[key] = value;
     }
   }

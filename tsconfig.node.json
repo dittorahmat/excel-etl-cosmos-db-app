@@ -23,24 +23,26 @@
     "noImplicitReturns": true,
     "alwaysStrict": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["node"]
   },
   "include": [
-    "vite.config.*",
-    "vitest.config.*",
+    "vite.config.*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
-    "**/*.d.ts",
-    "vitest.setup.ts",
-    "server/test/**/*.ts",
-    "server/test/**/*.tsx",
-    "server/test/__mocks__/**/*.ts",
-    "server/test/__mocks__/**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
+    "**/__tests__",
+    "**/__mocks__",
+    "**/test",
+    "**/tests",
+    "**/test-utils",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/vitest.config.*",
+    "**/vitest.setup.*"
   ]
 }

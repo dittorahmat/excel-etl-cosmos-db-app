@@ -6,8 +6,39 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-    // Load all environment variables
-    const env = loadEnv(mode, process.cwd(), 'VITE_');
+    // Load all environment variables with VITE_ prefix
+    const env = loadEnv(mode, process.cwd(), '');
+    
+    // Log environment variables for debugging
+    console.log('Vite Config - Mode:', mode);
+    console.log('Vite Config - Environment variables:', {
+        VITE_AUTH_ENABLED: env.VITE_AUTH_ENABLED,
+        VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID,
+        NODE_ENV: process.env.NODE_ENV
+    });
+    
+    // Create define object with environment variables
+    const defineVars = Object.entries(env).reduce((acc, [key, value]) => {
+        if (key.startsWith('VITE_')) {
+            acc[`import.meta.env.${key}`] = JSON.stringify(value);
+        }
+        return acc;
+    }, {
+        'process.env': {},
+        'import.meta.env.MODE': JSON.stringify(mode),
+        'import.meta.env.PROD': mode === 'production',
+        'import.meta.env.DEV': mode !== 'production',
+    });
+
+    // Add our specific overrides
+    defineVars['import.meta.env.VITE_AUTH_ENABLED'] = JSON.stringify(env.VITE_AUTH_ENABLED || 'false');
+    defineVars['import.meta.env.VITE_AZURE_CLIENT_ID'] = JSON.stringify(env.VITE_AZURE_CLIENT_ID || '');
+    defineVars['import.meta.env.VITE_AZURE_TENANT_ID'] = JSON.stringify(env.VITE_AZURE_TENANT_ID || '');
+    defineVars['import.meta.env.VITE_AZURE_REDIRECT_URI'] = JSON.stringify(env.VITE_AZURE_REDIRECT_URI || '');
+    defineVars['import.meta.env.VITE_API_SCOPE'] = JSON.stringify(env.VITE_API_SCOPE || '');
+
+    console.log('Defining environment variables:', defineVars);
+    
     return {
         base: '/',
         publicDir: 'public',
@@ -50,17 +81,7 @@ export default defineConfig(({ mode }) => {
                 },
             },
         },
-        define: Object.entries(env).reduce((acc, [key, value]) => {
-            if (key.startsWith('VITE_')) {
-                acc[`import.meta.env.${key}`] = JSON.stringify(value);
-            }
-            return acc;
-        }, {
-            'process.env': {},
-            'import.meta.env.MODE': JSON.stringify(mode),
-            'import.meta.env.PROD': mode === 'production',
-            'import.meta.env.DEV': mode !== 'production',
-        }),
+        define: defineVars,
         resolve: {
             alias: {
                 '@': path.resolve(__dirname, './src'),
