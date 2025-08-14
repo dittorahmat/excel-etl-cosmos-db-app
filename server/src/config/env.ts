@@ -14,8 +14,9 @@ export function loadEnv() {
 
   // Try to load environment variables from the server/.env file first, then fall back to the root .env
   const envPaths = [
-    path.resolve(__dirname, '../../.env'),  // server/.env
-    path.resolve(process.cwd(), '.env')     // root .env
+    path.resolve(__dirname, '../../../../.env'), // server/.env (for compiled output in dist/server/src/config)
+    path.resolve(__dirname, '../../.env'),       // server/.env (for direct execution from src)
+    path.resolve(process.cwd(), '.env')          // root .env
   ];
   
   // Initialize result with proper type
