@@ -8,7 +8,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load all environment variables
-  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const env = loadEnv(mode, process.cwd(), '');
+
+  const proxyTarget = env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+  
 
   return {
     base: '/',
@@ -140,24 +144,10 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: proxyTarget,
           changeOrigin: true,
           secure: false,
           ws: true,
-          rewrite: (pathStr: string) => {
-            // Remove the leading /api from the path
-            const newPath = pathStr.replace(/^\/api/, '');
-            console.log(`Proxying ${pathStr} to ${newPath}`);
-            return newPath;
-          },
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
-              console.error('Proxy error:', err);
-            });
-            proxy.on('proxyReq', (_proxyReq, req, _res) => {
-              console.log('Proxying request to:', req.url);
-            });
-          }
         },
       },
       // Custom middleware for history API fallback
@@ -170,6 +160,17 @@ export default defineConfig(({ mode }) => {
           next();
         });
       }
+    },
+    preview: {
+      proxy: {
+        '/api': {
+          target: proxyTarget,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          rewrite: (path) => path,
+        },
+      },
     },
   };
 });

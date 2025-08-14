@@ -6,7 +6,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "noEmit": false,
-    "emitDeclarationOnly": true,
+    "emitDeclarationOnly": false,
     "allowImportingTsExtensions": false,
     "skipLibCheck": true,
     "typeRoots": [
