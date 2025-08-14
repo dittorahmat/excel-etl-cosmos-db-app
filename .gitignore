@@ -21,6 +21,8 @@ dist-ssr/
 *.local
 bin/
 coverage/
+server/dist/
+server/dist_test/
 
 # Environment variables
 .env

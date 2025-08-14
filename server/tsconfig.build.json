@@ -9,7 +9,9 @@
     "paths": {
       "@common/*": ["../common/*"]
     },
-    "rootDirs": ["./src", "../common"]
+    "rootDirs": ["./src", "../common"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
   },
   "include": [
     "src/**/*.ts",

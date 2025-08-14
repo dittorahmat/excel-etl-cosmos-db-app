@@ -5,6 +5,8 @@
 -   The Vite build configuration has been corrected to properly bundle vendor dependencies, resolving the `useLayoutEffect` error.
 -   **Client-side build and serving are now successful locally.** The frontend can be viewed by running `npx serve -s dist`.
 -   **The backend server now starts successfully locally** using the `start-server-direct.cjs` script, which directly injects environment variables, bypassing previous `dotenv` loading issues.
+-   **ES Module Compatibility Issue Resolved**: The "exports is not defined" error has been fixed by ensuring TypeScript generates ES module syntax compatible with `"type": "module"` in `server/package.json`.
+-   **Environment Variable Loading Improved**: The server now correctly prioritizes `server/.env` over root `.env`.
 -   **New Problem:** The frontend is unable to retrieve data from the backend, indicating an issue with API communication.
 
 ## What's left to build
