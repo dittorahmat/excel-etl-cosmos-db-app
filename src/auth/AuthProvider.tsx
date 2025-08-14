@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { AccountInfo } from '@azure/msal-browser';
+// OBVIOUS CHANGE TO VERIFY MODULE IS BEING BUILT 2025-08-14
+console.log('[AUTH PROVIDER MODULE] This is an obvious change to verify the module is being built');
+
+import React, { useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import { AccountInfo, InteractionRequiredAuthError, EventType, EventMessage } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { AuthContext, type AuthContextType } from './AuthContext';
 import { loginRequest } from './authConfig';
@@ -155,7 +158,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       
       // Cache the new token
-      if (response.accessToken) {
+      if (response?.accessToken) {
         const expiresOn = response.expiresOn?.getTime() || Date.now() + 3600000; // Default 1 hour
         localStorage.setItem('msalToken', response.accessToken);
         localStorage.setItem('msalTokenExpiry', expiresOn.toString());
@@ -167,14 +170,14 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // If silent acquisition fails, try interactive login
         try {
           const popupResponse = await instance.acquireTokenPopup(loginRequest);
-          if (popupResponse.accessToken) {
+          if (popupResponse?.accessToken) {
             const expiresOn = popupResponse.expiresOn?.getTime() || Date.now() + 3600000;
             localStorage.setItem('msalToken', popupResponse.accessToken);
             localStorage.setItem('msalTokenExpiry', expiresOn.toString());
             return popupResponse.accessToken;
           }
         } catch (popupError) {
-          console.error('Interactive token acquisition failed:', popupError);
+          console.error('Error acquiring token interactively:', popupError);
           throw popupError;
         }
       }
@@ -182,6 +185,34 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   }, [instance, accounts, useDummyAuth, isDevelopment]);
+
+  interface RequestOptions extends Omit<RequestInit, 'headers' | 'body'> {
+    headers?: HeadersInit | Record<string, string | string[] | undefined> & {
+      'Content-Type'?: string;
+    };
+    body?: BodyInit | Record<string, unknown> | null;
+    onUploadProgress?: (progressEvent: ProgressEvent<EventTarget> & { 
+      lengthComputable: boolean; 
+      loaded: number; 
+      total: number;
+    }) => void;
+  }
+
+  // Helper function to safely convert a value to a string for headers
+  const safeStringify = (value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return value.toString();
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      console.error('Error stringifying header value:', e);
+      return '';
+    }
+  };
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 
   // Login function
   const login = useCallback(async (): Promise<AuthenticationResult | null> => {
@@ -201,7 +232,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } as unknown as AccountInfo;
       setUser(mockUser);
       setIsAuthenticated(true);
-      return { account: mockUser } as AuthenticationResult;
+      return Promise.resolve({ account: mockUser } as AuthenticationResult);
     }
 
     try {
@@ -236,7 +267,8 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return Promise.resolve();
     } catch (error) {
       console.error('Logout failed:', error);
-      return Promise.reject(error);
+      setError(error instanceof Error ? error : new Error('Logout failed'));
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -326,6 +358,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       getTokenSilently,
       login,
       logout,
+      getAccount: () => user,
       getAccessToken: getTokenSilently // Alias for backward compatibility
     }),
     [isAuthenticated, user, error, loading, getTokenSilently, login, logout]

@@ -28,6 +28,19 @@ export default defineConfig(({ mode }) => {
         'import.meta.env.MODE': JSON.stringify(mode),
         'import.meta.env.PROD': mode === 'production',
         'import.meta.env.DEV': mode !== 'production',
+        'import.meta.env.VITE_AZURE_CLIENT_ID': JSON.stringify(env.VITE_AZURE_CLIENT_ID || ''),
+        'import.meta.env.VITE_AZURE_TENANT_ID': JSON.stringify(env.VITE_AZURE_TENANT_ID || ''),
+        'import.meta.env.VITE_AZURE_REDIRECT_URI': JSON.stringify(env.VITE_AZURE_REDIRECT_URI || ''),
+        'import.meta.env.VITE_AZURE_SCOPES': JSON.stringify(env.VITE_AZURE_SCOPES || ''),
+        'import.meta.env.VITE_AZURE_AUTHORITY': JSON.stringify(env.VITE_AZURE_AUTHORITY || ''),
+        'import.meta.env.VITE_API_SCOPE': JSON.stringify(env.VITE_API_SCOPE || ''),
+        'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL || ''),
+        'import.meta.env.VITE_AUTH_ENABLED': JSON.stringify(env.VITE_AUTH_ENABLED || 'false'),
+        'import.meta.env.VITE_APP_NAME': JSON.stringify(env.VITE_APP_NAME || ''),
+        'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || ''),
+        'import.meta.env.VITE_ENABLE_ANALYTICS': JSON.stringify(env.VITE_ENABLE_ANALYTICS || 'false'),
+        'import.meta.env.VITE_ENABLE_DEBUG': JSON.stringify(env.VITE_ENABLE_DEBUG || 'false'),
+        'import.meta.env.VITE_USER_NODE_ENV': JSON.stringify(env.VITE_USER_NODE_ENV || 'development')
     });
 
     // Add our specific overrides
@@ -39,6 +52,9 @@ export default defineConfig(({ mode }) => {
 
     console.log('Defining environment variables:', defineVars);
     
+    // Add debugging to see what files are being processed
+    console.log('[VITE DEBUG] Starting Vite build process');
+    
     return {
         base: '/',
         publicDir: 'public',
@@ -47,7 +63,7 @@ export default defineConfig(({ mode }) => {
         ],
         build: {
             outDir: 'dist',
-            assetsDir: '.',
+            assetsDir: 'assets',
             sourcemap: mode !== 'production',
             minify: 'terser',
             emptyOutDir: true,
@@ -65,9 +81,9 @@ export default defineConfig(({ mode }) => {
                         }
                         return undefined;
                     },
-                    // Preserve the exact filename for config.js
-                    entryFileNames: '[name].[hash].js',
-                    chunkFileNames: '[name].[hash].js',
+                    // Preserve the exact filename for config.js and ensure all chunks go to assets directory
+                    entryFileNames: 'assets/[name].[hash].js',
+                    chunkFileNames: 'assets/[name].[hash].js',
                     assetFileNames: (assetInfo) => {
                         if (assetInfo.name === 'config.js')
                             return 'config.js';
@@ -77,7 +93,7 @@ export default defineConfig(({ mode }) => {
             },
             terserOptions: {
                 compress: {
-                    drop_console: mode === 'production',
+                    drop_console: false,
                 },
             },
         },

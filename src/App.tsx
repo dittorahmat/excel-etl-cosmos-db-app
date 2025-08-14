@@ -121,20 +121,21 @@ const PublicRoute: FC<{ children: ReactNode }> = ({ children }) => {
     window.APP_CONFIG?.auth?.useDummyAuth === true ||
     localStorage.getItem('useDummyAuth') === 'true';
   
-  // Log initial render with debug info
-  console.log('PublicRoute - Initial render:', { 
-    isAuthenticated, 
-    loading, 
-    user: user ? 'User exists' : 'No user',
-    useDummyAuth,
+  // Log all the values for debugging
+  console.log('PublicRoute - Dummy Auth Flags:', {
+    USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
+    FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
+    APP_CONFIG_AUTH: window.APP_CONFIG?.auth,
+    LOCAL_STORAGE: localStorage.getItem('useDummyAuth'),
     windowFlags: {
-      FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
       USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-      SKIP_MSAL_INIT: window.SKIP_MSAL_INIT,
+      FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
       APP_CONFIG: window.APP_CONFIG,
       ENV: window.ENV
     }
   });
+  
+  console.log('PublicRoute - useDummyAuth:', useDummyAuth);
 
   // Log when auth state changes
   useEffect(() => {

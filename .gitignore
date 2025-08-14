@@ -51,3 +51,4 @@ server/dist_test/
 .env.production
 .env.production
 .env.production
+QWEN.md

@@ -149,7 +149,6 @@ const createMockMsalInstance = () => {
     acquireTokenByCode: async () => Promise.resolve(mockAuthResult),
     initialize: async () => Promise.resolve(),
     setLogger: () => {},
-    setActiveAccount: () => {},
     addPerformanceCallback: () => ({}),
     enableAccountStorageEvents: () => {},
     getLogger: () => ({
