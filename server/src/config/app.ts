@@ -95,18 +95,10 @@ export function createApp(azureServices: {
   });
 
   // API routes
-  app.use('/api/v2', createV2Router(azureServices));
-  
-  // Temporary: Bypass auth for fields endpoint during debugging
-  app.use('/api/fields', (_req, _res, next) => {
-    console.log('Fields endpoint accessed - auth bypassed');
-    next();
-  }, createFieldsRouter(azureServices.cosmosDb));
-  
-  app.use('/api/auth', authRoute);
-  
-  // API Key management routes
-  app.use('/api/keys', createApiKeyRouter(azureServices));
+  app.use('/v2', createV2Router(azureServices));
+  app.use('/fields', createFieldsRouter(azureServices.cosmosDb));
+  app.use('/auth', authRoute);
+  app.use('/keys', createApiKeyRouter(azureServices));
 
   // 404 handler
   app.use((_req: Request, res: Response) => {
