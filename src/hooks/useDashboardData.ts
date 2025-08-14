@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../auth/useAuth';
-import { api } from '../utils/api';
+import { api } from '@/utils/api';
+
+// Add debugging to see what file is being imported
+console.log('[DEBUG] Imported api object:', api);
 
 // Type definitions for the component props and API responses
 type FieldType = 'string' | 'number' | 'date' | 'boolean';
@@ -70,8 +73,13 @@ export const useDashboardData = () => {
     setFieldsLoading(true);
     
     try {
+      // Simple debugging that should not be stripped out
+      console.log('[DEBUG] About to call api.get with endpoint: /api/fields');
+      
       const response = await api.get<{ success: boolean; fields: FieldDefinition[] }>('/api/fields');
-      console.log('[useDashboardData] API response for fields:', response);
+      
+      // Simple debugging that should not be stripped out
+      console.log('[DEBUG] api.get response:', response);
       
       if (response?.success && Array.isArray(response.fields)) {
         console.log(`[useDashboardData] Received ${response.fields.length} fields from API`);

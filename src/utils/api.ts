@@ -60,8 +60,17 @@ interface ErrorResponseData {
   [key: string]: unknown;
 }
 
+// OBVIOUS CHANGE TO VERIFY MODULE IS BEING BUILT 2025-08-14
+console.log('[API MODULE] This is an obvious change to verify the module is being built');
+
+// Add logging to see if this file is being processed
+console.log('[DEBUG] Loading api.ts');
+
+// Random comment to trigger rebuild 2025-08-14 05:00
 // Get API base URL from environment variables with fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+console.log('[DEBUG] API_BASE_URL:', API_BASE_URL);
 
 // Rate limiting configuration
 const _RATE_LIMIT_RETRY_ATTEMPTS = import.meta.env.DEV ? 0 : 3;
@@ -210,84 +219,18 @@ export const authFetch = async <T = unknown>(
   url: string, 
   options: RequestOptions = {}
 ): Promise<T> => {
-  // Initialize headers
-  const headers = new Headers();
-  
-  // Process headers from options
-  if (options.headers) {
-    if (Array.isArray(options.headers)) {
-      options.headers.forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach(v => headers.append(key, v));
-        } else if (value !== undefined) {
-          headers.append(key, value);
-        }
-      });
-    } else if (options.headers instanceof Headers) {
-      options.headers.forEach((value, key) => {
-        if (value !== null) {
-          headers.append(key, value);
-        }
-      });
-    } else {
-      Object.entries(options.headers).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach(v => headers.append(key, safeStringify(v)));
-        } else if (value !== undefined) {
-          headers.append(key, safeStringify(value));
-        }
-      });
-    }
-  }
-
-  // Process request body
-  let body: BodyInit | null | undefined;
-  if (options.body) {
-    if (options.body instanceof FormData || 
-        options.body instanceof Blob || 
-        options.body instanceof URLSearchParams || 
-        ArrayBuffer.isView(options.body)) {
-      body = options.body;
-    } else if (typeof options.body === 'object' && options.body !== null) {
-      if (!headers.has('Content-Type')) {
-        headers.set('Content-Type', 'application/json');
-      }
-      body = JSON.stringify(options.body);
-    } else if (typeof options.body === 'string') {
-      body = options.body;
-    }
+  // Very simple debugging that should not be stripped out
+  if (typeof window !== 'undefined' && window.console) {
+    console.log('[API] Making request to:', url);
   }
   
-  // Get base URL from environment and ensure it doesn't end with a slash
-  const baseUrl = (import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001')).replace(/\/+$/, '');
+  // Use the URL as-is since the api methods already construct the full URL
+  const requestUrl = url;
   
-  // Clean the URL path by removing leading/trailing slashes
-  const cleanPath = url.replace(/^\/+|\/+$/g, '');
-  
-  // Construct the full URL, ensuring we don't have double /api
-  let fullUrl: string;
-  if (cleanPath.startsWith('http')) {
-    // If it's a full URL, use it as is
-    fullUrl = cleanPath;
-  } else {
-    // Remove any existing /api/ from the path to prevent duplication
-    const normalizedPath = cleanPath.replace(/^\/api\//, '').replace(/^api\//, '');
-    
-    // Check if the base URL already includes /api
-    const baseHasApi = baseUrl.endsWith('/api') || baseUrl.includes('/api/');
-    
-    if (baseHasApi) {
-      fullUrl = `${baseUrl}/${normalizedPath}`.replace(/([^:]\/)\/+/g, '$1');
-    } else {
-      fullUrl = `${baseUrl}/api/${normalizedPath}`.replace(/([^:]\/)\/+/g, '$1');
-    }
-    
-    // Ensure we don't have double slashes
-    fullUrl = fullUrl.replace(/([^:])\/\//g, '$1/');
+  // Very simple debugging that should not be stripped out
+  if (typeof window !== 'undefined' && window.console) {
+    console.log('[API] Using requestUrl:', requestUrl);
   }
-  
-  // For development, use the full URL to ensure proper routing through the dev server
-  const requestUrl = import.meta.env.DEV ? fullUrl : fullUrl;
 
   // Check rate limiting for this endpoint
   const endpoint = new URL(url, import.meta.env.VITE_API_BASE_URL || '').pathname;
@@ -532,8 +475,16 @@ export const api: ApiClient = {
     endpoint: string, 
     options: Omit<RequestOptions, 'body' | 'method'> = {}
   ): Promise<T> => {
-    // Prepend API_BASE_URL to the endpoint if it's a relative URL
-    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+    // Force absolute URL construction - this is critical for preview builds
+    const baseUrl = API_BASE_URL || 'http://localhost:3001';
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${baseUrl}${cleanEndpoint}`;
+    
+    // Very simple debugging that should not be stripped out
+    if (typeof window !== 'undefined' && window.console) {
+      console.log('[API] Constructing URL:', url);
+    }
+    
     return authFetch<T>(url, {
       ...options,
       method: 'GET',
@@ -622,7 +573,7 @@ export const api: ApiClient = {
     options: Omit<RequestOptions, 'body' | 'method'> = {}
   ): Promise<T> => {
     // Prepend API_BASE_URL to the endpoint if it's a relative URL
-    const url = endpoint.startsWith('http') ? endpoint : `${process.env.API_BASE_URL}${endpoint}`;
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
     return authFetch<T>(url, {
       ...options,
       method: 'DELETE',
