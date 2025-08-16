@@ -55,13 +55,20 @@ const getCacheKey = (account) => {
     return `${account.homeAccountId}-${account.tenantId}`;
 };
 export const getAuthToken = async (forceRefresh = false) => {
+    // If auth is disabled, return null immediately
+    if (import.meta.env.VITE_AUTH_ENABLED === 'false') {
+        console.log('[API] Authentication is disabled, returning null token');
+        return null;
+    }
+    
     await initializeMsal();
     try {
         // In development, return a mock token
-        if (import.meta.env.DEV && import.meta.env.VITE_AUTH_ENABLED === 'false') {
+        if (import.meta.env.DEV) {
             console.log('Using development mock token');
             return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
         }
+
         // Get the real token in production
         const accounts = msalInstance.getAllAccounts();
         if (accounts.length === 0) {
@@ -242,12 +249,13 @@ export const authFetch = async (url, options = {}) => {
         console.log(`Rate limited on ${endpoint}, waiting ${waitTime}ms before retry`);
         await sleep(waitTime);
     }
-    // Always try to get a token if auth is not explicitly disabled
-    if (import.meta.env.VITE_AUTH_ENABLED !== 'false') {
+    // Only try to get a token if auth is explicitly enabled
+    const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+    if (isAuthEnabled) {
         try {
             const token = await getAuthToken();
             if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+                headers.append('Authorization', `Bearer ${token}`);
                 console.log('[API] Authorization header set with token');
             }
             else {
@@ -257,6 +265,8 @@ export const authFetch = async (url, options = {}) => {
         catch (error) {
             console.error('Error getting auth token for request:', error);
         }
+    } else {
+        console.log('[API] Authentication is disabled, skipping token acquisition');
     }
     // Convert headers to a format that fetch can use
     const fetchHeaders = {};
