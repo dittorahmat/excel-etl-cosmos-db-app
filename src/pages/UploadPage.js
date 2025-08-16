@@ -23,10 +23,13 @@ export function UploadPage() {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            // Get the auth token manually to verify it's available
-            const token = await getAuthToken();
-            if (!token) {
-                throw new Error('No authentication token available. Please sign in again.');
+            // Only check for auth token if auth is enabled
+            const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+            if (isAuthEnabled) {
+                const token = await getAuthToken();
+                if (!token) {
+                    throw new Error('No authentication token available. Please sign in again.');
+                }
             }
             const response = await api.post('/api/v2/upload', formData, {
                 // Don't set Content-Type header - let the browser set it with the correct boundary
