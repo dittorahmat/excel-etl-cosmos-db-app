@@ -13,6 +13,7 @@ on:
       - 'index.html'
       - 'staticwebapp.config.json'
       - '.github/workflows/azure-static-web-apps-gray-flower-09b086c00.yml'
+      - 'scripts/**' # Include scripts directory for postbuild scripts
   workflow_dispatch:
 
 jobs:
@@ -24,75 +25,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20.x'
-      - name: Install Dependencies
-        run: npm ci
-        working-directory: .
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-
-      - name: Build Client
-        run: |
-          npx vite build
-        working-directory: .
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-
-      - name: Verify Build Output
-        run: |
-          ls -la dist/
-          echo "Build output verified"
           
-      - name: Copy staticwebapp.config.json to dist
-        run: |
-          # Ensure the dist directory exists
-          mkdir -p dist
-          # Copy the config to the dist directory before cleanup
-          cp staticwebapp.config.json dist/
-          
-      - name: Prepare deployment files
-        run: |
-          # Create a temporary directory for the deployment
-          mkdir -p deployment
-          
-          # Copy only the necessary files to the deployment directory
-          cp -r dist/* deployment/
-          
-          # Copy only production dependencies
-          npm ci --omit=dev
-          
-          # Copy package files
-          cp package.json deployment/
-          cp package-lock.json deployment/
-          
-          # List the files to be deployed
-          echo "Files to be deployed:"
-          find deployment -type f | sort
-          
-          # Show the size of the deployment directory
-          echo "Deployment directory size:"
-          du -sh deployment/
-          
-          # Move the deployment directory to the root
-          mv deployment/* .
-          rmdir deployment
-          
-          # Remove unnecessary files, but keep staticwebapp.config.json
-          rm -rf node_modules
-          rm -rf .git
-          rm -rf .github
-          rm -rf server
-          rm -rf tests
-          rm -f *.md
-          rm -f .*rc
-          # Only remove config files that aren't our staticwebapp.config.json
-          find . -maxdepth 1 -type f -name '*.config.*' ! -name 'staticwebapp.config.json' -delete
-          
-          echo "Final directory size:"
-          du -sh .
-          
+      # Let Azure SWA Deploy handle the build using our package.json scripts
       - name: Deploy to Azure Static Web App
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -102,10 +36,10 @@ jobs:
           action: 'upload'
           app_location: '/'           # Root of the source code
           output_location: 'dist'     # Built app content directory
-          skip_app_build: true        # We're building manually above
+          # Remove skip_app_build to allow Azure to run the build
+          # Remove custom app_build_command to use the default (npm run build)
+          # Azure will now run 'npm run build' which includes postbuild:client
           skip_api_build: true        # No API in this build
-          app_build_command: 'npm run build:client'
-          app_artifact_location: 'dist'
           
         env:
           VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}

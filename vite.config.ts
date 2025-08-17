@@ -13,7 +13,6 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_API_BASE_URL || 'http://localhost:3001';
 
   
-
   return {
     base: '/',
     publicDir: 'public',
@@ -105,10 +104,11 @@ export default defineConfig(({ mode }) => {
             if (assetInfo.name === 'config.js') return '[name][extname]';
             // CSS files in assets directory with proper extension
             if (assetInfo.name?.endsWith('.css')) {
-              return 'assets/[name][extname]?[hash]';
+              // Use standard naming pattern for CSS files
+              return 'assets/[name]-[hash][extname]'; 
             }
             // All other assets in assets directory
-            return 'assets/[name][extname]?[hash]';
+            return 'assets/[name]-[hash][extname]';
           },
           manualChunks: (id: string) => {
             if (id.includes('node_modules')) {
