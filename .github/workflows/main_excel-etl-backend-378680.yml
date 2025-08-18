@@ -77,7 +77,6 @@ jobs:
       run: |
         # Create deployment directory and copy necessary files
         mkdir -p deployment
-        cp deployment/package.json deployment/
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
