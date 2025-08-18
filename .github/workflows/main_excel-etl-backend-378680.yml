@@ -84,12 +84,13 @@ jobs:
         cp server/.env.example deployment/.env
         cd deployment
         npm ci --omit=dev
+        zip -r ../deployment.zip .
         
     - name: Upload artifact for deployment
       uses: actions/upload-artifact@v4
       with:
         name: node-app
-        path: deployment
+        path: deployment.zip
         retention-days: 1
 
   deploy:
@@ -103,15 +104,12 @@ jobs:
       with:
         name: node-app
         
-    - name: List files in the workspace
-      run: ls -lR
-        
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         slot-name: 'Production'
-        package: deployment
+        package: deployment.zip
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
       env:
         NODE_ENV: production
