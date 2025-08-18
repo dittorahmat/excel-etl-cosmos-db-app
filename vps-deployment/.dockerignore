@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+backend/node_modules
+
+# Build outputs
+dist
+backend/dist
+
+# Logs
+logs/*.log
+
+# Runtime data
+*.pid
+
+# Environment files (should be provided at runtime)
+.env
+
+# Docker-related files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Git files
+.git
+.gitignore
+
+# IDE files
+.vscode
+.idea
+
+# OS generated files
+.DS_Store
+Thumbs.db

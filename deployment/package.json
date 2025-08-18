@@ -2,10 +2,10 @@
   "name": "excel-upload-server",
   "version": "1.0.0",
   "description": "Server for Excel file upload and processing",
-  "main": "dist/src/server.js",
+  "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "start": "node --enable-source-maps dist/src/server.js",
+    "start": "node --enable-source-maps dist/server.js",
     "build": "tsc -p tsconfig.build.json"
   },
   "engines": {
