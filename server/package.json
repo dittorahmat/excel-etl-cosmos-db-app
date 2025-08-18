@@ -1,22 +1,4 @@
-{
-  "name": "excel-upload-server",
-  "version": "1.0.0",
-  "description": "Server for Excel file upload and processing",
-  "main": "dist/server/src/server.js",
-  "type": "module",
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node --enable-source-maps dist/server/src/server.js",
-    "start:dev": "tsx watch src/server.ts",
-    "dev": "tsx watch src/server.ts",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui",
-    "lint": "eslint . --ext .ts --config=../.eslintrc.cjs",
-    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
-    "monitor:auth": "node --experimental-modules --es-module-specifier-resolution=node scripts/monitor-auth.js"
-  },
+{\n  \"name\": \"excel-upload-server\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Server for Excel file upload and processing\",\n  \"main\": \"dist/src/server.js\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"build\": \"tsc -p tsconfig.build.json\",\n    \"start\": \"node --enable-source-maps dist/src/server.js\",\n    \"start:dev\": \"tsx watch src/server.ts\",\n    \"dev\": \"tsx watch src/server.ts\",\n    \"test\": \"vitest run\",\n    \"test:watch\": \"vitest watch\",\n    \"test:coverage\": \"vitest run --coverage\",\n    \"test:ui\": \"vitest --ui\",\n    \"lint\": \"eslint . --ext .ts --config=../.eslintrc.cjs\",\n    \"format\": \"prettier --write \\\"**/*.{ts,js,json,md}\\\"\",\n    \"monitor:auth\": \"node --experimental-modules --es-module-specifier-resolution=node scripts/monitor-auth.js\"\n  },
   "dependencies": {
     "@azure/cosmos": "^3.17.3",
     "@azure/identity": "^4.1.0",

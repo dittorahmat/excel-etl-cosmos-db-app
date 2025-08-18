@@ -23,6 +23,9 @@ bin/
 coverage/
 server/dist/
 server/dist_test/
+vps-deployment/frontend/
+vps-deployment/backend/
+vps-deployment/logs/
 
 # Environment variables
 .env
@@ -52,3 +55,7 @@ server/dist_test/
 .env.production
 .env.production
 QWEN.md
+excel-etl-fullstack-vps-deployment.tar.gz
+vps-deployment-package.zip
+vps-deployment/vps-deployment-package-fixed-latest.zip
+vps-deployment/vps-deployment-package-fixed.zip

@@ -1,0 +1,22 @@
+{
+  "name": "excel-etl-fullstack",
+  "version": "1.0.0",
+  "description": "Excel ETL application with React frontend and Node.js backend",
+  "main": "backend/dist/src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/dist/src/server.js",
+    "start:backend": "node backend/dist/src/server.js",
+    "start:frontend": "serve -s frontend",
+    "install:backend": "cd backend && npm install --production",
+    "install:frontend": "cd frontend && npm install -g serve",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "postinstall": "npm run install:backend && npm run install:frontend"
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

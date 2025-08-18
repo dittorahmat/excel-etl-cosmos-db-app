@@ -1,5 +1,6 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
+# Fixed deployment path issues for Linux App Service - 2025-08-18
 
 name: Build and deploy Node.js app to Azure Web App - excel-etl-backend-378680
 
@@ -65,7 +66,21 @@ jobs:
     - name: Prepare deployment artifact
       run: |
         mkdir -p deployment
-        cp server/package.json deployment/
+        # Create a proper package.json for Azure App Service
+        echo '{
+          "name": "excel-upload-server",
+          "version": "1.0.0",
+          "description": "Server for Excel file upload and processing",
+          "main": "dist/src/server.js",
+          "type": "module",
+          "scripts": {
+            "start": "node --enable-source-maps dist/src/server.js",
+            "build": "tsc -p tsconfig.build.json"
+          },
+          "engines": {
+            "node": ">=16.0.0"
+          }
+        }' > deployment/package.json
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
@@ -96,6 +111,8 @@ jobs:
         slot-name: 'Production'
         package: .
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+      env:
+        NODE_ENV: production
         
     - name: 'Verify deployment'
       run: |
