@@ -103,6 +103,9 @@ jobs:
       with:
         name: node-app
         
+    - name: List files in the workspace
+      run: ls -lR
+        
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3
       with:
