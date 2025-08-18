@@ -3,35 +3,41 @@
 # Exit on any error
 set -e
 
-# Check if .env file exists
-if [ ! -f ".env" ]; then
-    echo "Error: .env file not found. Please create a .env file with your configuration."
-    exit 1
-fi
-
-# Load environment variables
-export $(cat .env | xargs)
-
-# Start the backend server in the background
-echo "Starting backend server..."
-node backend/dist/src/server.js &
-
-# Store the process ID
-BACKEND_PID=$!
-
-# Wait a moment for the backend to start
-sleep 3
-
-# Check if backend started successfully
-if ps -p $BACKEND_PID > /dev/null; then
-    echo "Backend server started successfully (PID: $BACKEND_PID)"
-    echo "Application is now running!"
-    echo "Backend API: http://localhost:${PORT:-3001}"
-    echo "Frontend: http://localhost:${PORT:-3001}"
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env file..."
+    export $(cat .env | xargs)
 else
-    echo "Error: Failed to start backend server"
-    exit 1
+    echo "No .env file found, using environment variables from EasyPanel..."
 fi
 
-# Wait for the backend process
-wait $BACKEND_PID
+# Check if required environment variables are set
+echo "Checking required environment variables..."
+REQUIRED_VARS=("VITE_AZURE_CLIENT_ID" "VITE_AZURE_TENANT_ID" "AZURE_COSMOS_ENDPOINT" "AZURE_COSMOS_KEY" "AZURE_STORAGE_ACCOUNT" "AZURE_STORAGE_KEY")
+MISSING_VARS=()
+
+for var in "${REQUIRED_VARS[@]}"; do
+    if [ -z "${!var}" ]; then
+        MISSING_VARS+=("$var")
+    fi
+done
+
+if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+    echo "Warning: The following required environment variables are not set:"
+    for var in "${MISSING_VARS[@]}"; do
+        echo "  - $var"
+    done
+    echo "Please set these variables in the EasyPanel environment configuration."
+    echo "Continuing anyway as the application might have defaults or mock implementations..."
+else
+    echo "All required environment variables are set."
+fi
+
+# Start the backend server
+echo "Starting backend server..."
+node backend/dist/src/server.js
+
+echo "Backend server started successfully"
+echo "Application is now running!"
+echo "Backend API: http://localhost:${PORT:-3001}"
+echo "Frontend: http://localhost:${PORT:-3001}"
