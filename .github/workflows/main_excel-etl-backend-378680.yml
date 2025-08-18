@@ -73,8 +73,7 @@ jobs:
     - name: Prepare deployment artifact
       run: |
         mkdir -p deployment
-        # Use our corrected package.json
-        cp deployment/package.json deployment/
+        # Copy our corrected package.json and other necessary files
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
