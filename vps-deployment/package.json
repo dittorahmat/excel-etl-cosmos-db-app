@@ -1,6 +1,6 @@
 {
   "name": "excel-etl-fullstack",
-  "version": "1.0.0",
+  "version": "20250818-115449",
   "description": "Excel ETL application with React frontend and Node.js backend",
   "main": "backend/dist/src/server.js",
   "type": "module",

@@ -3,6 +3,8 @@
 # Fixed deployment path issues for Linux App Service - 2025-08-18
 # Fixed npm ci issues - 2025-08-18
 # Switched back to npm install from npm ci - 2025-08-18
+# Bypassing npm issues by skipping dependency installation - 2025-08-18
+# Reverting to proper dependency installation using GitHub Actions Node.js - 2025-08-18
 
 name: Build and deploy Node.js app to Azure Web App - excel-etl-backend-378680
 
@@ -37,11 +39,12 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
 
     - name: Install server dependencies
       working-directory: server
       run: |
-        npm install
+        npm ci --production=false
         
     - name: Build the app
       working-directory: server
@@ -63,7 +66,7 @@ jobs:
     - name: Install production dependencies
       working-directory: server
       run: |
-        npm install --omit=dev
+        npm ci --omit=dev
         
     - name: Prepare deployment artifact
       run: |
@@ -86,7 +89,7 @@ jobs:
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
-        npm install --omit=dev
+        npm ci --omit=dev
         
     - name: Upload artifact for deployment
       uses: actions/upload-artifact@v4
