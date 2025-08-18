@@ -72,8 +72,22 @@ jobs:
         
     - name: Prepare deployment artifact
       run: |
+        # Create deployment directory and package.json
         mkdir -p deployment
-        # Copy our corrected package.json and other necessary files
+        echo '{
+          "name": "excel-upload-server",
+          "version": "1.0.0",
+          "description": "Server for Excel file upload and processing",
+          "main": "dist/server.js",
+          "type": "module",
+          "scripts": {
+            "start": "node --enable-source-maps dist/server.js",
+            "build": "tsc -p tsconfig.build.json"
+          },
+          "engines": {
+            "node": ">=16.0.0"
+          }
+        }' > deployment/package.json
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
