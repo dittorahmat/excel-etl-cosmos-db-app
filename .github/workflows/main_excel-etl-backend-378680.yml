@@ -7,6 +7,9 @@
 # Reverting to proper dependency installation using GitHub Actions Node.js - 2025-08-18
 # Fixed incorrect server.js path in package.json - 2025-08-18
 # Ensured correct entry point and improved error handling - 2025-08-18
+# Bypassing npm issues by skipping dependency installation - 2025-08-18
+# Reverting to proper dependency installation using GitHub Actions Node.js - 2025-08-18
+# Fixed incorrect server.js entry point path - 2025-08-18
 
 name: Build and deploy Node.js app to Azure Web App - excel-etl-backend-378680
 
@@ -72,22 +75,9 @@ jobs:
         
     - name: Prepare deployment artifact
       run: |
-        # Create deployment directory and package.json
+        # Create deployment directory and copy necessary files
         mkdir -p deployment
-        echo '{
-          "name": "excel-upload-server",
-          "version": "1.0.0",
-          "description": "Server for Excel file upload and processing",
-          "main": "dist/server.js",
-          "type": "module",
-          "scripts": {
-            "start": "node --enable-source-maps dist/server.js",
-            "build": "tsc -p tsconfig.build.json"
-          },
-          "engines": {
-            "node": ">=16.0.0"
-          }
-        }' > deployment/package.json
+        cp deployment/package.json deployment/
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
