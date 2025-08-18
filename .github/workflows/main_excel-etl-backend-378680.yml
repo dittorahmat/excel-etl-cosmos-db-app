@@ -1,6 +1,8 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # Fixed deployment path issues for Linux App Service - 2025-08-18
+# Fixed npm ci issues - 2025-08-18
+# Switched back to npm install from npm ci - 2025-08-18
 
 name: Build and deploy Node.js app to Azure Web App - excel-etl-backend-378680
 
@@ -39,7 +41,7 @@ jobs:
     - name: Install server dependencies
       working-directory: server
       run: |
-        npm ci --production=false
+        npm install
         
     - name: Build the app
       working-directory: server
@@ -61,7 +63,7 @@ jobs:
     - name: Install production dependencies
       working-directory: server
       run: |
-        npm ci --omit=dev
+        npm install --omit=dev
         
     - name: Prepare deployment artifact
       run: |
@@ -84,7 +86,7 @@ jobs:
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cd deployment
-        npm ci --omit=dev
+        npm install --omit=dev
         
     - name: Upload artifact for deployment
       uses: actions/upload-artifact@v4
