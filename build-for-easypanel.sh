@@ -5,45 +5,13 @@ set -e
 
 echo "=== Building for EasyPanel Git Deployment ==="
 
-# Define directories
+# Define output directory
 DEPLOY_OUTPUT_DIR="deploy_output"
-EASYPANEL_ENV_PATH="/etc/easypanel/projects/dashboard/iesr/code/deploy_output"
 
-# Create .env file in the root directory
-echo "# Auto-generated .env file" > ".env"
-
-# Add environment variables to root .env
-for var in $(env | grep -v '^_' | grep -v '^\s*#' | cut -d= -f1); do
-  if [[ $var != "HOME" && $var != "PATH" && $var != "PWD" && $var != "SHELL" && $var != "SHLVL" ]]; then
-    echo "$var=${!var}" >> ".env"
-  fi
-done
-
-# Ensure output directory and subdirectories exist
+# Ensure output subdirectories exist
+# The deploy_output/.env file is now managed by Git, so we don't create it here.
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
-
-# Create parent directories for EASYPANEL_ENV_PATH if they don't exist
-mkdir -p "$(dirname "$EASYPANEL_ENV_PATH")"
-
-# Create the .env file in the exact location EasyPanel is looking for
-echo "# Auto-generated .env file for EasyPanel" > "$EASYPANEL_ENV_PATH/.env"
-
-# Copy environment variables to the EasyPanel .env location
-cat ".env" >> "$EASYPANEL_ENV_PATH/.env"
-
-# Also copy to our deploy_output directory
-cp ".env" "$DEPLOY_OUTPUT_DIR/.env"
-
-# Debug: List files to verify .env was created
-echo "=== Current directory structure ==="
-ls -la
-
-echo "=== deploy_output directory ==="
-ls -la "$DEPLOY_OUTPUT_DIR/"
-
-echo "=== EasyPanel env directory ==="
-ls -la "$(dirname "$EASYPANEL_ENV_PATH")"
 
 # Install root dependencies
 echo "Installing root dependencies..."
