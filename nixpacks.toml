@@ -1,12 +1,12 @@
-# Use the custom Dockerfile for building the application
+# Use a custom build script
 [build]
-dockerfile = "Dockerfile"
+script = ".nixpacks/build.sh"
 
 # The start command will be used when the container runs
 [start]
-cmd = "/app/start-for-easypanel.sh"
+cmd = "./start-for-easypanel.sh"
 
-# Ensure the build uses the Dockerfile directly
+# Disable default phases since we're using a custom build script
 [phases]
 setup = { nixPkgs = [] }
 install = { cmds = [] }
