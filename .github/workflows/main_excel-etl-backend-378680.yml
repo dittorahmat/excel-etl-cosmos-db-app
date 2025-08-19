@@ -82,7 +82,7 @@ jobs:
         cp server/package-lock.json deployment/
         # Copy the built files, flattening the directory structure to match package.json expectations
         mkdir -p deployment/dist
-        cp -r server/dist/src/* deployment/dist/
+        cp -r server/dist/src/. deployment/dist/
         cp server/.env.example deployment/.env
         cd deployment
         npm ci --omit=dev
