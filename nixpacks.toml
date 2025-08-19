@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ['nodejs-18.x', 'python3', 'make', 'g++']
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["bash build-for-easypanel.sh"]
+
+[start]
+cmd = "bash deploy_output/start-for-easypanel.sh"

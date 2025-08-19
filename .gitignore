@@ -33,6 +33,8 @@ easypanel-deployment/common/
 # Allow deploy_output/.env while ignoring other files in deploy_output
 deploy_output/*
 !deploy_output/.env
+deployments/
+LogFiles/
 
 # Environment variables
 # Allow root .env file for EasyPanel deployment
