@@ -97,8 +97,10 @@ jobs:
         fi
         # No need to update package.json since we're maintaining the correct structure
         cp server/.env.example deployment/.env
-        # Copy the Azure-specific environment file
-        cp server/.env.azure deployment/.env.azure
+        # Copy the Azure-specific environment file if it exists
+        if [ -f "server/.env.azure" ]; then
+          cp server/.env.azure deployment/.env.azure
+        fi
         # Copy the startup script
         cp server/startup.sh deployment/
         # Make the startup script executable
