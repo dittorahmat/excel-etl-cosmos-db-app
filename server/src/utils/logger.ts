@@ -2,6 +2,7 @@ import winston, { format } from 'winston';
 import { Request as ExpressRequest, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import path from 'path';
 
 // Define the user type
 export interface AuthUser {
@@ -21,10 +22,16 @@ declare module 'express-serve-static-core' {
 
 type Request = ExpressRequest;
 
-// Ensure log directory exists
-const logDir = 'logs';
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir);
+// Ensure log directory exists, but handle read-only file system gracefully
+const logDir = process.env.LOGGING_DIR || 'logs';
+try {
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+} catch (error) {
+  // In Azure App Service, the file system might be read-only
+  // We'll use console logging only in this case
+  console.warn(`Could not create log directory '${logDir}'. Using console logging only.`, error);
 }
 
 // Define log levels
@@ -80,14 +87,14 @@ const logger: AppLogger = winston.createLogger({
   transports: [
     // Write all logs with importance level of 'error' or less to 'error.log'
     new winston.transports.File({ 
-      filename: 'logs/error.log', 
+      filename: `${logDir}/error.log`, 
       level: 'error',
       maxsize: 5 * 1024 * 1024, // 5MB
       maxFiles: 5,
     }),
     // Write all logs with importance level of 'info' or less to 'combined.log'
     new winston.transports.File({ 
-      filename: 'logs/combined.log',
+      filename: `${logDir}/combined.log`,
       maxsize: 10 * 1024 * 1024, // 10MB
       maxFiles: 5,
     }),

@@ -5,10 +5,10 @@
   "main": "backend/dist/src/server.js",
   "type": "module",
   "scripts": {
-    "start": "./start-easypanel.sh",
+    "start": "npm install --prefix backend && npm start --prefix backend",
     "start:backend": "cd backend && npm run build && node --enable-source-maps dist/src/server.js",
     "start:frontend": "serve -s frontend",
-    "build": "npm install --prefix backend && npm run build --prefix backend",
+    "build": "npm install --prefix backend --include=dev && npm run build --prefix backend",
     "install:backend": "cd backend && npm install",
     "install:frontend": "cd frontend && npm install -g serve",
     "install:all": "npm run install:backend && npm run install:frontend",

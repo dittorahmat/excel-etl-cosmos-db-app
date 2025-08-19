@@ -36,13 +36,12 @@ ls -la backend/src
 
 # Install dependencies
 echo "Installing dependencies..."
-npm install
+npm install --include=dev
 
 # Build the backend
 echo "Building backend application..."
-cd backend
-npm install
-npm run build
+npm install --prefix backend --include=dev
+backend/node_modules/.bin/tsc -p backend/tsconfig.build.json
 
 # Check if build was successful
 if [ ! -d "dist" ]; then

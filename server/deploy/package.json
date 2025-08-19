@@ -2,17 +2,18 @@
   "name": "excel-upload-server",
   "version": "1.0.0",
   "description": "Server for Excel file upload and processing",
-  "main": "dist/server/src/server.js",
+  "main": "dist/src/server.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "start": "node --enable-source-maps dist/server/src/server.js",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --enable-source-maps dist/src/server.js",
+    "start:azure": "bash startup.sh",
     "start:dev": "tsx watch src/server.ts",
     "dev": "tsx watch src/server.ts",
-    "test": "vitest run --config ../vitest.server.config.ts",
-    "test:watch": "vitest watch --config ../vitest.server.config.ts",
-    "test:coverage": "vitest run --coverage --config ../vitest.server.config.ts",
-    "test:ui": "vitest --ui --config ../vitest.server.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
     "lint": "eslint . --ext .ts --config=../.eslintrc.cjs",
     "format": "prettier --write \"**/*.{ts,js,json,md}\"",
     "monitor:auth": "node --experimental-modules --es-module-specifier-resolution=node scripts/monitor-auth.js"
@@ -23,6 +24,7 @@
     "@azure/storage-blob": "^12.17.0",
     "core-util-is": "^1.0.3",
     "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
     "dotenv": "^16.4.4",
     "express": "^4.18.2",
     "express-rate-limit": "^7.2.0",
@@ -33,9 +35,12 @@
     "jwks-rsa": "^3.1.0",
     "multer": "^1.4.5-lts.1",
     "node-abort-controller": "^3.1.1",
+    "typescript": "^5.2.2",
     "universal-user-agent": "^6.0.1",
     "uuid": "^9.0.1",
-    "winston": "^3.13.0"
+    "winston": "^3.13.0",
+    "xlsx": "^0.18.5",
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
@@ -54,7 +59,6 @@
     "@types/xlsx": "^0.0.36",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
-    "csv-parser": "^3.2.0",
     "isarray": "^1.0.0",
     "jest-mock-extended": "^4.0.0",
     "node-fetch": "^3.3.2",
@@ -69,7 +73,7 @@
     "vite": "^5.0.12",
     "vite-tsconfig-paths": "^4.3.2",
     "vitest": "^3.2.4",
-    "zod": "^3.22.4"
+    "vitest-sonar-reporter": "^0.5.0"
   },
   "engines": {
     "node": ">=16.0.0"

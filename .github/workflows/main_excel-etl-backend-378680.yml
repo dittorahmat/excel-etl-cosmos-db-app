@@ -80,25 +80,29 @@ jobs:
         mkdir -p deployment
         cp server/package.json deployment/
         cp server/package-lock.json deployment/
-        # Copy the built files, flattening the directory structure to match package.json expectations
-        mkdir -p deployment/dist
+        # Copy the built files, maintaining the correct directory structure
+        mkdir -p deployment/dist/src
         # Check if the source directory exists and copy from the correct location
         if [ -d "server/dist/src" ]; then
-          echo "Copying files from server/dist/src to deployment/dist"
-          cp -r server/dist/src/* deployment/dist/
+          echo "Copying files from server/dist/src to deployment/dist/src"
+          cp -r server/dist/src/* deployment/dist/src/
         elif [ -d "server/dist/server/src" ]; then
-          echo "Copying files from server/dist/server/src to deployment/dist"
-          cp -r server/dist/server/src/* deployment/dist/
+          echo "Copying files from server/dist/server/src to deployment/dist/src"
+          cp -r server/dist/server/src/* deployment/dist/src/
         else
           echo "Error: Could not find source directory"
           echo "Available directories in server/dist:"
           ls -la server/dist/
           exit 1
         fi
-        # Update package.json to point to the correct main file
-        sed -i 's|"main": "dist/src/server.js"|"main": "dist/server.js"|' deployment/package.json
-        sed -i 's|"start": "node --enable-source-maps dist/src/server.js"|"start": "node --enable-source-maps dist/server.js"|' deployment/package.json
+        # No need to update package.json since we're maintaining the correct structure
         cp server/.env.example deployment/.env
+        # Copy the Azure-specific environment file
+        cp server/.env.azure deployment/.env.azure
+        # Copy the startup script
+        cp server/startup.sh deployment/
+        # Make the startup script executable
+        chmod +x deployment/startup.sh
         cd deployment
         npm ci --omit=dev
         zip -r ../deployment.zip .
