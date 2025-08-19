@@ -95,6 +95,9 @@ jobs:
           ls -la server/dist/
           exit 1
         fi
+        # Update package.json to point to the correct main file
+        sed -i 's|"main": "dist/src/server.js"|"main": "dist/server.js"|' deployment/package.json
+        sed -i 's|"start": "node --enable-source-maps dist/src/server.js"|"start": "node --enable-source-maps dist/server.js"|' deployment/package.json
         cp server/.env.example deployment/.env
         cd deployment
         npm ci --omit=dev
