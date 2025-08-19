@@ -8,18 +8,29 @@ echo "=== Building for EasyPanel Git Deployment ==="
 # Define output directory
 DEPLOY_OUTPUT_DIR="deploy_output"
 
+# Create .env file in the root directory first
+echo "# Auto-generated .env file" > ".env"
+
+# Add environment variables to root .env
+for var in $(env | grep -v '^_' | grep -v '^\s*#' | cut -d= -f1); do
+  if [[ $var != "HOME" && $var != "PATH" && $var != "PWD" && $var != "SHELL" && $var != "SHLVL" ]]; then
+    echo "$var=${!var}" >> ".env"
+  fi
+done
+
 # Ensure output directory and subdirectories exist
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
 
-# Make sure generate-env.sh is executable
-chmod +x generate-env.sh
+# Copy .env to deploy_output directory
+cp ".env" "$DEPLOY_OUTPUT_DIR/.env"
 
-# Generate the .env file in the deploy_output directory
-./generate-env.sh
+# Debug: List files to verify .env was created
+echo "=== Current directory structure ==="
+ls -la
 
-# Also create a root .env file for any build-time requirements
-touch ".env"
+echo "=== deploy_output directory ==="
+ls -la "$DEPLOY_OUTPUT_DIR/"
 
 # Install root dependencies
 echo "Installing root dependencies..."
