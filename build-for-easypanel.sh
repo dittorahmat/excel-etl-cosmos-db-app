@@ -8,24 +8,29 @@ echo "=== Building for EasyPanel Git Deployment ==="
 # Define output directory
 DEPLOY_OUTPUT_DIR="deploy_output"
 
-# Ensure output subdirectories exist
+# Ensure output directory and subdirectories exist
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
+
+# Create an empty .env file to satisfy EasyPanel's requirements
+touch "$DEPLOY_OUTPUT_DIR/.env"
 
 # Install root dependencies
 echo "Installing root dependencies..."
 npm install
 
-# Install backend dependencies and build backend
-echo "Installing backend dependencies and building backend..."
-npm install --prefix backend --include=dev
-backend/node_modules/.bin/tsc -p backend/tsconfig.build.json
+# Install server dependencies and build server
+echo "Installing server dependencies and building server..."
+cd server
+npm install --include=dev
+npm run build
+cd ..
 
-# Copy built backend to output directory
-echo "Copying built backend to $DEPLOY_OUTPUT_DIR/backend"
-cp -R backend/dist "$DEPLOY_OUTPUT_DIR/backend/"
-cp backend/package.json "$DEPLOY_OUTPUT_DIR/backend/"
-cp backend/package-lock.json "$DEPLOY_OUTPUT_DIR/backend/"
+# Copy built server to output directory
+echo "Copying built server to $DEPLOY_OUTPUT_DIR/backend"
+cp -R server/dist "$DEPLOY_OUTPUT_DIR/backend/"
+cp server/package.json "$DEPLOY_OUTPUT_DIR/backend/"
+cp server/package-lock.json "$DEPLOY_OUTPUT_DIR/backend/"
 
 # Copy pre-built frontend to output directory
 echo "Copying pre-built frontend from easypanel-deployment/frontend to $DEPLOY_OUTPUT_DIR/frontend"
