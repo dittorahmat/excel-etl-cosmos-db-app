@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "start": "node --enable-source-maps dist/src/server.js",
+    "start": "node --enable-source-maps dist/server.js",
     "start:dev": "tsx watch src/server.ts",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",

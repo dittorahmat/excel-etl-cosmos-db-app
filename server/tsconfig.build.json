@@ -6,16 +6,11 @@
     "composite": true,
     "types": ["node"],
     "baseUrl": ".",
-    "paths": {
-      "@common/*": ["../common/*"]
-    },
-    "rootDirs": ["./src", "../common"],
     "module": "ESNext",
     "moduleResolution": "Bundler"
   },
   "include": [
-    "src/**/*.ts",
-    "../common/types/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
