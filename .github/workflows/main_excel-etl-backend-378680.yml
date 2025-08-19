@@ -78,24 +78,23 @@ jobs:
       run: |
         # Create deployment directory structure
         mkdir -p deployment
-        cp server/package.json deployment/
+        cp server/deployment-package.json deployment/package.json
         cp server/package-lock.json deployment/
-        # Copy the built files, maintaining the correct directory structure
-        mkdir -p deployment/dist/src
+        # Copy the built files, flattening the directory structure to match Azure's expectations
+        mkdir -p deployment/dist
         # Check if the source directory exists and copy from the correct location
         if [ -d "server/dist/src" ]; then
-          echo "Copying files from server/dist/src to deployment/dist/src"
-          cp -r server/dist/src/* deployment/dist/src/
+          echo "Copying files from server/dist/src to deployment/dist"
+          cp -r server/dist/src/* deployment/dist/
         elif [ -d "server/dist/server/src" ]; then
-          echo "Copying files from server/dist/server/src to deployment/dist/src"
-          cp -r server/dist/server/src/* deployment/dist/src/
+          echo "Copying files from server/dist/server/src to deployment/dist"
+          cp -r server/dist/server/src/* deployment/dist/
         else
           echo "Error: Could not find source directory"
           echo "Available directories in server/dist:"
           ls -la server/dist/
           exit 1
         fi
-        # No need to update package.json since we're maintaining the correct structure
         cp server/.env.example deployment/.env
         # Copy the Azure-specific environment file if it exists
         if [ -f "server/.env.azure" ]; then

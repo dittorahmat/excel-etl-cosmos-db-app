@@ -66,6 +66,11 @@ if [ ! -f "dist/src/server.js" ]; then
     exit 1
 fi
 
+# Copy frontend to backend directory for serving
+echo "Copying frontend to backend directory..."
+cp -R frontend backend/frontend
+echo "Frontend copied successfully."
+
 echo "server.js found, starting application..."
 
 # Start the backend server

@@ -23,7 +23,7 @@ declare module 'express-serve-static-core' {
 type Request = ExpressRequest;
 
 // Ensure log directory exists, but handle read-only file system gracefully
-const logDir = process.env.LOGGING_DIR || 'logs';
+const logDir = process.env.LOGGING_DIR || '/home/LogFiles/app';
 try {
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
