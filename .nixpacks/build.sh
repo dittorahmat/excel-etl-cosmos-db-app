@@ -3,30 +3,52 @@ set -e
 
 echo "=== Using custom build script ==="
 
+# Install required system dependencies
+echo "Installing system dependencies..."
+apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    ca-certificates \
+    lsb-release
+
+# Install Node.js 18.x
+echo "Installing Node.js 18.x..."
+curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest
+
+# Verify installations
+echo "Node.js version: $(node --version)"
+echo "npm version: $(npm --version)"
+
 # Create deploy_output directory if it doesn't exist
 mkdir -p deploy_output
 
-# Copy the custom Dockerfile to the deploy_output directory
-cp Dockerfile deploy_output/
+# Copy necessary files
+echo "Copying necessary files..."
+cp -r package*.json server/ start-for-easypanel.sh deploy_output/
 
-# Copy the start script
-cp start-for-easypanel.sh deploy_output/
+# Install dependencies
+echo "Installing dependencies..."
+cd deploy_output
+npm install
+cd server
+npm install --include=dev
+cd ../..
 
-# Copy necessary files for the build
-cp -r package*.json server/ deploy_output/
+# Build the application
+echo "Building the application..."
+cd deploy_output/server
+npm run build
+cd ../..
 
-# Build using the custom Dockerfile
-docker build -f Dockerfile -t excel-etl-app .
+# Create necessary directories
+mkdir -p deploy_output/server/dist
 
-# Create a container to copy files from
-docker create --name temp-container excel-etl-app
-
-# Copy the built files to deploy_output
-docker cp temp-container:/app/server/dist deploy_output/server/
-docker cp temp-container:/app/node_modules deploy_output/
-docker cp temp-container:/app/server/node_modules deploy_output/server/
-
-# Clean up
-docker rm -f temp-container
+# Copy built files
+echo "Copying built files..."
+cp -r server/dist/* deploy_output/server/dist/
+cp -r node_modules deploy_output/
+cp -r server/node_modules deploy_output/server/
 
 echo "=== Build completed successfully ==="
