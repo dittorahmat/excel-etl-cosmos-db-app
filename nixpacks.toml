@@ -4,4 +4,10 @@ dockerfile = "Dockerfile"
 
 # The start command will be used when the container runs
 [start]
-cmd = "npm start"
+cmd = "/app/start-for-easypanel.sh"
+
+# Ensure the build uses the Dockerfile directly
+[phases]
+setup = { nixPkgs = [] }
+install = { cmds = [] }
+build = { cmds = [] }
