@@ -5,8 +5,7 @@
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "start": "node --enable-source-maps dist/server.js",
-    "build": "tsc -p tsconfig.build.json"
+    "start": "node --enable-source-maps dist/server.js"
   },
   "engines": {
     "node": ">=16.0.0"
