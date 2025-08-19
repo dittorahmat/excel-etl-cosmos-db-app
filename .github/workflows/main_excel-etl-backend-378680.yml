@@ -135,6 +135,11 @@ jobs:
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
       env:
         NODE_ENV: production
+        AZURE_COSMOSDB_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        AZURE_COSMOSDB_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        AZURE_COSMOSDB_DATABASE: ${{ secrets.AZURE_COSMOS_DATABASE }}
+        AZURE_COSMOSDB_CONTAINER: ${{ secrets.AZURE_COSMOS_CONTAINER }}
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         
     - name: 'Verify deployment'
       run: |

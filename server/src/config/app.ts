@@ -56,7 +56,22 @@ export function createApp(azureServices: {
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    const healthStatus = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT,
+        AZURE_COSMOSDB_ENDPOINT: process.env.AZURE_COSMOSDB_ENDPOINT ? 'SET' : 'NOT SET',
+        AZURE_COSMOSDB_KEY: process.env.AZURE_COSMOSDB_KEY ? 'SET' : 'NOT SET',
+        AZURE_COSMOSDB_DATABASE: process.env.AZURE_COSMOSDB_DATABASE,
+        AZURE_COSMOSDB_CONTAINER: process.env.AZURE_COSMOSDB_CONTAINER,
+        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET',
+      }
+    };
+    res.status(200).json(healthStatus);
   });
 
   // Public endpoint example
