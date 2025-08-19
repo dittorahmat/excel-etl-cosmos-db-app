@@ -8,13 +8,9 @@ echo "=== Building for EasyPanel Git Deployment ==="
 # Define output directory
 DEPLOY_OUTPUT_DIR="deploy_output"
 
-# Clean and create output directory
-echo "Cleaning and creating output directory: $DEPLOY_OUTPUT_DIR"
-rm -rf "$DEPLOY_OUTPUT_DIR"
+# Ensure output subdirectories exist
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
-# Create an empty .env file to satisfy EasyPanel's expectation
-touch "$DEPLOY_OUTPUT_DIR/.env"
 
 # Install root dependencies
 echo "Installing root dependencies..."
