@@ -82,6 +82,7 @@ jobs:
         cp server/package-lock.json deployment/
         cp -r server/dist deployment/
         cp server/.env.example deployment/.env
+        cp server/startup.sh deployment/
         cd deployment
         npm ci --omit=dev
         zip -r ../deployment.zip .

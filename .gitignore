@@ -26,6 +26,10 @@ server/dist_test/
 vps-deployment/frontend/
 vps-deployment/backend/
 vps-deployment/logs/
+easypanel-deployment/backend/
+easypanel-deployment/frontend/
+easypanel-deployment/logs/
+easypanel-deployment/common/
 
 # Environment variables
 .env
@@ -61,3 +65,4 @@ vps-deployment/vps-deployment-package-fixed-latest.zip
 vps-deployment/vps-deployment-package-fixed.zip
 vps-deployment/excel-etl-fullstack-vps-deployment-fixed-final.zip
 docs/Pasted image.png
+*.zip
