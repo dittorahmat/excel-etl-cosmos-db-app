@@ -1,11 +1,7 @@
-[phases.setup]
-nixPkgs = ['nodejs-18.x', 'python3', 'make', 'g++']
+# Use the custom Dockerfile for building the application
+[build]
+dockerfile = "Dockerfile"
 
-[phases.install]
-cmds = ["npm install"]
-
-[phases.build]
-cmds = ["bash build-for-easypanel.sh"]
-
+# The start command will be used when the container runs
 [start]
-cmd = "bash deploy_output/start-for-easypanel.sh"
+cmd = "npm start"
