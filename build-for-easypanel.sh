@@ -12,10 +12,14 @@ DEPLOY_OUTPUT_DIR="deploy_output"
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
 
-# Create an empty .env file in the root directory to satisfy EasyPanel's requirements
+# Make sure generate-env.sh is executable
+chmod +x generate-env.sh
+
+# Generate the .env file in the deploy_output directory
+./generate-env.sh
+
+# Also create a root .env file for any build-time requirements
 touch ".env"
-# Also create it in deploy_output for consistency
-cp ".env" "$DEPLOY_OUTPUT_DIR/.env"
 
 # Install root dependencies
 echo "Installing root dependencies..."
