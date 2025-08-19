@@ -13,6 +13,8 @@ echo "Cleaning and creating output directory: $DEPLOY_OUTPUT_DIR"
 rm -rf "$DEPLOY_OUTPUT_DIR"
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
+# Create an empty .env file to satisfy EasyPanel's expectation
+touch "$DEPLOY_OUTPUT_DIR/.env"
 
 # Install root dependencies
 echo "Installing root dependencies..."
