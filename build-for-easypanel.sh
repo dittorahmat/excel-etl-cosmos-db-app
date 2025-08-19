@@ -12,8 +12,10 @@ DEPLOY_OUTPUT_DIR="deploy_output"
 mkdir -p "$DEPLOY_OUTPUT_DIR/backend"
 mkdir -p "$DEPLOY_OUTPUT_DIR/frontend"
 
-# Create an empty .env file to satisfy EasyPanel's requirements
-touch "$DEPLOY_OUTPUT_DIR/.env"
+# Create an empty .env file in the root directory to satisfy EasyPanel's requirements
+touch ".env"
+# Also create it in deploy_output for consistency
+cp ".env" "$DEPLOY_OUTPUT_DIR/.env"
 
 # Install root dependencies
 echo "Installing root dependencies..."
