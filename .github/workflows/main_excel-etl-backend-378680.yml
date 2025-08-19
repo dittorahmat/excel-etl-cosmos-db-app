@@ -82,7 +82,16 @@ jobs:
         cp server/package-lock.json deployment/
         # Copy the built files, flattening the directory structure to match package.json expectations
         mkdir -p deployment/dist
-        cp -r server/dist/src/. deployment/dist/
+        # Check if the source directory exists
+        if [ -d "server/dist/src" ]; then
+          echo "Copying files from server/dist/src to deployment/dist"
+          cp -r server/dist/src/* deployment/dist/
+        else
+          echo "Error: server/dist/src directory not found"
+          echo "Available directories in server/dist:"
+          ls -la server/dist/
+          exit 1
+        fi
         cp server/.env.example deployment/.env
         cd deployment
         npm ci --omit=dev
