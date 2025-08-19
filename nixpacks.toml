@@ -1,41 +1,43 @@
 # Specify the base image and system packages
 [phases.setup]
 nixPkgs = [
-    'nodejs-18.x',
+    'nodejs_18',
+    'npm',
     'python3',
     'make',
     'g++',
-    'curl',
-    'gnupg',
-    'ca-certificates',
-    'lsb-release'
+    'curl'
 ]
+
+# Setup environment variables
+[phases.setupEnvironment]
+NODE_ENV = "production"
+NPM_CONFIG_PRODUCTION = "false"
 
 # Install phase
 [phases.install]
 cmds = [
     "echo 'Using Node.js version:' && node --version",
-    "echo 'Using npm version:' && npm --version"
+    "echo 'Using npm version:' && npm --version",
+    "npm install"
 ]
 
-# Build phase - use our custom build script
+# Build phase - build both frontend and backend
 [phases.build]
-cmds = ["bash .nixpacks/build.sh"]
+cmds = [
+    "npm run build:client",
+    "cd server && npm install && npm run build && cd .."
+]
 
 # Start command for the application
 [start]
-cmd = "./start-for-easypanel.sh"
-
-# Environment variables
-[phases.setupEnvironment]
-NODE_ENV = "production"
-NPM_CONFIG_PRODUCTION = "false"
+cmd = "bash start-for-easypanel.sh"
 
 # Define the output directory for the build
 [build]
   base = "."
   builder = "nixpacks"
-  publish = "deploy_output"
+  publish = "."
 
 # Enable experimental features if needed
 [experimental]

@@ -5,26 +5,22 @@ set -e
 
 echo "=== Starting Application for EasyPanel Git Deployment ==="
 
-# Navigate to the backend directory within the deployment output
-cd backend
-
 # Start the backend server in the background
 echo "Starting backend server..."
-node --enable-source-maps dist/src/server.js &
+node --enable-source-maps server/dist/src/server.js &
 
 # Store the backend PID
 BACKEND_PID=$!
 
-# Navigate back to the deployment output root
-cd ..
+# Install serve globally if not already installed
+if ! command -v serve &> /dev/null; then
+    echo "Installing serve globally..."
+    npm install -g serve
+fi
 
 # Start the frontend static server
 echo "Starting frontend static server..."
-# Ensure 'serve' is installed and available in the PATH
-# If 'serve' is not globally installed in the container, it needs to be installed locally
-# or its path explicitly provided.
-# Assuming 'serve' is installed via npm in the root node_modules
-./node_modules/.bin/serve -s frontend -l 3000 &
+serve -s dist -l 3000 &
 
 # Store the frontend PID
 FRONTEND_PID=$!
