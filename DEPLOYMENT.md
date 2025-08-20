@@ -6,20 +6,21 @@ This guide provides instructions for deploying the Excel to Cosmos DB Dashboard 
 
 This application supports multiple deployment methods:
 
-1. **EasyPanel Deployment** (Recommended) - See `EASYPANEL_DEPLOYMENT_UPDATED.md` for detailed instructions
+1. **EasyPanel Deployment** (Recommended) - See `EASYPANEL_DEPLOYMENT.md` for comprehensive instructions
 2. **Docker Deployment** - See `Dockerfile` for container configuration
 3. **Azure Static Web Apps** - See `staticwebapp.config.json` for configuration
-4. **Manual Deployment** - Follow the instructions in `EASYPANEL_DEPLOYMENT_UPDATED.md` but adapt for your environment
+4. **Manual Deployment** - Follow the instructions in `EASYPANEL_DEPLOYMENT.md` but adapt for your environment
 
 ## EasyPanel Deployment (Primary Method)
 
-For EasyPanel deployment, please refer to the detailed guide in `EASYPANEL_DEPLOYMENT_UPDATED.md` which includes:
+For EasyPanel deployment, please refer to the detailed guide in `EASYPANEL_DEPLOYMENT.md` which includes:
 
 - Prerequisites
 - Environment variable configuration
 - Build and start commands
 - Deployment scripts (`build-for-easypanel.sh` and `start-for-easypanel.sh`)
 - Nixpacks configuration (`nixpacks.toml`)
+- Alternative deployment method using EasyPanel's built-in package installation features
 - Troubleshooting tips
 
 ## Docker Deployment

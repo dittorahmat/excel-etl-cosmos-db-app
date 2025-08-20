@@ -15,8 +15,10 @@ NPM_CONFIG_PRODUCTION = "false"
 # Install phase - install dependencies for both frontend and backend
 [phases.install]
 cmds = [
-    "echo 'Using Node.js version:' && node --version",
-    "echo 'Using npm version:' && npm --version",
+    # Ensure Node.js and npm are available
+    "echo 'Checking Node.js and npm availability...'",
+    "which node && node --version",
+    "which npm && npm --version",
     # Clean any existing modules to prevent conflicts
     "rm -rf node_modules server/node_modules",
     # Install root dependencies

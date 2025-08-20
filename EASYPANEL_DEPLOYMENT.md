@@ -1,6 +1,6 @@
-# Excel to Cosmos DB Dashboard - EasyPanel Deployment (Updated)
+# Excel to Cosmos DB Dashboard - EasyPanel Deployment Guide
 
-This guide provides instructions for deploying the Excel to Cosmos DB Dashboard application to EasyPanel, incorporating fixes for common deployment issues.
+This guide provides comprehensive instructions for deploying the Excel to Cosmos DB Dashboard application to EasyPanel, including both the Nixpacks-based approach and an alternative method using EasyPanel's built-in package installation features.
 
 ## Prerequisites
 
@@ -8,6 +8,13 @@ Before deploying to EasyPanel, ensure you have:
 1. An Azure subscription with the required resources provisioned
 2. Environment variables configured as specified below
 3. Git repository connected to EasyPanel
+
+## Deployment Methods
+
+This guide covers two deployment methods:
+
+1. **Nixpacks-based deployment** (Primary Method) - Uses the `nixpacks.toml` configuration file
+2. **Alternative deployment** (Fallback Method) - Uses EasyPanel's built-in package installation features
 
 ## Deployment Configuration
 
@@ -292,9 +299,9 @@ echo "Application started. Backend PID: $BACKEND_PID, Frontend PID: $FRONTEND_PI
 wait $BACKEND_PID $FRONTEND_PID
 ```
 
-## Nixpacks Configuration
+## Nixpacks Configuration (Primary Method)
 
-The application uses a `nixpacks.toml` file to configure the build environment:
+The application uses a `nixpacks.toml` file to configure the build environment. This is the primary deployment method:
 
 ```toml
 # Nixpacks configuration for Excel to Cosmos DB Dashboard
@@ -314,8 +321,9 @@ NPM_CONFIG_PRODUCTION = "false"
 # Install phase - install dependencies for both frontend and backend
 [phases.install]
 cmds = [
-    "echo 'Using Node.js version:' && node --version",
-    "echo 'Using npm version:' && npm --version",
+    "echo 'Checking Node.js and npm availability...'",
+    "which node && node --version",
+    "which npm && npm --version",
     # Clean any existing modules to prevent conflicts
     "rm -rf node_modules server/node_modules",
     # Install root dependencies
@@ -340,13 +348,30 @@ cmds = [
 cmd = "bash start-for-easypanel.sh"
 ```
 
+## Alternative Deployment Method (Fallback)
+
+If you encounter issues with the Nixpacks-based deployment, you can use EasyPanel's built-in package installation features:
+
+### 1. Install Node.js and npm through EasyPanel
+
+In your EasyPanel project settings:
+
+1. Navigate to the "Packages" section
+2. In the "Nix Packages" field, add:
+   ```
+   nodejs_18
+   npm
+   ```
+3. Save the settings
+
 ## Deployment Process
 
 1. Connect your Git repository to EasyPanel
-2. Set the build command to: `bash build-for-easypanel.sh`
-3. Set the start command to: `bash start-for-easypanel.sh`
-4. Configure the environment variables as listed above
-5. Deploy the application
+2. If using the alternative method, install Node.js and npm through EasyPanel's package installation features
+3. Set the build command to: `bash build-for-easypanel.sh`
+4. Set the start command to: `bash start-for-easypanel.sh`
+5. Configure the environment variables as listed above
+6. Deploy the application
 
 ## Troubleshooting
 
@@ -355,8 +380,9 @@ If you encounter issues during deployment:
 1. **Dependency Installation Issues**: The build script includes retry mechanisms and uses `--prefer-online` flag
 2. **File Not Found Errors**: The start script has improved file discovery with multiple fallback methods
 3. **ETXTBSY Errors**: The build script handles file locking issues by using retry mechanisms
-4. **Cleanup Issues**: The nixpacks.toml explicitly cleans node_modules before installation
+4. **Cleanup Issues**: The build script explicitly cleans node_modules before installation
 5. **Vite Configuration Issues**: Ensure `@vitejs/plugin-react` is installed in devDependencies
+6. **Nixpacks Issues**: Try the alternative deployment method that uses EasyPanel's built-in package installation features
 
 ### Verification Steps
 
