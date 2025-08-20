@@ -5,48 +5,79 @@ set -e
 
 echo "=== Starting Application for EasyPanel Git Deployment ==="
 
-# Check if we need to build first (for environments like Nixpacks that skip the build phase)
-if [ ! -d "dist" ] || [ ! -d "server/dist" ]; then
-    echo "Build artifacts not found, attempting to build..."
-    # Run the build script if it exists
-    if [ -f "./build-for-easypanel.sh" ]; then
-        echo "Running build script..."
-        bash ./build-for-easypanel.sh
-    else
-        echo "ERROR: Build script not found"
-        exit 1
-    fi
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Check if Node.js is available
+if ! command_exists node; then
+    echo "ERROR: Node.js is not installed or not in PATH"
+    exit 1
 fi
 
-# Function to find files with better error handling
-find_file() {
-    local pattern="$1"
-    local max_depth="${2:-5}"
+echo "Node.js version: $(node --version)"
+
+# Check if npm is available
+if ! command_exists npm; then
+    echo "ERROR: npm is not installed or not in PATH"
+    exit 1
+fi
+
+echo "npm version: $(npm --version)"
+
+# Check if we need to build first
+if [ ! -d "dist" ] || [ ! -d "server/dist" ]; then
+    echo "Build artifacts not found, building application..."
     
-    # Try multiple approaches to find the file
-    if [ -f "$pattern" ]; then
-        echo "$pattern"
-        return 0
-    fi
+    # Clean previous builds
+    echo "Cleaning previous builds..."
+    rm -rf dist server/dist
     
-    # Search in current directory with limited depth
-    local result=$(find . -maxdepth $max_depth -path "$pattern" -type f 2>/dev/null | head -n 1)
-    if [ -n "$result" ]; then
-        echo "$result"
-        return 0
-    fi
+    # Install root dependencies
+    echo "Installing root dependencies..."
+    npm ci --only=production --prefer-online || {
+        echo "Retrying npm install..."
+        sleep 5
+        npm ci --only=production --prefer-online
+    }
     
-    # Search with wildcard pattern
-    local dir_pattern=$(dirname "$pattern")
-    local file_pattern=$(basename "$pattern")
-    result=$(find . -maxdepth $max_depth -path "*$dir_pattern*$file_pattern" -type f 2>/dev/null | head -n 1)
-    if [ -n "$result" ]; then
-        echo "$result"
-        return 0
-    fi
+    # Install server dependencies
+    echo "Installing server dependencies..."
+    cd server
+    npm ci --only=production --prefer-online || {
+        echo "Retrying server npm install..."
+        sleep 5
+        npm ci --only=production --prefer-online
+    }
+    cd ..
     
-    return 1
-}
+    # Build frontend
+    echo "Building frontend..."
+    npm run build:client
+    
+    # Build backend
+    echo "Building backend..."
+    cd server
+    npm run build
+    cd ..
+    
+    echo "Build completed successfully!"
+else
+    echo "Build artifacts found, skipping build process"
+fi
+
+# Set logging directory to project LogFiles directory
+export LOGGING_DIR="./LogFiles"
+
+# Create LogFiles directory if it doesn't exist
+mkdir -p "$LOGGING_DIR"
+
+# Install serve globally if not already installed
+if ! command_exists serve; then
+    echo "Installing serve globally..."
+    npm install -g serve
+fi
 
 # Determine the correct paths for backend and frontend
 BACKEND_PATH=""
@@ -67,7 +98,7 @@ fi
 # If not found in common locations, try to find them
 if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     echo "Trying to locate backend server file..."
-    BACKEND_PATH=$(find_file "*/server/dist/server/src/server.js" 5)
+    BACKEND_PATH=$(find . -name "server.js" -path "*/server/dist/*" -type f | head -n 1)
 fi
 
 if [ -z "$FRONTEND_PATH" ] || [ ! -d "$FRONTEND_PATH" ]; then
@@ -77,7 +108,7 @@ if [ -z "$FRONTEND_PATH" ] || [ ! -d "$FRONTEND_PATH" ]; then
     elif [ -d "./dist" ]; then
         FRONTEND_PATH="./dist"
     else
-        FRONTEND_PATH=$(find_file "*/dist" 5)
+        FRONTEND_PATH=$(find . -name "dist" -type d | grep -v node_modules | head -n 1)
     fi
 fi
 
@@ -104,18 +135,6 @@ fi
 
 echo "Found backend at: $BACKEND_PATH"
 echo "Found frontend at: $FRONTEND_PATH"
-
-# Set logging directory to project LogFiles directory
-export LOGGING_DIR="./LogFiles"
-
-# Create LogFiles directory if it doesn't exist
-mkdir -p "$LOGGING_DIR"
-
-# Install serve globally if not already installed
-if ! command -v serve &> /dev/null; then
-    echo "Installing serve globally..."
-    npm install -g serve
-fi
 
 # Start the backend server in the background
 echo "Starting backend server from $BACKEND_PATH..."
