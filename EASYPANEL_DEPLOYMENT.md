@@ -390,6 +390,7 @@ If you encounter issues during deployment:
 5. **Vite Configuration Issues**: Ensure `@vitejs/plugin-react` is installed in devDependencies
 6. **Nixpacks Issues**: Make sure you're using the correct package names. npm typically comes bundled with Node.js, so you usually only need to specify `nodejs-18_x` in the Nix packages.
 7. **Package Name Issues**: If you encounter "undefined variable" errors, check that you're using the correct Nix package names. In Nix, the package might be named `nodejs-18_x` rather than `nodejs_18`.
+8. **Build Script Issues**: If you're using a custom build script, make sure it's correctly copying files to the expected locations. The Nixpacks-generated Dockerfile expects the `package.json` file to be at the root of the copied files.
 
 ### Verification Steps
 
@@ -409,4 +410,4 @@ With these configurations, your application should deploy successfully to EasyPa
 - Stable build and start processes
 - Better error handling and reporting
 
-Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. This should resolve the "undefined variable 'npm'" error that was occurring with the previous configuration.
+Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. This should resolve the "undefined variable 'npm'" error that was occurring with the previous configuration. By removing the custom build script, we're letting Nixpacks handle the build process directly, which should ensure that files are copied to the correct locations in the Docker container.

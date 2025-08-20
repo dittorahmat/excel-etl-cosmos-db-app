@@ -20,8 +20,9 @@ For EasyPanel deployment, please refer to the detailed guide in `EASYPANEL_DEPLO
 - Build and start commands
 - Deployment scripts (`build-for-easypanel.sh` and `start-for-easypanel.sh`)
 - Nixpacks configuration (`nixpacks.toml`)
-- Alternative deployment method using EasyPanel's built-in package installation features
 - Troubleshooting tips
+
+Note: We've removed the custom build script approach and are now letting Nixpacks handle the build process directly, which should ensure that files are copied to the correct locations in the Docker container.
 
 ## Docker Deployment
 
