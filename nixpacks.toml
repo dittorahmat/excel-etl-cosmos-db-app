@@ -9,10 +9,10 @@ NIXPACKS_NODE_VERSION = "18"
 
 # Completely skip all automatic phases to prevent npm-9_x detection
 [phases.install]
-skip = true
+cmds = ["echo 'Skipping install phase'"]
 
 [phases.build]
-skip = true
+cmds = ["echo 'Skipping build phase'"]
 
 [start]
 cmd = "bash start-for-easypanel.sh"
