@@ -22,7 +22,7 @@ For EasyPanel deployment, please refer to the detailed guide in `EASYPANEL_DEPLO
 - Nixpacks configuration (`nixpacks.toml`)
 - Troubleshooting tips
 
-Note: We've removed the custom build script approach and are now letting Nixpacks handle the build process directly, which should ensure that files are copied to the correct locations in the Docker container.
+Note: We've removed the custom build script approach and are now letting Nixpacks handle the build process directly, which should ensure that files are copied to the correct locations in the Docker container. However, if you encounter issues with the Nixpacks-based deployment, the guide also includes an alternative deployment method that gives you more control over the build process.
 
 ## Docker Deployment
 

@@ -14,7 +14,7 @@ Before deploying to EasyPanel, ensure you have:
 This guide covers two deployment methods:
 
 1. **Nixpacks-based deployment** (Primary Method) - Uses the `nixpacks.toml` configuration file
-2. **Alternative deployment** (Fallback Method) - Uses EasyPanel's built-in package installation features
+2. **Alternative deployment** (Recommended if Nixpacks fails) - Uses EasyPanel's built-in package installation features and custom build scripts
 
 ## Deployment Configuration
 
@@ -319,25 +319,28 @@ nixPkgs = [
 NODE_ENV = "production"
 NPM_CONFIG_PRODUCTION = "false"
 
-# Install phase - install dependencies for both frontend and backend
+# Install phase - override default npm install behavior
 [phases.install]
 cmds = [
-    "echo 'Checking Node.js and npm availability...'",
-    "which node && node --version",
-    "which npm && npm --version",
-    # Clean any existing modules to prevent conflicts
-    "rm -rf node_modules server/node_modules",
-    # Install root dependencies
-    "npm ci --only=production --prefer-online",
-    # Install missing Vite dependencies that might be needed for build
-    "npm install @vitejs/plugin-react vite --save-dev",
-    # Install server dependencies
-    "cd server && npm ci --only=production --prefer-online && cd .."
+    "echo 'Current directory:' && pwd",
+    "echo 'Directory contents:' && ls -la",
+    "echo 'Checking for package.json:' && if [ -f package.json ]; then echo 'Found package.json'; else echo 'package.json not found'; fi",
+    "echo 'Skipping default npm install, will handle dependencies in build phase'"
 ]
 
 # Build phase - build both frontend and backend
 [phases.build]
 cmds = [
+    # Verify we're in the right directory and can see package.json
+    "echo 'Build phase - Current directory:' && pwd",
+    "echo 'Build phase - Directory contents:' && ls -la",
+    "echo 'Build phase - Checking for package.json:' && if [ -f package.json ]; then echo 'Found package.json'; else echo 'package.json not found'; fi",
+    # Install root dependencies
+    "npm ci --only=production --prefer-online",
+    # Install missing Vite dependencies that might be needed for build
+    "npm install @vitejs/plugin-react vite --save-dev",
+    # Install server dependencies
+    "cd server && npm ci --only=production --prefer-online && cd ..",
     # Build frontend
     "npm run build:client",
     # Build backend
@@ -351,7 +354,7 @@ cmd = "bash start-for-easypanel.sh"
 
 Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. The `nodejs-18_x` package in Nix includes both Node.js and npm.
 
-## Alternative Deployment Method (Fallback)
+## Alternative Deployment Method (Recommended if Nixpacks fails)
 
 If you encounter issues with the Nixpacks-based deployment, you can use EasyPanel's built-in package installation features:
 
@@ -365,8 +368,6 @@ In your EasyPanel project settings:
    nodejs-18_x
    ```
 3. Save the settings
-
-Note: npm typically comes bundled with Node.js, so you usually don't need to install it separately.
 
 Note: npm typically comes bundled with Node.js, so you usually don't need to install it separately.
 
@@ -391,6 +392,7 @@ If you encounter issues during deployment:
 6. **Nixpacks Issues**: Make sure you're using the correct package names. npm typically comes bundled with Node.js, so you usually only need to specify `nodejs-18_x` in the Nix packages.
 7. **Package Name Issues**: If you encounter "undefined variable" errors, check that you're using the correct Nix package names. In Nix, the package might be named `nodejs-18_x` rather than `nodejs_18`.
 8. **Build Script Issues**: If you're using a custom build script, make sure it's correctly copying files to the expected locations. The Nixpacks-generated Dockerfile expects the `package.json` file to be at the root of the copied files.
+9. **Git Tracking Issues**: Make sure all necessary files are being tracked by Git. The `.gitignore` file might be excluding files that are needed for the build process. If you're using a `deploy_output` directory, make sure the necessary files within it are being tracked by Git.
 
 ### Verification Steps
 
@@ -410,4 +412,6 @@ With these configurations, your application should deploy successfully to EasyPa
 - Stable build and start processes
 - Better error handling and reporting
 
-Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. This should resolve the "undefined variable 'npm'" error that was occurring with the previous configuration. By removing the custom build script, we're letting Nixpacks handle the build process directly, which should ensure that files are copied to the correct locations in the Docker container.
+Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. This should resolve the "undefined variable 'npm'" error that was occurring with the previous configuration. By removing the custom build script and updating the Nixpacks configuration, we're letting Nixpacks handle the build process directly while ensuring that files are copied to the correct locations in the Docker container. We've also added debugging output to help diagnose any file path issues during the build process.
+
+If you continue to experience issues with the Nixpacks-based deployment, we recommend using the alternative deployment method which gives you more control over the build process and doesn't rely on Nixpacks' automatic file copying behavior.

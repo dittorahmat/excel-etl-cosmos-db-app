@@ -24,6 +24,7 @@ This document summarizes the changes made to consolidate the deployment document
 
 1. `DEPLOYMENT.md` - Consolidated deployment guide that references all deployment options and files
 2. `EASYPANEL_DEPLOYMENT.md` - Comprehensive, consolidated EasyPanel deployment guide
+3. `NIXPACKS_DEPLOYMENT_ISSUE_SUMMARY.md` - Summary of Nixpacks deployment issues and recommended solutions
 
 ## Files Updated
 

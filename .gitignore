@@ -33,6 +33,8 @@ easypanel-deployment/common/
 # Allow deploy_output/.env while ignoring other files in deploy_output
 deploy_output/*
 !deploy_output/.env
+!deploy_output/backend/package.json
+!deploy_output/backend/package-lock.json
 deployments/
 LogFiles/
 
