@@ -15,18 +15,13 @@ COPY package*.json ./
 COPY server/package*.json ./server/
 
 # Install all dependencies (including dev dependencies needed for building)
-RUN npm ci
-RUN cd server && npm ci
+RUN npm ci && cd server && npm ci
 
 # Copy source code
 COPY . .
 
-# Explicitly install missing dependencies to ensure they're available
-RUN npm install @vitejs/plugin-react @radix-ui/react-tabs --save-dev
-
 # Build frontend and backend
-RUN npm run build:client
-RUN cd server && npm run build
+RUN npm run build:client && cd server && npm run build
 
 # Production stage
 FROM node:18-alpine
@@ -42,8 +37,7 @@ COPY package*.json ./
 COPY server/package*.json ./server/
 
 # Install production dependencies only
-RUN npm ci --only=production
-RUN cd server && npm ci --only=production
+RUN npm ci --only=production && cd server && npm ci --only=production
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
