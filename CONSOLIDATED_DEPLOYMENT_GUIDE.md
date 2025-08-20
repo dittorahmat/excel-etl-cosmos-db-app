@@ -118,23 +118,23 @@ nixPkgs = ["nodejs-18_x"]
 [variables]
 NODE_ENV = "production"
 
+# Skip the install phase
 [phases.install]
-cmds = [
-    "npm ci --only=production",
-    "cd server && npm ci --only=production && cd .."
-]
+skip = true
 
+# Skip the build phase
 [phases.build]
-cmds = [
-    "npm run build:client",
-    "cd server && npm run build && cd .."
-]
+skip = true
 
 [start]
 cmd = "bash start-for-easypanel.sh"
 ```
 
-**Note**: The `nixpacks.toml` configuration uses `cmds` arrays to define the installation and build steps directly, rather than trying to run external scripts. This approach is more reliable with Nixpacks because it doesn't rely on external scripts being available in the Docker build context.
+**Note**: The `nixpacks.toml` configuration uses `skip = true` for both install and build phases, which means Nixpacks won't try to run any installation or build commands. Instead, our start script will handle the build process if needed. This approach is more reliable with Nixpacks because it doesn't rely on external scripts being available in the Docker build context.
+
+**Important**: Nixpacks may cache configuration files. If you update your `nixpacks.toml` file but don't see the changes taking effect, you may need to clear the Nixpacks cache or redeploy with a clean build environment.
+
+**Note**: This Dockerfile is designed for direct Docker deployment and is separate from the Nixpacks deployment process. When using Nixpacks, a different Dockerfile is automatically generated based on the `nixpacks.toml` configuration.
 
 ### Docker Deployment
 
@@ -463,10 +463,14 @@ If you encounter issues during deployment:
 8. **Build Script Issues**: If you're using a custom build script, make sure it's correctly copying files to the expected locations. The Nixpacks-generated Dockerfile expects the `package.json` file to be at the root of the copied files.
 9. **Git Tracking Issues**: Make sure all necessary files are being tracked by Git. The `.gitignore` file might be excluding files that are needed for the build process. If you're using a `deploy_output` directory, make sure the necessary files within it are being tracked by Git.
 10. **"bash: build-for-easypanel.sh: No such file or directory" Error**: This error occurs when Nixpacks generates a Dockerfile that tries to run the build script but the script isn't available in the Docker build context. To fix this:
-    - Ensure the `nixpacks.toml` file properly defines the build steps using the `cmds` array instead of trying to run an external script
+    - Ensure the `nixpacks.toml` file properly defines the build steps or skips the build phase entirely
     - Make sure all necessary files are tracked by Git and not excluded by `.gitignore`
     - Check that the file permissions are correct (scripts should be executable)
     - As an alternative, try setting the `NIXPACKS_SKIP_NPM_INSTALL=1` environment variable in EasyPanel to bypass Nixpacks' automatic npm install behavior
+    - If Nixpacks appears to be ignoring your `nixpacks.toml` file, it may be using a cached configuration. Try clearing the Nixpacks cache or redeploying with a clean build environment. You can do this by:
+      * Triggering a new deployment with a clean build in EasyPanel
+      * Checking if there are any Nixpacks cache directories that need to be cleared
+      * Verifying that your `nixpacks.toml` file is in the root of your repository and is being tracked by Git
     - If Nixpacks appears to be ignoring your `nixpacks.toml` file, it may be using a cached configuration. Try clearing the Nixpacks cache or redeploying with a clean build environment
 
 ## Verification Steps
