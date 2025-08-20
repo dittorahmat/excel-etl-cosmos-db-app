@@ -172,7 +172,7 @@ echo "Found frontend at: $FRONTEND_PATH"
 
 # Start the backend server in the background
 echo "Starting backend server from $BACKEND_PATH..."
-node --enable-source-maps "$BACKEND_PATH" &
+PORT=3001 node --enable-source-maps "$BACKEND_PATH" &
 
 # Store the backend PID
 BACKEND_PID=$!
@@ -186,22 +186,14 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
     exit 1
 fi
 
-# Install http-proxy dependency if not already installed
-if ! npm list http-proxy --depth=0 >/dev/null 2>&1; then
-    echo "Installing http-proxy..."
-    npm install http-proxy
-fi
+# Start Nginx to serve frontend and proxy API requests to backend
+echo "Starting Nginx..."
+nginx -g "daemon off;" &
+NGINX_PID=$!
 
-# Start the reverse proxy server on port 80 to serve frontend and proxy API requests to backend
-echo "Starting reverse proxy server on port 80..."
-node proxy-server.js &
-
-# Store the frontend PID
-FRONTEND_PID=$!
-
-echo "Application started. Backend PID: $BACKEND_PID, Proxy Server PID: $!"
+echo "Application started. Backend PID: $BACKEND_PID, Nginx PID: $NGINX_PID"
 echo "Application available at http://localhost:80"
 echo "Backend API available at http://localhost:3001"
 
 # Keep the script running to keep the container alive
-wait $BACKEND_PID
+wait $BACKEND_PID $NGINX_PID
