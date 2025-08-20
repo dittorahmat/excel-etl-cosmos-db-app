@@ -1,44 +1,10 @@
 # Nixpacks configuration for Excel to Cosmos DB Dashboard
 
-# Setup phase - ensure we have the right environment
 [phases.setup]
-nixPkgs = [
-    "nodejs-18_x"
-]
+nixPkgs = ["nodejs-18_x"]
 
-# Setup environment variables
 [variables]
 NODE_ENV = "production"
-NPM_CONFIG_PRODUCTION = "false"
 
-# Install phase - override default npm install behavior
-[phases.install]
-cmds = [
-    "echo 'Current directory:' && pwd",
-    "echo 'Directory contents:' && ls -la",
-    "echo 'Checking for package.json:' && if [ -f package.json ]; then echo 'Found package.json'; else echo 'package.json not found'; fi",
-    "echo 'Skipping default npm install, will handle dependencies in build phase'"
-]
-
-# Build phase - build both frontend and backend
-[phases.build]
-cmds = [
-    # Verify we're in the right directory and can see package.json
-    "echo 'Build phase - Current directory:' && pwd",
-    "echo 'Build phase - Directory contents:' && ls -la",
-    "echo 'Build phase - Checking for package.json:' && if [ -f package.json ]; then echo 'Found package.json'; else echo 'package.json not found'; fi",
-    # Install root dependencies
-    "npm ci --only=production --prefer-online",
-    # Install missing Vite dependencies that might be needed for build
-    "npm install @vitejs/plugin-react vite --save-dev",
-    # Install server dependencies
-    "cd server && npm ci --only=production --prefer-online && cd ..",
-    # Build frontend
-    "npm run build:client",
-    # Build backend
-    "cd server && npm run build && cd .."
-]
-
-# Start command for the application
 [start]
 cmd = "bash start-for-easypanel.sh"
