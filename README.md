@@ -4,6 +4,10 @@ A modern React dashboard application for uploading Excel files, visualizing data
 
 > **Note**: For deployment instructions, please refer to `CONSOLIDATED_DEPLOYMENT_GUIDE.md` which provides a single comprehensive guide for all deployment methods.
 
+## Nixpacks Deployment Issue Resolution
+
+We encountered and resolved a persistent issue with Nixpacks trying to use `npm-9_x` despite specifying Node.js 18. For details on this issue and how we resolved it, please see `NIXPACKS_DEPLOYMENT_ISSUE_RESOLUTION.md`.
+
 ## Features
 
 - **Dependency Fixes**: Resolved `ERR_MODULE_NOT_FOUND` for `zod` by moving it to production dependencies.
