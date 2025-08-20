@@ -6,17 +6,13 @@ nixPkgs = ["nodejs-18_x"]
 [variables]
 NODE_ENV = "production"
 
+# Skip the install phase
 [phases.install]
-cmds = [
-    "npm ci --only=production",
-    "cd server && npm ci --only=production && cd .."
-]
+skip = true
 
+# Skip the build phase
 [phases.build]
-cmds = [
-    "npm run build:client",
-    "cd server && npm run build && cd .."
-]
+skip = true
 
 [start]
 cmd = "bash start-for-easypanel.sh"

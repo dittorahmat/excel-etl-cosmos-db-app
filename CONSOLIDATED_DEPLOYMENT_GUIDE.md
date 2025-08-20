@@ -467,6 +467,7 @@ If you encounter issues during deployment:
     - Make sure all necessary files are tracked by Git and not excluded by `.gitignore`
     - Check that the file permissions are correct (scripts should be executable)
     - As an alternative, try setting the `NIXPACKS_SKIP_NPM_INSTALL=1` environment variable in EasyPanel to bypass Nixpacks' automatic npm install behavior
+    - If Nixpacks appears to be ignoring your `nixpacks.toml` file, it may be using a cached configuration. Try clearing the Nixpacks cache or redeploying with a clean build environment
 
 ## Verification Steps
 

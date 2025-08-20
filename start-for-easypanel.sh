@@ -5,6 +5,19 @@ set -e
 
 echo "=== Starting Application for EasyPanel Git Deployment ==="
 
+# Check if we need to build first (for environments like Nixpacks that skip the build phase)
+if [ ! -d "dist" ] || [ ! -d "server/dist" ]; then
+    echo "Build artifacts not found, attempting to build..."
+    # Run the build script if it exists
+    if [ -f "./build-for-easypanel.sh" ]; then
+        echo "Running build script..."
+        bash ./build-for-easypanel.sh
+    else
+        echo "ERROR: Build script not found"
+        exit 1
+    fi
+fi
+
 # Function to find files with better error handling
 find_file() {
     local pattern="$1"
