@@ -21,8 +21,8 @@ RUN cd server && npm ci
 # Copy source code
 COPY . .
 
-# Explicitly install @vitejs/plugin-react to ensure it's available
-RUN npm install @vitejs/plugin-react --save-dev
+# Explicitly install missing dependencies to ensure they're available
+RUN npm install @vitejs/plugin-react @radix-ui/react-tabs --save-dev
 
 # Build frontend and backend
 RUN npm run build:client
