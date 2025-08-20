@@ -186,14 +186,16 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
     exit 1
 fi
 
-# Start Nginx to serve frontend and proxy API requests to backend
-echo "Starting Nginx..."
-nginx -g "daemon off;" &
-NGINX_PID=$!
+# Start the frontend static server
+echo "Starting frontend static server from $FRONTEND_PATH..."
+PORT=3000 serve -s "$FRONTEND_PATH" &
 
-echo "Application started. Backend PID: $BACKEND_PID, Nginx PID: $NGINX_PID"
-echo "Application available at http://localhost:80"
+# Store the frontend PID
+FRONTEND_PID=$!
+
+echo "Application started. Backend PID: $BACKEND_PID, Frontend PID: $FRONTEND_PID"
+echo "Frontend available at http://localhost:3000"
 echo "Backend API available at http://localhost:3001"
 
 # Keep the script running to keep the container alive
-wait $BACKEND_PID $NGINX_PID
+wait $BACKEND_PID $FRONTEND_PID
