@@ -2,6 +2,8 @@
 
 This guide provides comprehensive instructions for deploying the Excel to Cosmos DB Dashboard application using various methods. Based on our experience, we recommend the **Alternative Deployment Method** for EasyPanel as it's the most reliable approach.
 
+> **Note**: If you encounter issues with Nixpacks trying to use `npm-9_x` despite specifying Node.js 18, please refer to `NIXPACKS_DEPLOYMENT_ISSUE_RESOLUTION.md` for our detailed analysis and solution.
+
 ## Table of Contents
 
 1. [Deployment Options](#deployment-options)
@@ -466,6 +468,11 @@ If you encounter issues during deployment:
     - Ensure the `nixpacks.toml` file properly defines the build steps or skips the build phase entirely
     - Make sure all necessary files are tracked by Git and not excluded by `.gitignore`
     - Check that the file permissions are correct (scripts should be executable)
+11. **Persistent "npm-9_x" Error**: If Nixpacks continues to try to use `npm-9_x` despite specifying Node.js 18:
+    - Refer to `NIXPACKS_DEPLOYMENT_ISSUE_RESOLUTION.md` for our detailed analysis and solution
+    - Ensure all configuration files (`.nvmrc`, `package.json`, `nixpacks.toml`) consistently specify Node.js 18
+    - Check that the `nixpacks.toml` file skips both install and build phases to prevent auto-detection
+    - Verify that no environment variables are conflicting with Nixpacks' package detection
     - As an alternative, try setting the `NIXPACKS_SKIP_NPM_INSTALL=1` environment variable in EasyPanel to bypass Nixpacks' automatic npm install behavior
     - If Nixpacks appears to be ignoring your `nixpacks.toml` file, it may be using a cached configuration. Try clearing the Nixpacks cache or redeploying with a clean build environment. You can do this by:
       * Triggering a new deployment with a clean build in EasyPanel
