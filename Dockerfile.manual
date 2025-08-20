@@ -1,25 +1,58 @@
-# Use Node.js 18 Alpine as base image
+# Multi-stage Dockerfile for Excel to Cosmos DB Dashboard
+# This Dockerfile installs all dependencies for building, then cleans up dev dependencies for production
+
+# Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files
+COPY package*.json ./
+COPY server/package*.json ./server/
+
+# Install all dependencies (including dev dependencies needed for building)
+RUN npm ci
+RUN cd server && npm ci
+
+# Copy source code
+COPY . .
+
+# Build frontend and backend
+RUN npm run build:client
+RUN cd server && npm run build
+
+# Production stage
 FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files for production dependencies
 COPY package*.json ./
+COPY server/package*.json ./server/
 
 # Install production dependencies only
 RUN npm ci --only=production
+RUN cd server && npm ci --only=production
 
-# Copy source code
-COPY . .
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./server/dist
 
-# Build the frontend
-RUN npm run build:client
+# Copy startup scripts
+COPY start-for-easypanel.sh ./
 
-# Build the backend
-RUN cd server && npm run build
+# Make scripts executable
+RUN chmod +x ./start-for-easypanel.sh
 
-# Install serve globally for serving static files
+# Install serve globally
 RUN npm install -g serve
 
 # Create log directory
@@ -28,5 +61,5 @@ RUN mkdir -p ./LogFiles
 # Expose port
 EXPOSE 3000
 
-# Start the application using our start script
+# Start command
 CMD ["bash", "start-for-easypanel.sh"]
