@@ -21,6 +21,9 @@ RUN cd server && npm ci
 # Copy source code
 COPY . .
 
+# Explicitly install @vitejs/plugin-react to ensure it's available
+RUN npm install @vitejs/plugin-react --save-dev
+
 # Build frontend and backend
 RUN npm run build:client
 RUN cd server && npm run build
