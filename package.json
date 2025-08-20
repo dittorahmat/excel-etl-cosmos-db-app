@@ -54,6 +54,7 @@
     "@types/react-dropzone": "^4.2.2",
     "@types/react-router-dom": "^5.3.3",
     "@upstash/context7-mcp": "^1.0.12",
+    "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
