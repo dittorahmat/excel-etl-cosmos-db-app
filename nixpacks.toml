@@ -5,6 +5,7 @@ nixPkgs = ["nodejs-18_x"]
 
 [variables]
 NODE_ENV = "production"
+NIXPACKS_NODE_VERSION = "18"
 
 # Skip the install phase to avoid conflicts
 [phases.install]
