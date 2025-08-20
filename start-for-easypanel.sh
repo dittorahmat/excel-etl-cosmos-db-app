@@ -26,7 +26,7 @@ fi
 
 echo "npm version: $(npm --version)"
 
-# Check if we need to build first
+# Check if we need to build first (for environments that don't run build step)
 if [ ! -d "dist" ] || [ ! -d "server/dist" ]; then
     echo "Build artifacts not found, building application..."
     
@@ -34,23 +34,27 @@ if [ ! -d "dist" ] || [ ! -d "server/dist" ]; then
     echo "Cleaning previous builds..."
     rm -rf dist server/dist
     
-    # Install root dependencies
-    echo "Installing root dependencies..."
-    npm ci --only=production --prefer-online || {
-        echo "Retrying npm install..."
-        sleep 5
-        npm ci --only=production --prefer-online
-    }
+    # Install root dependencies if node_modules doesn't exist
+    if [ ! -d "node_modules" ]; then
+        echo "Installing root dependencies..."
+        npm ci --only=production --prefer-online || {
+            echo "Retrying npm install..."
+            sleep 5
+            npm ci --only=production --prefer-online
+        }
+    fi
     
-    # Install server dependencies
-    echo "Installing server dependencies..."
-    cd server
-    npm ci --only=production --prefer-online || {
-        echo "Retrying server npm install..."
-        sleep 5
-        npm ci --only=production --prefer-online
-    }
-    cd ..
+    # Install server dependencies if server/node_modules doesn't exist
+    if [ ! -d "server/node_modules" ]; then
+        echo "Installing server dependencies..."
+        cd server
+        npm ci --only=production --prefer-online || {
+            echo "Retrying server npm install..."
+            sleep 5
+            npm ci --only=production --prefer-online
+        }
+        cd ..
+    fi
     
     # Build frontend
     echo "Building frontend..."
@@ -79,6 +83,36 @@ if ! command_exists serve; then
     npm install -g serve
 fi
 
+# Function to find files with better error handling
+find_file() {
+    local pattern="$1"
+    local max_depth="${2:-5}"
+    
+    # Try multiple approaches to find the file
+    if [ -f "$pattern" ]; then
+        echo "$pattern"
+        return 0
+    fi
+    
+    # Search in current directory with limited depth
+    local result=$(find . -maxdepth $max_depth -path "$pattern" -type f 2>/dev/null | head -n 1)
+    if [ -n "$result" ]; then
+        echo "$result"
+        return 0
+    fi
+    
+    # Search with wildcard pattern
+    local dir_pattern=$(dirname "$pattern")
+    local file_pattern=$(basename "$pattern")
+    result=$(find . -maxdepth $max_depth -path "*$dir_pattern*$file_pattern" -type f 2>/dev/null | head -n 1)
+    if [ -n "$result" ]; then
+        echo "$result"
+        return 0
+    fi
+    
+    return 1
+}
+
 # Determine the correct paths for backend and frontend
 BACKEND_PATH=""
 FRONTEND_PATH=""
@@ -98,7 +132,7 @@ fi
 # If not found in common locations, try to find them
 if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     echo "Trying to locate backend server file..."
-    BACKEND_PATH=$(find . -name "server.js" -path "*/server/dist/*" -type f | head -n 1)
+    BACKEND_PATH=$(find_file "*/server/dist/server/src/server.js" 5)
 fi
 
 if [ -z "$FRONTEND_PATH" ] || [ ! -d "$FRONTEND_PATH" ]; then
@@ -108,7 +142,7 @@ if [ -z "$FRONTEND_PATH" ] || [ ! -d "$FRONTEND_PATH" ]; then
     elif [ -d "./dist" ]; then
         FRONTEND_PATH="./dist"
     else
-        FRONTEND_PATH=$(find . -name "dist" -type d | grep -v node_modules | head -n 1)
+        FRONTEND_PATH=$(find_file "*/dist" 5)
     fi
 fi
 
