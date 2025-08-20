@@ -492,6 +492,13 @@ If an API key is compromised:
 
 ## Deployment
 
+For detailed deployment instructions, please refer to `DEPLOYMENT.md` which provides comprehensive guides for:
+
+- EasyPanel deployment (recommended)
+- Docker deployment
+- Azure Static Web Apps deployment
+- Manual deployment
+
 ### Azure Static Web Apps
 
 This project is configured for deployment to Azure Static Web Apps. To deploy:

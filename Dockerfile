@@ -1,32 +1,68 @@
-# Use an official Node runtime as the base image
-FROM node:18-alpine
+# Multi-stage Dockerfile for Excel to Cosmos DB Dashboard
+# This Dockerfile is used for direct container deployment, not for Nixpacks
 
-# Set the working directory
+# Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache curl gnupg ca-certificates
+RUN apk add --no-cache curl bash
 
 # Copy package files
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Install dependencies
-RUN npm install
-RUN cd server && npm install
+# Install all dependencies
+RUN npm ci
+RUN cd server && npm ci
 
-# Copy the rest of the application code
+# Copy source code
 COPY . .
 
-# Build the frontend and backend
+# Build frontend and backend
 RUN npm run build:client
 RUN cd server && npm run build
 
-# Expose the port the app runs on
-EXPOSE 3000
+# Production stage
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files for production dependencies
+COPY package*.json ./
+COPY server/package*.json ./server/
+
+# Install production dependencies only
+RUN npm ci --only=production
+RUN cd server && npm ci --only=production
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./server/dist
+
+# Copy startup scripts
+COPY start-for-easypanel.sh ./
+COPY build-for-easypanel.sh ./
+
+# Make scripts executable
+RUN chmod +x ./start-for-easypanel.sh
+RUN chmod +x ./build-for-easypanel.sh
 
 # Install serve globally
 RUN npm install -g serve
 
-# Start the application
-CMD ["sh", "start-for-easypanel.sh"]
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start command
+CMD ["bash", "start-for-easypanel.sh"]

@@ -1,44 +1,41 @@
-# Specify the base image and system packages
+# Nixpacks configuration for Excel to Cosmos DB Dashboard
+
+# Setup phase - ensure we have the right environment
 [phases.setup]
 nixPkgs = [
-    'nodejs_18',
-    'npm',
-    'python3',
-    'make',
-    'g++',
-    'curl'
+    "nodejs_18",
+    "npm"
 ]
 
 # Setup environment variables
-[phases.setupEnvironment]
+[variables]
 NODE_ENV = "production"
 NPM_CONFIG_PRODUCTION = "false"
 
-# Install phase
+# Install phase - install dependencies for both frontend and backend
 [phases.install]
 cmds = [
     "echo 'Using Node.js version:' && node --version",
     "echo 'Using npm version:' && npm --version",
-    "npm install"
+    # Clean any existing modules to prevent conflicts
+    "rm -rf node_modules server/node_modules",
+    # Install root dependencies
+    "npm ci --only=production --prefer-online",
+    # Install missing Vite dependencies that might be needed for build
+    "npm install @vitejs/plugin-react vite --save-dev",
+    # Install server dependencies
+    "cd server && npm ci --only=production --prefer-online && cd .."
 ]
 
 # Build phase - build both frontend and backend
 [phases.build]
 cmds = [
+    # Build frontend
     "npm run build:client",
-    "cd server && npm install && npm run build && cd .."
+    # Build backend
+    "cd server && npm run build && cd .."
 ]
 
 # Start command for the application
 [start]
 cmd = "bash start-for-easypanel.sh"
-
-# Define the output directory for the build
-[build]
-  base = "."
-  builder = "nixpacks"
-  publish = "."
-
-# Enable experimental features if needed
-[experimental]
-  nix = true

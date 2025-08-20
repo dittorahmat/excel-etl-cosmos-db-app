@@ -23,10 +23,10 @@ declare module 'express-serve-static-core' {
 type Request = ExpressRequest;
 
 // Ensure log directory exists, but handle read-only file system gracefully
-const logDir = process.env.LOGGING_DIR || '/home/LogFiles/app';
+const logDir = process.env.LOGGING_DIR || path.join(process.cwd(), 'logs');
 try {
   if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
+    fs.mkdirSync(logDir, { recursive: true, mode: 0o777 });
   }
 } catch (error) {
   // In Azure App Service, the file system might be read-only
