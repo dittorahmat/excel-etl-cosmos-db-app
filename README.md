@@ -2,6 +2,8 @@
 
 A modern React dashboard application for uploading Excel files, visualizing data, and managing Azure Cosmos DB integration. Features Azure AD authentication, real-time data visualization, and a responsive UI built with Shadcn UI components.
 
+> **Note**: For deployment instructions, please refer to `CONSOLIDATED_DEPLOYMENT_GUIDE.md` which provides a single comprehensive guide for all deployment methods.
+
 ## Features
 
 - **Dependency Fixes**: Resolved `ERR_MODULE_NOT_FOUND` for `zod` by moving it to production dependencies.
