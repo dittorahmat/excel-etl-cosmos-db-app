@@ -1,16 +1,22 @@
 # Nixpacks configuration for Excel to Cosmos DB Dashboard
 
-[phases.install]
-skip = true
-
 [phases.setup]
 nixPkgs = ["nodejs-18_x"]
 
 [variables]
 NODE_ENV = "production"
 
+[phases.install]
+cmds = [
+    "npm ci --only=production",
+    "cd server && npm ci --only=production && cd .."
+]
+
 [phases.build]
-cmd = "bash build-for-easypanel.sh"
+cmds = [
+    "npm run build:client",
+    "cd server && npm run build && cd .."
+]
 
 [start]
 cmd = "bash start-for-easypanel.sh"

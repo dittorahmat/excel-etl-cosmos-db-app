@@ -112,21 +112,29 @@ Use this configuration in your `nixpacks.toml` file:
 ```toml
 # Nixpacks configuration for Excel to Cosmos DB Dashboard
 
-[phases.install]
-skip = true
-
 [phases.setup]
 nixPkgs = ["nodejs-18_x"]
 
 [variables]
 NODE_ENV = "production"
 
+[phases.install]
+cmds = [
+    "npm ci --only=production",
+    "cd server && npm ci --only=production && cd .."
+]
+
 [phases.build]
-cmd = "bash build-for-easypanel.sh"
+cmds = [
+    "npm run build:client",
+    "cd server && npm run build && cd .."
+]
 
 [start]
 cmd = "bash start-for-easypanel.sh"
 ```
+
+**Note**: The `nixpacks.toml` configuration uses `cmds` arrays to define the installation and build steps directly, rather than trying to run external scripts. This approach is more reliable with Nixpacks because it doesn't rely on external scripts being available in the Docker build context.
 
 ### Docker Deployment
 
@@ -202,6 +210,8 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Start command
 CMD ["bash", "start-for-easypanel.sh"]
 ```
+
+**Note**: This Dockerfile is designed for direct Docker deployment and is separate from the Nixpacks deployment process. When using Nixpacks, a different Dockerfile is automatically generated based on the `nixpacks.toml` configuration.
 
 ### Azure Static Web Apps Deployment
 
@@ -452,6 +462,11 @@ If you encounter issues during deployment:
 7. **Package Name Issues**: If you encounter "undefined variable" errors, check that you're using the correct Nix package names. In Nix, the package might be named `nodejs-18_x` rather than `nodejs_18`.
 8. **Build Script Issues**: If you're using a custom build script, make sure it's correctly copying files to the expected locations. The Nixpacks-generated Dockerfile expects the `package.json` file to be at the root of the copied files.
 9. **Git Tracking Issues**: Make sure all necessary files are being tracked by Git. The `.gitignore` file might be excluding files that are needed for the build process. If you're using a `deploy_output` directory, make sure the necessary files within it are being tracked by Git.
+10. **"bash: build-for-easypanel.sh: No such file or directory" Error**: This error occurs when Nixpacks generates a Dockerfile that tries to run the build script but the script isn't available in the Docker build context. To fix this:
+    - Ensure the `nixpacks.toml` file properly defines the build steps using the `cmds` array instead of trying to run an external script
+    - Make sure all necessary files are tracked by Git and not excluded by `.gitignore`
+    - Check that the file permissions are correct (scripts should be executable)
+    - As an alternative, try setting the `NIXPACKS_SKIP_NPM_INSTALL=1` environment variable in EasyPanel to bypass Nixpacks' automatic npm install behavior
 
 ## Verification Steps
 
