@@ -56,6 +56,8 @@ API_KEY_LOGGING_ENABLED=false
 API_KEY_LOG_VALIDATIONS=false
 ```
 
+Note: When entering packages in EasyPanel's Nix Packages field, use `nodejs-18_x` as npm typically comes bundled with Node.js.
+
 ### Build and Start Commands
 
 Configure the following commands in your EasyPanel application settings:
@@ -309,8 +311,7 @@ The application uses a `nixpacks.toml` file to configure the build environment. 
 # Setup phase - ensure we have the right environment
 [phases.setup]
 nixPkgs = [
-    "nodejs_18",
-    "npm"
+    "nodejs-18_x"
 ]
 
 # Setup environment variables
@@ -348,6 +349,8 @@ cmds = [
 cmd = "bash start-for-easypanel.sh"
 ```
 
+Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. The `nodejs-18_x` package in Nix includes both Node.js and npm.
+
 ## Alternative Deployment Method (Fallback)
 
 If you encounter issues with the Nixpacks-based deployment, you can use EasyPanel's built-in package installation features:
@@ -359,10 +362,13 @@ In your EasyPanel project settings:
 1. Navigate to the "Packages" section
 2. In the "Nix Packages" field, add:
    ```
-   nodejs_18
-   npm
+   nodejs-18_x
    ```
 3. Save the settings
+
+Note: npm typically comes bundled with Node.js, so you usually don't need to install it separately.
+
+Note: npm typically comes bundled with Node.js, so you usually don't need to install it separately.
 
 ## Deployment Process
 
@@ -382,7 +388,8 @@ If you encounter issues during deployment:
 3. **ETXTBSY Errors**: The build script handles file locking issues by using retry mechanisms
 4. **Cleanup Issues**: The build script explicitly cleans node_modules before installation
 5. **Vite Configuration Issues**: Ensure `@vitejs/plugin-react` is installed in devDependencies
-6. **Nixpacks Issues**: Try the alternative deployment method that uses EasyPanel's built-in package installation features
+6. **Nixpacks Issues**: Make sure you're using the correct package names. npm typically comes bundled with Node.js, so you usually only need to specify `nodejs-18_x` in the Nix packages.
+7. **Package Name Issues**: If you encounter "undefined variable" errors, check that you're using the correct Nix package names. In Nix, the package might be named `nodejs-18_x` rather than `nodejs_18`.
 
 ### Verification Steps
 
@@ -397,7 +404,9 @@ To verify that the deployment will work:
 ## Expected Outcome
 
 With these configurations, your application should deploy successfully to EasyPanel with:
-- Proper dependency resolution
+- Proper dependency resolution using the correct Nix package names
 - Correct file paths
 - Stable build and start processes
 - Better error handling and reporting
+
+Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. This should resolve the "undefined variable 'npm'" error that was occurring with the previous configuration.

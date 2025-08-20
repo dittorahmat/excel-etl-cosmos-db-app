@@ -3,8 +3,7 @@
 # Setup phase - ensure we have the right environment
 [phases.setup]
 nixPkgs = [
-    "nodejs_18",
-    "npm"
+    "nodejs-18_x"
 ]
 
 # Setup environment variables
