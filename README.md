@@ -492,12 +492,12 @@ If an API key is compromised:
 
 ## Deployment
 
-For detailed deployment instructions, please refer to `DEPLOYMENT.md` which provides comprehensive guides for:
+For detailed deployment instructions, please refer to `CONSOLIDATED_DEPLOYMENT_GUIDE.md` which provides a single comprehensive guide for all deployment methods:
 
 - EasyPanel deployment (recommended)
+- Nixpacks-based deployment
 - Docker deployment
 - Azure Static Web Apps deployment
-- Manual deployment
 
 ### Azure Static Web Apps
 

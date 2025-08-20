@@ -1,28 +1,48 @@
-# Excel to Cosmos DB Dashboard - EasyPanel Deployment Guide
+# Excel to Cosmos DB Dashboard - Consolidated Deployment Guide
 
-This guide provides comprehensive instructions for deploying the Excel to Cosmos DB Dashboard application to EasyPanel, including both the Nixpacks-based approach and an alternative method using EasyPanel's built-in package installation features.
+This guide provides comprehensive instructions for deploying the Excel to Cosmos DB Dashboard application using various methods. Based on our experience, we recommend the **Alternative Deployment Method** for EasyPanel as it's the most reliable approach.
+
+## Table of Contents
+
+1. [Deployment Options](#deployment-options)
+2. [Prerequisites](#prerequisites)
+3. [Environment Variables](#environment-variables)
+4. [Recommended Deployment Method: EasyPanel Alternative](#recommended-deployment-method-easypanel-alternative)
+5. [Alternative Methods](#alternative-methods)
+   - [Nixpacks-based Deployment](#nixpacks-based-deployment)
+   - [Docker Deployment](#docker-deployment)
+   - [Azure Static Web Apps Deployment](#azure-static-web-apps-deployment)
+6. [Deployment Scripts](#deployment-scripts)
+   - [Build Script](#build-script)
+   - [Start Script](#start-script)
+7. [Troubleshooting](#troubleshooting)
+8. [Verification Steps](#verification-steps)
+
+## Deployment Options
+
+This application supports multiple deployment methods:
+
+1. **EasyPanel Deployment** (Recommended) - Uses EasyPanel's built-in package installation features
+2. **Nixpacks-based Deployment** (Experimental) - Uses the `nixpacks.toml` configuration file
+3. **Docker Deployment** - Uses the provided `Dockerfile`
+4. **Azure Static Web Apps Deployment** - Uses `staticwebapp.config.json`
 
 ## Prerequisites
 
-Before deploying to EasyPanel, ensure you have:
-1. An Azure subscription with the required resources provisioned
-2. Environment variables configured as specified below
-3. Git repository connected to EasyPanel
+Before deploying, ensure you have:
 
-## Deployment Methods
+1. An Azure subscription with the required resources provisioned:
+   - Azure AD App Registration
+   - Azure Cosmos DB account
+   - Azure Storage account
+2. All environment variables configured as specified below
+3. Git repository connected to your deployment platform (if using Git-based deployment)
 
-This guide covers two deployment methods:
+## Environment Variables
 
-1. **Nixpacks-based deployment** (Primary Method) - Uses the `nixpacks.toml` configuration file
-2. **Alternative deployment** (Recommended if Nixpacks fails) - Uses EasyPanel's built-in package installation features and custom build scripts
+Set the following environment variables in your deployment platform:
 
-## Deployment Configuration
-
-### Environment Variables
-
-Set the following environment variables in your EasyPanel application settings:
-
-```
+```env
 # Azure Configuration
 AZURE_CLIENT_ID=your-azure-client-id
 AZURE_TENANT_ID=your-azure-tenant-id
@@ -56,20 +76,140 @@ API_KEY_LOGGING_ENABLED=false
 API_KEY_LOG_VALIDATIONS=false
 ```
 
-Note: When entering packages in EasyPanel's Nix Packages field, use `nodejs-18_x` as npm typically comes bundled with Node.js.
+## Recommended Deployment Method: EasyPanel Alternative
 
-### Build and Start Commands
+Due to persistent issues with the Nixpacks-based deployment method, we recommend using the Alternative Deployment Method with EasyPanel's built-in package installation features.
 
-Configure the following commands in your EasyPanel application settings:
+### EasyPanel Configuration
 
-- **Build Command**: `bash build-for-easypanel.sh`
-- **Start Command**: `bash start-for-easypanel.sh`
+In your EasyPanel project settings:
+
+1. **Nix Packages**: `nodejs-18_x`
+2. **Install Command**: (leave blank)
+3. **Build Command**: `bash build-for-easypanel.sh`
+4. **Start Command**: `bash start-for-easypanel.sh`
+5. **Environment Variables**: Configure all the environment variables as listed above
+
+### Why This Approach Works
+
+1. **Direct Control**: This approach gives us direct control over the build and start process without relying on Nixpacks' automatic behavior
+2. **Verified**: Our custom build and start scripts have been tested and verified to work correctly
+3. **Simpler**: It bypasses the complex file copying behavior of Nixpacks and uses EasyPanel's built-in package installation features
+4. **More Reliable**: Since we control the entire process, there are fewer points of failure
+
+## Alternative Methods
+
+### Nixpacks-based Deployment
+
+If you want to try the Nixpacks-based deployment, you can try one of these approaches:
+
+#### Option 1: Environment Variable
+Set the environment variable `NIXPACKS_SKIP_NPM_INSTALL=1` in EasyPanel.
+
+#### Option 2: Nixpacks Configuration File
+Use this configuration in your `nixpacks.toml` file:
+
+```toml
+# Nixpacks configuration for Excel to Cosmos DB Dashboard
+
+[phases.install]
+skip = true
+
+[phases.setup]
+nixPkgs = ["nodejs-18_x"]
+
+[variables]
+NODE_ENV = "production"
+
+[phases.build]
+cmd = "bash build-for-easypanel.sh"
+
+[start]
+cmd = "bash start-for-easypanel.sh"
+```
+
+### Docker Deployment
+
+For Docker deployment, use the provided `Dockerfile` which provides a multi-stage build process:
+
+```dockerfile
+# Multi-stage Dockerfile for Excel to Cosmos DB Dashboard
+# This Dockerfile is used for direct container deployment, not for Nixpacks
+
+# Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files
+COPY package*.json ./
+COPY server/package*.json ./server/
+
+# Install all dependencies
+RUN npm ci
+RUN cd server && npm ci
+
+# Copy source code
+COPY . .
+
+# Build frontend and backend
+RUN npm run build:client
+RUN cd server && npm run build
+
+# Production stage
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files for production dependencies
+COPY package*.json ./
+COPY server/package*.json ./server/
+
+# Install production dependencies only
+RUN npm ci --only=production
+RUN cd server && npm ci --only=production
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./server/dist
+
+# Copy startup scripts
+COPY start-for-easypanel.sh ./
+COPY build-for-easypanel.sh ./
+
+# Make scripts executable
+RUN chmod +x ./start-for-easypanel.sh
+RUN chmod +x ./build-for-easypanel.sh
+
+# Install serve globally
+RUN npm install -g serve
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start command
+CMD ["bash", "start-for-easypanel.sh"]
+```
+
+### Azure Static Web Apps Deployment
+
+For Azure Static Web Apps deployment, refer to the `staticwebapp.config.json` file which contains the necessary configuration.
 
 ## Deployment Scripts
 
 ### Build Script (build-for-easypanel.sh)
-
-This script handles building the application with enhanced error handling and retry mechanisms:
 
 ```bash
 #!/bin/bash
@@ -163,8 +303,6 @@ echo "Build for EasyPanel Git Deployment completed successfully!"
 
 ### Start Script (start-for-easypanel.sh)
 
-This script handles starting the application with improved file discovery and error reporting:
-
 ```bash
 #!/bin/bash
 
@@ -194,7 +332,7 @@ find_file() {
     # Search with wildcard pattern
     local dir_pattern=$(dirname "$pattern")
     local file_pattern=$(basename "$pattern")
-    result=$(find . -maxdepth $max_depth -path "*/$dir_pattern*/$file_pattern" -type f 2>/dev/null | head -n 1)
+    result=$(find . -maxdepth $max_depth -path "*$dir_pattern*$file_pattern" -type f 2>/dev/null | head -n 1)
     if [ -n "$result" ]; then
         echo "$result"
         return 0
@@ -301,85 +439,6 @@ echo "Application started. Backend PID: $BACKEND_PID, Frontend PID: $FRONTEND_PI
 wait $BACKEND_PID $FRONTEND_PID
 ```
 
-## Nixpacks Configuration (Primary Method)
-
-The application uses a `nixpacks.toml` file to configure the build environment. This is the primary deployment method:
-
-```toml
-# Nixpacks configuration for Excel to Cosmos DB Dashboard
-
-# Setup phase - ensure we have the right environment
-[phases.setup]
-nixPkgs = [
-    "nodejs-18_x"
-]
-
-# Setup environment variables
-[variables]
-NODE_ENV = "production"
-NPM_CONFIG_PRODUCTION = "false"
-
-# Install phase - override default npm install behavior
-[phases.install]
-cmds = [
-    "echo 'Current directory:' && pwd",
-    "echo 'Directory contents:' && ls -la",
-    "echo 'Checking for package.json:' && if [ -f package.json ]; then echo 'Found package.json'; else echo 'package.json not found'; fi",
-    "echo 'Skipping default npm install, will handle dependencies in build phase'"
-]
-
-# Build phase - build both frontend and backend
-[phases.build]
-cmds = [
-    # Verify we're in the right directory and can see package.json
-    "echo 'Build phase - Current directory:' && pwd",
-    "echo 'Build phase - Directory contents:' && ls -la",
-    "echo 'Build phase - Checking for package.json:' && if [ -f package.json ]; then echo 'Found package.json'; else echo 'package.json not found'; fi",
-    # Install root dependencies
-    "npm ci --only=production --prefer-online",
-    # Install missing Vite dependencies that might be needed for build
-    "npm install @vitejs/plugin-react vite --save-dev",
-    # Install server dependencies
-    "cd server && npm ci --only=production --prefer-online && cd ..",
-    # Build frontend
-    "npm run build:client",
-    # Build backend
-    "cd server && npm run build && cd .."
-]
-
-# Start command for the application
-[start]
-cmd = "bash start-for-easypanel.sh"
-```
-
-Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. The `nodejs-18_x` package in Nix includes both Node.js and npm.
-
-## Alternative Deployment Method (Recommended if Nixpacks fails)
-
-If you encounter issues with the Nixpacks-based deployment, you can use EasyPanel's built-in package installation features:
-
-### 1. Install Node.js and npm through EasyPanel
-
-In your EasyPanel project settings:
-
-1. Navigate to the "Packages" section
-2. In the "Nix Packages" field, add:
-   ```
-   nodejs-18_x
-   ```
-3. Save the settings
-
-Note: npm typically comes bundled with Node.js, so you usually don't need to install it separately.
-
-## Deployment Process
-
-1. Connect your Git repository to EasyPanel
-2. If using the alternative method, install Node.js and npm through EasyPanel's package installation features
-3. Set the build command to: `bash build-for-easypanel.sh`
-4. Set the start command to: `bash start-for-easypanel.sh`
-5. Configure the environment variables as listed above
-6. Deploy the application
-
 ## Troubleshooting
 
 If you encounter issues during deployment:
@@ -394,7 +453,7 @@ If you encounter issues during deployment:
 8. **Build Script Issues**: If you're using a custom build script, make sure it's correctly copying files to the expected locations. The Nixpacks-generated Dockerfile expects the `package.json` file to be at the root of the copied files.
 9. **Git Tracking Issues**: Make sure all necessary files are being tracked by Git. The `.gitignore` file might be excluding files that are needed for the build process. If you're using a `deploy_output` directory, make sure the necessary files within it are being tracked by Git.
 
-### Verification Steps
+## Verification Steps
 
 To verify that the deployment will work:
 
@@ -404,14 +463,8 @@ To verify that the deployment will work:
 4. Verify that all required environment variables are set
 5. Confirm that the Node.js version matches your development environment
 
-## Expected Outcome
-
-With these configurations, your application should deploy successfully to EasyPanel with:
+With these configurations, your application should deploy successfully with:
 - Proper dependency resolution using the correct Nix package names
 - Correct file paths
 - Stable build and start processes
 - Better error handling and reporting
-
-Note: npm typically comes bundled with Node.js, so we only need to specify `nodejs-18_x` in the Nix packages. This should resolve the "undefined variable 'npm'" error that was occurring with the previous configuration. By removing the custom build script and updating the Nixpacks configuration, we're letting Nixpacks handle the build process directly while ensuring that files are copied to the correct locations in the Docker container. We've also added debugging output to help diagnose any file path issues during the build process.
-
-If you continue to experience issues with the Nixpacks-based deployment, we recommend using the alternative deployment method which gives you more control over the build process and doesn't rely on Nixpacks' automatic file copying behavior.
