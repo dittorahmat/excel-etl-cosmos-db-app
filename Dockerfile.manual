@@ -28,22 +28,15 @@ WORKDIR /app
 # Install system dependencies
 RUN apk add --no-cache curl bash
 
-# Copy package files for production dependencies
-COPY package*.json ./
-COPY server/package*.json ./server/
+# Copy all files to get full context
+COPY . .
 
-# Install production dependencies only
-RUN npm install --only=production && cd server && npm install --only=production
+# Install all dependencies (production and dev needed for preview:full)
+RUN npm install && cd server && npm install
 
-# Copy built files from builder stage
+# Copy built files from builder stage (for potential use)
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
-
-# Copy startup scripts
-COPY start-for-easypanel.sh ./
-
-# Make scripts executable
-RUN chmod +x ./start-for-easypanel.sh
 
 # Install serve globally
 RUN npm install -g serve
@@ -52,7 +45,7 @@ RUN npm install -g serve
 RUN mkdir -p ./LogFiles
 
 # Expose ports for both frontend and backend
-EXPOSE 3000 3001
+EXPOSE 3001 4173
 
-# Start command
-CMD ["bash", "start-for-easypanel.sh"]
+# Start command using npm run preview:full
+CMD ["npm", "run", "preview:full"]
