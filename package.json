@@ -76,7 +76,7 @@
     "@azure/static-web-apps-cli": "^2.0.1",
     "@eslint/js": "^9.9.0",
     "@faker-js/faker": "^9.3.0",
-    "@tailwindcss/vite": "^0.3.0",
+    "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.5.2",
@@ -114,5 +114,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "packageManager": "npm@9.5.1"
 }
