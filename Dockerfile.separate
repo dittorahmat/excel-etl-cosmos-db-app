@@ -44,7 +44,7 @@ RUN npm install && cd server && npm install
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/common ./common
-COPY --from=builder /app/server/.env ./server/
+
 
 # Copy the start script
 COPY start-prod-separate.sh .
