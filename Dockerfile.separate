@@ -48,6 +48,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/common ./common
 
+# Copy server source files needed for tests
+COPY --from=builder /app/server/src ./server/src
+
 
 # Copy the start script and other scripts
 COPY start-prod-separate.sh .
