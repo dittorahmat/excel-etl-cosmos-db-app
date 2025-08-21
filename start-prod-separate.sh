@@ -11,7 +11,7 @@ echo "Container Git Commit: $(cd /app && git rev-parse HEAD 2>/dev/null || echo 
 
 # Print Azure environment variables
 echo "=== Azure Environment Variables ==="
-cd /app && ./scripts/print-azure-env.sh
+./scripts/print-azure-env.sh
 echo "=== End of Azure Environment Variables ==="
 
 # Function to run a connectivity test
@@ -32,10 +32,10 @@ run_test() {
 echo "=== Running Azure Connectivity Tests ==="
 
 # Test Cosmos DB connection
-run_test "Cosmos DB Connection Test" "cd /app && npx tsx scripts/test-cosmos-connection.ts"
+run_test "Cosmos DB Connection Test" "npx tsx scripts/test-cosmos-connection.ts"
 
 # Test Blob Storage connection
-run_test "Blob Storage Connection Test" "cd /app && npx tsx scripts/test-blob-connection.ts"
+run_test "Blob Storage Connection Test" "npx tsx scripts/test-blob-connection.ts"
 
 echo "=== End of Connectivity Tests ==="
 

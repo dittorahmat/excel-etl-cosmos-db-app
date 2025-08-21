@@ -51,8 +51,8 @@ COPY --from=builder /app/common ./common
 
 # Copy the start script and other scripts
 COPY start-prod-separate.sh .
-COPY scripts/print-azure-env.sh ./scripts/
-RUN chmod +x start-prod-separate.sh ./scripts/print-azure-env.sh
+COPY scripts/ ./scripts/
+RUN chmod +x start-prod-separate.sh ./scripts/*.sh
 
 # Expose ports for frontend and backend
 # Frontend on 3000, Backend on 3001 (adjust if needed)

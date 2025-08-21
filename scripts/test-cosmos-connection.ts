@@ -5,6 +5,18 @@ async function testConnection() {
   try {
     logger.info('Testing Cosmos DB connection...');
     
+    // Check if required environment variables are set
+    const databaseName = process.env.AZURE_COSMOSDB_DATABASE;
+    const containerName = process.env.AZURE_COSMOSDB_CONTAINER;
+    
+    if (!databaseName) {
+      throw new Error('AZURE_COSMOSDB_DATABASE environment variable is not set');
+    }
+    
+    if (!containerName) {
+      throw new Error('AZURE_COSMOSDB_CONTAINER environment variable is not set');
+    }
+    
     // Initialize the Cosmos DB client
     const cosmosDb = await initializeCosmosDB();
     
@@ -14,9 +26,6 @@ async function testConnection() {
     logger.info(`Available databases: ${databases.map(db => db.id).join(', ')}`);
     
     // Test container access
-    const containerName = 'excel-records';
-    const databaseName = 'excel-upload-db';
-    
     try {
       logger.info(`Accessing database: ${databaseName}`);
       const database = cosmosDb.cosmosClient.database(databaseName);
@@ -294,11 +303,11 @@ async function testConnection() {
       if (error.code === '404' || error.statusCode === 404) {
         logger.warn('Container not found. You may need to create it with the correct partition key.');
         logger.warn('Example command:');
-        logger.warn(`  az cosmosdb sql container create \
-          --account-name <account-name> \
-          --database-name ${databaseName} \
-          --name ${containerName} \
-          --partition-key-path '/_partitionKey' \
+        logger.warn(`  az cosmosdb sql container create \\
+          --account-name <account-name> \\
+          --database-name ${databaseName} \\
+          --name ${containerName} \\
+          --partition-key-path '/_partitionKey' \\
           --throughput 400`);
       }
       
