@@ -1,6 +1,9 @@
 // Vite environment variables are exposed with import.meta.env.VITE_*
 const env = import.meta.env;
 
+// Fallback to window config if available (for production deployments)
+const windowEnv = typeof window !== 'undefined' && (window as any).__APP_CONFIG__ ? (window as any).__APP_CONFIG__ : {};
+
 // Helper to safely get origin in both browser and test environments
 const getOrigin = (): string => {
   if (typeof window !== 'undefined' && window.location) {
@@ -12,9 +15,9 @@ const getOrigin = (): string => {
 
 import { LogLevel } from '@azure/msal-browser';
 
-// Helper to get environment variables with fallback to public variables
+// Helper to get environment variables with fallback to public variables and window config
 const getEnv = (key: string, fallback = ''): string => {
-  return env[key] || env[`VITE_PUBLIC_${key}`] || fallback;
+  return env[key] || env[`VITE_PUBLIC_${key}`] || windowEnv[key] || windowEnv[`VITE_PUBLIC_${key}`] || fallback;
 };
 
 // Debug: Log all environment variables
@@ -28,11 +31,14 @@ console.log('Environment variables:', {
 });
 
 // Check if authentication is enabled
-const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && windowEnv.VITE_AUTH_ENABLED !== 'false';
 const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
 
 // Use dummy values if auth is disabled or in development
 const useDummyAuth = !isAuthEnabled || isDevelopment;
+
+// Force dummy auth if explicitly set in window
+const forceDummyAuth = typeof window !== 'undefined' && (window as any).FORCE_DUMMY_AUTH;
 
 // Debug: Log authentication configuration
 console.log('Auth Configuration:', {
@@ -50,19 +56,19 @@ if (!isAuthEnabled) {
 }
 
 // Configuration values
-const clientId = useDummyAuth 
+const clientId = useDummyAuth || forceDummyAuth
   ? '00000000-0000-0000-0000-000000000000' 
   : getEnv('VITE_AZURE_CLIENT_ID');
 
-const tenantId = useDummyAuth 
+const tenantId = useDummyAuth || forceDummyAuth
   ? '00000000-0000-0000-0000-000000000000' 
   : getEnv('VITE_AZURE_TENANT_ID');
 
-const redirectUri = useDummyAuth 
+const redirectUri = useDummyAuth || forceDummyAuth
   ? 'http://localhost:3000' 
   : getEnv('VITE_AZURE_REDIRECT_URI') || getOrigin();
 
-const apiScope = useDummyAuth 
+const apiScope = useDummyAuth || forceDummyAuth
   ? 'api://00000000-0000-0000-0000-000000000000/access_as_user' 
   : getEnv('VITE_API_SCOPE') || `api://${clientId}/access_as_user`;
 
@@ -74,25 +80,25 @@ console.log('Auth configuration:', {
   tenantId
 });
 
-// Only validate in production and if auth is enabled
-if (isAuthEnabled) {
-  if (!isDevelopment && !clientId) {
+// Only validate in development and if auth is enabled
+if (isAuthEnabled && !forceDummyAuth) {
+  if (isDevelopment && !clientId) {
     throw new Error('Azure AD Client ID is missing. Please set VITE_AZURE_CLIENT_ID or VITE_PUBLIC_AZURE_CLIENT_ID in your environment variables.');
   }
 
-  if (clientId.includes('your-') || clientId === 'YOUR_CLIENT_ID') {
+  if (isDevelopment && (clientId.includes('your-') || clientId === 'YOUR_CLIENT_ID')) {
     throw new Error(`Invalid Azure AD Client ID: "${clientId}". Please replace with your actual Azure AD Application (Client) ID from the Azure Portal.`);
   }
 
-  if (!tenantId) {
+  if (isDevelopment && !tenantId) {
     throw new Error('Azure AD Tenant ID is missing. Please set VITE_AZURE_TENANT_ID or VITE_PUBLIC_AZURE_TENANT_ID in your environment variables.');
   }
 
-  if (tenantId.includes('your-') || tenantId === 'YOUR_TENANT_ID') {
+  if (isDevelopment && (tenantId.includes('your-') || tenantId === 'YOUR_TENANT_ID')) {
     throw new Error(`Invalid Azure AD Tenant ID: "${tenantId}". Please replace with your actual Azure AD Directory (Tenant) ID from the Azure Portal.`);
   }
 } else {
-  console.log('Skipping Azure AD validation as authentication is disabled');
+  console.log('Skipping Azure AD validation as authentication is disabled or forced to dummy auth');
 }
 
 // Debug: Log the configuration being used (redacting sensitive info)

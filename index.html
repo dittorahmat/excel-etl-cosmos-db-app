@@ -59,40 +59,7 @@
     </script>
 
     <!-- Load the runtime config first -->
-    <script>
-      // Add an error handler for the config.js script
-      function handleConfigError(event) {
-        console.error('Error loading config.js:', event);
-        // Set default values if config.js fails to load
-        window.USE_DUMMY_AUTH = true;
-        window.APP_CONFIG = {
-          auth: {
-            enabled: false,
-            useDummyAuth: true,
-            dummyUser: {
-              name: 'User',
-              username: 'user@example.com',
-              roles: ['user']
-            }
-          },
-          azure: null
-        };
-        console.log('Using fallback configuration due to config.js load error');
-      }
-
-      // Create a script element to load config.js
-      const configScript = document.createElement('script');
-      configScript.src = '/config.js';
-      configScript.onerror = handleConfigError;
-      configScript.onload = function() {
-        console.log('config.js loaded successfully');
-        console.log('USE_DUMMY_AUTH:', window.USE_DUMMY_AUTH);
-        console.log('APP_CONFIG:', window.APP_CONFIG);
-      };
-
-      // Load config.js synchronously to ensure it runs before other scripts
-      document.write(configScript.outerHTML);
-    </script>
+    <script src="/config.js"></script>
 
     <!-- CDN Cache Busting: 2025-08-12-1 -->
   </head>
