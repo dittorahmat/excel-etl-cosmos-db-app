@@ -28,11 +28,17 @@ export function createApp(azureServices: {
     allowedOrigins.push(frontendUrl);
   }
 
+  // In production with auth disabled, allow all origins to avoid CORS issues
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isAuthEnabled = env.AUTH_ENABLED === true;
+  
   app.use(cors({
-    origin: allowedOrigins,
+    origin: isProduction && !isAuthEnabled 
+      ? '*' // Allow all origins in production when auth is disabled
+      : allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    credentials: isProduction && !isAuthEnabled ? false : true // Disable credentials when allowing all origins
   }));
 
   // Body parsing middleware

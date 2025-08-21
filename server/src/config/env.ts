@@ -46,10 +46,20 @@ export function loadEnv() {
   }
 
   // Manually set process.env with the parsed values to ensure they're available
-  for (const [key, value] of Object.entries(result.parsed)) {
+  for (const [key, value] of Object.entries(result.parsed || {})) {
     if (value !== undefined) {
       process.env[key] = value;
     }
+  }
+
+  // Ensure NODE_ENV is set to production if the server was started with --prod flag
+  // Check if the process was started with --prod or --production flag
+  const args = process.argv.slice(2);
+  const isProductionFlag = args.some(arg => arg === '--prod' || arg === '--production');
+  
+  if (isProductionFlag && process.env.NODE_ENV !== 'production') {
+    console.log('[env.ts] Forcing NODE_ENV to production because --prod flag was used');
+    process.env.NODE_ENV = 'production';
   }
 
   console.log('[env.ts] Debugging AZURE_STORAGE_CONNECTION_STRING:', process.env.AZURE_STORAGE_CONNECTION_STRING);

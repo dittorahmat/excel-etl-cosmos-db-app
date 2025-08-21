@@ -31,6 +31,12 @@ async function main() {
       process.env.NODE_ENV = 'production';
     }
     
+    // Ensure NODE_ENV is set to production if --prod flag is used
+    if (isProduction && process.env.NODE_ENV !== 'production') {
+      console.log('[Server Startup] Forcing NODE_ENV to production because --prod flag was used');
+      process.env.NODE_ENV = 'production';
+    }
+    
     // Log the effective configuration
     console.log(`[Server Startup] Starting server with:`);
     console.log(`  - Port: ${process.env.PORT || 'default'}`);

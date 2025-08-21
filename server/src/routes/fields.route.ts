@@ -63,11 +63,11 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         // Type the Cosmos DB response
         interface CosmosFieldResult {
           resources: Array<{ headers: string[] }>;
-        }
+        };
         
         console.log('Raw Cosmos DB query result:', result);
         const headers = (result as CosmosFieldResult)?.resources || [];
-        const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers))];
+        const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
         console.log(`Fetched ${uniqueHeaders.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
         console.log('Unique headers extracted:', uniqueHeaders);
         
