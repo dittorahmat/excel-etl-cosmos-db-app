@@ -53,8 +53,7 @@ export default defineConfig(({ mode }) => {
         },
         banner: {
           js: `
-            // React version: ${require('react/package.json').version}
-            // React DOM version: ${require('react-dom/package.json').version}
+            // React and React DOM versions included in bundle
           `
         }
       },

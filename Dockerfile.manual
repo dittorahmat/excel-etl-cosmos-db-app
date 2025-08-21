@@ -13,7 +13,7 @@ RUN apk add --no-cache curl bash
 # Copy package files for dependency installation
 COPY package*.json ./
 COPY server/package*.json ./server/
-COPY common/types ./common/types
+COPY common ./common
 
 # Install all dependencies
 RUN npm install && cd server && npm install
@@ -23,7 +23,7 @@ COPY src ./src
 COPY server/src ./server/src
 COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY server/tsconfig.json ./server/
-COPY common/types ./common/types
+COPY common ./common
 
 # Build frontend and backend
 RUN npm run build:client && cd server && npm run build
@@ -54,8 +54,8 @@ COPY start-for-easypanel.sh .env* ./
 COPY server/.env* ./server/
 RUN chmod +x ./start-for-easypanel.sh
 
-# Copy common types (referenced in tsconfig)
-COPY common/types ./common/types
+# Copy common directory (referenced in tsconfig)
+COPY common ./common
 
 # Expose port for the unified server
 EXPOSE 3000
