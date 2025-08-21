@@ -159,7 +159,10 @@ const createMockMsalInstance = () => {
       isErrorEnabled: true,
       isWarningEnabled: true,
       isInfoEnabled: true,
-      isVerboseEnabled: true
+      isVerboseEnabled: true,
+      clone: function() {
+        return this;
+      }
     })
   } as unknown as PublicClientApplication; // Type assertion to satisfy the PublicClientApplication type
 };
