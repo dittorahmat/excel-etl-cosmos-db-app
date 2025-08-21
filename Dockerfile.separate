@@ -1,0 +1,59 @@
+# Multi-stage Dockerfile for Excel to Cosmos DB Dashboard (Separate Services)
+# This Dockerfile builds the app and runs frontend and backend in separate processes.
+
+# Build stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files for dependency installation
+COPY package*.json ./
+COPY server/package.json ./server/
+COPY common ./common
+
+# Install all dependencies
+RUN npm install && cd server && npm install
+
+# Copy the rest of the source code
+COPY . .
+
+# Build frontend and backend
+RUN npm run build
+
+# ---
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache curl bash
+
+# Copy package files
+COPY package*.json ./
+COPY server/package.json ./server/
+
+# Install ALL dependencies (including dev) because we need `concurrently` and `vite` for preview
+RUN npm install && cd server && npm install
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./server/dist
+COPY --from=builder /app/common ./common
+COPY --from=builder /app/server/.env ./server/
+
+# Copy the start script
+COPY start-prod-separate.sh .
+RUN chmod +x start-prod-separate.sh
+
+# Expose ports for frontend and backend
+# Frontend on 3000, Backend on 3001 (adjust if needed)
+EXPOSE 3000
+EXPOSE 3001
+
+# Start command
+CMD ["./start-prod-separate.sh"]
