@@ -18,8 +18,16 @@ console.log('MSAL Instance - Environment variables:', {
 });
 
 const isDevelopment = import.meta.env.DEV;
-const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && window.ENV?.VITE_AUTH_ENABLED !== 'false';
-const useDummyAuth = !authEnabled || isDevelopment || window.USE_DUMMY_AUTH === true || window.FORCE_DUMMY_AUTH === true;
+const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                   windowEnvViteAuthEnabled !== 'false' && 
+                   windowEnvViteAuthEnabled !== false;
+                   
+const useDummyAuth = !authEnabled || isDevelopment || 
+                     window.USE_DUMMY_AUTH === true || 
+                     window.FORCE_DUMMY_AUTH === true || 
+                     windowEnvViteAuthEnabled === 'false' || 
+                     windowEnvViteAuthEnabled === false;
 
 // Log authentication status for debugging
 console.log('MSAL Instance - Authentication status:', {

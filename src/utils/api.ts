@@ -1,53 +1,33 @@
 import { 
   type AccountInfo, 
-  PublicClientApplication, 
   InteractionRequiredAuthError,
   LogLevel
 } from '@azure/msal-browser';
 import { msalConfig, getApiConfig } from '../auth/authConfig';
+import { msalInstance } from '../auth/msalInstance';
 
-// Initialize MSAL instance with proper typing
-// Create a properly typed configuration object
-const appConfig = {
-  ...msalConfig,
-  system: {
-    ...msalConfig.system,
-    loggerOptions: {
-      ...msalConfig.system?.loggerOptions,
-      logLevel: import.meta.env.DEV ? LogLevel.Info : LogLevel.Error,
-      loggerCallback: (level: LogLevel, message: string, containsPii: boolean) => {
-        if (containsPii) {
-          return;
-        }
-        switch (level) {
-          case LogLevel.Error:
-            console.error(message);
-            return;
-          case LogLevel.Info:
-            console.info(message);
-            return;
-          case LogLevel.Verbose:
-            console.debug(message);
-            return;
-          case LogLevel.Warning:
-            console.warn(message);
-            return;
-        }
-      },
-    },
-  },
-  // Ensure knownAuthorities is a mutable array
-  auth: {
-    ...msalConfig.auth,
-    knownAuthorities: msalConfig.auth.knownAuthorities ? [...msalConfig.auth.knownAuthorities] : []
-  }
-};
-
-const msalInstance = new PublicClientApplication(appConfig);
+// Check if authentication is enabled
+const isDevelopment = import.meta.env.DEV;
+const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                   windowEnvViteAuthEnabled !== 'false' && 
+                   windowEnvViteAuthEnabled !== false;
+                   
+const useDummyAuth = !authEnabled || isDevelopment || 
+                     window.USE_DUMMY_AUTH === true || 
+                     window.FORCE_DUMMY_AUTH === true || 
+                     windowEnvViteAuthEnabled === 'false' || 
+                     windowEnvViteAuthEnabled === false;
 
 let msalInitialized = false;
 
 const initializeMsal = async () => {
+  // Skip initialization if using dummy auth
+  if (useDummyAuth) {
+    console.log('[API] Using dummy auth, skipping MSAL initialization');
+    return;
+  }
+  
   if (!msalInitialized) {
     await msalInstance.initialize();
     msalInitialized = true;
@@ -79,9 +59,27 @@ const getCacheKey = (account: AccountInfo): string => {
 
 export const getAuthToken = async (forceRefresh = false): Promise<string | null> => {
   // If auth is disabled, return null immediately
-  if (import.meta.env.VITE_AUTH_ENABLED === 'false') {
+  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                       windowEnvViteAuthEnabled !== 'false' && 
+                       windowEnvViteAuthEnabled !== false;
+                       
+  if (!isAuthEnabled) {
     console.log('[API] Authentication is disabled, returning null token');
     return null;
+  }
+  
+  // If using dummy auth, return a mock token
+  const useDummyAuth = !isAuthEnabled || isDevelopment || 
+                       window.USE_DUMMY_AUTH === true || 
+                       window.FORCE_DUMMY_AUTH === true || 
+                       windowEnvViteAuthEnabled === 'false' || 
+                       windowEnvViteAuthEnabled === false;
+                       
+  if (useDummyAuth) {
+    console.log('[API] Using dummy authentication, returning mock token');
+    // Return a mock token for development
+    return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
   }
   
   await initializeMsal();
