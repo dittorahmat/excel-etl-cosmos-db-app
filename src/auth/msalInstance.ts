@@ -163,7 +163,16 @@ const createMockMsalInstance = () => {
       clone: function() {
         return this;
       }
-    })
+    }),
+    
+    // Additional methods that might be called by MSAL internals
+    initializeWrapperLibrary: () => {},
+    setNavigationClient: () => {},
+    createNavigationClient: () => ({}),
+    addPerformanceCallbackWithHeader: () => ({}),
+    removePerformanceCallback: () => {},
+    emitPerformanceEvent: () => {},
+    getConfiguration: () => ({})
   } as unknown as PublicClientApplication; // Type assertion to satisfy the PublicClientApplication type
 };
 
