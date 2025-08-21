@@ -12,4 +12,4 @@ echo "Starting backend server and frontend preview server..."
 # The backend port is determined by server/.env or defaults in the code.
 # We'll explicitly set the frontend preview port to 3000.
 
-npx concurrently "PORT=3001 npm run start" "npm run preview -- --port 3000"
+npx concurrently "PORT=3001 npm run start" "PORT=3000 pm run preview"
