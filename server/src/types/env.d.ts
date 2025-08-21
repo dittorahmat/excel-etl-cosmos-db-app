@@ -5,6 +5,7 @@ namespace NodeJS {
     PORT?: string;
     HOST?: string;
     AUTH_ENABLED?: string;
+    FRONTEND_URL?: string;
     
     // Azure Storage
     AZURE_STORAGE_CONNECTION_STRING?: string;

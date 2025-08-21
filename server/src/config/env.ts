@@ -72,6 +72,7 @@ export function loadEnv() {
     PORT: process.env.PORT || '3001',
     NODE_ENV: process.env.NODE_ENV || 'development',
     AUTH_ENABLED: process.env.AUTH_ENABLED === 'true',
+    FRONTEND_URL: process.env.FRONTEND_URL || '',
     
     // Azure Storage Configuration
     AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
