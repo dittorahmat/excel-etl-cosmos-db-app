@@ -52,7 +52,7 @@ COPY --from=builder /app/server/dist ./server/dist
 
 # Copy necessary runtime files and make start script executable
 COPY start-for-easypanel.sh ./
-RUN chmod +x ./start-for-easypanel.sh
+RUN chmod +x /app/start-for-easypanel.sh
 
 # Copy common directory (referenced in tsconfig)
 COPY common ./common
@@ -65,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
 # Start command using the easypanel start script
-ENTRYPOINT ["/app/start-for-easypanel.sh"]
+CMD ["/bin/bash", "/app/start-for-easypanel.sh"]
