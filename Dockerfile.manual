@@ -10,11 +10,20 @@ WORKDIR /app
 # Install system dependencies
 RUN apk add --no-cache curl bash
 
-# Copy all files (we need the full context to install dependencies correctly)
-COPY . .
+# Copy package files for dependency installation
+COPY package*.json ./
+COPY server/package*.json ./server/
+COPY common/types ./common/types
 
 # Install all dependencies
 RUN npm install && cd server && npm install
+
+# Copy source code
+COPY src ./src
+COPY server/src ./server/src
+COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY server/tsconfig.json ./server/
+COPY common/types ./common/types
 
 # Build frontend and backend
 RUN npm run build:client && cd server && npm run build
@@ -25,27 +34,35 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache curl bash
+# Install system dependencies and create log directory
+RUN apk add --no-cache curl \
+    && mkdir -p ./LogFiles
 
-# Copy all files to get full context
-COPY . .
+# Copy package files for production dependency installation
+COPY package*.json ./
+COPY server/package*.json ./server/
 
-# Install all dependencies (production only)
+# Install production dependencies only
 RUN npm ci --only=production && cd server && npm ci --only=production
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 
-# Make the start script executable
+# Copy necessary runtime files and make start script executable
+COPY start-for-easypanel.sh .env* ./
+COPY server/.env* ./server/
 RUN chmod +x ./start-for-easypanel.sh
 
-# Create log directory
-RUN mkdir -p ./LogFiles
+# Copy common types (referenced in tsconfig)
+COPY common/types ./common/types
 
 # Expose port for the unified server
 EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
 
 # Start command using the easypanel start script
 CMD ["./start-for-easypanel.sh"]
