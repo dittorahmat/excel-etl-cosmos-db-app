@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-# This script mimics the `preview:full` command from package.json, but without the build step.
+# This script starts the backend server and frontend preview server.
 # It is intended for running in the production container.
 
 echo "Starting backend server and frontend preview server..."
@@ -49,4 +49,4 @@ echo "=== End of Connectivity Tests ==="
 # we can directly use npm run start which will rely on process.env.
 # The env.ts file will handle loading from process.env if no .env file is found.
 
-npx concurrently "PORT=3001 npm run start" "PORT=3000 npm run preview"
+npx concurrently "PORT=3001 npm run start" "npm run preview -- --port 3000 --host"
