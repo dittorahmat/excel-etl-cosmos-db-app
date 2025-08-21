@@ -7,7 +7,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache curl bash
+RUN apk add --no-cache curl bash git
 
 # Copy package files for dependency installation
 COPY package*.json ./
@@ -20,6 +20,9 @@ RUN npm install && cd server && npm install
 # Copy the rest of the source code
 COPY . .
 
+# Print Git commit hash for build consistency check
+RUN echo "Build Git Commit: $(git rev-parse HEAD)" || echo "Git commit info not available"
+
 # Build frontend and backend
 RUN npm run build
 
@@ -31,13 +34,13 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache curl bash
+RUN apk add --no-cache curl bash git
 
 # Copy package files
 COPY package*.json ./
 COPY server/package.json ./server/
 
-# Install ALL dependencies (including dev) because we need `concurrently` and `vite` for preview
+# Install ALL dependencies (including dev) because we need `concurrently`, `vite`, and `tsx` for preview and tests
 RUN npm install && cd server && npm install
 
 # Copy built files from builder stage
@@ -46,9 +49,10 @@ COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/common ./common
 
 
-# Copy the start script
+# Copy the start script and other scripts
 COPY start-prod-separate.sh .
-RUN chmod +x start-prod-separate.sh
+COPY scripts/print-azure-env.sh ./scripts/
+RUN chmod +x start-prod-separate.sh ./scripts/print-azure-env.sh
 
 # Expose ports for frontend and backend
 # Frontend on 3000, Backend on 3001 (adjust if needed)

@@ -62,9 +62,27 @@ export function loadEnv() {
     process.env.NODE_ENV = 'production';
   }
 
-  console.log('[env.ts] Debugging AZURE_STORAGE_CONNECTION_STRING:', process.env.AZURE_STORAGE_CONNECTION_STRING);
-  console.log('[env.ts] Debugging AZURE_COSMOSDB_ENDPOINT:', process.env.AZURE_COSMOSDB_ENDPOINT);
-  console.log('[env.ts] Debugging AZURE_COSMOSDB_KEY:', process.env.AZURE_COSMOSDB_KEY);
+  // Check if required environment variables are set
+  const requiredEnvVars = [
+    'AZURE_STORAGE_CONNECTION_STRING',
+    'AZURE_COSMOSDB_ENDPOINT',
+    'AZURE_COSMOSDB_KEY',
+    'AZURE_COSMOSDB_DATABASE',
+    'AZURE_COSMOSDB_CONTAINER'
+  ];
+  
+  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  
+  if (missingEnvVars.length > 0) {
+    console.warn(`[env.ts] Warning: The following required environment variables are not set: ${missingEnvVars.join(', ')}`);
+    console.warn('[env.ts] This may cause issues with Azure services connectivity.');
+  } else {
+    console.log('[env.ts] All required environment variables are set.');
+  }
+
+  console.log('[env.ts] Debugging AZURE_STORAGE_CONNECTION_STRING:', process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
+  console.log('[env.ts] Debugging AZURE_COSMOSDB_ENDPOINT:', process.env.AZURE_COSMOSDB_ENDPOINT ? 'SET' : 'NOT SET');
+  console.log('[env.ts] Debugging AZURE_COSMOSDB_KEY:', process.env.AZURE_COSMOSDB_KEY ? 'SET' : 'NOT SET');
 
   // Create and return the env object
   const env = {

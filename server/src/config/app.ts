@@ -63,23 +63,64 @@ export function createApp(azureServices: {
   app.use(authErrorHandler);
 
   // Health check endpoint
-  app.get('/health', (_req: Request, res: Response) => {
-    const healthStatus = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memoryUsage: process.memoryUsage(),
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        PORT: process.env.PORT,
-        AZURE_COSMOSDB_ENDPOINT: process.env.AZURE_COSMOSDB_ENDPOINT ? 'SET' : 'NOT SET',
-        AZURE_COSMOSDB_KEY: process.env.AZURE_COSMOSDB_KEY ? 'SET' : 'NOT SET',
-        AZURE_COSMOSDB_DATABASE: process.env.AZURE_COSMOSDB_DATABASE,
-        AZURE_COSMOSDB_CONTAINER: process.env.AZURE_COSMOSDB_CONTAINER,
-        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET',
+  app.get('/health', async (_req: Request, res: Response) => {
+    try {
+      // Test Azure Storage connectivity
+      let storageStatus = 'NOT TESTED';
+      try {
+        // Simple test: Check if the connection string is set
+        if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+          storageStatus = 'CONFIGURED';
+          // You could add a more comprehensive test here if needed
+        } else {
+          storageStatus = 'MISSING CONNECTION STRING';
+        }
+      } catch (storageError) {
+        storageStatus = `ERROR: ${(storageError as Error).message}`;
       }
-    };
-    res.status(200).json(healthStatus);
+
+      // Test Azure Cosmos DB connectivity
+      let cosmosStatus = 'NOT TESTED';
+      try {
+        // Simple test: Check if the endpoint and key are set
+        if (process.env.AZURE_COSMOSDB_ENDPOINT && process.env.AZURE_COSMOSDB_KEY) {
+          cosmosStatus = 'CONFIGURED';
+          // You could add a more comprehensive test here if needed
+        } else {
+          cosmosStatus = 'MISSING ENDPOINT OR KEY';
+        }
+      } catch (cosmosError) {
+        cosmosStatus = `ERROR: ${(cosmosError as Error).message}`;
+      }
+
+      const healthStatus = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        azure: {
+          storage: storageStatus,
+          cosmos: cosmosStatus
+        },
+        env: {
+          NODE_ENV: process.env.NODE_ENV,
+          PORT: process.env.PORT,
+          AZURE_COSMOSDB_ENDPOINT: process.env.AZURE_COSMOSDB_ENDPOINT ? 'SET' : 'NOT SET',
+          AZURE_COSMOSDB_KEY: process.env.AZURE_COSMOSDB_KEY ? 'SET' : 'NOT SET',
+          AZURE_COSMOSDB_DATABASE: process.env.AZURE_COSMOSDB_DATABASE,
+          AZURE_COSMOSDB_CONTAINER: process.env.AZURE_COSMOSDB_CONTAINER,
+          AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET',
+        }
+      };
+      res.status(200).json(healthStatus);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: errorMessage
+      });
+    }
   });
 
   // Public endpoint example
