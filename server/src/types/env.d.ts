@@ -4,6 +4,7 @@ namespace NodeJS {
     NODE_ENV: 'development' | 'production' | 'test';
     PORT?: string;
     HOST?: string;
+    AUTH_ENABLED?: string;
     
     // Azure Storage
     AZURE_STORAGE_CONNECTION_STRING?: string;

@@ -11,6 +11,7 @@ import { createFieldsRouter } from '../routes/fields.route.js';
 import { createApiKeyRouter } from '../routes/apiKey.route.js';
 import authRoute from '../routes/auth.route.js';
 import type { AzureCosmosDB, AzureBlobStorage, CosmosClient, Database } from '../types/azure.js';
+import { env } from './env.js';
 
 export function createApp(azureServices: { 
   cosmosDb: AzureCosmosDB; 
@@ -19,7 +20,6 @@ export function createApp(azureServices: {
   cosmosClient: CosmosClient; 
 }): Express {
   const app = express();
-  const env = process.env;
 
   // CORS configuration
   const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : [];
