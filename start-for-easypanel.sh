@@ -120,19 +120,28 @@ ls -la server/ 2>/dev/null || echo "server/ not found"
 echo "Contents of server/dist directory:"
 ls -la server/dist/ 2>/dev/null || echo "server/dist/ not found"
 
-# Check common locations first
+# Check common locations first (in order of likelihood)
+# First check the expected location based on tsconfig.server.build.json (rootDir: ".")
 if [ -f "server/dist/src/server.js" ]; then
     BACKEND_PATH="server/dist/src/server.js"
-    echo "Found backend at direct path: $BACKEND_PATH"
+    echo "Found backend at: $BACKEND_PATH"
+# Then check the alternative location based on tsconfig.json (rootDir: "..")
+elif [ -f "server/dist/server/src/server.js" ]; then
+    BACKEND_PATH="server/dist/server/src/server.js"
+    echo "Found backend at: $BACKEND_PATH"
+# Check with relative paths
 elif [ -f "./server/dist/src/server.js" ]; then
     BACKEND_PATH="./server/dist/src/server.js"
-    echo "Found backend at relative path: $BACKEND_PATH"
+    echo "Found backend at: $BACKEND_PATH"
+elif [ -f "./server/dist/server/src/server.js" ]; then
+    BACKEND_PATH="./server/dist/server/src/server.js"
+    echo "Found backend at: $BACKEND_PATH"
 fi
 
 # If not found in common locations, try to find it
 if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     echo "Trying to locate backend server file..."
-    BACKEND_PATH=$(find_file "*/server/dist/src/server.js" 5)
+    BACKEND_PATH=$(find_file "*/server/dist/*/src/server.js" 5)
     echo "Find command result: $BACKEND_PATH"
 fi
 
@@ -149,6 +158,8 @@ if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     ls -la server/dist/ 2>/dev/null || echo "server/dist/ not found"
     echo "Contents of server/dist/src directory:"
     ls -la server/dist/src/ 2>/dev/null || echo "server/dist/src/ not found"
+    echo "Contents of server/dist/server/src directory:"
+    ls -la server/dist/server/src/ 2>/dev/null || echo "server/dist/server/src/ not found"
     exit 1
 fi
 
