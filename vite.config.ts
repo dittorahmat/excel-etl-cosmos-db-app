@@ -61,8 +61,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react({
         // Use React 17+ automatic JSX transform
-        jsxImportSource: '@emotion/react',
-        // Ensure React is in the same scope
         jsxRuntime: 'automatic',
         // Ensure Babel doesn't process node_modules
         babel: {
