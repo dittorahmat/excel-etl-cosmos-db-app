@@ -194,9 +194,14 @@ export const loginRequest = {
 
 // API Configuration
 export const getApiConfig = () => {
+  // In production, the API is served from the same origin
+  // In development, it's on a separate port
+  const isDev = import.meta.env.DEV;
+  const apiBase = isDev ? (getEnv('VITE_API_BASE_URL') || 'http://localhost:3001') : '';
+  
   const config = {
     scopes: [apiScope],
-    uri: getEnv('VITE_API_BASE_URL', '/api'),
+    uri: apiBase,
   };
   // Log the API configuration for debugging in development and production
   if (typeof window !== 'undefined') {

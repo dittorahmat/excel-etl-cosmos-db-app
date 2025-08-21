@@ -20,17 +20,19 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@common/*": ["common/src/*"],
+      "@common/*": ["common/*"],
       "@server/*": ["server/src/*"]
     }
   },
-  "files": [],
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "src"
+    "src/**/*",
+    "server/src/**/*",
+    "common/src/**/*"
   ],
   "exclude": [
+    "node_modules",
+    "dist",
+    "server/dist",
     "**/node_modules",
     "**/dist",
     "**/dist-*",
@@ -50,14 +52,5 @@
     "**/deploy_output",
     "**/easypanel-deployment",
     "**/vps-deployment"
-  ],
-  "references": [
-    { "path": "./common" },
-    { "path": "./server" },
-    { "path": "./tsconfig.node.json" }
-  ],
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
-  }
+  ]
 }

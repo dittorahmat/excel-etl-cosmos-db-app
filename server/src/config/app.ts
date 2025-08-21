@@ -1,6 +1,8 @@
 import express, { type Request, type Response, type NextFunction, type Express } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { authLogger, authErrorHandler } from '../middleware/authLogger.js';
 
@@ -109,20 +111,38 @@ export function createApp(azureServices: {
     return apiRateLimit(req, res, next);
   });
 
-  // API routes
-  app.use('/v2', createV2Router(azureServices));
-  app.use('/fields', createFieldsRouter(azureServices.cosmosDb));
-  app.use('/auth', authRoute);
-  app.use('/keys', createApiKeyRouter(azureServices));
+  // API routes - all prefixed with /api to match frontend expectations
+  app.use('/api/v2', createV2Router(azureServices));
+  app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
+  app.use('/api/auth', authRoute);
+  app.use('/api/keys', createApiKeyRouter(azureServices));
 
-  // 404 handler
-  app.use((_req: Request, res: Response) => {
-    res.status(404).json({
-      success: false,
-      error: 'Not Found',
-      message: 'The requested resource was not found',
+  // Serve static files in production
+  if (process.env.NODE_ENV === 'production') {
+    // Get the directory name in ES modules
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    // Serve static files from the dist directory (frontend build output)
+    // When running from server/dist/src/config/, the path to dist is ../../../../dist
+    const staticPath = path.join(__dirname, '../../../../dist');
+    app.use(express.static(staticPath));
+    
+    // Handle client-side routing by serving index.html for all non-API routes
+    app.get('*', (req: Request, res: Response) => {
+      // Don't serve index.html for API routes
+      if (req.path.startsWith('/api')) {
+        return res.status(404).json({
+          success: false,
+          error: 'Not Found',
+          message: 'The requested API resource was not found',
+        });
+      }
+      
+      // Serve the index.html for all other routes (client-side routing)
+      res.sendFile(path.join(staticPath, 'index.html'));
     });
-  });
+  }
 
   // Error handler
   app.use((err: Error & { statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {

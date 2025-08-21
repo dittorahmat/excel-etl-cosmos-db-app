@@ -77,12 +77,6 @@ export LOGGING_DIR="./LogFiles"
 # Create LogFiles directory if it doesn't exist
 mkdir -p "$LOGGING_DIR"
 
-# Install serve globally if not already installed
-if ! command_exists serve; then
-    echo "Installing serve globally..."
-    npm install -g serve
-fi
-
 # Function to find files with better error handling
 find_file() {
     local pattern="$1"
@@ -113,37 +107,20 @@ find_file() {
     return 1
 }
 
-# Determine the correct paths for backend and frontend
+# Determine the correct path for backend
 BACKEND_PATH=""
-FRONTEND_PATH=""
 
 # Check common locations first
-if [ -f "server/dist/server/src/server.js" ]; then
-    BACKEND_PATH="server/dist/server/src/server.js"
-    FRONTEND_PATH="dist"
-elif [ -f "dist/server/dist/server/src/server.js" ]; then
-    BACKEND_PATH="dist/server/dist/server/src/server.js"
-    FRONTEND_PATH="dist"
-elif [ -f "./server/dist/server/src/server.js" ]; then
-    BACKEND_PATH="./server/dist/server/src/server.js"
-    FRONTEND_PATH="./dist"
+if [ -f "server/dist/src/server.js" ]; then
+    BACKEND_PATH="server/dist/src/server.js"
+elif [ -f "./server/dist/src/server.js" ]; then
+    BACKEND_PATH="./server/dist/src/server.js"
 fi
 
-# If not found in common locations, try to find them
+# If not found in common locations, try to find it
 if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     echo "Trying to locate backend server file..."
-    BACKEND_PATH=$(find_file "*/server/dist/server/src/server.js" 5)
-fi
-
-if [ -z "$FRONTEND_PATH" ] || [ ! -d "$FRONTEND_PATH" ]; then
-    echo "Trying to locate frontend directory..."
-    if [ -d "dist" ]; then
-        FRONTEND_PATH="dist"
-    elif [ -d "./dist" ]; then
-        FRONTEND_PATH="./dist"
-    else
-        FRONTEND_PATH=$(find_file "*/dist" 5)
-    fi
+    BACKEND_PATH=$(find_file "*/server/dist/src/server.js" 5)
 fi
 
 # Verify backend server file exists
@@ -154,48 +131,31 @@ if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     find . -name "server.js" -type f | grep -v node_modules | head -10
     echo "Directory structure around server/dist:"
     ls -la server/dist/ 2>/dev/null || echo "server/dist/ not found"
-    ls -la server/dist/server/src/ 2>/dev/null || echo "server/dist/server/src/ not found"
-    exit 1
-fi
-
-# Verify frontend directory exists
-if [ -z "$FRONTEND_PATH" ] || [ ! -d "$FRONTEND_PATH" ]; then
-    echo "ERROR: Frontend directory not found at $FRONTEND_PATH"
-    echo "Current directory: $(pwd)"
-    echo "Searching for dist directories:"
-    find . -name "dist" -type d | grep -v node_modules | head -10
+    ls -la server/dist/src/ 2>/dev/null || echo "server/dist/src/ not found"
     exit 1
 fi
 
 echo "Found backend at: $BACKEND_PATH"
-echo "Found frontend at: $FRONTEND_PATH"
 
-# Start the backend server in the background
-echo "Starting backend server from $BACKEND_PATH..."
-PORT=3001 node --enable-source-maps "$BACKEND_PATH" &
+# Start the unified server that serves both API and frontend static files
+echo "Starting unified server from $BACKEND_PATH..."
+node --enable-source-maps "$BACKEND_PATH" --port 3000 --prod &
 
-# Store the backend PID
-BACKEND_PID=$!
+# Store the server PID
+SERVER_PID=$!
 
-# Wait a moment for backend to start
+# Wait a moment for server to start
 sleep 2
 
-# Check if backend started successfully
-if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo "ERROR: Backend server failed to start"
+# Check if server started successfully
+if ! kill -0 $SERVER_PID 2>/dev/null; then
+    echo "ERROR: Server failed to start"
     exit 1
 fi
 
-# Start the frontend static server
-echo "Starting frontend static server from $FRONTEND_PATH..."
-PORT=3000 serve -s "$FRONTEND_PATH" &
-
-# Store the frontend PID
-FRONTEND_PID=$!
-
-echo "Application started. Backend PID: $BACKEND_PID, Frontend PID: $FRONTEND_PID"
-echo "Frontend available at http://localhost:3000"
-echo "Backend API available at http://localhost:3001"
+echo "Application started. Server PID: $SERVER_PID"
+echo "Application available at http://localhost:3000"
+echo "API endpoints available at http://localhost:3000/api/*"
 
 # Keep the script running to keep the container alive
-wait $BACKEND_PID $FRONTEND_PID
+wait $SERVER_PID

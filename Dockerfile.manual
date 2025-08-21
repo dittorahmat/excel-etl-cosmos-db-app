@@ -31,21 +31,21 @@ RUN apk add --no-cache curl bash
 # Copy all files to get full context
 COPY . .
 
-# Install all dependencies (production and dev needed for preview:full)
-RUN npm install && cd server && npm install
+# Install all dependencies (production only)
+RUN npm ci --only=production && cd server && npm ci --only=production
 
-# Copy built files from builder stage (for potential use)
+# Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 
-# Install serve globally
-RUN npm install -g serve
+# Make the start script executable
+RUN chmod +x ./start-for-easypanel.sh
 
 # Create log directory
 RUN mkdir -p ./LogFiles
 
-# Expose ports for both frontend and backend
-EXPOSE 3001 4173
+# Expose port for the unified server
+EXPOSE 3000
 
-# Start command using npm run preview:full
-CMD ["npm", "run", "preview:full"]
+# Start command using the easypanel start script
+CMD ["./start-for-easypanel.sh"]
