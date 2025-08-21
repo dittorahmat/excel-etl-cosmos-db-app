@@ -110,27 +110,44 @@ find_file() {
 # Determine the correct path for backend
 BACKEND_PATH=""
 
+# Debug: Show what directories exist
+echo "DEBUG: Checking directory structure..."
+echo "Current directory: $(pwd)"
+echo "Contents of current directory:"
+ls -la
+echo "Contents of server directory:"
+ls -la server/ 2>/dev/null || echo "server/ not found"
+echo "Contents of server/dist directory:"
+ls -la server/dist/ 2>/dev/null || echo "server/dist/ not found"
+
 # Check common locations first
 if [ -f "server/dist/src/server.js" ]; then
     BACKEND_PATH="server/dist/src/server.js"
+    echo "Found backend at direct path: $BACKEND_PATH"
 elif [ -f "./server/dist/src/server.js" ]; then
     BACKEND_PATH="./server/dist/src/server.js"
+    echo "Found backend at relative path: $BACKEND_PATH"
 fi
 
 # If not found in common locations, try to find it
 if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     echo "Trying to locate backend server file..."
     BACKEND_PATH=$(find_file "*/server/dist/src/server.js" 5)
+    echo "Find command result: $BACKEND_PATH"
 fi
 
 # Verify backend server file exists
 if [ -z "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH" ]; then
     echo "ERROR: Backend server file not found at $BACKEND_PATH"
     echo "Current directory: $(pwd)"
-    echo "Searching for server.js files:"
+    echo "Directory structure:"
+    find . -type d -name "dist" | head -10
     find . -name "server.js" -type f | grep -v node_modules | head -10
-    echo "Directory structure around server/dist:"
+    echo "Contents of server directory:"
+    ls -la server/ 2>/dev/null || echo "server/ not found"
+    echo "Contents of server/dist directory:"
     ls -la server/dist/ 2>/dev/null || echo "server/dist/ not found"
+    echo "Contents of server/dist/src directory:"
     ls -la server/dist/src/ 2>/dev/null || echo "server/dist/src/ not found"
     exit 1
 fi
