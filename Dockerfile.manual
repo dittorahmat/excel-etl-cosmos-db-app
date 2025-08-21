@@ -24,6 +24,7 @@ COPY server/src ./server/src
 COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY server/tsconfig.json ./server/
 COPY common ./common
+COPY scripts ./scripts
 
 # Build frontend and backend
 RUN npm run build:client && cd server && npm run build
