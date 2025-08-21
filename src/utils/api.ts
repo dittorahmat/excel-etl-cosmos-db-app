@@ -266,7 +266,8 @@ export const authFetch = async <T = unknown>(
   
   // Get base URL from environment and ensure it doesn't end with a slash
   // In production, we're using the same server for both frontend and backend
-  const baseUrl = import.meta.env.PROD 
+  const isProd = import.meta.env.PROD === true;
+  const baseUrl = isProd 
     ? '' 
     : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001');
     
@@ -280,20 +281,18 @@ export const authFetch = async <T = unknown>(
     fullUrl = cleanPath;
   } else {
     // For relative paths, construct the URL properly
-    if (baseUrl) {
-      // Development mode with separate backend
-      fullUrl = `${baseUrl}/${cleanPath}`.replace(/([^:])\/+/g, '$1/');
+    if (!isProd) {
+      // Development mode with separate backend - ensure all API calls go through /api
+      if (cleanPath.startsWith('api/')) {
+        fullUrl = `${baseUrl}/${cleanPath}`;
+      } else {
+        fullUrl = `${baseUrl}/api/${cleanPath}`;
+      }
+      fullUrl = fullUrl.replace(/([^:])\/+/g, '$1/');
     } else {
       // Production mode with unified server
       // For API calls, ensure they start with /api
       if (cleanPath.startsWith('api/')) {
-        fullUrl = `/${cleanPath}`;
-      } else if (
-        cleanPath.startsWith('v2/') || 
-        cleanPath.startsWith('fields/') || 
-        cleanPath.startsWith('auth/') || 
-        cleanPath.startsWith('keys/')
-      ) {
         fullUrl = `/${cleanPath}`;
       } else {
         fullUrl = `/api/${cleanPath}`;
@@ -301,8 +300,8 @@ export const authFetch = async <T = unknown>(
     }
   }
   
-  // For development, use the full URL to ensure proper routing through the dev server
-  const requestUrl = import.meta.env.DEV ? fullUrl : fullUrl;
+  // Use the constructed URL directly
+  const requestUrl = fullUrl;
   
   // Check rate limiting for this endpoint
   const endpoint = new URL(url, import.meta.env.VITE_API_BASE_URL || window.location.origin).pathname;

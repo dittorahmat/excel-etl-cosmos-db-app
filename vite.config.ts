@@ -136,15 +136,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       open: true,
-      headers: {
-        'Content-Type': 'text/css; charset=utf-8',
-      },
       proxy: {
         '/api': {
           target: proxyTarget,
           changeOrigin: true,
           secure: false,
           ws: true,
+          rewrite: (path) => path
         },
       },
       // Custom middleware for history API fallback
@@ -165,7 +163,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: true,
-          rewrite: (path) => path,
+          rewrite: (path) => path
         },
       },
     },
