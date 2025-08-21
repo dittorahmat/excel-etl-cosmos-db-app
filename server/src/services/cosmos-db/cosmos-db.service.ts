@@ -200,13 +200,13 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         containerName: string = defaultContainerName
       ): Promise<T[]> => {
         try {
-          const container = await db.container(containerName).read();
+          const container = db.container(containerName);
           const querySpec: SqlQuerySpec = {
             query,
             parameters: parameters as SqlParameter[]
           };
             
-          const { resources } = await container.container.items.query<T>(querySpec).fetchAll();
+          const { resources } = await container.items.query<T>(querySpec).fetchAll();
           return resources;
         } catch (error) {
           logger.error(`Failed to execute query:`, { query, error });
@@ -223,7 +223,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         containerName: string = defaultContainerName
       ): Promise<T | undefined> => {
         try {
-          const { container } = await db.container(containerName).read();
+          const container = db.container(containerName);
           const { resource } = await container.item(id, partitionKeyValue).read<T>();
           return resource || undefined;
         } catch (error: unknown) {
@@ -244,7 +244,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         containerName: string = defaultContainerName
       ): Promise<ItemResponse<T>> => {
         try {
-          const { container } = await db.container(containerName).read();
+          const container = db.container(containerName);
           return await container.items.upsert<T>(record);
         } catch (error) {
           logger.error(`Failed to upsert record:`, { record, error });
@@ -261,7 +261,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         containerName: string = defaultContainerName
       ): Promise<void> => {
         try {
-          const { container } = await db.container(containerName).read();
+          const container = db.container(containerName);
           await container.item(id, partitionKey).delete();
         } catch (error: unknown) {
           const cosmosError = error as { code?: number };
