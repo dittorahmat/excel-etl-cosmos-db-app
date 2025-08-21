@@ -31,14 +31,17 @@ console.log('Environment variables:', {
 });
 
 // Check if authentication is enabled
-const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && windowEnv.VITE_AUTH_ENABLED !== 'false';
+const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                     windowEnv.VITE_AUTH_ENABLED !== 'false' && 
+                     windowEnv.AUTH_ENABLED !== 'false';
+                     
 const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
 
 // Use dummy values if auth is disabled or in development
 const useDummyAuth = !isAuthEnabled || isDevelopment;
 
 // Force dummy auth if explicitly set in window
-const forceDummyAuth = typeof window !== 'undefined' && (window as any).FORCE_DUMMY_AUTH;
+const forceDummyAuth = typeof window !== 'undefined' && ((window as any).FORCE_DUMMY_AUTH || (window as any).USE_DUMMY_AUTH);
 
 // Debug: Log authentication configuration
 console.log('Auth Configuration:', {

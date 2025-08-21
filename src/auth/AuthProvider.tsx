@@ -32,9 +32,19 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if dummy auth is forced via window flags
   const forceDummyAuth = window.FORCE_DUMMY_AUTH === true || window.USE_DUMMY_AUTH === true;
   
-  // Check if auth is enabled via environment variables or window.ENV
-  const viteAuthEnabled = (import.meta.env.VITE_AUTH_ENABLED === 'true' || window.ENV?.VITE_AUTH_ENABLED === 'true');
-  const authEnabled = (import.meta.env.AUTH_ENABLED === 'true' || window.ENV?.AUTH_ENABLED === 'true') && viteAuthEnabled;
+  // Check if auth is enabled via environment variables, window.ENV, or window.__APP_CONFIG__
+  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+  
+  const viteAuthEnabled = (import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+                          windowEnvViteAuthEnabled === 'true' || 
+                          windowEnvViteAuthEnabled === true);
+                          
+  const authEnabled = ((import.meta.env.AUTH_ENABLED === 'true' || 
+                       windowEnvAuthEnabled === 'true' || 
+                       windowEnvAuthEnabled === true) && viteAuthEnabled) || 
+                       windowEnvViteAuthEnabled === 'false' || 
+                       windowEnvAuthEnabled === 'false';
   
   // Use dummy auth if forced, or if auth is disabled, or if in development
   const useDummyAuth = forceDummyAuth || !authEnabled || isDevelopment;

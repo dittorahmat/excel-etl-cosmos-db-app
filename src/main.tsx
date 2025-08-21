@@ -4,7 +4,14 @@ import './index.css';
 import App from './App';
 
 // Check if authentication is disabled
-const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && import.meta.env.AUTH_ENABLED !== 'false';
+const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                   import.meta.env.AUTH_ENABLED !== 'false' && 
+                   windowEnvViteAuthEnabled !== 'false' && 
+                   windowEnvAuthEnabled !== 'false';
+                   
 const isDevelopment = import.meta.env.DEV;
 const useDummyAuth = !authEnabled || isDevelopment;
 

@@ -23,7 +23,7 @@
       window.process = window.process || { env: {} };
 
       // Initialize environment variables if not already set
-      window.ENV = {
+      window.ENV = window.ENV || {
         // Default all environment variables to ensure they're available
         VITE_AUTH_ENABLED: 'false',
         AUTH_ENABLED: 'false',
@@ -42,12 +42,13 @@
         Object.assign(window.ENV, window.ENV_OVERRIDE);
       }
 
-      // Force disable authentication for now
-      window.ENV.VITE_AUTH_ENABLED = 'false';
-      window.ENV.AUTH_ENABLED = 'false';
-
-      // Set a global flag to force dummy auth
-      window.FORCE_DUMMY_AUTH = true;
+      // Set authentication flags based on environment
+      if (!window.ENV.VITE_AUTH_ENABLED || window.ENV.VITE_AUTH_ENABLED === 'false') {
+        window.ENV.VITE_AUTH_ENABLED = 'false';
+        window.ENV.AUTH_ENABLED = 'false';
+        window.FORCE_DUMMY_AUTH = true;
+        window.USE_DUMMY_AUTH = true;
+      }
 
       // Error boundary for better error handling
       window.onerror = function(message, source, lineno, colno, error) {

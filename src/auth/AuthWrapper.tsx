@@ -8,7 +8,8 @@ export interface AuthWrapperProps {
 }
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
-  const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+  const windowEnvAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && windowEnvAuthEnabled !== 'false';
   const isDevelopment = import.meta.env.DEV;
   const useDummyAuth = !authEnabled || isDevelopment;
 

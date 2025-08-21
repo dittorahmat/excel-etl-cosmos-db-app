@@ -24,7 +24,25 @@ const config = {
 
 // Generate config file content
 const configContent = `// This file is auto-generated during build
-window.__APP_CONFIG__ = ${JSON.stringify(config, null, 2)};`;
+window.__APP_CONFIG__ = ${JSON.stringify(config, null, 2)};
+
+// Also set values in window.ENV for backward compatibility
+if (!window.ENV) {
+  window.ENV = {};
+}
+Object.assign(window.ENV, {
+  VITE_AUTH_ENABLED: '${config.VITE_AZURE_CLIENT_ID ? 'true' : 'false'}',
+  AUTH_ENABLED: '${config.VITE_AZURE_CLIENT_ID ? 'true' : 'false'}',
+  VITE_AZURE_CLIENT_ID: '${config.VITE_AZURE_CLIENT_ID || ''}',
+  VITE_AZURE_TENANT_ID: '${config.VITE_AZURE_TENANT_ID || ''}',
+  VITE_AZURE_REDIRECT_URI: '${config.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000'}',
+  NODE_ENV: '${config.MODE || 'production'}',
+  MODE: '${config.MODE || 'production'}'
+});
+
+// Set dummy auth flags based on auth enabled status
+window.USE_DUMMY_AUTH = ${config.VITE_AZURE_CLIENT_ID ? 'false' : 'true'};
+window.FORCE_DUMMY_AUTH = ${config.VITE_AZURE_CLIENT_ID ? 'false' : 'true'};`;
 
 // Ensure public directory exists
 const publicDir = resolve(__dirname, '../public');
