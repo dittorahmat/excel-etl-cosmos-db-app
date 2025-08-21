@@ -51,8 +51,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 
 # Copy necessary runtime files and make start script executable
-COPY start-for-easypanel.sh .env* ./
-COPY server/.env* ./server/
+COPY start-for-easypanel.sh .env .env.local ./ 
+COPY server/.env server/.env.local ./server/
 RUN chmod +x ./start-for-easypanel.sh
 
 # Copy common directory (referenced in tsconfig)
