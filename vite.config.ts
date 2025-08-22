@@ -157,6 +157,9 @@ export default defineConfig(({ mode }) => {
       }
     },
     preview: {
+      host: true, // Allow Vite to be accessed externally
+      port: 3000,
+      strictPort: true,
       proxy: {
         '/api': {
           target: proxyTarget,
@@ -166,6 +169,10 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path
         },
       },
+      allowedHosts: [
+        'iesr.datasolusirekayasa.com',
+        'dashboard-iesr.92ix23.easypanel.host',
+      ],
     },
   };
 });
