@@ -13,11 +13,10 @@ try {
   const files = fs.readdirSync(assetsPath);
   console.log('Files in assets directory:', files); // Debug log
 
-  // Match files that start with 'main.' and end with 'css' or 'icss'
-  // This is more permissive to handle unusual cases like 'main.hashicss'
+  // Match files that contain 'main' and end with '.css'
+  // This handles various naming patterns like 'main.css', 'main-abc123.css', etc.
   const cssFiles = files.filter(file =>
-    file.startsWith('main.') &&
-    (file.endsWith('.css') || file.endsWith('.icss') || file.endsWith('css') || file.endsWith('icss'))
+    file.includes('main') && file.endsWith('.css')
   );
   console.log('Filtered CSS files (flexible pattern):', cssFiles); // Debug log
 

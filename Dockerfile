@@ -27,7 +27,7 @@ COPY common ./common
 COPY scripts ./scripts
 
 # Build frontend and backend
-RUN npm run build:client && npm run build:server
+RUN npm run build
 
 # Production stage
 FROM node:18-alpine
