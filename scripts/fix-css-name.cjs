@@ -42,9 +42,9 @@ try {
 
     let htmlContent = fs.readFileSync(htmlPath, 'utf8');
     const oldRef = `./assets/${oldCssFileName}`;
-    const newRef = `/assets/${newCssFileName}`;
+    const newRef = `./assets/${newCssFileName}`;
 
-    // First try to replace relative paths
+    // Replace relative paths
     if (htmlContent.includes(oldRef)) {
       htmlContent = htmlContent.replace(new RegExp(oldRef.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'g'), newRef);
       fs.writeFileSync(htmlPath, htmlContent, 'utf8');
@@ -56,7 +56,7 @@ try {
       if (htmlContent.includes(oldAbsRef)) {
         htmlContent = htmlContent.replace(new RegExp(oldAbsRef.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'g'), newRef);
         fs.writeFileSync(htmlPath, htmlContent, 'utf8');
-        console.log('index.html updated successfully (absolute paths).');
+        console.log('index.html updated successfully (absolute paths converted to relative).');
       } else {
         console.warn(`Reference to ${oldRef} or ${oldAbsRef} not found in index.html. Skipping HTML update.`);
       }

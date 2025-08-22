@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
 
   
   return {
-    base: '/', // Use absolute paths for assets to work correctly in all environments
+    base: './', // Use relative paths for assets to work on any domain
     publicDir: 'public',
     resolve: {
       dedupe: ['react', 'react-dom', 'scheduler'],
