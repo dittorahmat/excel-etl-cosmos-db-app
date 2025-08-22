@@ -45,6 +45,9 @@ LogFiles/
 .env.*
 !.env.example
 
+# Auto-generated config
+public/config.js
+
 # Backup files
 *.backup
 *.bak
