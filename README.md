@@ -2,11 +2,7 @@
 
 A modern React dashboard application for uploading Excel files, visualizing data, and managing Azure Cosmos DB integration. Features Azure AD authentication, real-time data visualization, and a responsive UI built with Shadcn UI components.
 
-> **Note**: For deployment instructions, please refer to `CONSOLIDATED_DEPLOYMENT_GUIDE.md` which provides a single comprehensive guide for all deployment methods.
-
-## Nixpacks Deployment Issue Resolution
-
-We encountered and resolved a persistent issue with Nixpacks trying to use `npm-9_x` despite specifying Node.js 18. For details on this issue and how we resolved it, please see `NIXPACKS_DEPLOYMENT_ISSUE_RESOLUTION.md`.
+> **Note**: For deployment instructions, please refer to `DOCKER_EASYPANEL_DEPLOYMENT_GUIDE.md` which provides comprehensive instructions for deploying the application using Docker via EasyPanel.
 
 ## Features
 
@@ -498,24 +494,9 @@ If an API key is compromised:
 
 ## Deployment
 
-For detailed deployment instructions, please refer to `CONSOLIDATED_DEPLOYMENT_GUIDE.md` which provides a single comprehensive guide for all deployment methods:
+For detailed deployment instructions, please refer to `DOCKER_EASYPANEL_DEPLOYMENT_GUIDE.md` which provides comprehensive instructions for deploying the application using Docker via EasyPanel. This is the recommended and most reliable deployment method.
 
-- EasyPanel deployment (recommended)
-- Nixpacks-based deployment
-- Docker deployment
-- Azure Static Web Apps deployment
-
-### Azure Static Web Apps
-
-This project is configured for deployment to Azure Static Web Apps. To deploy:
-
-1. Push your code to a GitHub repository.
-2. Create a new Static Web App in the Azure Portal.
-3. Connect to your GitHub repository.
-4. Configure the build settings:
-   - App location: `/`
-   - Output location: `dist`
-   - App build command: `npm run build`.
+The application uses a multi-stage Dockerfile that builds the application in a builder stage and creates a minimal production image with only runtime dependencies.
 
 ## License
 
