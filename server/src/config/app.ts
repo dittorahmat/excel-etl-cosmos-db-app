@@ -190,14 +190,6 @@ export function createApp(azureServices: {
       });
     } else {
       logger.info('Serving static files from:', staticPath);
-      // Log the contents of the assets directory to verify CSS file exists
-      const assetsPath = path.join(staticPath, 'assets');
-      if (fs.existsSync(assetsPath)) {
-        const assets = fs.readdirSync(assetsPath);
-        logger.info('Assets directory contents:', assets.filter(f => f.includes('css')));
-      } else {
-        logger.error('Assets directory not found:', assetsPath);
-      }
       app.use(express.static(staticPath));
     }
     

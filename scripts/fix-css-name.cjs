@@ -41,24 +41,24 @@ try {
     console.log('CSS file renamed successfully.');
 
     let htmlContent = fs.readFileSync(htmlPath, 'utf8');
-    const oldRef = `./assets/${oldCssFileName}`;
-    const newRef = `./assets/${newCssFileName}`;
+    const oldRef = `/assets/${oldCssFileName}`;
+    const newRef = `/assets/${newCssFileName}`;
 
-    // Replace relative paths
+    // Replace absolute paths
     if (htmlContent.includes(oldRef)) {
       htmlContent = htmlContent.replace(new RegExp(oldRef.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'g'), newRef);
       fs.writeFileSync(htmlPath, htmlContent, 'utf8');
-      console.log('index.html updated successfully (relative paths).');
+      console.log('index.html updated successfully (absolute paths).');
     } 
-    // If relative paths not found, try absolute paths
+    // If absolute paths not found, try relative paths
     else {
-      const oldAbsRef = `/assets/${oldCssFileName}`;
-      if (htmlContent.includes(oldAbsRef)) {
-        htmlContent = htmlContent.replace(new RegExp(oldAbsRef.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'g'), newRef);
+      const oldRelRef = `./assets/${oldCssFileName}`;
+      if (htmlContent.includes(oldRelRef)) {
+        htmlContent = htmlContent.replace(new RegExp(oldRelRef.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'g'), newRef);
         fs.writeFileSync(htmlPath, htmlContent, 'utf8');
-        console.log('index.html updated successfully (absolute paths converted to relative).');
+        console.log('index.html updated successfully (relative paths converted to absolute).');
       } else {
-        console.warn(`Reference to ${oldRef} or ${oldAbsRef} not found in index.html. Skipping HTML update.`);
+        console.warn(`Reference to ${oldRef} or ${oldRelRef} not found in index.html. Skipping HTML update.`);
       }
     }
   } else {
