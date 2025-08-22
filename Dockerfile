@@ -18,6 +18,10 @@ COPY common ./common
 # Install all dependencies
 RUN npm install && cd server && npm install
 
+# Fix Tailwind CSS version conflict
+RUN npm uninstall @tailwindcss/vite
+RUN npm install tailwindcss@3.4.3 postcss@8.4.38 autoprefixer@10.4.20 --save-dev
+
 # Copy source code
 COPY src ./src
 COPY server/src ./server/src
@@ -25,6 +29,10 @@ COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY server/tsconfig*.json ./server/
 COPY common ./common
 COPY scripts ./scripts
+
+# Copy configuration files
+COPY postcss.config.cjs ./
+COPY tailwind.config.js ./
 
 # Build frontend and backend
 RUN npm run build
