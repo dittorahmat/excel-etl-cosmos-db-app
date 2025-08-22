@@ -2,6 +2,7 @@ import express, { type Request, type Response, type NextFunction, type Express }
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { authLogger, authErrorHandler } from '../middleware/authLogger.js';
@@ -172,8 +173,25 @@ export function createApp(azureServices: {
     
     // Serve static files from the dist directory (frontend build output)
     // When running from server/dist/src/config/, the path to dist is ../../../../dist
-    const staticPath = path.join(__dirname, '../../../../dist');
-    app.use(express.static(staticPath));
+    // When running from server/dist/server/src/config/, the path to dist is ../../../../../dist
+    let staticPath = path.join(__dirname, '../../../../dist');
+    
+    // Check if the static path exists, if not try the alternative path
+    if (!fs.existsSync(staticPath)) {
+      staticPath = path.join(__dirname, '../../../../../dist');
+    }
+    
+    // If neither path exists, log an error but continue (API routes will still work)
+    if (!fs.existsSync(staticPath)) {
+      logger.error('Frontend dist directory not found at expected locations', {
+        path1: path.join(__dirname, '../../../../dist'),
+        path2: path.join(__dirname, '../../../../../dist'),
+        __dirname: __dirname
+      });
+    } else {
+      logger.info('Serving static files from:', staticPath);
+      app.use(express.static(staticPath));
+    }
     
     // Handle client-side routing by serving index.html for all non-API routes
     app.get('*', (req: Request, res: Response) => {
@@ -187,7 +205,17 @@ export function createApp(azureServices: {
       }
       
       // Serve the index.html for all other routes (client-side routing)
-      res.sendFile(path.join(staticPath, 'index.html'));
+      // Check if staticPath exists before trying to serve index.html
+      if (fs.existsSync(staticPath)) {
+        res.sendFile(path.join(staticPath, 'index.html'));
+      } else {
+        // If we can't serve the frontend, return a simple API response
+        res.status(404).json({
+          success: false,
+          error: 'Not Found',
+          message: 'Frontend files not found. API routes are still available at /api/*',
+        });
+      }
     });
   }
 
