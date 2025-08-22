@@ -1,2 +1,0 @@
-Build version: 20250818-130304
-Build timestamp: Mon Aug 18 01:03:04 PM WIB 2025
