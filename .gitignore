@@ -30,19 +30,19 @@ easypanel-deployment/backend/
 easypanel-deployment/frontend/
 easypanel-deployment/logs/
 easypanel-deployment/common/
+
 # Allow deploy_output/.env while ignoring other files in deploy_output
 deploy_output/*
 !deploy_output/.env
 !deploy_output/backend/package.json
 !deploy_output/backend/package-lock.json
+
 deployments/
 LogFiles/
 
 # Environment variables
-# Allow root .env file for EasyPanel deployment
-!.env
+.env
 .env.*
-.env.production
 !.env.example
 
 # Backup files
@@ -61,18 +61,8 @@ LogFiles/
 *.njsproj
 *.sln
 *.sw?
-.env.production
-.env.production
-.env.production
-.env.production
-.env.production
+
+# Other files to ignore
 QWEN.md
-excel-etl-fullstack-vps-deployment.tar.gz
-vps-deployment-package.zip
-vps-deployment/vps-deployment-package-fixed-latest.zip
-vps-deployment/vps-deployment-package-fixed.zip
-vps-deployment/excel-etl-fullstack-vps-deployment-fixed-final.zip
-docs/Pasted image.png
 *.zip
-docs/Pasted image.png
-.env
+*.tar.gz
