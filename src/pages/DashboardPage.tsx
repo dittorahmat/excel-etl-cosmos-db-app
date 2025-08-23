@@ -37,7 +37,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     handleSort,
   } = useDashboardData();
 
-  const [activeTab, setActiveTab] = useState('query');
+  const [activeTab, setActiveTab] = useState('files');
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -61,8 +61,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="query">Query Builder</TabsTrigger>
-            <TabsTrigger value="results">Results</TabsTrigger>
+            <TabsTrigger value="query">Query Builder & Results</TabsTrigger>
           </TabsList>
 
           <TabsContent value="files" className="space-y-4">
@@ -105,9 +104,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
 
-          <TabsContent value="results">
             <Card>
               <CardHeader>
                 <CardTitle>Query Results</CardTitle>
@@ -172,8 +169,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
-          
         </Tabs>
       </div>
     </div>
