@@ -48,7 +48,9 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
         console.log("[ApiQueryBuilder] useEffect fetchFields - API response:", response);
         if (response.success && Array.isArray(response.fields)) {
           const fieldDefinitions = response.fields.map(field => (
-            typeof field === 'string' ? { name: field, value: field, label: field, type: 'string' } : { ...field, value: field.name, label: field.label || field.name }
+            typeof field === 'string' ? 
+              { name: field, value: field, label: field, type: 'string' as const } : 
+              { ...field, value: field.name, label: field.label || field.name }
           ));
           console.log("[ApiQueryBuilder] useEffect fetchFields - Setting fields:", fieldDefinitions);
           setFields(fieldDefinitions);

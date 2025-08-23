@@ -58,7 +58,7 @@ const createMockMsalInstance = () => {
     username: 'user@example.com',
     localAccountId: 'mock-local-account-id',
     name: 'Mock User',
-    idTokenClaims: idTokenClaims as unknown as object // Type assertion to satisfy the type checker
+    idTokenClaims: idTokenClaims as unknown as Record<string, unknown>
   };
   
   // Mock authentication result
@@ -69,7 +69,7 @@ const createMockMsalInstance = () => {
     scopes: ['User.Read'],
     account: mockAccount,
     idToken: 'mock-id-token',
-    idTokenClaims: mockAccount.idTokenClaims,
+    idTokenClaims: mockAccount.idTokenClaims as Record<string, unknown>,
     accessToken: 'mock-access-token',
     fromCache: false,
     expiresOn: new Date(Date.now() + 3600000), // 1 hour from now
@@ -181,7 +181,7 @@ const createMockMsalInstance = () => {
     removePerformanceCallback: () => {},
     emitPerformanceEvent: () => {},
     getConfiguration: () => ({})
-  } as unknown as PublicClientApplication; // Type assertion to satisfy the PublicClientApplication type
+  } as unknown as PublicClientApplication;
 };
 
 // Log the decision for MSAL instance creation
@@ -203,7 +203,7 @@ console.log('MSAL Instance - Creating MSAL instance with configuration:', {
 });
 
 // Create MSAL instance (real or mock based on configuration)
-let msalInstance;
+let msalInstance: PublicClientApplication;
 
 if (useDummyAuth) {
   console.log('MSAL Instance - Using MOCK MSAL instance');
@@ -213,12 +213,11 @@ if (useDummyAuth) {
   try {
     const config = assertMsalConfig(msalConfig) ? msalConfig : { auth: { clientId: '' } };
     console.log('MSAL Instance - MSAL config:', { 
-      ...config, 
-      auth: { 
-        ...config.auth, 
-        clientSecret: config.auth.clientSecret ? '***' : undefined 
-      } 
-    });
+    ...config, 
+    auth: { 
+      ...config.auth
+    } 
+  });
     msalInstance = new PublicClientApplication(config);
   } catch (error) {
     console.error('MSAL Instance - Error creating MSAL instance:', error);
@@ -227,3 +226,4 @@ if (useDummyAuth) {
 }
 
 export { msalInstance };
+export type { PublicClientApplication };

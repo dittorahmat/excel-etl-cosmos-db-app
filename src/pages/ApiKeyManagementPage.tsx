@@ -61,15 +61,8 @@ const ApiKeyManagementPage: React.FC = () => {
       const response = await api.get<ApiKeyResponse>('/api/v2/keys')
         .catch(error => {
           console.error("[ApiKeyManagementPage] API call failed:", {
-            error: error.toString(),
-            response: error.response,
-            status: error.response?.status,
-            data: error.response?.data,
-            config: {
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: error.config?.headers,
-            },
+            error: error instanceof Error ? error.toString() : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
           });
           throw error;
         });
@@ -116,18 +109,14 @@ const ApiKeyManagementPage: React.FC = () => {
         setApiKeys([]);
       }
     } catch (err) {
-      const error = err as { response?: { data?: { message?: string}}, message?: string, stack?: string };
-      const errorMessage = error?.response?.data?.message || 
-                         error?.message || 
-                         'Unknown error occurred';
-      const status = error?.response?.status;
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const status = undefined; // Our API utility doesn't provide status in Error objects
       
       console.error("[ApiKeyManagementPage] Error in fetchApiKeys:", {
         message: errorMessage,
         status,
-        error: error.toString(),
-        response: error?.response?.data,
-        stack: error.stack,
+        error: err instanceof Error ? err.toString() : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
       });
       
       setError(`Failed to fetch API keys: ${errorMessage}${status ? ` (${status})` : ''}`);
@@ -181,16 +170,14 @@ const ApiKeyManagementPage: React.FC = () => {
         setApiKeys([]);
       }
     } catch (err) {
-      const error = err as { response?: { data?: { message?: string}}, message?: string };
-      const errorMessage = error?.response?.data?.message || 
-                         error?.message || 
-                         'Unknown error occurred';
-      const status = error?.response?.status;
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const status = undefined; // Our API utility doesn't provide status in Error objects
       
       console.error("[ApiKeyManagementPage] Error in fetchApiKeys:", {
         message: errorMessage,
         status,
-        error: error.toString(),
+        error: err instanceof Error ? err.toString() : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
       });
       
       setError(`Failed to fetch API keys: ${errorMessage}${status ? ` (${status})` : ''}`);

@@ -6,8 +6,9 @@ import readline from 'readline/promises';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Find all .js and .ts files in the src directory
-const srcDir = path.join(process.cwd(), 'src');
+// Directories to scan for .js/.ts files
+const directoriesToScan = ['src', 'server'];
+
 const files = [];
 
 // Recursively find all .js and .ts files
@@ -78,7 +79,16 @@ function findDuplicates(fileGroups) {
 async function main() {
   try {
     console.log('Scanning for duplicate .js/.ts files...');
-    await findFiles(srcDir);
+    
+    // Scan all specified directories
+    for (const dir of directoriesToScan) {
+      const fullPath = path.join(process.cwd(), dir);
+      if (fs.existsSync(fullPath)) {
+        await findFiles(fullPath);
+      } else {
+        console.log(`Warning: Directory '${dir}' does not exist, skipping.`);
+      }
+    }
     
     const fileGroups = groupFiles();
     const duplicates = findDuplicates(fileGroups);

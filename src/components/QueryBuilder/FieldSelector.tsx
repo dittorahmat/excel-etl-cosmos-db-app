@@ -53,7 +53,7 @@ export const FieldSelector = ({
           : null;
       })
       .filter(
-        (field): field is { value: string; label: string; type: string } =>
+        (field): field is { value: string; label: string; type: import("./types").FieldType } =>
           field !== null
       );
   }, [selectedFields, fields]);

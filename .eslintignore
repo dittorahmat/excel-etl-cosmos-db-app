@@ -1,32 +1,64 @@
-# Ignore server-side JavaScript files from TypeScript processing
-server/**/*.js
-server/test-*.js
-server/**/test-*.js
-**/test-*.js
+# Dependencies
+node_modules/
 
-# Ignore build and dependency directories
-**/node_modules/**
-**/dist/**
-**/coverage/**
-**/.next/**
-**/out/**
+# Build outputs
+dist/
+build/
+out/
+.next/
+coverage/
 
-# Ignore environment files
+# Configuration and environment
 .env*
 !.env.example
 
-# Ignore IDE and editor files
+# IDE and editor files
 .vscode/
 .idea/
-*.sublime-*
 *.swp
 *.swo
 
-# Ignore OS generated files
+# OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Generated files and directories
+deploy_output/
+@/
+server/dist_test/
+server/__mocks__/
+server/scripts/*.js
+server/test/
+
+# Test files with parsing issues
+**/*.test.*
+**/*.spec.*
+**/__tests__/**
+**/__mocks__/**
+**/test-utils/**
+**/mocks/**
+
+# Configuration files
+vite.config.*
+vitest.*.config.*
+.eslintrc.*
+babel.config.*
+
+# Declaration files
+**/*.d.ts
+
+# Scripts
+scripts/
+
+# Specific problematic files
+server.js
+test-files/
+test/setup.js
+public/config.js

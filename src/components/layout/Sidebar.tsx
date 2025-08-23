@@ -9,10 +9,23 @@ import {
   ChevronDown,
   ChevronRight,
   KeyRound,
+  FileText,
+  BarChart3,
 } from 'lucide-react';
 import { useState } from 'react';
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subItems?: Array<{
+    title: string;
+    path: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }>;
+}
+
+const menuItems: MenuItem[] = [
   {
     title: 'Dashboard',
     path: '/',
@@ -23,11 +36,26 @@ const menuItems = [
     path: '/upload',
     icon: Upload,
   },
+  {
+    title: 'Data',
+    path: '/data',
+    icon: Database,
+    subItems: [
+      {
+        title: 'Query Builder',
+        path: '/data/query',
+        icon: FileText,
+      },
+      {
+        title: 'Visualizations',
+        path: '/data/charts',
+        icon: BarChart3,
+      },
+    ],
+  },
 ];
 
-
-
-const adminMenuItems = [
+const adminMenuItems: MenuItem[] = [
   {
     title: 'API Keys',
     path: '/api-keys',
@@ -74,7 +102,7 @@ export const Sidebar = () => {
               </Button>
               {openSections[item.title] && (
                 <div className="pl-4 mt-1 space-y-1">
-                  {item.subItems.map((subItem) => (
+                  {(item.subItems ?? []).map((subItem) => (
                     <NavLink
                       key={subItem.path}
                       to={subItem.path}

@@ -145,7 +145,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                       </TableHeader>
                       <TableBody>
                         {queryResult.items.map((item, index) => (
-                          <TableRow key={item.id || index}>
+                          <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
                             {queryResult.fields.map((field) => (
                               <TableCell key={`${index}-${field}`}>
                                 {typeof item[field] === 'string' && String(item[field]).includes('T')

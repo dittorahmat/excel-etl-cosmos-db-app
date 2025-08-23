@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Card, CardHeader, CardTitle } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Button } from './ui/button';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Download, BarChart2, LineChart, PieChart, Table as TableIcon, Loader2 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import {
@@ -143,8 +143,13 @@ export const DataChart: React.FC<DataChartProps> = ({
   // Get nested value by dot notation
   const getNestedValue = useCallback((obj: Record<string, unknown>, path: string): unknown => {
     return path.split('.').reduce(
-      (acc, key) => (acc && typeof acc === 'object' && key in acc ? (acc as Record<string, unknown>)[key] : undefined),
-      obj
+      (acc, key) => {
+        if (acc && typeof acc === 'object' && !Array.isArray(acc) && key in acc) {
+          return (acc as Record<string, unknown>)[key];
+        }
+        return undefined;
+      },
+      obj as unknown
     );
   }, []);
 
@@ -304,7 +309,7 @@ export const DataChart: React.FC<DataChartProps> = ({
   const renderChartTypeSelector = useCallback(() => (
     <Select
       value={chartType}
-      onValueChange={(value) => setChartType(value as ChartType)}
+      onValueChange={(value: string) => setChartType(value as ChartType)}
     >
       <SelectTrigger className="w-[140px]" data-testid="chart-type-selector">
         <SelectValue placeholder="Chart Type" />

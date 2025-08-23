@@ -1,10 +1,10 @@
 import { render as rtlRender } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
+import type { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PublicClientApplication } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { AuthProvider } from './auth/AuthProvider';
+import AuthProvider from './auth/AuthProvider';
 import { customTestCleanup, waitForRender } from './test-utils-core';
 
 // Type for the wrapper component props

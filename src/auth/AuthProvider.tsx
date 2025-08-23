@@ -2,7 +2,7 @@
 console.log('[AUTH PROVIDER MODULE] This is an obvious change to verify the module is being built');
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
-import { AccountInfo, InteractionRequiredAuthError, EventType, EventMessage } from '@azure/msal-browser';
+import { AccountInfo, InteractionRequiredAuthError, EventType, EventMessage, AuthenticationResult } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { AuthContext, type AuthContextType } from './AuthContext';
 import { loginRequest } from './authConfig';
@@ -95,7 +95,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user: MOCK_ACCOUNT,
       loading: false,
       error: null,
-      getToken: async () => {
+      getAccessToken: async () => {
         // Generate a mock token
         const mockToken = btoa(JSON.stringify({
           header: { alg: 'HS256', typ: 'JWT' },
@@ -111,8 +111,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return `mock.${mockToken}.signature`;
       },
       login: () => Promise.resolve(),
-      logout: () => Promise.resolve(),
-      getAccount: () => MOCK_ACCOUNT
+      logout: () => Promise.resolve()
     };
 
     return (
@@ -333,7 +332,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       switch (message.eventType) {
         case EventType.LOGIN_SUCCESS:
         case EventType.ACQUIRE_TOKEN_SUCCESS: {
-          const account = message.payload?.account as AccountInfo | undefined;
+          // The payload should be an AuthenticationResult which contains the account
+          const payload = message.payload as AuthenticationResult | undefined;
+          const account = payload?.account;
           if (account) {
             setUser(account);
             setIsAuthenticated(true);
@@ -364,12 +365,10 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user,
       error,
       loading,
-      getToken: getTokenSilently,
-      getTokenSilently,
-      login,
+      login: login as () => Promise<AuthenticationResult | void>,
       logout,
-      getAccount: () => user,
-      getAccessToken: getTokenSilently // Alias for backward compatibility
+      getAccessToken: getTokenSilently,
+      getTokenSilently
     }),
     [isAuthenticated, user, error, loading, getTokenSilently, login, logout]
   );

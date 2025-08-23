@@ -259,7 +259,12 @@ export const useDashboardData = () => {
       
       // Note: We are not passing filters here, as sorting should re-fetch without filters.
       // The executeQuery function will use the current selectedFields and filters from its closure.
-      executeQuery({ ...queryResult, fields: selectedFields, filters: [], sort: `${field}:${newDirection}` });
+      executeQuery({ 
+        fields: selectedFields, 
+        filters: [], 
+        limit: queryResult.pageSize, 
+        offset: (queryResult.page - 1) * queryResult.pageSize 
+      });
       
       return field;
     });

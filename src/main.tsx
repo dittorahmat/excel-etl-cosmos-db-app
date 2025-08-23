@@ -3,6 +3,30 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
 
+// Extend the Window interface to add our custom properties
+declare global {
+  interface Window {
+    isAuthenticated?: boolean;
+    ENV?: {
+      VITE_AUTH_ENABLED?: string;
+      AUTH_ENABLED?: string;
+      NODE_ENV?: string;
+      MODE?: string;
+      VITE_AZURE_CLIENT_ID?: string;
+      VITE_AZURE_REDIRECT_URI?: string;
+      VITE_AZURE_TENANT_ID?: string;
+    };
+    APP_CONFIG?: {
+      auth?: {
+        useDummyAuth?: boolean;
+      };
+    };
+    USE_DUMMY_AUTH?: boolean;
+    FORCE_DUMMY_AUTH?: boolean;
+    SKIP_MSAL_INIT?: boolean;
+  }
+}
+
 // Check if authentication is disabled
 const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
 const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;

@@ -1,3 +1,6 @@
+import { AccountInfo } from '@azure/msal-browser';
+import { ReactNode } from 'react';
+
 export interface AuthContextType {
   isAuthenticated: boolean;
   user: AccountInfo | null;
