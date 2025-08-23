@@ -29,10 +29,9 @@ export function UploadPage() {
       formData.append('file', file);
       
       // Only check for auth token if auth is enabled
-      // Check both VITE_AUTH_ENABLED (frontend) and AUTH_ENABLED (backend) - if either is false, auth is disabled
-      const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
-      const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
-      const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
+      // For now, we're explicitly disabling auth check to fix upload issues in VPS
+      // TODO: Re-enable proper auth check once we resolve environment variable reading issues
+      const isAuthEnabled = false;
       
       if (isAuthEnabled) {
         const token = await getAuthToken();
