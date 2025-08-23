@@ -9,9 +9,11 @@ import { msalInstance } from '../auth/msalInstance';
 // Check if authentication is enabled
 const isDevelopment = import.meta.env.DEV;
 const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
-                   windowEnvViteAuthEnabled !== 'false' && 
-                   windowEnvViteAuthEnabled !== false;
+const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                          windowEnvViteAuthEnabled !== 'false' && 
+                          windowEnvViteAuthEnabled !== false;
+const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
+const authEnabled = isViteAuthEnabled && isServerAuthEnabled;
                    
 const useDummyAuth = !authEnabled || isDevelopment || 
                      window.USE_DUMMY_AUTH === true || 
@@ -60,10 +62,12 @@ const getCacheKey = (account: AccountInfo): string => {
 export const getAuthToken = async (forceRefresh = false): Promise<string | null> => {
   // If auth is disabled, return null immediately
   const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-  const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
-                       windowEnvViteAuthEnabled !== 'false' && 
-                       windowEnvViteAuthEnabled !== false;
-                       
+  const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
+                           windowEnvViteAuthEnabled !== 'false' && 
+                           windowEnvViteAuthEnabled !== false;
+  const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
+  const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
+  
   if (!isAuthEnabled) {
     console.log('[API] Authentication is disabled, returning null token');
     return null;
@@ -315,7 +319,10 @@ export const authFetch = async <T = unknown>(
   }
 
   // Only try to get a token if auth is explicitly enabled
-  const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+  const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+  const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
+  const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
+  
   if (isAuthEnabled) {
     try {
       const token = await getAuthToken();

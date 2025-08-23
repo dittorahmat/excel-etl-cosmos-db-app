@@ -29,7 +29,11 @@ export function UploadPage() {
       formData.append('file', file);
       
       // Only check for auth token if auth is enabled
-      const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+      // Check both VITE_AUTH_ENABLED (frontend) and AUTH_ENABLED (backend) - if either is false, auth is disabled
+      const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+      const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
+      const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
+      
       if (isAuthEnabled) {
         const token = await getAuthToken();
         if (!token) {
