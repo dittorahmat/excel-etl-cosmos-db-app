@@ -44,7 +44,7 @@ cp .env.example .env
 nano .env
 ```
 
-Make sure your `.env` file is in the same directory as `docker-compose.yml`. The docker-compose configuration will automatically load all environment variables from this file.
+Make sure your `.env` file is in the same directory as `docker-compose.yml`. The docker-compose configuration will automatically load all environment variables from this file when starting the application.
 
 ### 3. Deploy Using Docker Compose (Recommended)
 
@@ -70,7 +70,7 @@ docker build -t excel-to-cosmos -f Dockerfile.simple .
 # Run the container
 docker run -d \
   --name excel-to-cosmos \
-  -p 3000:3000 \
+  -p 80:3000 \
   --restart unless-stopped \
   excel-to-cosmos
 ```
@@ -99,6 +99,35 @@ Make sure to set all required environment variables in your `.env` file:
 Refer to `.env.example` for all required variables.
 
 The `.env` file should be placed in the same directory as `docker-compose.yml`. Docker Compose will automatically load all environment variables from this file when starting the application.
+
+## Updating Dependencies
+
+It's important to keep your application dependencies up to date for security and performance improvements.
+
+### Automated Approach
+
+Use the provided script to update dependencies:
+
+```bash
+# Make the script executable (if not already done)
+chmod +x update-deps.sh
+
+# Run the dependency update script
+./update-deps.sh
+```
+
+### Manual Approach
+
+See `DEPENDENCY_UPDATE_GUIDE.md` for detailed instructions on manually updating dependencies.
+
+### After Updating Dependencies
+
+After updating dependencies, you'll need to rebuild your Docker image:
+
+```bash
+# Rebuild and redeploy with updated dependencies
+docker-compose up -d --build
+```
 
 ## Updating the Application
 
@@ -135,7 +164,7 @@ docker rm excel-to-cosmos
 # Run the new container
 docker run -d \
   --name excel-to-cosmos \
-  -p 3000:3000 \
+  -p 80:3000 \
   --restart unless-stopped \
   excel-to-cosmos
 ```
@@ -175,7 +204,7 @@ docker-compose ps
 docker-compose logs
 
 # Test the application
-curl -I http://localhost:3000
+curl -I http://localhost
 ```
 
 The `--build` flag in docker-compose is the simplest approach as it handles the entire process automatically. Your data and logs will persist through updates since they're stored in Docker volumes.
@@ -230,5 +259,5 @@ docker-compose logs
 
 ### Check if ports are available
 ```bash
-sudo netstat -tlnp | grep :3000
+sudo netstat -tlnp | grep :80
 ```
