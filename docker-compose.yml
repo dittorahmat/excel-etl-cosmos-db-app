@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  excel-to-cosmos:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    ports:
+      - "80:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./logs:/app/LogFiles
+    restart: unless-stopped
