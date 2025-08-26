@@ -319,9 +319,34 @@ export const authFetch = async <T = unknown>(
   }
 
   // Only try to get a token if auth is explicitly enabled
-  // For now, we're explicitly disabling auth to fix upload issues in VPS
-  // TODO: Re-enable proper auth check once we resolve environment variable reading issues
-  const isAuthEnabled = false;
+  // Check if authentication is enabled based on environment variables
+  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+  
+  // Check if auth is explicitly enabled in any of the possible sources
+  const authExplicitlyEnabled = 
+    import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+    import.meta.env.AUTH_ENABLED === 'true' ||
+    windowEnvViteAuthEnabled === 'true' || 
+    windowEnvAuthEnabled === 'true' ||
+    windowEnvViteAuthEnabled === true || 
+    windowEnvAuthEnabled === true;
+
+  // Check if auth is explicitly disabled
+  const authExplicitlyDisabled = 
+    import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+    import.meta.env.AUTH_ENABLED === 'false' ||
+    windowEnvViteAuthEnabled === 'false' || 
+    windowEnvAuthEnabled === 'false' ||
+    windowEnvViteAuthEnabled === false || 
+    windowEnvAuthEnabled === false;
+  
+  const isDevelopment = import.meta.env.DEV;
+  
+  // Auth is enabled if:
+  // 1. It's explicitly enabled, OR
+  // 2. It's not explicitly disabled and we're in development
+  const isAuthEnabled = authExplicitlyEnabled || (!authExplicitlyDisabled && isDevelopment);
   
   if (isAuthEnabled) {
     try {

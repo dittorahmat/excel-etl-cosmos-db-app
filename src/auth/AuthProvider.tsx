@@ -36,18 +36,32 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
   const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
   
-  const viteAuthEnabled = (import.meta.env.VITE_AUTH_ENABLED === 'true' || 
-                          windowEnvViteAuthEnabled === 'true' || 
-                          windowEnvViteAuthEnabled === true);
-                          
-  const authEnabled = ((import.meta.env.AUTH_ENABLED === 'true' || 
-                       windowEnvAuthEnabled === 'true' || 
-                       windowEnvAuthEnabled === true) && viteAuthEnabled) || 
-                       windowEnvViteAuthEnabled === 'false' || 
-                       windowEnvAuthEnabled === 'false';
+  // Check if auth is explicitly enabled in any of the possible sources
+  const authExplicitlyEnabled = 
+    import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+    import.meta.env.AUTH_ENABLED === 'true' ||
+    windowEnvViteAuthEnabled === 'true' || 
+    windowEnvAuthEnabled === 'true' ||
+    windowEnvViteAuthEnabled === true || 
+    windowEnvAuthEnabled === true;
+
+  // Check if auth is explicitly disabled
+  const authExplicitlyDisabled = 
+    import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+    import.meta.env.AUTH_ENABLED === 'false' ||
+    windowEnvViteAuthEnabled === 'false' || 
+    windowEnvAuthEnabled === 'false' ||
+    windowEnvViteAuthEnabled === false || 
+    windowEnvAuthEnabled === false;
   
-  // Use dummy auth if forced, or if auth is disabled, or if in development
-  const useDummyAuth = forceDummyAuth || !authEnabled || isDevelopment;
+  // Use dummy auth only if:
+  // 1. Auth is explicitly disabled, OR
+  // 2. We're in development and auth is not explicitly enabled, OR
+  // 3. Dummy auth is explicitly forced
+  const useDummyAuth = 
+    authExplicitlyDisabled || 
+    (!authExplicitlyEnabled && isDevelopment) ||
+    forceDummyAuth;
   
   // Log authentication status for debugging
   console.log('AuthProvider - Authentication status:', {

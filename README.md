@@ -498,6 +498,22 @@ For detailed deployment instructions, please refer to `DOCKER_EASYPANEL_DEPLOYME
 
 The application uses a multi-stage Dockerfile that builds the application in a builder stage and creates a minimal production image with only runtime dependencies.
 
+### HTTPS Setup
+
+This application now supports HTTPS out of the box. For setup instructions, please refer to `HTTPS_SETUP.md` which provides comprehensive instructions for:
+- Setting up HTTPS with self-signed certificates for IP-based access
+- Configuring Let's Encrypt certificates for domain-based access
+- Troubleshooting common HTTPS issues
+
+To deploy with HTTPS enabled:
+```bash
+docker-compose up -d
+```
+
+The application will be accessible at:
+- `https://YOUR_SERVER_IP` (HTTPS)
+- HTTP requests will automatically redirect to HTTPS
+
 ## License
 
 MIT

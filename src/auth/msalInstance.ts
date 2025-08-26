@@ -5,7 +5,9 @@ import { assertMsalConfig } from './authUtils';
 // Check if authentication is disabled
 console.log('MSAL Instance - Environment variables:', {
   VITE_AUTH_ENABLED: import.meta.env.VITE_AUTH_ENABLED,
+  AUTH_ENABLED: import.meta.env.AUTH_ENABLED,
   WINDOW_ENV_VITE_AUTH_ENABLED: window.ENV?.VITE_AUTH_ENABLED,
+  WINDOW_ENV_AUTH_ENABLED: window.ENV?.AUTH_ENABLED,
   NODE_ENV: import.meta.env.NODE_ENV,
   MODE: import.meta.env.MODE,
   WINDOW_USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
@@ -19,15 +21,33 @@ console.log('MSAL Instance - Environment variables:', {
 
 const isDevelopment = import.meta.env.DEV;
 const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
-                   windowEnvViteAuthEnabled !== 'false' && 
-                   windowEnvViteAuthEnabled !== false;
-                   
-const useDummyAuth = !authEnabled || isDevelopment || 
-                     window.USE_DUMMY_AUTH === true || 
-                     window.FORCE_DUMMY_AUTH === true || 
-                     windowEnvViteAuthEnabled === 'false' || 
-                     windowEnvViteAuthEnabled === false;
+const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+
+// Check if auth is explicitly enabled in any of the possible sources
+const authExplicitlyEnabled = 
+  import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+  import.meta.env.AUTH_ENABLED === 'true' ||
+  windowEnvViteAuthEnabled === 'true' || 
+  windowEnvAuthEnabled === 'true' ||
+  windowEnvViteAuthEnabled === true || 
+  windowEnvAuthEnabled === true;
+
+// Check if auth is explicitly disabled
+const authExplicitlyDisabled = 
+  import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+  import.meta.env.AUTH_ENABLED === 'false' ||
+  windowEnvViteAuthEnabled === 'false' || 
+  windowEnvAuthEnabled === 'false' ||
+  windowEnvViteAuthEnabled === false || 
+  windowEnvAuthEnabled === false;
+
+// Use dummy auth only if:
+// 1. Auth is explicitly disabled, OR
+// 2. We're in development and auth is not explicitly enabled
+const useDummyAuth = 
+  authExplicitlyDisabled || 
+  (!authExplicitlyEnabled && isDevelopment) ||
+  window.FORCE_DUMMY_AUTH === true;
 
 // Log authentication status for debugging
 console.log('MSAL Instance - Authentication status:', {

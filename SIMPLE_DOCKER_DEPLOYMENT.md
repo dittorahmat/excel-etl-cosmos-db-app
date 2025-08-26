@@ -214,10 +214,17 @@ The `--build` flag in docker-compose is the simplest approach as it handles the 
 After deployment, the application will be accessible at:
 
 ```
-http://your-vps-ip
+https://your-vps-ip
 ```
 
-(The application is mapped to the standard HTTP port 80, so no port number is needed in the URL)
+HTTP requests to `http://your-vps-ip` will automatically redirect to HTTPS.
+
+Note: Since the application uses self-signed certificates, your browser will show a security warning. This is expected for the default setup. To proceed:
+1. Navigate to https://your-vps-ip
+2. Click "Advanced" 
+3. Click "Proceed to [IP] (unsafe)"
+
+For production use with a domain name, refer to `HTTPS_SETUP.md` for instructions on setting up trusted certificates with Let's Encrypt.
 
 ## Managing the Application
 

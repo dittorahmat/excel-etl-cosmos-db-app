@@ -31,17 +31,36 @@ console.log('Environment variables:', {
 });
 
 // Check if authentication is enabled
-const isAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
-                     windowEnv.VITE_AUTH_ENABLED !== 'false' && 
-                     windowEnv.AUTH_ENABLED !== 'false';
-                     
-const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+// Auth is enabled if any of these are explicitly set to 'true'
+const isAuthEnabled = 
+  import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+  windowEnv.VITE_AUTH_ENABLED === 'true' || 
+  windowEnv.AUTH_ENABLED === 'true' ||
+  (typeof window !== 'undefined' && window.ENV?.VITE_AUTH_ENABLED === 'true') ||
+  (typeof window !== 'undefined' && window.ENV?.AUTH_ENABLED === 'true');
 
-// Use dummy values if auth is disabled or in development
-const useDummyAuth = !isAuthEnabled || isDevelopment;
+// Check if auth is explicitly disabled
+const isAuthDisabled = 
+  import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+  windowEnv.VITE_AUTH_ENABLED === 'false' || 
+  windowEnv.AUTH_ENABLED === 'false' ||
+  (typeof window !== 'undefined' && window.ENV?.VITE_AUTH_ENABLED === 'false') ||
+  (typeof window !== 'undefined' && window.ENV?.AUTH_ENABLED === 'false');
+
+const isDevelopment = import.meta.env.DEV || 
+                     (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+
+// Use dummy auth only if:
+// 1. Auth is explicitly disabled, OR
+// 2. We're in development and auth is not explicitly enabled, OR
+// 3. Dummy auth is explicitly forced
+const useDummyAuth = 
+  isAuthDisabled || 
+  (!isAuthEnabled && isDevelopment) ||
+  (typeof window !== 'undefined' && (window.FORCE_DUMMY_AUTH === true || window.USE_DUMMY_AUTH === true));
 
 // Force dummy auth if explicitly set in window
-const forceDummyAuth = typeof window !== 'undefined' && ((window as any).FORCE_DUMMY_AUTH || (window as any).USE_DUMMY_AUTH);
+const forceDummyAuth = typeof window !== 'undefined' && (window.FORCE_DUMMY_AUTH === true || window.USE_DUMMY_AUTH === true);
 
 // Debug: Log authentication configuration
 console.log('Auth Configuration:', {
@@ -61,19 +80,19 @@ if (!isAuthEnabled) {
 // Configuration values
 const clientId = useDummyAuth || forceDummyAuth
   ? '00000000-0000-0000-0000-000000000000' 
-  : getEnv('VITE_AZURE_CLIENT_ID');
+  : getEnv('VITE_AZURE_CLIENT_ID') || getEnv('VITE_PUBLIC_AZURE_CLIENT_ID');
 
 const tenantId = useDummyAuth || forceDummyAuth
   ? '00000000-0000-0000-0000-000000000000' 
-  : getEnv('VITE_AZURE_TENANT_ID');
+  : getEnv('VITE_AZURE_TENANT_ID') || getEnv('VITE_PUBLIC_AZURE_TENANT_ID');
 
 const redirectUri = useDummyAuth || forceDummyAuth
   ? 'http://localhost:3000' 
-  : getEnv('VITE_AZURE_REDIRECT_URI') || getOrigin();
+  : getEnv('VITE_AZURE_REDIRECT_URI') || getEnv('VITE_PUBLIC_AZURE_REDIRECT_URI') || getOrigin();
 
 const apiScope = useDummyAuth || forceDummyAuth
   ? 'api://00000000-0000-0000-0000-000000000000/access_as_user' 
-  : getEnv('VITE_API_SCOPE') || `api://${clientId}/access_as_user`;
+  : getEnv('VITE_API_SCOPE') || getEnv('VITE_PUBLIC_API_SCOPE') || `api://${clientId}/access_as_user`;
 
 console.log('Auth configuration:', {
   isAuthEnabled,

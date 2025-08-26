@@ -67,9 +67,9 @@ const ProtectedRoute: React.FC = () => {
   
   // Check if dummy auth is enabled from multiple sources
   const useDummyAuth = 
-    (window as any).USE_DUMMY_AUTH || 
-    (window as any).FORCE_DUMMY_AUTH ||
-    ((window as any).APP_CONFIG?.auth?.useDummyAuth) ||
+    window.FORCE_DUMMY_AUTH === true || 
+    window.USE_DUMMY_AUTH === true ||
+    (window.APP_CONFIG?.auth?.useDummyAuth === true) ||
     localStorage.getItem('useDummyAuth') === 'true';
     
   console.log('ProtectedRoute - Dummy Auth Flags:', {

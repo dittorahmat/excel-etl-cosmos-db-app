@@ -1,6 +1,6 @@
 # Excel to Cosmos DB Dashboard - Deployment Options
 
-This project can be deployed in multiple ways:
+This project can be deployed in multiple ways, all with built-in HTTPS support.
 
 ## 1. Simple Docker Deployment (Recommended for VPS)
 

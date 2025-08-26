@@ -14,7 +14,7 @@
 
       // Set a flag to indicate we want to control MSAL initialization
       window.SKIP_MSAL_INIT = true;
-      console.log('SKIP_MSAL_INIT set to:', window.SKIP_MSAL_INIT);
+      console.log('SKIP_MSAL_INIT set to:', window.SKAL_INIT);
 
       // Ensure global is defined for Node.js like environments
       window.global = window.global || window;
@@ -42,12 +42,34 @@
         Object.assign(window.ENV, window.ENV_OVERRIDE);
       }
 
-      // Set authentication flags based on environment
-      if (!window.ENV.VITE_AUTH_ENABLED || window.ENV.VITE_AUTH_ENABLED === 'false') {
-        window.ENV.VITE_AUTH_ENABLED = 'false';
-        window.ENV.AUTH_ENABLED = 'false';
-        window.FORCE_DUMMY_AUTH = true;
-        window.USE_DUMMY_AUTH = true;
+      // Load config.js and then set authentication flags
+      // This ensures we use the correct values from config.js
+      function initializeAuth() {
+        // Set authentication flags based on environment
+        // Only force dummy auth if explicitly set to false AND not in development
+        const isDevelopment = window.location.hostname === 'localhost' || 
+                             window.location.hostname === '127.0.0.1' ||
+                             window.location.hostname.includes('localhost');
+                             
+        // Check if auth is explicitly enabled in environment or if we're in development
+        const authExplicitlyEnabled = window.ENV.VITE_AUTH_ENABLED === 'true' || window.ENV.AUTH_ENABLED === 'true';
+        
+        if (!authExplicitlyEnabled && !isDevelopment) {
+          // Only force dummy auth in production when auth is explicitly disabled
+          window.ENV.VITE_AUTH_ENABLED = 'false';
+          window.ENV.AUTH_ENABLED = 'false';
+          window.FORCE_DUMMY_AUTH = true;
+          window.USE_DUMMY_AUTH = true;
+        } else if (authExplicitlyEnabled) {
+          // If auth is explicitly enabled, make sure dummy auth flags are not set
+          window.ENV.VITE_AUTH_ENABLED = 'true';
+          window.ENV.AUTH_ENABLED = 'true';
+          window.FORCE_DUMMY_AUTH = false;
+          window.USE_DUMMY_AUTH = false;
+        }
+        
+        console.log('Environment variables initialized:', window.ENV);
+        console.log('Authentication mode - Explicitly enabled:', authExplicitlyEnabled, 'Is development:', isDevelopment);
       }
 
       // Error boundary for better error handling
@@ -55,12 +77,15 @@
         console.error('Global error:', { message, source, lineno, colno, error });
         return false; // Let the default handler run too
       };
-
-      console.log('Environment variables initialized:', window.ENV);
     </script>
 
     <!-- Load the runtime config first -->
     <script src="/config.js"></script>
+    
+    <!-- Initialize authentication after config is loaded -->
+    <script>
+      initializeAuth();
+    </script>
 
     <!-- CDN Cache Busting: 2025-08-12-1 -->
   </head>

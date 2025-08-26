@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync, readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -7,8 +7,18 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
-dotenv.config({ path: resolve(__dirname, '../.env') });
+// Load environment variables from .env file explicitly
+const envPath = resolve(__dirname, '../.env');
+console.log('[dotenv] Attempting to load from:', envPath);
+if (existsSync(envPath)) {
+  const envConfig = dotenv.config({ path: envPath });
+  console.log('[dotenv] Loaded config:', envConfig.parsed ? 'Success' : 'Failed');
+  if (envConfig.parsed) {
+    console.log('[dotenv] VITE_AZURE_REDIRECT_URI:', envConfig.parsed.VITE_AZURE_REDIRECT_URI || 'NOT SET');
+  }
+} else {
+  console.log('[dotenv] .env file not found at:', envPath);
+}
 
 // Create config object with environment variables
 const config = {
@@ -21,6 +31,11 @@ const config = {
   PROD: process.env.NODE_ENV === 'production',
   DEV: process.env.NODE_ENV !== 'production'
 };
+
+console.log('[config] Final config values:', {
+  VITE_AZURE_REDIRECT_URI: config.VITE_AZURE_REDIRECT_URI,
+  VITE_AUTH_ENABLED: config.VITE_AZURE_CLIENT_ID ? 'true' : 'false'
+});
 
 // Generate config file content
 const configContent = `// This file is auto-generated during build
