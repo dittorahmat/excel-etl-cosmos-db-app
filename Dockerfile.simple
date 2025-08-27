@@ -24,6 +24,11 @@ RUN cd server && npm ci --prefer-offline --no-audit --no-fund || npm install --p
 RUN npm uninstall @tailwindcss/vite
 RUN npm install tailwindcss@3.4.3 postcss@8.4.38 autoprefixer@10.4.20 --save-dev --prefer-offline --no-audit --no-fund
 
+# Copy configuration files
+COPY .env ./
+COPY postcss.config.cjs ./
+COPY tailwind.config.js ./
+
 # Copy shared code
 COPY common ./common
 
@@ -33,10 +38,6 @@ COPY server/src ./server/src
 COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY server/tsconfig*.json ./server/
 COPY scripts ./scripts
-
-# Copy configuration files
-COPY postcss.config.cjs ./
-COPY tailwind.config.js ./
 
 # Build frontend and backend
 RUN npm run build
