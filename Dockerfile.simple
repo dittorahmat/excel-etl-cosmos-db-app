@@ -14,30 +14,32 @@ RUN apk add --no-cache curl bash
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Copy shared code
-COPY common ./common
+# Install frontend dependencies with network resilience
+RUN npm ci --prefer-offline --no-audit --no-fund || npm install --prefer-offline --no-audit --no-fund
 
-# Install all dependencies
-RUN npm install && cd server && npm install
+# Install server dependencies with network resilience
+RUN cd server && npm ci --prefer-offline --no-audit --no-fund || npm install --prefer-offline --no-audit --no-fund
 
 # Fix Tailwind CSS version conflict
 RUN npm uninstall @tailwindcss/vite
-RUN npm install tailwindcss@3.4.3 postcss@8.4.38 autoprefixer@10.4.20 --save-dev
+RUN npm install tailwindcss@3.4.3 postcss@8.4.38 autoprefixer@10.4.20 --save-dev --prefer-offline --no-audit --no-fund
+
+# Copy shared code
+COPY common ./common
 
 # Copy source code
 COPY src ./src
 COPY server/src ./server/src
 COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY server/tsconfig*.json ./server/
-COPY common ./common
 COPY scripts ./scripts
 
 # Copy configuration files
 COPY postcss.config.cjs ./
 COPY tailwind.config.js ./
 
-# Build frontend and backend
-RUN npm run build
+# Build frontend and backend with network timeout
+RUN npm run build --network-timeout 300000
 
 # Production stage
 FROM node:18-alpine
@@ -53,8 +55,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Install production dependencies only
-RUN npm ci --only=production && cd server && npm ci --only=production
+# Install production dependencies only with network resilience
+RUN npm ci --only=production --prefer-offline --no-audit --no-fund || npm install --only-production --prefer-offline --no-audit --no-fund \
+    && cd server && npm ci --only=production --prefer-offline --no-audit --no-fund || npm install --only-production --prefer-offline --no-audit --no-fund
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
