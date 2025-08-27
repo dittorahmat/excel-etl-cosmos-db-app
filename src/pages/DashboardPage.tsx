@@ -2,14 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useAuth } from '../auth/useAuth';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { QueryBuilder } from '../components/QueryBuilder/QueryBuilder';
+import { Button } from '../components/ui/button';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileListTable } from '../components/FileListTable';
 import { useDashboardData } from '../hooks/useDashboardData';
+
+// Import libraries for export functionality
+import * as XLSX from 'xlsx';
 
 // Type definitions for the component props and API responses
 
@@ -46,6 +50,68 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     } catch (_e) {
       return dateString;
     }
+  };
+
+  // Export to CSV function
+  const exportToCSV = (data: any[], fields: string[]) => {
+    // Create header row
+    const headers = fields.join(',');
+    
+    // Create data rows
+    const rows = data.map(item => {
+      return fields.map(field => {
+        const value = item[field];
+        // Handle special formatting for dates
+        const formattedValue = typeof value === 'string' && value.includes('T') 
+          ? formatDate(value) 
+          : String(value || '');
+        
+        // Escape quotes and wrap in quotes if needed
+        if (typeof formattedValue === 'string' && (formattedValue.includes(',') || formattedValue.includes('"') || formattedValue.includes('\n'))) {
+          return `"${formattedValue.replace(/"/g, '""')}"`;
+        }
+        return formattedValue;
+      }).join(',');
+    });
+    
+    // Combine headers and rows
+    const csvContent = [headers, ...rows].join('\n');
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `query-results-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export to Excel function
+  const exportToExcel = (data: any[], fields: string[]) => {
+    // Format data for Excel
+    const formattedData = data.map(item => {
+      const formattedItem: Record<string, any> = {};
+      fields.forEach(field => {
+        const value = item[field];
+        formattedItem[field] = typeof value === 'string' && value.includes('T') 
+          ? formatDate(value) 
+          : value;
+      });
+      return formattedItem;
+    });
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
+    
+    // Export to file
+    XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   if (!isAuthenticated) {
@@ -122,42 +188,66 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                     <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
                   </div>
                 ) : queryResult.items.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {queryResult.fields.map((field) => (
-                            <TableHead key={field}>
-                              <div className="flex items-center">
-                                <span>{field}</span>
-                                <button
-                                  onClick={() => handleSort(field)}
-                                  className="ml-2 text-gray-400 hover:text-gray-600"
-                                >
-                                  {sortField === field ? (
-                                    sortDirection === 'asc' ? '↑' : '↓'
-                                  ) : '↕'}
-                                </button>
-                              </div>
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {queryResult.items.map((item, index) => (
-                          <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
+                  <>
+                    {/* Export Buttons */}
+                    <div className="flex justify-end mb-4 space-x-2">
+                      <Button 
+                        onClick={() => exportToCSV(queryResult.items, queryResult.fields)}
+                        variant="outline" 
+                        size="sm"
+                        className="flex items-center"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Export CSV
+                      </Button>
+                      <Button 
+                        onClick={() => exportToExcel(queryResult.items, queryResult.fields)}
+                        variant="outline" 
+                        size="sm"
+                        className="flex items-center"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Export Excel
+                      </Button>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
                             {queryResult.fields.map((field) => (
-                              <TableCell key={`${index}-${field}`}>
-                                {typeof item[field] === 'string' && String(item[field]).includes('T')
-                                  ? formatDate(String(item[field]))
-                                  : String(item[field] || '')}
-                              </TableCell>
+                              <TableHead key={field}>
+                                <div className="flex items-center">
+                                  <span>{field}</span>
+                                  <button
+                                    onClick={() => handleSort(field)}
+                                    className="ml-2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {sortField === field ? (
+                                      sortDirection === 'asc' ? '↑' : '↓'
+                                    ) : '↕'}
+                                  </button>
+                                </div>
+                              </TableHead>
                             ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {queryResult.items.map((item, index) => (
+                            <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
+                              {queryResult.fields.map((field) => (
+                                <TableCell key={`${index}-${field}`}>
+                                  {typeof item[field] === 'string' && String(item[field]).includes('T')
+                                    ? formatDate(String(item[field]))
+                                    : String(item[field] || '')}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 ) : (
                   <div className="rounded-md bg-blue-50 p-4">
                     <h3 className="text-sm font-medium text-blue-800">No results found</h3>
