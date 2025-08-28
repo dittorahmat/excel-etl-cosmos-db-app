@@ -1,10 +1,11 @@
-import * as XLSX from 'xlsx';
+import { Workbook } from 'exceljs';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { logger } from '../../utils/logger.js';
 import csv from 'csv-parser';
 import * as fs from 'fs';
+import { Buffer } from 'buffer';
 
 interface ParseOptions {
   /**
@@ -84,12 +85,14 @@ export class FileParserService {
         throw new Error(`File not found or inaccessible: ${filePath}`);
       }
       // Read the file as buffer first for debugging
-      let fileBuffer: Buffer;
+      let fileBufferData: Buffer | Uint8Array;
       try {
-        fileBuffer = await fs.promises.readFile(filePath);
+        fileBufferData = await fs.promises.readFile(filePath);
         this.logger.debug('File read successfully', {
-          bufferLength: fileBuffer.length,
-          first100Bytes: fileBuffer.subarray(0, 100).toString('hex')
+          bufferLength: fileBufferData.length,
+          first100Bytes: fileBufferData instanceof Buffer 
+            ? fileBufferData.subarray(0, 100).toString('hex')
+            : Buffer.from(fileBufferData).subarray(0, 100).toString('hex')
         });
       } catch (readError) {
         this.logger.error('Error reading file:', readError);
@@ -97,18 +100,14 @@ export class FileParserService {
       }
 
       // Parse the Excel file
-      let workbook;
+      const workbook = new Workbook();
       try {
         this.logger.debug('Attempting to parse Excel file...');
-        workbook = XLSX.read(fileBuffer, {
-          type: 'buffer',
-          cellDates: true,
-          cellNF: false,
-          cellText: false
-        });
+        // Cast to any to bypass type checking issues
+        await workbook.xlsx.load(fileBufferData as any);
         this.logger.debug('Successfully parsed Excel workbook', {
-          sheetCount: workbook.SheetNames?.length || 0,
-          sheetNames: workbook.SheetNames || []
+          sheetCount: workbook.worksheets?.length || 0,
+          sheetNames: workbook.worksheets?.map(ws => ws.name) || []
         });
       } catch (error) {
         const parseError = error as Error;
@@ -121,71 +120,38 @@ export class FileParserService {
       }
 
       // Get the first worksheet
-      const firstSheetName = workbook.SheetNames[0];
-      if (!firstSheetName) {
-        const errorMsg = 'No worksheets found in the Excel file';
-        this.logger.error(errorMsg, { sheetNames: workbook.SheetNames });
-        throw new Error(errorMsg);
-      }
-
-      this.logger.debug('Processing worksheet:', { worksheetName: firstSheetName });
-      const worksheet = workbook.Sheets[firstSheetName];
-      
+      const worksheet = workbook.worksheets[0];
       if (!worksheet) {
-        const errorMsg = `Worksheet '${firstSheetName}' not found in workbook`;
-        this.logger.error(errorMsg, { sheetNames: workbook.SheetNames });
+        const errorMsg = 'No worksheets found in the Excel file';
+        this.logger.error(errorMsg);
         throw new Error(errorMsg);
       }
-      
-      // Convert to JSON with header row
-      // Convert worksheet to JSON
-      let jsonData;
-      try {
-        this.logger.debug('Converting worksheet to JSON...');
-        jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-          header: 1, // Get raw data including headers
-          raw: false, // Get formatted strings
-          defval: null, // Use null for empty cells
-          blankrows: false,
-        });
-        this.logger.debug('Successfully converted worksheet to JSON', {
-          rowCount: jsonData.length,
-          firstRow: jsonData[0] ? Object.keys(jsonData[0]) : []
-        });
-      } catch (error) {
-        const conversionError = error as Error;
-        this.logger.error('Error converting worksheet to JSON:', {
-          error: conversionError,
-          errorMessage: conversionError.message,
-          errorStack: conversionError.stack
-        });
-        throw new Error(`Failed to convert worksheet to JSON: ${conversionError.message}`);
-      }
 
-      if (jsonData.length === 0) {
+      this.logger.debug('Processing worksheet:', { worksheetName: worksheet.name });
+      
+      // Extract data
+      const rows = worksheet.getSheetValues() as (string | number | Date)[][];
+      if (rows.length === 0) {
         return result;
       }
 
       // First row is headers - ensure it's treated as an array of unknown values
-      const firstRow = Array.isArray(jsonData[0]) ? jsonData[0] : Object.values(jsonData[0] || {});
+      const firstRow = rows[0];
       const headers = firstRow.map((h, index) => 
         (h !== null && h !== undefined ? String(h).trim() : '') || `column_${index + 1}`
       ) as string[];
 
       result.headers = headers;
-      result.totalRows = jsonData.length - 1; // Exclude header row
+      result.totalRows = rows.length - 1; // Exclude header row
 
       // Process rows
-      for (let i = 1; i < jsonData.length; i++) {
+      for (let i = 1; i < rows.length; i++) {
         if (options.maxRows && result.rows.length >= options.maxRows) {
           break;
         }
 
         // Ensure rowData is treated as an array of unknown values
-        const currentRow = jsonData[i];
-        const rowData = Array.isArray(currentRow) 
-          ? currentRow 
-          : Object.values(currentRow || {});
+        const rowData = rows[i];
         const row: Record<string, unknown> = {};
         let isEmpty = true;
 

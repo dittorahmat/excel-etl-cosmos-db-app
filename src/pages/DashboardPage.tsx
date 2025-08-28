@@ -13,7 +13,7 @@ import { FileListTable } from '../components/FileListTable';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 // Import libraries for export functionality
-import * as XLSX from 'xlsx';
+import { Workbook } from 'exceljs';
 
 // Type definitions for the component props and API responses
 
@@ -90,7 +90,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   };
 
   // Export to Excel function
-  const exportToExcel = (data: any[], fields: string[]) => {
+  const exportToExcel = async (data: any[], fields: string[]) => {
     // Format data for Excel
     const formattedData = data.map(item => {
       const formattedItem: Record<string, any> = {};
@@ -103,15 +103,32 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       return formattedItem;
     });
     
-    // Create worksheet
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    // Create workbook and worksheet
+    const workbook = new Workbook();
+    const worksheet = workbook.addWorksheet('Query Results');
     
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
+    // Add headers
+    if (formattedData.length > 0) {
+      worksheet.addRow(fields);
+      
+      // Add data rows
+      formattedData.forEach(item => {
+        const row = fields.map(header => item[header]);
+        worksheet.addRow(row);
+      });
+    }
     
-    // Export to file
-    XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    // Generate Excel file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   if (!isAuthenticated) {

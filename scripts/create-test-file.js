@@ -1,8 +1,11 @@
-import XLSX from 'xlsx';
+import exceljs from 'exceljs';
 import { writeFileSync } from 'fs';
 
-// Create a new workbook
-const wb = XLSX.utils.book_new();
+const { Workbook } = exceljs;
+
+// Create a new workbook and worksheet
+const workbook = new Workbook();
+const worksheet = workbook.addWorksheet('Sheet1');
 
 // Sample data
 const data = [
@@ -10,14 +13,20 @@ const data = [
   { Name: 'Jane Smith', Email: 'jane@example.com', Phone: '098-765-4321' }
 ];
 
-// Convert data to worksheet
-const ws = XLSX.utils.json_to_sheet(data);
-
-// Add worksheet to workbook
-XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+// Add headers
+if (data.length > 0) {
+  const headers = Object.keys(data[0]);
+  worksheet.addRow(headers);
+  
+  // Add data rows
+  data.forEach(item => {
+    const row = headers.map(header => item[header]);
+    worksheet.addRow(row);
+  });
+}
 
 // Write to file
-const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+const buffer = await workbook.xlsx.writeBuffer();
 writeFileSync('test-upload.xlsx', buffer);
 
 console.log('Created test-upload.xlsx');

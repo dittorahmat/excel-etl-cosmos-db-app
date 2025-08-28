@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as XLSX from 'xlsx';
+import { Workbook } from 'exceljs';
+import { Buffer } from 'buffer';
 
 /**
  * Process Excel file and upload to Cosmos DB
@@ -25,13 +26,10 @@ export const processExcelFile = async (
 }> => {
   try {
     // Parse the Excel file with error handling for invalid formats
-    let workbook;
+    const workbook = new Workbook();
     try {
-      workbook = XLSX.read(fileBuffer, {
-        type: 'buffer',
-        cellDates: true, // Parse dates properly
-        dateNF: 'yyyy-mm-dd', // Format dates consistently
-      });
+      // Cast to any to bypass type checking issues
+      await workbook.xlsx.load(fileBuffer as any);
     } catch (error) {
       console.error('Error parsing Excel file:', error);
       return {
@@ -42,8 +40,8 @@ export const processExcelFile = async (
     }
 
     // Get the first worksheet
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
       return {
         success: false,
         count: 0,
@@ -51,27 +49,19 @@ export const processExcelFile = async (
       };
     }
 
-    const worksheet = workbook.Sheets[firstSheetName];
-
-    // Convert to JSON with headers
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-      header: 1,
-      raw: true,
-      defval: '',
-      blankrows: false,
-    });
-
-    // Extract headers (first row)
-    const headers = jsonData[0] as unknown as string[];
-    const dataRows = jsonData.slice(1);
-
-    if (dataRows.length === 0) {
+    // Extract data
+    const rows = worksheet.getSheetValues() as (string | number | Date)[][];
+    if (rows.length <= 1) {
       return {
         success: false,
         count: 0,
         error: 'No data rows found in the Excel file'
       };
     }
+
+    // Extract headers (first row)
+    const headers = rows[0] as string[];
+    const dataRows = rows.slice(1);
 
     // Process data rows
     const processedData = dataRows.map((row, index) => {

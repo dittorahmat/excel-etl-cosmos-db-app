@@ -1,5 +1,7 @@
-import XLSX from 'xlsx';
+import exceljs from 'exceljs';
 import { writeFileSync } from 'fs';
+
+const { Workbook } = exceljs;
 
 // Create test data
 const testData = [
@@ -19,11 +21,25 @@ const csvContent = [
 writeFileSync('test-upload.csv', csvContent);
 console.log('Created test-upload.csv');
 
-// Create Excel file
-const worksheet = XLSX.utils.json_to_sheet(testData);
-const workbook = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Data');
-XLSX.writeFile(workbook, 'test-upload.xlsx');
+// Create Excel file using exceljs
+const workbook = new Workbook();
+const worksheet = workbook.addWorksheet('Test Data');
+
+// Add headers
+if (testData.length > 0) {
+  const headers = Object.keys(testData[0]);
+  worksheet.addRow(headers);
+  
+  // Add data rows
+  testData.forEach(item => {
+    const row = headers.map(header => item[header]);
+    worksheet.addRow(row);
+  });
+}
+
+// Write to file
+const buffer = await workbook.xlsx.writeBuffer();
+writeFileSync('test-upload.xlsx', buffer);
 console.log('Created test-upload.xlsx');
 
 console.log('Test files created successfully!');

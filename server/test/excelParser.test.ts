@@ -1,17 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as XLSX from 'xlsx';
+import { Workbook } from 'exceljs';
 import { processExcelFile } from '../src/utils/excelParser.js';
 import { v4 as uuidv4 } from 'uuid';
 
-// Mock the XLSX and uuid modules
-vi.mock('xlsx', () => ({
-  read: vi.fn(),
-  utils: {
-    sheet_to_json: vi.fn(),
-    decode_range: vi.fn(),
-    encode_cell: vi.fn()
-  }
-}));
+// Mock the exceljs and uuid modules
+vi.mock('exceljs', () => {
+  return {
+    Workbook: vi.fn().mockImplementation(() => {
+      return {
+        xlsx: {
+          load: vi.fn().mockResolvedValue(undefined)
+        },
+        worksheets: [{
+          getSheetValues: vi.fn().mockReturnValue([
+            ['Header1', 'Header2', 'Header3'],
+            ['Value1A', 'Value1B', 'Value1C'],
+            ['Value2A', 'Value2B', 'Value2C'],
+          ])
+        }],
+        addWorksheet: vi.fn().mockReturnThis()
+      };
+    })
+  };
+});
 
 vi.mock('uuid', () => ({
   v4: vi.fn()
@@ -35,20 +46,23 @@ describe('processExcelFile', () => {
   });
 
   it('should successfully process a valid Excel file', async () => {
-    const mockWorkbook = {
-      SheetNames: ['Sheet1'],
-      Sheets: {
-        Sheet1: {},
-      },
+    // Mock the workbook to return specific data
+    const mockWorkSheet = {
+      getSheetValues: vi.fn().mockReturnValue([
+        ['Header1', 'Header2', 'Header3'],
+        ['Value1A', 'Value1B', 'Value1C'],
+        ['Value2A', 'Value2B', 'Value2C'],
+      ])
     };
-    const mockJsonData = [
-      ['Header1', 'Header2', 'Header3'],
-      ['Value1A', 'Value1B', 'Value1C'],
-      ['Value2A', 'Value2B', 'Value2C'],
-    ];
-
-    vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as any);
-    vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(mockJsonData as any);
+    
+    const mockWorkbook = {
+      worksheets: [mockWorkSheet],
+      xlsx: {
+        load: vi.fn().mockResolvedValue(undefined)
+      }
+    };
+    
+    (Workbook as any).mockImplementation(() => mockWorkbook);
 
     const result = await processExcelFile(
       mockFileBuffer,
@@ -94,9 +108,14 @@ describe('processExcelFile', () => {
   });
 
   it('should return an error for an invalid Excel file format', async () => {
-    vi.mocked(XLSX.read).mockImplementation(() => {
-      throw new Error('Invalid file');
-    });
+    // Mock the workbook to throw an error when loading
+    const mockWorkbook = {
+      xlsx: {
+        load: vi.fn().mockRejectedValue(new Error('Invalid file'))
+      }
+    };
+    
+    (Workbook as any).mockImplementation(() => mockWorkbook);
 
     const result = await processExcelFile(
       mockFileBuffer,
@@ -112,11 +131,15 @@ describe('processExcelFile', () => {
   });
 
   it('should return an error if no worksheets are found', async () => {
+    // Mock the workbook to have no worksheets
     const mockWorkbook = {
-      SheetNames: [],
-      Sheets: {},
+      worksheets: [],
+      xlsx: {
+        load: vi.fn().mockResolvedValue(undefined)
+      }
     };
-    vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as any);
+    
+    (Workbook as any).mockImplementation(() => mockWorkbook);
 
     const result = await processExcelFile(
       mockFileBuffer,
@@ -131,16 +154,21 @@ describe('processExcelFile', () => {
   });
 
   it('should return an error if no data rows are found (only headers)', async () => {
-    const mockWorkbook = {
-      SheetNames: ['Sheet1'],
-      Sheets: {
-        Sheet1: {},
-      },
+    // Mock the workbook to return only headers
+    const mockWorkSheet = {
+      getSheetValues: vi.fn().mockReturnValue([
+        ['Header1', 'Header2']
+      ])
     };
-    const mockJsonData = [['Header1', 'Header2']]; // Only headers, no data rows
-
-    vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as any);
-    vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(mockJsonData as any);
+    
+    const mockWorkbook = {
+      worksheets: [mockWorkSheet],
+      xlsx: {
+        load: vi.fn().mockResolvedValue(undefined)
+      }
+    };
+    
+    (Workbook as any).mockImplementation(() => mockWorkbook);
 
     const result = await processExcelFile(
       mockFileBuffer,
@@ -155,20 +183,23 @@ describe('processExcelFile', () => {
   });
 
   it('should handle null and undefined cell values correctly', async () => {
-    const mockWorkbook = {
-      SheetNames: ['Sheet1'],
-      Sheets: {
-        Sheet1: {},
-      },
+    // Mock the workbook to return data with null and undefined values
+    const mockWorkSheet = {
+      getSheetValues: vi.fn().mockReturnValue([
+        ['Header1', 'Header2', 'Header3'],
+        ['Value1A', null, 'Value1C'],
+        [undefined, 'Value2B', null],
+      ])
     };
-    const mockJsonData = [
-      ['Header1', 'Header2', 'Header3'],
-      ['Value1A', null, 'Value1C'],
-      [undefined, 'Value2B', null],
-    ];
-
-    vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as any);
-    vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(mockJsonData as any);
+    
+    const mockWorkbook = {
+      worksheets: [mockWorkSheet],
+      xlsx: {
+        load: vi.fn().mockResolvedValue(undefined)
+      }
+    };
+    
+    (Workbook as any).mockImplementation(() => mockWorkbook);
 
     const result = await processExcelFile(
       mockFileBuffer,
@@ -185,13 +216,21 @@ describe('processExcelFile', () => {
   });
 
   it('should return a general error if an unexpected error occurs during processing', async () => {
-    vi.mocked(XLSX.read).mockReturnValue({
-      SheetNames: ['Sheet1'],
-      Sheets: { Sheet1: {} },
-    } as any);
-    vi.mocked(XLSX.utils.sheet_to_json).mockImplementation(() => {
-      throw new Error('Unexpected processing error');
-    });
+    // Mock the workbook to throw an error during processing
+    const mockWorkSheet = {
+      getSheetValues: vi.fn().mockImplementation(() => {
+        throw new Error('Unexpected processing error');
+      })
+    };
+    
+    const mockWorkbook = {
+      worksheets: [mockWorkSheet],
+      xlsx: {
+        load: vi.fn().mockResolvedValue(undefined)
+      }
+    };
+    
+    (Workbook as any).mockImplementation(() => mockWorkbook);
 
     const result = await processExcelFile(
       mockFileBuffer,
