@@ -8,15 +8,7 @@ import './App.css';
 declare global {
   interface Window {
     isAuthenticated?: boolean;
-    ENV?: {
-      VITE_AUTH_ENABLED?: string;
-      AUTH_ENABLED?: string;
-      NODE_ENV?: string;
-      MODE?: string;
-      VITE_AZURE_CLIENT_ID?: string;
-      VITE_AZURE_REDIRECT_URI?: string;
-      VITE_AZURE_TENANT_ID?: string;
-    };
+    ENV?: Record<string, string>;
     APP_CONFIG?: {
       auth?: {
         useDummyAuth?: boolean;

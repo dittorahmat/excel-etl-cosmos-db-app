@@ -126,13 +126,13 @@ export const FieldSelector = ({
           </div>
         </PopoverTrigger>
         <PopoverContent
-  className="w-[400px] p-0"
-  align="start"
-  tabIndex={-1}
-  onKeyDown={(e) => {
-    if (e.key === "Escape") setIsOpen(false);
-  }}
->
+          className="w-[400px] p-0 bg-white"
+          align="start"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setIsOpen(false);
+          }}
+        >
           <Command className="rounded-lg border shadow-md">
             <div className="px-3 pt-2">
               <CommandInput

@@ -20,6 +20,11 @@ export default defineConfig(({ mode }) => {
       modules: {
         generateScopedName: isProduction ? '[hash:base64:8]' : '[name]__[local]--[hash:base64:5]',
       },
+      preprocessorOptions: {
+        scss: {
+          additionalData: `@import "@/styles/variables.scss";`
+        }
+      }
     },
     build: {
       outDir: 'dist',
@@ -30,26 +35,45 @@ export default defineConfig(({ mode }) => {
       cssCodeSplit: true,
       cssMinify: isProduction,
       minify: isProduction ? 'terser' : false,
-      // Ensure CSS is extracted to separate files
-      cssTarget: 'es2015',
-      // Enable CSS modules
-      modulePreload: {
-        polyfill: true,
+      // Ensure proper MIME types for assets
+      assetsInlineLimit: 0, // Ensure all assets are copied as files
+      // Ensure React is not bundled multiple times
+      commonjsOptions: {
+        transformMixedEsModules: true,
+        include: [/node_modules/],
+        exclude: ['**/node_modules/process-es6/**'],
       },
-      // Ensure all assets are properly copied
-      assetsInlineLimit: 0,
+      copyPublicDir: true,
+      chunkSizeWarningLimit: 2000,
+      // Configure Rollup options for bundling
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+        },
         output: {
-          assetFileNames: (assetInfo) => {
-            const info = assetInfo.name?.split('.');
-            const ext = info?.[info.length - 1] || '';
-            if (ext === 'css') {
-              return 'assets/css/[name]-[hash][extname]';
+          entryFileNames: 'assets/[name].[hash].js',
+          chunkFileNames: 'assets/[name].[hash].js',
+          assetFileNames: (assetInfo: { name?: string, type: string }) => {
+            // Keep config.js at the root
+            if (assetInfo.name === 'config.js') return '[name][extname]';
+            // CSS files in assets directory with proper extension
+            if (assetInfo.name?.endsWith('.css')) {
+              // Use standard naming pattern for CSS files
+              return 'assets/[name]-[hash][extname]'; 
             }
+            // All other assets in assets directory
             return 'assets/[name]-[hash][extname]';
           },
-          chunkFileNames: 'assets/js/[name]-[hash].js',
-          entryFileNames: 'assets/js/[name]-[hash].js',
+          manualChunks: (id: string) => {
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+          },
+        }
+      },
+      terserOptions: {
+        compress: {
+          drop_console: mode === 'production',
         },
       },
     },
@@ -109,65 +133,6 @@ export default defineConfig(({ mode }) => {
         },
       })
     ],
-    build: {
-      // Ensure proper MIME types for assets
-      assetsInlineLimit: 0, // Ensure all assets are copied as files
-      // Ensure React is not bundled multiple times
-      commonjsOptions: {
-        transformMixedEsModules: true,
-        include: [/node_modules/],
-        exclude: ['**/node_modules/process-es6/**'],
-      },
-      outDir: 'dist',
-      assetsDir: 'assets',
-      sourcemap: mode !== 'production',
-      minify: 'terser',
-      emptyOutDir: true,
-      copyPublicDir: true,
-      chunkSizeWarningLimit: 2000,
-      // Configure Rollup options for bundling
-      rollupOptions: {
-        input: {
-          main: path.resolve(__dirname, 'index.html'),
-        },
-        css: {
-          devSourcemap: !isProduction,
-          modules: {
-            generateScopedName: isProduction ? '[hash:base64:8]' : '[name]__[local]--[hash:base64:5]',
-          },
-          preprocessorOptions: {
-            scss: {
-              additionalData: `@import "@/styles/variables.scss";`
-            }
-          }
-        },
-        output: {
-          entryFileNames: 'assets/[name].[hash].js',
-          chunkFileNames: 'assets/[name].[hash].js',
-          assetFileNames: (assetInfo: { name?: string, type: string }) => {
-            // Keep config.js at the root
-            if (assetInfo.name === 'config.js') return '[name][extname]';
-            // CSS files in assets directory with proper extension
-            if (assetInfo.name?.endsWith('.css')) {
-              // Use standard naming pattern for CSS files
-              return 'assets/[name]-[hash][extname]'; 
-            }
-            // All other assets in assets directory
-            return 'assets/[name]-[hash][extname]';
-          },
-          manualChunks: (id: string) => {
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-          },
-        }
-      },
-      terserOptions: {
-        compress: {
-          drop_console: mode === 'production',
-        },
-      },
-    },
     define: {
       ...Object.entries(env).reduce<Record<string, string>>((acc, [key, value]) => {
         if (key.startsWith('VITE_')) {

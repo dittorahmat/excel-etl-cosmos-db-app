@@ -3,7 +3,6 @@ import {
   InteractionRequiredAuthError,
   LogLevel
 } from '@azure/msal-browser';
-import { msalConfig, getApiConfig } from '../auth/authConfig';
 import { getMsalInstance } from '../auth/msalInstance';
 import { getApiConfig, getAzureAdConfig } from '../auth/authConfig';
 

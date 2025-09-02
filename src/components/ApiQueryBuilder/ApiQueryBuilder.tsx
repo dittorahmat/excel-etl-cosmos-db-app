@@ -48,8 +48,8 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
         console.log("[ApiQueryBuilder] useEffect fetchFields - API response:", response);
         if (response.success && Array.isArray(response.fields)) {
           const fieldDefinitions = response.fields.map(field => (
-            typeof field === 'string' ? 
-              { name: field, value: field, label: field, type: 'string' as const } : 
+            typeof field === 'string' ?
+              { name: field, value: field, label: field, type: 'string' as const } :
               { ...field, value: field.name, label: field.label || field.name }
           ));
           console.log("[ApiQueryBuilder] useEffect fetchFields - Setting fields:", fieldDefinitions);
@@ -58,11 +58,11 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
           console.error("[ApiQueryBuilder] useEffect fetchFields - API call failed or returned invalid data:", response.message);
           setError(response.message || 'Failed to load fields');
         }
-      } catch (err) { 
+      } catch (err) {
         console.error("[ApiQueryBuilder] useEffect fetchFields - Error:", err);
         setError(err instanceof Error ? err.message : 'Failed to load fields');
       } finally {
-        
+
         setFieldsLoading(false);
       }
     };
@@ -96,14 +96,35 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
       offset: 0,
     };
 
-    const fullUrl = `${window.location.origin}${baseUrl}`;
+    // Using the GET endpoint with query parameters
+    const baseUrlGet = baseUrl.replace('/rows', '/rows-get');
+    const fullUrl = `${window.location.origin}${baseUrlGet}`;
 
-    const curlCommand = `curl -X POST ${fullUrl} \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '${JSON.stringify(body, null, 2)}'`
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    queryParams.append('fields', selectedFields.join(','));
 
-    setGeneratedUrl(curlCommand);
+    if (body.filters.length > 0) {
+      queryParams.append('filters', JSON.stringify(body.filters));
+    }
+
+    queryParams.append('limit', body.limit.toString());
+    queryParams.append('offset', body.offset.toString());
+
+    const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
+
+    const pythonCode = `import requests
+
+url = "${fullUrlWithParams}"
+headers = {
+    "x-api-key": "YOUR_API_KEY"
+}
+
+response = requests.get(url, headers=headers)
+print(response.status_code)
+print(response.json())`;
+
+    setGeneratedUrl(pythonCode);
   }, [selectedFields, filters, baseUrl]);
 
   useEffect(() => {
@@ -176,7 +197,7 @@ export const ApiQueryBuilder: React.FC<ApiQueryBuilderProps> = ({ baseUrl = '/ap
 
       {generatedUrl && (
         <div className="space-y-2 mt-4">
-          <Label htmlFor="apiUrl">Generated cURL Command</Label>
+          <Label htmlFor="apiUrl">Generated Python Code</Label>
           <div className="flex items-center space-x-2">
             <textarea id="apiUrl" value={generatedUrl} readOnly className="flex-1 w-full h-48 p-2 border rounded-md bg-gray-100 dark:bg-gray-800" />
             <Button onClick={handleCopyUrl} size="icon" variant="outline" aria-label="Copy URL">

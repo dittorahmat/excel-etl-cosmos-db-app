@@ -77,12 +77,7 @@ export function FileListTable() {
           pageSize: number;
           totalPages: number;
         };
-      }>('/api/v2/query/imports', {
-        params: {
-          page,
-          pageSize
-        }
-      });
+      }>(`/api/v2/query/imports?page=${page}&pageSize=${pageSize}`);
       
       if (response?.data?.items) {
         const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => ({

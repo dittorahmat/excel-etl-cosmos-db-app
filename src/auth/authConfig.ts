@@ -13,14 +13,24 @@ const getOrigin = (): string => {
 // Helper to get environment variables with fallback to public variables and window config
 const getEnv = (key: string, fallback = ''): string => {
   const env = import.meta.env;
-  const windowEnv = typeof window !== 'undefined' && (window as any).__APP_CONFIG__ ? (window as any).__APP_CONFIG__ : {};
+  const windowEnv = typeof window !== 'undefined' && window.__APP_CONFIG__ ? window.__APP_CONFIG__ : {};
   return env[key] || env[`VITE_PUBLIC_${key}`] || windowEnv[key] || windowEnv[`VITE_PUBLIC_${key}`] || fallback;
 };
+
+// Extend the Window interface to include our custom properties
+declare global {
+  interface Window {
+    ENV?: Record<string, string>;
+    __APP_CONFIG__?: Record<string, string>;
+    USE_DUMMY_AUTH?: boolean;
+    FORCE_DUMMY_AUTH?: boolean;
+  }
+}
 
 // Function to get authentication configuration
 const getAuthConfig = () => {
   const env = import.meta.env;
-  const windowEnv = typeof window !== 'undefined' && (window as any).__APP_CONFIG__ ? (window as any).__APP_CONFIG__ : {};
+  const windowEnv = typeof window !== 'undefined' && window.__APP_CONFIG__ ? window.__APP_CONFIG__ : {};
 
   // Debug: Log all environment variables
   console.log('Environment variables:', {
