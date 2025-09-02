@@ -171,53 +171,58 @@ export function createApp(azureServices: {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     
-    // Serve static files from the dist directory (frontend build output)
-    // When running from server/dist/src/config/, the path to dist is ../../../../dist
-    // When running from server/dist/server/src/config/, the path to dist is ../../../../../dist
-    let staticPath = path.join(__dirname, '../../../../dist');
+    // Path to the static files in the server/dist/public directory
+    const staticPath = path.join(__dirname, '../../public');
+    const indexPath = path.join(staticPath, 'index.html');
     
-    // Check if the static path exists, if not try the alternative path
-    if (!fs.existsSync(staticPath)) {
-      staticPath = path.join(__dirname, '../../../../../dist');
+    if (!fs.existsSync(staticPath) || !fs.existsSync(indexPath)) {
+      logger.error('Frontend build not found at:', staticPath);
+      logger.error('Make sure to run `npm run build` before starting the server');
+      // Return the app without static file serving if build files are missing
+      return app;
     }
     
-    // If neither path exists, log an error but continue (API routes will still work)
-    if (!fs.existsSync(staticPath)) {
-      logger.error('Frontend dist directory not found at expected locations', {
-        path1: path.join(__dirname, '../../../../dist'),
-        path2: path.join(__dirname, '../../../../../dist'),
-        __dirname: __dirname
-      });
-    } else {
-      logger.info('Serving static files from:', staticPath);
-      app.use(express.static(staticPath));
-    }
+    logger.info('Serving static files from:', staticPath);
     
-    // Handle client-side routing by serving index.html for all non-API routes
-    app.get('*', (req: Request, res: Response) => {
-      // Don't serve index.html for API routes
-      if (req.path.startsWith('/api')) {
-        return res.status(404).json({
-          success: false,
-          error: 'Not Found',
-          message: 'The requested API resource was not found',
-        });
+    // Serve static files with proper caching headers
+    app.use(express.static(staticPath, {
+      etag: true,
+      lastModified: true,
+      maxAge: '1y',
+      setHeaders: (res, filePath) => {
+        const ext = path.extname(filePath);
+        // Set immutable cache for hashed assets
+        if (['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot'].includes(ext)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        // Ensure proper MIME types
+        if (ext === '.css') {
+          res.setHeader('Content-Type', 'text/css');
+        } else if (ext === '.js') {
+          res.setHeader('Content-Type', 'application/javascript');
+        } else if (ext === '.json') {
+          res.setHeader('Content-Type', 'application/json');
+        } else if (ext === '.html') {
+          res.setHeader('Content-Type', 'text/html');
+        }
       }
+    }));
       
-      // Serve the index.html for all other routes (client-side routing)
-      // Check if staticPath exists before trying to serve index.html
-      if (fs.existsSync(staticPath)) {
+      // Serve index.html for all other routes (client-side routing)
+      app.get('*', (req: Request, res: Response) => {
+        // Don't serve index.html for API routes
+        if (req.path.startsWith('/api')) {
+          return res.status(404).json({
+            success: false,
+            error: 'Not Found',
+            message: 'The requested API resource was not found',
+          });
+        }
+        
+        // Send the main HTML file for all other routes
         res.sendFile(path.join(staticPath, 'index.html'));
-      } else {
-        // If we can't serve the frontend, return a simple API response
-        res.status(404).json({
-          success: false,
-          error: 'Not Found',
-          message: 'Frontend files not found. API routes are still available at /api/*',
-        });
-      }
-    });
-  }
+      });
+    }
 
   // Error handler
   app.use((err: Error & { statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {
@@ -227,8 +232,8 @@ export function createApp(azureServices: {
     const message = err.message || 'Internal Server Error';
     
     res.status(statusCode).json({
-      success: false,
-      error: err.name || 'Error',
+      status: 'error',
+      statusCode,
       message,
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });

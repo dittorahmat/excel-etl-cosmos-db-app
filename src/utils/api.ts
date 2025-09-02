@@ -4,7 +4,8 @@ import {
   LogLevel
 } from '@azure/msal-browser';
 import { msalConfig, getApiConfig } from '../auth/authConfig';
-import { msalInstance } from '../auth/msalInstance';
+import { getMsalInstance } from '../auth/msalInstance';
+import { getApiConfig, getAzureAdConfig } from '../auth/authConfig';
 
 // Check if authentication is enabled
 const isDevelopment = import.meta.env.DEV;
@@ -31,7 +32,7 @@ const initializeMsal = async () => {
   }
   
   if (!msalInitialized) {
-    await msalInstance.initialize();
+    await getMsalInstance().initialize();
     msalInitialized = true;
   }
 };
@@ -95,12 +96,12 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     }
 
     // Get the real token in production
-    const accounts = msalInstance.getAllAccounts();
+    const accounts = getMsalInstance().getAllAccounts();
     if (accounts.length === 0) {
       console.log('No accounts found');
       // Try to initiate login if no accounts found
       try {
-        await msalInstance.loginRedirect({
+        await getMsalInstance().loginRedirect({
           scopes: getApiConfig().scopes
         });
       } catch (error) {
@@ -126,7 +127,7 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     };
     
     console.log(forceRefresh ? 'Force refreshing token...' : 'Acquiring token silently...');
-    const response = await msalInstance.acquireTokenSilent(silentRequest);
+    const response = await getMsalInstance().acquireTokenSilent(silentRequest);
     
     if (response?.accessToken) {
       console.log('Successfully acquired access token');
@@ -147,13 +148,13 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     if (error instanceof InteractionRequiredAuthError) {
       try {
         console.log('Interactive token acquisition required');
-        const accounts = msalInstance.getAllAccounts();
+        const accounts = getMsalInstance().getAllAccounts();
         if (accounts.length === 0) {
           console.warn('No accounts available for interactive token acquisition');
           return null;
         }
         
-        const authResult = await msalInstance.acquireTokenPopup({
+        const authResult = await getMsalInstance().acquireTokenPopup({
           scopes: getApiConfig().scopes,
           account: accounts[0],
         });

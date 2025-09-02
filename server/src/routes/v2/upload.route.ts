@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import type { Express } from 'express';
+
+type MulterFile = Express.Multer.File;
 
 const router = Router();
 
@@ -21,10 +24,10 @@ fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
 
 // Initialize multer with disk storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: Request, file: MulterFile, cb: (error: Error | null, destination: string) => void) => {
     cb(null, uploadDir);
   },
-  filename: (req, file, cb) => {
+  filename: (req: Request, file: MulterFile, cb: (error: Error | null, filename: string) => void) => {
     // Keep the original filename but ensure uniqueness to prevent overwrites
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 0xFFFF).toString(16);
     const ext = path.extname(file.originalname);
@@ -37,7 +40,7 @@ const storage = multer.diskStorage({
 // File filter for multer
 export const fileFilter = (
   req: Request,
-  file: Express.Multer.File,
+  file: MulterFile,
   cb: (error: Error | null, acceptFile?: boolean) => void
 ) => {
   // Log the incoming file details for debugging
@@ -364,8 +367,9 @@ router.get('/health', (_req, res) => {
 // Error handling middleware
 router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   // Handle multer errors
+  const multerError = err as multer.MulterError;
   if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
+    if (multerError.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json(
         createErrorResponse(
           413,
@@ -374,7 +378,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
         )
       );
     }
-    if (err.code === 'LIMIT_FILE_COUNT') {
+    if (multerError.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json(
         createErrorResponse(400, 'Too many files', 'Only one file can be uploaded at a time')
       );
@@ -383,7 +387,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
   // Handle file type errors
   const typedError = err as Error & { code?: string };
-  if (typedError.name === 'FileTypeError' || typedError.code === 'INVALID_FILE_TYPE') {
+  if (typedError.name === 'FileTypeError' || (typedError.code && typedError.code === 'INVALID_FILE_TYPE')) {
     return res.status(400).json(
       createErrorResponse(
         400,

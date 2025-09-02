@@ -9,13 +9,50 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(({ mode }) => {
   // Load all environment variables
   const env = loadEnv(mode, process.cwd(), '');
-
+  const isProduction = mode === 'production';
   const proxyTarget = env.VITE_API_BASE_URL || 'http://localhost:3001';
 
-  
   return {
-    base: '/', // Use absolute paths for assets when serving from server
+    base: '/',
     publicDir: 'public',
+    css: {
+      devSourcemap: !isProduction,
+      modules: {
+        generateScopedName: isProduction ? '[hash:base64:8]' : '[name]__[local]--[hash:base64:5]',
+      },
+    },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      emptyOutDir: true,
+      manifest: true,
+      sourcemap: isProduction ? false : 'inline',
+      cssCodeSplit: true,
+      cssMinify: isProduction,
+      minify: isProduction ? 'terser' : false,
+      // Ensure CSS is extracted to separate files
+      cssTarget: 'es2015',
+      // Enable CSS modules
+      modulePreload: {
+        polyfill: true,
+      },
+      // Ensure all assets are properly copied
+      assetsInlineLimit: 0,
+      rollupOptions: {
+        output: {
+          assetFileNames: (assetInfo) => {
+            const info = assetInfo.name?.split('.');
+            const ext = info?.[info.length - 1] || '';
+            if (ext === 'css') {
+              return 'assets/css/[name]-[hash][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
+          chunkFileNames: 'assets/js/[name]-[hash].js',
+          entryFileNames: 'assets/js/[name]-[hash].js',
+        },
+      },
+    },
     resolve: {
       dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
@@ -92,6 +129,17 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
+        },
+        css: {
+          devSourcemap: !isProduction,
+          modules: {
+            generateScopedName: isProduction ? '[hash:base64:8]' : '[name]__[local]--[hash:base64:5]',
+          },
+          preprocessorOptions: {
+            scss: {
+              additionalData: `@import "@/styles/variables.scss";`
+            }
+          }
         },
         output: {
           entryFileNames: 'assets/[name].[hash].js',

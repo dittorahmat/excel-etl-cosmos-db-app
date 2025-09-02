@@ -1,62 +1,9 @@
 import { PublicClientApplication, type Configuration, type AccountInfo, type AuthenticationResult } from '@azure/msal-browser';
-import { msalConfig } from './authConfig';
+import { getMsalConfig, getAzureAdConfig } from './authConfig';
 import { assertMsalConfig } from './authUtils';
 
-// Check if authentication is disabled
-console.log('MSAL Instance - Environment variables:', {
-  VITE_AUTH_ENABLED: import.meta.env.VITE_AUTH_ENABLED,
-  AUTH_ENABLED: import.meta.env.AUTH_ENABLED,
-  WINDOW_ENV_VITE_AUTH_ENABLED: window.ENV?.VITE_AUTH_ENABLED,
-  WINDOW_ENV_AUTH_ENABLED: window.ENV?.AUTH_ENABLED,
-  NODE_ENV: import.meta.env.NODE_ENV,
-  MODE: import.meta.env.MODE,
-  WINDOW_USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-  WINDOW_FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
-  WINDOW_SKIP_MSAL_INIT: window.SKIP_MSAL_INIT,
-  WINDOW_ENV: window.ENV,
-  WINDOW_APP_CONFIG: window.APP_CONFIG,
-  locationHref: window.location.href,
-  localStorageUseDummyAuth: localStorage.getItem('useDummyAuth')
-});
-
-const isDevelopment = import.meta.env.DEV;
-const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
-
-// Check if auth is explicitly enabled in any of the possible sources
-const authExplicitlyEnabled = 
-  import.meta.env.VITE_AUTH_ENABLED === 'true' || 
-  import.meta.env.AUTH_ENABLED === 'true' ||
-  windowEnvViteAuthEnabled === 'true' || 
-  windowEnvAuthEnabled === 'true' ||
-  windowEnvViteAuthEnabled === true || 
-  windowEnvAuthEnabled === true;
-
-// Check if auth is explicitly disabled
-const authExplicitlyDisabled = 
-  import.meta.env.VITE_AUTH_ENABLED === 'false' || 
-  import.meta.env.AUTH_ENABLED === 'false' ||
-  windowEnvViteAuthEnabled === 'false' || 
-  windowEnvAuthEnabled === 'false' ||
-  windowEnvViteAuthEnabled === false || 
-  windowEnvAuthEnabled === false;
-
-// Use dummy auth only if:
-// 1. Auth is explicitly disabled, OR
-// 2. We're in development and auth is not explicitly enabled
-const useDummyAuth = 
-  authExplicitlyDisabled || 
-  (!authExplicitlyEnabled && isDevelopment) ||
-  window.FORCE_DUMMY_AUTH === true;
-
-// Log authentication status for debugging
-console.log('MSAL Instance - Authentication status:', {
-  VITE_AUTH_ENABLED: import.meta.env.VITE_AUTH_ENABLED,
-  WINDOW_ENV_VITE_AUTH_ENABLED: window.ENV?.VITE_AUTH_ENABLED,
-  window_USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-  isDevelopment,
-  useDummyAuth
-});
+// Create a function that returns the MSAL instance when needed
+let cachedMsalInstance: PublicClientApplication | null = null;
 
 // Create a mock MSAL instance
 const createMockMsalInstance = () => {
@@ -204,46 +151,117 @@ const createMockMsalInstance = () => {
   } as unknown as PublicClientApplication;
 };
 
-// Log the decision for MSAL instance creation
-console.log('MSAL Instance - Creating MSAL instance with configuration:', {
-  useDummyAuth,
-  isDevelopment,
-  authEnabled,
-  window_USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-  window_FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
-  window_SKIP_MSAL_INIT: window.SKIP_MSAL_INIT,
-  localStorageUseDummyAuth: localStorage.getItem('useDummyAuth'),
-  msalConfig: msalConfig ? { 
-    ...msalConfig, 
-    auth: { 
-      ...msalConfig.auth
-      // We're not including clientSecret in the debug output to avoid potential security issues
-    } 
-  } : null
-});
-
-// Create MSAL instance (real or mock based on configuration)
-let msalInstance: PublicClientApplication;
-
-if (useDummyAuth) {
-  console.log('MSAL Instance - Using MOCK MSAL instance');
-  msalInstance = createMockMsalInstance();
-} else {
-  console.log('MSAL Instance - Using REAL MSAL instance');
+// Create the real MSAL instance
+const createRealMsalInstance = () => {
   try {
-    const config = assertMsalConfig(msalConfig) ? msalConfig : { auth: { clientId: '' } };
-    console.log('MSAL Instance - MSAL config:', { 
-    ...config, 
-    auth: { 
-      ...config.auth
-    } 
-  });
-    msalInstance = new PublicClientApplication(config);
+    // Check if authentication is disabled
+    const azureAdConfig = getAzureAdConfig();
+    const msalConfig = getMsalConfig();
+    
+    console.log('MSAL Instance - Environment variables:', {
+      VITE_AUTH_ENABLED: import.meta.env.VITE_AUTH_ENABLED,
+      AUTH_ENABLED: import.meta.env.AUTH_ENABLED,
+      WINDOW_ENV_VITE_AUTH_ENABLED: window.ENV?.VITE_AUTH_ENABLED,
+      WINDOW_ENV_AUTH_ENABLED: window.ENV?.AUTH_ENABLED,
+      NODE_ENV: import.meta.env.NODE_ENV,
+      MODE: import.meta.env.MODE,
+      WINDOW_USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
+      WINDOW_FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
+      WINDOW_SKIP_MSAL_INIT: window.SKIP_MSAL_INIT,
+      WINDOW_ENV: window.ENV,
+      WINDOW_APP_CONFIG: window.APP_CONFIG,
+      locationHref: window.location.href,
+      localStorageUseDummyAuth: localStorage.getItem('useDummyAuth')
+    });
+
+    const isDevelopment = import.meta.env.DEV;
+    const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
+    const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+
+    // Check if auth is explicitly enabled in any of the possible sources
+    const authExplicitlyEnabled = 
+      import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+      import.meta.env.AUTH_ENABLED === 'true' ||
+      windowEnvViteAuthEnabled === 'true' || 
+      windowEnvAuthEnabled === 'true' ||
+      windowEnvViteAuthEnabled === true || 
+      windowEnvAuthEnabled === true;
+
+    // Check if auth is explicitly disabled
+    const authExplicitlyDisabled = 
+      import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+      import.meta.env.AUTH_ENABLED === 'false' ||
+      windowEnvViteAuthEnabled === 'false' || 
+      windowEnvAuthEnabled === 'false' ||
+      windowEnvViteAuthEnabled === false || 
+      windowEnvAuthEnabled === false;
+
+    // Use dummy auth only if:
+    // 1. Auth is explicitly disabled, OR
+    // 2. We're in development and auth is not explicitly enabled
+    const useDummyAuth = 
+      authExplicitlyDisabled || 
+      (!authExplicitlyEnabled && isDevelopment) ||
+      window.FORCE_DUMMY_AUTH === true;
+
+    // Log the decision for MSAL instance creation
+    console.log('MSAL Instance - Creating MSAL instance with configuration:', {
+      useDummyAuth,
+      isDevelopment,
+      authExplicitlyEnabled,
+      window_USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
+      window_FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
+      window_SKIP_MSAL_INIT: window.SKIP_MSAL_INIT,
+      localStorageUseDummyAuth: localStorage.getItem('useDummyAuth'),
+      msalConfig: msalConfig ? { 
+        ...msalConfig, 
+        auth: { 
+          ...msalConfig.auth,
+          clientId: msalConfig.auth.clientId ? `${msalConfig.auth.clientId.substring(0, 4)}...${msalConfig.auth.clientId.substring(msalConfig.auth.clientId.length - 4)}` : 'MISSING'
+          // We're not including clientSecret in the debug output to avoid potential security issues
+        } 
+      } : null
+    });
+
+    if (useDummyAuth) {
+      console.log('MSAL Instance - Using MOCK MSAL instance');
+      return createMockMsalInstance();
+    } else {
+      console.log('MSAL Instance - Using REAL MSAL instance');
+      const config = assertMsalConfig(msalConfig) ? msalConfig : { auth: { clientId: '' } };
+      console.log('MSAL Instance - MSAL config:', { 
+        ...config, 
+        auth: { 
+          ...config.auth,
+          clientId: config.auth.clientId ? `${config.auth.clientId.substring(0, 4)}...${config.auth.clientId.substring(config.auth.clientId.length - 4)}` : 'MISSING'
+        } 
+      });
+      return new PublicClientApplication(config);
+    }
   } catch (error) {
     console.error('MSAL Instance - Error creating MSAL instance:', error);
     throw error;
   }
-}
+};
 
-export { msalInstance };
+// Export a getter function that creates the instance when first accessed
+export const getMsalInstance = (): PublicClientApplication => {
+  if (!cachedMsalInstance) {
+    cachedMsalInstance = createRealMsalInstance();
+  }
+  return cachedMsalInstance;
+};
+
+// For backward compatibility, we can also export a default instance
+// but this will be created lazily
+let defaultInstance: PublicClientApplication | null = null;
+export const msalInstance: PublicClientApplication = new Proxy({} as PublicClientApplication, {
+  get(_target, prop) {
+    if (!defaultInstance) {
+      defaultInstance = createRealMsalInstance();
+    }
+    return (defaultInstance as any)[prop];
+  }
+});
+
 export type { PublicClientApplication };

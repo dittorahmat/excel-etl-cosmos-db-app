@@ -66,8 +66,8 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Log authentication status for debugging
   console.log('AuthProvider - Authentication status:', {
     forceDummyAuth,
-    viteAuthEnabled,
-    authEnabled,
+    viteAuthEnabled: windowEnvViteAuthEnabled,
+    authEnabled: windowEnvAuthEnabled,
     isDevelopment,
     useDummyAuth,
     windowENV: window.ENV,

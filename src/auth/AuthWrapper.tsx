@@ -1,6 +1,7 @@
 import React from 'react';
 import { MsalProvider } from '@azure/msal-react';
-import { msalInstance } from './msalInstance';
+import { getMsalInstance } from './msalInstance';
+import { getAzureAdConfig } from './authConfig';
 import AuthProvider from './AuthProvider';
 
 export interface AuthWrapperProps {
@@ -8,6 +9,8 @@ export interface AuthWrapperProps {
 }
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
+  const azureAdConfig = getAzureAdConfig();
+  
   const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
   const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
   
@@ -58,7 +61,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
 
   // Use MSAL provider only when authentication is enabled
   return (
-    <MsalProvider instance={msalInstance}>
+    <MsalProvider instance={getMsalInstance()}>
       <AuthProvider>{children}</AuthProvider>
     </MsalProvider>
   );
