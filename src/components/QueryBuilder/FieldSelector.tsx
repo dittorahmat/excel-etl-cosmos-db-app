@@ -70,7 +70,7 @@ export const FieldSelector = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 bg-background p-3 rounded-lg border border-border">
       <div className="flex items-center justify-between">
         <Label>Display Fields</Label>
         <span className="text-sm text-muted-foreground">
@@ -91,7 +91,7 @@ export const FieldSelector = ({
                       <Badge
                         key={field.value}
                         variant="secondary"
-                        className="flex items-center gap-1 px-2 py-1 text-sm"
+                        className="flex items-center gap-1 px-2 py-1 text-sm text-foreground"
                       >
                         {field.label}
                         <button
@@ -112,11 +112,11 @@ export const FieldSelector = ({
                   variant="outline"
                   role="combobox"
                   aria-expanded={isOpen}
-                  className="w-full justify-between h-auto min-h-10 py-1.5"
+                  className="w-full justify-between h-auto min-h-10 py-1.5 bg-background hover:bg-accent/50"
                   disabled={disabled || loading || fields.length === 0}
                   onClick={() => setIsOpen(!isOpen)}
                 >
-                  <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : undefined}>
+                  <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : "text-foreground"}>
                     {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
                   </span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -126,32 +126,32 @@ export const FieldSelector = ({
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[400px] p-0 bg-white"
+          className="w-[400px] p-0 bg-popover border-border"
           align="start"
           tabIndex={-1}
           onKeyDown={(e) => {
             if (e.key === "Escape") setIsOpen(false);
           }}
         >
-          <Command className="rounded-lg border shadow-md">
+          <Command className="rounded-lg border border-border shadow-md bg-popover">
             <div className="px-3 pt-2">
-              <CommandInput
-                placeholder="Search fields..."
-                value={searchTerm}
-                onValueChange={setSearchTerm}
-                className="h-9"
-                autoFocus={false}
-              />
+                <CommandInput
+                  placeholder="Search fields..."
+                  value={searchTerm}
+                  onValueChange={setSearchTerm}
+                  className="h-9 text-foreground"
+                  autoFocus={false}
+                />
             </div>
-            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-              No fields found.
-            </CommandEmpty>
+              <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                No fields found.
+              </CommandEmpty>
             <CommandGroup className="overflow-y-auto max-h-[300px]">
               {filteredFields.map((option) => {
                 const isSelected = selectedFields.includes(option.value);
                 return (
                   <CommandItem
-                                            key={option.value}
+                    key={option.value}
                     value={option.value}
                     onSelect={() => {
                       handleFieldSelect(option.value);
@@ -159,8 +159,10 @@ export const FieldSelector = ({
                     disabled={false}
                     data-disabled="false"
                     className={cn(
-                      "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 aria-selected:bg-accent aria-selected:text-accent-foreground",
-                      "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto"
+                      "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                      "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                      "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                      "transition-colors duration-200"
                     )}
                   >
                     <div
@@ -168,15 +170,15 @@ export const FieldSelector = ({
                         "flex h-4 w-4 items-center justify-center rounded-sm border",
                         isSelected
                           ? "bg-primary border-primary text-primary-foreground"
-                          : "border-muted-foreground/30"
+                          : "border-muted-foreground/30 dark:border-muted-foreground/50"
                       )}
                     >
                       {isSelected && <Check className="h-3 w-3" />}
                     </div>
-                    <span className="font-medium">{option.label}</span>
+                    <span className="font-medium text-foreground">{option.label}</span>
                     <Badge
                       variant="outline"
-                      className="ml-auto text-xs font-normal text-muted-foreground"
+                      className="ml-auto text-xs font-normal text-muted-foreground border-border/50"
                     >
                       {option.type}
                     </Badge>

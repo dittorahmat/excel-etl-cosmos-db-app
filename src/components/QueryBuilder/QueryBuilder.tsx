@@ -117,7 +117,7 @@ export function QueryBuilder({
 
   // Main render
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4 bg-background p-4 rounded-lg border border-border shadow-sm", className)}>
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           {/* Field Selection */}

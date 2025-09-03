@@ -10,11 +10,11 @@ interface MainLayoutProps {
 export const MainLayout = ({ children }: MainLayoutProps): JSX.Element => {
   return (
     <ErrorBoundary>
-      <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="flex h-screen bg-background">
         <Sidebar />
         <div className="flex flex-col flex-1">
           <Navbar />
-          <main className="flex-1 p-4 overflow-y-auto">
+          <main className="flex-1 p-4 overflow-y-auto bg-background">
             {children}
           </main>
         </div>
