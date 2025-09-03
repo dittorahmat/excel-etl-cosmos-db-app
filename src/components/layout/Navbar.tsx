@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LogOut, User, Settings } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -31,13 +32,19 @@ export const Navbar = () => {
     .join('');
 
   return (
-    <header className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b dark:border-gray-700">
-      <div>
-        <Link to="/" className="text-xl font-bold">
-          Excel ETL App
+    <header className="flex items-center justify-between p-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 w-full">
+      <div className="flex-1 h-20 overflow-hidden">
+        <Link to="/" className="h-full flex items-center w-full">
+          <img 
+            src="/images/iesr-header.jpeg" 
+            alt="IESR Header" 
+            className="h-full w-full max-w-full object-cover"
+            style={{ objectPosition: 'left center' }}
+          />
         </Link>
       </div>
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

@@ -183,13 +183,12 @@ export function FileListTable() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading && files.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                   <div className="flex items-center justify-center space-x-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Loading files...</span>
@@ -198,7 +197,7 @@ export function FileListTable() {
               </tr>
             ) : files.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                   No files uploaded yet.
                 </td>
               </tr>
@@ -237,18 +236,6 @@ export function FileListTable() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(file.uploadedAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleDownload(file)}
-                        disabled={!file.downloadUrl}
-                        title={file.downloadUrl ? 'Download file' : 'Download not available'}
-                        className="text-indigo-600 hover:text-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))

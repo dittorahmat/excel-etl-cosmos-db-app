@@ -103,14 +103,10 @@ export const useDashboardData = () => {
         console.log('[useDashboardData] Setting field definitions:', fieldDefs);
         setFieldDefinitions(fieldDefs);
         
-        // Only set default selected fields on initial load
+        // Initialize with no fields selected by default
         if (isInitialLoad) {
-          const defaultFields = fieldDefs.length > 0 
-            ? fieldDefs.slice(0, Math.min(5, fieldDefs.length)).map(f => f.name)
-            : [];
-          
-          console.log('[useDashboardData] Setting default selected fields:', defaultFields);
-          setSelectedFields(defaultFields);
+          console.log('[useDashboardData] Initializing with no fields selected by default');
+          setSelectedFields([]);
           setIsInitialLoad(false);
         }
       }

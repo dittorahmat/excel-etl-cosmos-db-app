@@ -13,6 +13,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useState } from 'react';
+import iesrLogo from '/images/iesr-logo.png';
 
 interface MenuItem {
   title: string;
@@ -27,7 +28,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    title: 'Dashboard',
+    title: 'Main Menu',
     path: '/',
     icon: LayoutDashboard,
   },
@@ -35,23 +36,6 @@ const menuItems: MenuItem[] = [
     title: 'Data Upload',
     path: '/upload',
     icon: Upload,
-  },
-  {
-    title: 'Data',
-    path: '/data',
-    icon: Database,
-    subItems: [
-      {
-        title: 'Query Builder',
-        path: '/data/query',
-        icon: FileText,
-      },
-      {
-        title: 'Visualizations',
-        path: '/data/charts',
-        icon: BarChart3,
-      },
-    ],
   },
 ];
 
@@ -78,8 +62,12 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col">
-      <div className="h-16 flex items-center justify-center border-b dark:border-gray-700">
-        <h1 className="text-2xl font-bold">ETL</h1>
+      <div className="h-16 flex items-center justify-center border-b dark:border-gray-700 p-2">
+        <img 
+          src={iesrLogo} 
+          alt="IESR Logo" 
+          className="h-12 w-auto object-contain"
+        />
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">
         {menuItems.map((item) =>

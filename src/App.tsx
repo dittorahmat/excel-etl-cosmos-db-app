@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { lazy, Suspense, useEffect, ReactNode, FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { ThemeProvider } from 'next-themes';
 import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
 import { MainLayout } from './components/layout/MainLayout';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sun, Moon } from 'lucide-react';
 
 // Extend the Window interface to include our custom properties
 declare global {
@@ -227,12 +228,14 @@ const AppContent: FC = () => {
   );
 };
 
-// App wrapped with AuthWrapper
-const App: FC = () => {
+// App wrapped with ThemeProvider and AuthWrapper
+const App = () => {
   return (
-    <AuthWrapper>
-      <AppContent />
-    </AuthWrapper>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <AuthWrapper>
+        <AppContent />
+      </AuthWrapper>
+    </ThemeProvider>
   );
 };
 export default App;
