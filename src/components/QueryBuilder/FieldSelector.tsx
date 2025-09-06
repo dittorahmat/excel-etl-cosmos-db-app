@@ -14,24 +14,24 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Badge } from "../ui/badge";
 
 import { FieldOption } from "./types";
+import { useFields } from "@/hooks/useFields";
 
 interface FieldSelectorProps {
-  fields: FieldOption[];
   selectedFields: string[];
   onFieldsChange: (fields: string[]) => void;
-  loading?: boolean;
   disabled?: boolean;
 }
 
 export const FieldSelector = ({
-  fields,
   selectedFields = [],
   onFieldsChange,
-  loading = false,
   disabled = false,
 }: FieldSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Use the useFields hook to fetch fields dynamically based on all selected fields
+  const { fields, loading, error } = useFields(selectedFields);
 
   const filteredFields = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -78,51 +78,63 @@ export const FieldSelector = ({
         </span>
       </div>
       <div className="text-xs text-muted-foreground mb-1">
-        Click on fields to select/deselect them
+        Click on fields to select/deselect them. Fields will filter based on relationships.
       </div>
+      {error && (
+        <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+          Error loading fields: {error}
+        </div>
+      )}
+      {loading && selectedFields.length > 0 && (
+        <div className="text-sm text-muted-foreground">
+          Updating field list based on selected fields...
+        </div>
+      )}
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="w-full">
-            <PopoverTrigger asChild>
-              <div>
-                {selectedFieldLabels.length > 0 && (
-                  <div className="flex flex-wrap gap-1 max-w-full mb-2">
-                    {selectedFieldLabels.map((field) => (
-                      <Badge
-                        key={field.value}
-                        variant="secondary"
-                        className="flex items-center gap-1 px-2 py-1 text-sm text-foreground"
+            <div>
+              {selectedFieldLabels.length > 0 && (
+                <div className="flex flex-wrap gap-1 max-w-full mb-2">
+                  {selectedFieldLabels.map((field) => (
+                    <Badge
+                      key={field.value}
+                      variant="secondary"
+                      className="flex items-center gap-1 px-2 py-1 text-sm text-foreground"
+                    >
+                      {field.label}
+                      <button
+                        aria-label={`Remove ${field.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFieldSelect(field.value);
+                        }}
+                        className="rounded-full hover:bg-accent/50 p-0.5"
                       >
-                        {field.label}
-                        <button
-                          aria-label={`Remove ${field.label}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFieldSelect(field.value);
-                          }}
-                          className="rounded-full hover:bg-accent/50 p-0.5"
-                        >
-                          <XIcon className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={isOpen}
-                  className="w-full justify-between h-auto min-h-10 py-1.5 bg-background hover:bg-accent/50"
-                  disabled={disabled || loading || fields.length === 0}
-                  onClick={() => setIsOpen(!isOpen)}
-                >
-                  <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : "text-foreground"}>
-                    {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
-                  </span>
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={isOpen}
+                className="w-full justify-between h-auto min-h-10 py-1.5 bg-background hover:bg-accent/50"
+                disabled={disabled || loading || fields.length === 0}
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : "text-foreground"}>
+                  {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
+                </span>
+                {loading ? (
+                  <div className="ml-2 h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </div>
-            </PopoverTrigger>
+                )}
+              </Button>
+            </div>
           </div>
         </PopoverTrigger>
         <PopoverContent
@@ -144,7 +156,7 @@ export const FieldSelector = ({
                 />
             </div>
               <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                No fields found.
+                {loading ? "Loading fields based on your selections..." : "No fields found."}
               </CommandEmpty>
             <CommandGroup className="overflow-y-auto max-h-[300px]">
               {filteredFields.map((option) => {
@@ -155,6 +167,8 @@ export const FieldSelector = ({
                     value={option.value}
                     onSelect={() => {
                       handleFieldSelect(option.value);
+                      // Keep the popover open to allow multiple selections
+                      // setIsOpen(false); // Commented out to keep popover open
                     }}
                     disabled={false}
                     data-disabled="false"
