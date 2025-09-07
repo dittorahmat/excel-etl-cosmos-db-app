@@ -52,24 +52,49 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         // Get the container using the container method
         const container = await cosmosDb.container('excel-records', '/_partitionKey');
         
-        // Type guard to ensure relatedTo is a string
-        const relatedToString = typeof relatedTo === 'string' ? relatedTo : Array.isArray(relatedTo) ? relatedTo[0] as string : null;
+        // Type guard to ensure relatedTo is a string or array of strings
+        let relatedToStrings: string[] = [];
+        if (typeof relatedTo === 'string') {
+          relatedToStrings = [relatedTo];
+        } else if (Array.isArray(relatedTo)) {
+          relatedToStrings = relatedTo.filter(item => typeof item === 'string') as string[];
+        }
         
-        if (relatedToString) {
+        if (relatedToStrings.length > 0) {
           // If relatedTo parameter is provided, filter fields based on relationships
-          console.log(`Fetching fields related to: ${relatedToString}`);
+          console.log(`Fetching fields related to: ${relatedToStrings.join(', ')}`);
           
-          // First, find ALL fileNames for the related field (not just the first one)
-          const relatedFieldQuery = container.items.query({
-            query: "SELECT c.fileName, c.headers FROM c WHERE c._partitionKey = 'imports' AND ARRAY_CONTAINS(c.headers, @fieldName)",
-            parameters: [{ name: '@fieldName', value: relatedToString }]
-          });
+          // Find ALL fileNames that contain ALL of the related fields
+          // We need to find files that contain each field, then intersect the results
+          let commonFileNames: string[] = [];
           
-          const relatedFieldResult = await relatedFieldQuery.fetchAll();
+          for (let i = 0; i < relatedToStrings.length; i++) {
+            const fieldName = relatedToStrings[i];
+            const relatedFieldQuery = container.items.query({
+              query: "SELECT c.fileName FROM c WHERE c._partitionKey = 'imports' AND ARRAY_CONTAINS(c.headers, @fieldName)",
+              parameters: [{ name: '@fieldName', value: fieldName }]
+            });
+            
+            const relatedFieldResult = await relatedFieldQuery.fetchAll();
+            const fileNames = relatedFieldResult.resources.map(resource => resource.fileName);
+            
+            if (i === 0) {
+              // For the first field, initialize the commonFileNames
+              commonFileNames = fileNames;
+            } else {
+              // For subsequent fields, intersect with the current commonFileNames
+              commonFileNames = commonFileNames.filter(fileName => fileNames.includes(fileName));
+            }
+            
+            // If at any point we have no common files, we can stop
+            if (commonFileNames.length === 0) {
+              break;
+            }
+          }
           
-          if (relatedFieldResult.resources.length === 0) {
-            // If we can't find the related field, return all fields as fallback
-            console.log(`Could not find related field: ${relatedToString}, returning all fields`);
+          if (commonFileNames.length === 0) {
+            // If we can't find files containing all related fields, return all fields as fallback
+            console.log(`Could not find files containing all related fields: ${relatedToStrings.join(', ')}, returning all fields`);
             const allFieldsQuery = container.items.query({
               query: "SELECT c.headers FROM c WHERE c._partitionKey = 'imports'",
             });
@@ -90,13 +115,12 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             });
           }
           
-          // Get ALL fileNames of the related field
-          const relatedFileNames = relatedFieldResult.resources.map(resource => resource.fileName);
-          console.log(`Found related files: ${relatedFileNames.join(', ')}`);
+          console.log(`Found common files: ${commonFileNames.join(', ')}`);
           
+          // Now fetch all fields from ALL documents with any of these common fileNames
           // Build a query with IN clause for multiple file names
           // Cosmos DB requires individual parameters for IN clause
-          const parameters = relatedFileNames.map((fileName, index) => ({
+          const parameters = commonFileNames.map((fileName, index) => ({
             name: `@fileName${index}`,
             value: fileName
           }));
@@ -113,7 +137,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           const headers = filteredResult.resources || [];
           const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
           
-          console.log(`Fetched ${uniqueHeaders.length} related fields from ${relatedFileNames.length} files in ${Date.now() - startTime}ms`);
+          console.log(`Fetched ${uniqueHeaders.length} related fields from ${commonFileNames.length} files in ${Date.now() - startTime}ms`);
           
           return res.status(200).json({
             success: true,

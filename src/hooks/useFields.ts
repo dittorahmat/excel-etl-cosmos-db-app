@@ -34,10 +34,12 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
     try {
       let url = '/api/fields';
       
-      // For incremental filtering, we use the first field as the base for filtering
-      // The backend will now return fields from ALL files containing this field
+      // For incremental filtering, we send ALL selected fields to the backend
+      // The backend will now return fields from files containing ALL of these fields
       if (relatedFields && relatedFields.length > 0) {
-        url = `/api/fields?relatedTo=${encodeURIComponent(relatedFields[0])}`;
+        // Create query parameters for all related fields
+        const queryParams = relatedFields.map(field => `relatedTo=${encodeURIComponent(field)}`).join('&');
+        url = `/api/fields?${queryParams}`;
       }
         
       const response = await fetch(url);
@@ -51,13 +53,10 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
           type: field.type
         }));
         
-        // If we have multiple related fields, we need to filter the results
-        // to only include fields that are related to ALL selected fields
-        // The backend now returns fields from ALL files containing the first selected field
+        // If we have multiple related fields, the backend now properly handles finding
+        // files that contain ALL of the selected fields and returns the intersection
         if (relatedFields && relatedFields.length > 1) {
-          // For now, we'll just use the first field's related fields as a base
-          // A more sophisticated approach would intersect all related fields
-          // but that would require backend changes to support multiple field relationships
+          // The backend now correctly intersects fields from files containing all selected fields
         }
         
         // Update cache
