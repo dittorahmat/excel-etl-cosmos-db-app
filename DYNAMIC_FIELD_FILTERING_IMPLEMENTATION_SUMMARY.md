@@ -1,7 +1,7 @@
 # Dynamic Field Filtering Implementation - Summary
 
 ## Overview
-We have successfully implemented dynamic field filtering in the FieldSelector component. This feature allows fields to be filtered based on relationships with previously selected fields, where related fields come from the same Excel file.
+We have successfully implemented dynamic field filtering in the FieldSelector component. This feature allows fields to be filtered based on relationships with previously selected fields, where related fields come from ALL Excel files containing that field.
 
 ## Changes Made
 
@@ -11,10 +11,10 @@ We have successfully implemented dynamic field filtering in the FieldSelector co
    ```sql
    SELECT c.headers, c.fileName FROM c WHERE c._partitionKey = 'imports'
    ```
-3. Implemented logic to filter fields based on their source file when a field is selected:
-   - When `relatedTo` parameter is provided, first find the fileName of that field
-   - Then filter results to only include fields from documents with that same fileName
-   - Return the filtered field list in the same format
+3. Implemented enhanced logic to filter fields based on their source files when a field is selected:
+   - When `relatedTo` parameter is provided, first find ALL fileNames containing that field
+   - Then filter results to include fields from ALL documents with those fileNames
+   - Return the aggregated field list in the same format
 
 ### Frontend Changes (@src/components/QueryBuilder/FieldSelector.tsx)
 1. Removed the `fields` prop since we now fetch fields dynamically
@@ -31,13 +31,14 @@ We have successfully implemented dynamic field filtering in the FieldSelector co
 ## How It Works
 1. Initially, FieldSelector fetches all fields from `/api/fields`
 2. When a user selects a field (e.g., "Name"), FieldSelector requests related fields from `/api/fields?relatedTo=Name`
-3. Backend finds the fileName for the "Name" field
-4. Backend returns only fields from that same file
-5. FieldSelector updates dropdown with filtered fields
+3. Backend finds ALL fileNames containing the "Name" field
+4. Backend returns fields from ALL those files
+5. FieldSelector updates dropdown with the aggregated filtered fields
 6. Each additional selection further filters the available options
 
 ## Features
-- Dynamic field filtering based on relationships
+- Dynamic field filtering based on relationships across ALL files
+- Comprehensive view of related fields from multiple files
 - Incremental filtering as users select more fields
 - Loading states for better UX
 - Error handling with user-friendly messages
