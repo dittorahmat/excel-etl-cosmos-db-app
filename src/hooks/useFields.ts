@@ -34,8 +34,8 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
     try {
       let url = '/api/fields';
       
-      // For incremental filtering, we'll use the first field as the base for filtering
-      // In a more advanced implementation, we could intersect results from multiple fields
+      // For incremental filtering, we use the first field as the base for filtering
+      // The backend will now return fields from ALL files containing this field
       if (relatedFields && relatedFields.length > 0) {
         url = `/api/fields?relatedTo=${encodeURIComponent(relatedFields[0])}`;
       }
@@ -53,6 +53,7 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
         
         // If we have multiple related fields, we need to filter the results
         // to only include fields that are related to ALL selected fields
+        // The backend now returns fields from ALL files containing the first selected field
         if (relatedFields && relatedFields.length > 1) {
           // For now, we'll just use the first field's related fields as a base
           // A more sophisticated approach would intersect all related fields

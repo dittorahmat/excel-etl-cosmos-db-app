@@ -59,7 +59,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           // If relatedTo parameter is provided, filter fields based on relationships
           console.log(`Fetching fields related to: ${relatedToString}`);
           
-          // First, find the fileName for the related field
+          // First, find ALL fileNames for the related field (not just the first one)
           const relatedFieldQuery = container.items.query({
             query: "SELECT c.fileName, c.headers FROM c WHERE c._partitionKey = 'imports' AND ARRAY_CONTAINS(c.headers, @fieldName)",
             parameters: [{ name: '@fieldName', value: relatedToString }]
@@ -83,35 +83,44 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               fields: uniqueHeaders.map(name => ({
                 name,
                 type: 'string',
-                label: name.split('_').map(word => 
+                label: name.split('_').map((word: string) => 
                   word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ')
               }))
             });
           }
           
-          // Get the fileName of the related field
-          const relatedFileName = relatedFieldResult.resources[0].fileName;
-          console.log(`Found related file: ${relatedFileName}`);
+          // Get ALL fileNames of the related field
+          const relatedFileNames = relatedFieldResult.resources.map(resource => resource.fileName);
+          console.log(`Found related files: ${relatedFileNames.join(', ')}`);
           
-          // Now fetch all fields from documents with the same fileName
+          // Build a query with IN clause for multiple file names
+          // Cosmos DB requires individual parameters for IN clause
+          const parameters = relatedFileNames.map((fileName, index) => ({
+            name: `@fileName${index}`,
+            value: fileName
+          }));
+          
+          const fileNamePlaceholders = parameters.map(param => param.name).join(', ');
+          const query = `SELECT c.headers FROM c WHERE c._partitionKey = 'imports' AND c.fileName IN (${fileNamePlaceholders})`;
+          
           const filteredQuery = container.items.query({
-            query: "SELECT c.headers FROM c WHERE c._partitionKey = 'imports' AND c.fileName = @fileName",
-            parameters: [{ name: '@fileName', value: relatedFileName }]
+            query,
+            parameters
           });
           
           const filteredResult = await filteredQuery.fetchAll();
           const headers = filteredResult.resources || [];
           const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
           
-          console.log(`Fetched ${uniqueHeaders.length} related fields from Cosmos DB in ${Date.now() - startTime}ms`);
+          console.log(`Fetched ${uniqueHeaders.length} related fields from ${relatedFileNames.length} files in ${Date.now() - startTime}ms`);
           
           return res.status(200).json({
             success: true,
             fields: uniqueHeaders.map(name => ({
               name,
               type: 'string',
-              label: name.split('_').map(word => 
+              label: name.split('_').map((word: string) => 
                 word.charAt(0).toUpperCase() + word.slice(1)
               ).join(' ')
             }))
@@ -150,7 +159,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             fields: uniqueHeaders.map(name => ({
               name,
               type: 'string',
-              label: name.split('_').map(word => 
+              label: name.split('_').map((word: string) => 
                 word.charAt(0).toUpperCase() + word.slice(1)
               ).join(' ')
             }))

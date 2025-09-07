@@ -123,10 +123,8 @@ export function QueryBuilder({
           {/* Field Selection */}
           <div className="flex-1 space-y-2">
             <FieldSelector
-              fields={fieldOptions}
               selectedFields={selectedFields}
               onFieldsChange={handleFieldsChange}
-              loading={fieldsLoading}
               disabled={fieldsLoading}
             />
             {error && <div className="text-sm text-destructive">{error}</div>}

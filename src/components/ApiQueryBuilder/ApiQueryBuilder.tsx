@@ -161,13 +161,6 @@ print(response.json())`;
       <div className="space-y-2">
         <Label>Select Fields for API Response</Label>
         <FieldSelector
-          fields={fields.map(f => ({
-            value: f.value,
-            label: f.label,
-            name: f.name,
-            type: f.type,
-            description: f.description
-          }))}
           selectedFields={selectedFields}
           onFieldsChange={handleFieldsChange}
         />
