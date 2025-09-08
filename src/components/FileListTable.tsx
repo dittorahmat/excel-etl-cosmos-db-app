@@ -1,9 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../utils/api';
-import { FileText, Download, Loader2 } from 'lucide-react';
+import { FileText, Download, Loader2, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-// Simple formatting utilities
+// ========================================================================
+// UTILITY FUNCTIONS
+// ========================================================================
+
+/**
+ * Format bytes into human-readable units
+ * @param bytes - Number of bytes to format
+ * @param decimals - Number of decimal places to show
+ * @returns Formatted string with unit (e.g., "1.25 MB")
+ */
 const formatBytes = (bytes: number, decimals = 2): string => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -13,6 +22,11 @@ const formatBytes = (bytes: number, decimals = 2): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
+/**
+ * Format date into relative time (e.g., "2 hours ago")
+ * @param dateString - ISO date string to format
+ * @returns Formatted relative time string
+ */
 const formatDate = (dateString: string): string => {
   try {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
@@ -21,6 +35,13 @@ const formatDate = (dateString: string): string => {
   }
 };
 
+// ========================================================================
+// TYPE DEFINITIONS
+// ========================================================================
+
+/**
+ * Metadata structure for imported files from the backend
+ */
 interface ImportMetadata {
   id: string;
   _importId?: string;
@@ -40,6 +61,9 @@ interface ImportMetadata {
   [key: string]: unknown;
 }
 
+/**
+ * File data structure used in the component state
+ */
 interface FileData {
   id: string;
   name: string;
@@ -57,15 +81,41 @@ interface FileData {
   downloadFileName: string;
 }
 
+// ========================================================================
+// MAIN COMPONENT
+// ========================================================================
+
+/**
+ * FileListTable component displays a table of uploaded files with actions
+ * Features:
+ * - File listing with pagination
+ * - File download functionality
+ * - File deletion with confirmation
+ * - Responsive design
+ */
 export function FileListTable() {
+  // ========================================================================
+  // STATE MANAGEMENT
+  // ========================================================================
+  
   const [files, setFiles] = useState<FileData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState<FileData | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
   const isMounted = useRef(true);
 
+  // ========================================================================
+  // DATA FETCHING
+  // ========================================================================
+  
+  /**
+   * Fetch files from the API with pagination
+   */
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
@@ -80,6 +130,7 @@ export function FileListTable() {
       }>(`/api/v2/query/imports?page=${page}&pageSize=${pageSize}`);
       
       if (response?.data?.items) {
+        // Map API response to component-friendly format
         const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => ({
           id: item.id || item._importId || '',
           name: item.fileName || 'Untitled',
@@ -113,6 +164,7 @@ export function FileListTable() {
     }
   }, [page, pageSize]);
 
+  // Fetch files when page changes
   useEffect(() => {
     fetchFiles();
     return () => {
@@ -120,6 +172,14 @@ export function FileListTable() {
     };
   }, [page, fetchFiles]);
 
+  // ========================================================================
+  // ACTION HANDLERS
+  // ========================================================================
+  
+  /**
+   * Handle file download action
+   * @param file - File to download
+   */
   const handleDownload = async (file: FileData) => {
     try {
       if (!file.downloadUrl) {
@@ -158,6 +218,54 @@ export function FileListTable() {
     }
   };
 
+  /**
+   * Handle delete button click - show confirmation dialog
+   * @param file - File to delete
+   */
+  const handleDelete = (file: FileData) => {
+    setShowConfirmDelete(file);
+  };
+
+  /**
+   * Confirm and execute file deletion
+   */
+  const confirmDelete = async () => {
+    if (!showConfirmDelete) return;
+    
+    const fileToDelete = showConfirmDelete;
+    setIsDeleting(fileToDelete.id);
+    setDeleteError(null);
+    
+    try {
+      // Attempt to delete the file
+      await api.delete(`/api/v2/query/imports/${fileToDelete.id}`);
+      
+      // Close the confirmation dialog and refresh the file list
+      setShowConfirmDelete(null);
+      await fetchFiles();
+    } catch (error) {
+      console.error('Delete failed:', error);
+      // Show error but still close dialog and refresh
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete file. Please try again.');
+      setShowConfirmDelete(null);
+      await fetchFiles();
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  /**
+   * Cancel delete operation - close confirmation dialog
+   */
+  const cancelDelete = () => {
+    setShowConfirmDelete(null);
+  };
+
+  // ========================================================================
+  // RENDERING
+  // ========================================================================
+  
+  // Loading state
   if (loading && files.length === 0) {
     return (
       <div className="flex items-center justify-center h-64" data-testid="loading-indicator">
@@ -169,12 +277,55 @@ export function FileListTable() {
 
   return (
     <div className="w-full">
+      {/* Error messages */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
 
+      {deleteError && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {deleteError}
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {showConfirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Delete</h3>
+            <p className="text-gray-500 mb-4">
+              Are you sure you want to delete "{showConfirmDelete.name}"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                disabled={isDeleting !== null}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                disabled={isDeleting !== null}
+              >
+                {isDeleting === showConfirmDelete.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Files table */}
       <div className="rounded-md border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -183,12 +334,13 @@ export function FileListTable() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading && files.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                   <div className="flex items-center justify-center space-x-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Loading files...</span>
@@ -197,7 +349,7 @@ export function FileListTable() {
               </tr>
             ) : files.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                   No files uploaded yet.
                 </td>
               </tr>
@@ -237,6 +389,16 @@ export function FileListTable() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(file.uploadedAt)}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <button
+                      onClick={() => handleDelete(file)}
+                      className="text-red-600 hover:text-red-900"
+                      title="Delete file"
+                      disabled={isDeleting !== null}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -244,6 +406,7 @@ export function FileListTable() {
         </table>
       </div>
 
+      {/* Pagination controls */}
       {totalPages > 1 && (
         <div className="flex items-center justify-end space-x-2 py-4">
           <button

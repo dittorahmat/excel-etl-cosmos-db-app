@@ -10,6 +10,7 @@ import { ListImportsHandler } from './handlers/list-imports.handler.js';
 import { DownloadImportHandler } from './handlers/download-import.handler.js';
 import { QueryRowsExactHandler } from './handlers/query-rows-exact.handler.js';
 import { QueryRowsGetHandler } from './handlers/query-rows-get.handler.js';
+import { DeleteImportHandler } from './handlers/delete-import.handler.js';
 
 
 export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
@@ -22,6 +23,7 @@ export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
   const downloadImportHandler = new DownloadImportHandler(cosmosDb);
   const queryRowsExactHandler = new QueryRowsExactHandler(cosmosDb);
   const queryRowsGetHandler = new QueryRowsGetHandler(cosmosDb);
+  const deleteImportHandler = new DeleteImportHandler();
 
   // Apply authentication middleware if enabled
   const authRequired = process.env.AUTH_ENABLED === 'true';
@@ -60,6 +62,9 @@ export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
   // Download import file
   router.get('/imports/:importId/download', downloadImportHandler.handle.bind(downloadImportHandler));
+
+  // Delete import and all associated data
+  router.delete('/imports/:importId', deleteImportHandler.handle.bind(deleteImportHandler));
 
   return router;
 }

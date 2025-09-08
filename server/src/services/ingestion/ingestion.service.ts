@@ -599,6 +599,158 @@ export class IngestionService {
       throw new Error(`Failed to list imports: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  /**
+   * Delete an import and all associated row data
+   */
+  async deleteImport(importId: string): Promise<{ deletedRows: number }> {
+    try {
+      const cosmosDb = await initializeCosmosDB();
+      
+      // Normalize the import ID - it should already be in the correct format
+      // The ID in the database is already prefixed with "import_"
+      const fullImportId = importId;
+      
+      this.logger.info('Starting delete import', {
+        importId: fullImportId,
+        originalImportId: importId
+      });
+
+      // Check if the import exists
+      const importQuery = 'SELECT * FROM c WHERE c.id = @id AND c._partitionKey = @partitionKey AND c.documentType = @documentType';
+      const importParams = [
+        { name: '@id', value: fullImportId },
+        { name: '@partitionKey', value: 'imports' }, // This is the _partitionKey field value
+        { name: '@documentType', value: 'excel-import' }
+      ];
+      
+      this.logger.info('Querying for import metadata', {
+        importId: fullImportId,
+        query: importQuery,
+        params: importParams
+      });
+      
+      const importResult = await cosmosDb.query<ImportMetadata>(
+        importQuery,
+        importParams,
+        this.metadataContainerName
+      );
+      
+      this.logger.info('Import metadata query result', {
+        importId: fullImportId,
+        resultCount: importResult.length
+      });
+      
+      if (importResult.length === 0) {
+        this.logger.warn('Import not found for deletion', { importId: fullImportId });
+        throw new Error('Import not found');
+      }
+      
+      this.logger.info('Found import to delete', { 
+        importId: fullImportId,
+        fileName: importResult[0].fileName
+      });
+
+      // Delete import metadata
+      try {
+        this.logger.info('Deleting import metadata', {
+          importId: fullImportId,
+          itemId: fullImportId,
+          partitionKey: fullImportId, // Use the item's ID as the partition key
+          containerName: this.metadataContainerName
+        });
+        
+        await cosmosDb.deleteRecord(
+          fullImportId,
+          fullImportId, // Use the item's ID as the partition key
+          this.metadataContainerName
+        );
+        this.logger.info('Deleted import metadata', { importId: fullImportId });
+      } catch (deleteError) {
+        this.logger.error('Failed to delete import metadata', {
+          importId: fullImportId,
+          error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+          stack: deleteError instanceof Error ? deleteError.stack : undefined
+        });
+        throw new Error(`Failed to delete import metadata: ${deleteError instanceof Error ? deleteError.message : 'Unknown error'}`);
+      }
+
+      // Delete all row data for this import
+      let deletedRowCount = 0;
+      const rowPartitionKey = `import_${fullImportId}`;
+      
+      this.logger.info('Starting to delete rows', { 
+        importId: fullImportId,
+        rowPartitionKey
+      });
+      
+      // Query all rows for this import
+      const rowQuery = 'SELECT c.id FROM c WHERE c._partitionKey = @partitionKey AND c.documentType = @documentType';
+      const rowParams = [
+        { name: '@partitionKey', value: rowPartitionKey },
+        { name: '@documentType', value: 'excel-row' }
+      ];
+      
+      this.logger.info('Querying for rows to delete', {
+        importId: fullImportId,
+        query: rowQuery,
+        params: rowParams
+      });
+      
+      const rowResults = await cosmosDb.query<{ id: string }>(
+        rowQuery,
+        rowParams,
+        this.dataContainerName
+      );
+      
+      this.logger.info('Found rows to delete', { 
+        importId: fullImportId,
+        rowCount: rowResults.length
+      });
+      
+      // Delete each row individually
+      for (const row of rowResults) {
+        try {
+          this.logger.debug('Deleting row', {
+            importId: fullImportId,
+            rowId: row.id,
+            partitionKey: row.id, // Use the row's ID as the partition key
+            containerName: this.dataContainerName
+          });
+          
+          await cosmosDb.deleteRecord(
+            row.id,
+            row.id, // Use the row's ID as the partition key
+            this.dataContainerName
+          );
+          deletedRowCount++;
+        } catch (deleteError) {
+          this.logger.warn('Failed to delete row', {
+            importId: fullImportId,
+            rowId: row.id,
+            error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+            stack: deleteError instanceof Error ? deleteError.stack : undefined
+          });
+          // Continue with other rows even if one fails
+        }
+      }
+      
+      this.logger.info('Finished deleting rows', { 
+        importId: fullImportId,
+        attempted: rowResults.length,
+        deleted: deletedRowCount
+      });
+
+      return { deletedRows: deletedRowCount };
+    } catch (error) {
+      this.logger.error('Failed to delete import', {
+        importId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw new Error(`Failed to delete import: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 // Export a singleton instance
