@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Script to renew Let's Encrypt certificates and update nginx
-# This script replaces the old Docker-based approach with a more efficient one
 
 echo "=== Renewing Let's Encrypt Certificates ==="
 
@@ -9,10 +8,11 @@ echo "=== Renewing Let's Encrypt Certificates ==="
 sudo certbot renew --quiet
 
 # The certbot renew command returns 0 even if no certificates were due for renewal
+# We need to check if certificates were actually renewed
 echo "Certificates renewed successfully or not yet due for renewal!"
 
-# Copy certificates to our application directory
-if sudo test -f "/etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem"; then
+# Copy certificates to our application directory regardless (they might have been renewed or not)
+if [ -f "/etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem" ]; then
     echo "Copying certificates to application directory..."
     sudo mkdir -p /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
     sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
@@ -25,11 +25,9 @@ if sudo test -f "/etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/
     
     # Reload nginx to use new certificates
     echo "Reloading nginx to use certificates..."
-    cd /opt/excel-etl-cosmos-db-app && docker-compose exec nginx nginx -s reload 2>/dev/null || echo "Nginx reload failed, will restart nginx..." && docker-compose restart nginx
+    cd /opt/excel-etl-cosmos-db-app && docker-compose exec nginx nginx -s reload 2>/dev/null || echo "Nginx reload failed, restarting instead..." && docker-compose restart nginx
     
     echo "Nginx updated with certificates!"
 else
     echo "WARNING: Certificate files not found."
 fi
-
-echo "Certificate renewal process completed."

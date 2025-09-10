@@ -65,6 +65,11 @@ public/config.js
 *.sln
 *.sw?
 
+# Certificate files
+certs/
+!certs/server.conf
+!certs/README
+
 # Other files to ignore
 QWEN.md
 *.zip

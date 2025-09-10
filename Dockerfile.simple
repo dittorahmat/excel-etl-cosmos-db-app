@@ -29,6 +29,9 @@ COPY .env ./
 COPY postcss.config.cjs ./
 COPY tailwind.config.js ./
 
+# Copy .env file to server directory as well
+COPY .env ./server/.env
+
 # Copy shared code
 COPY common ./common
 
@@ -38,6 +41,7 @@ COPY server/src ./server/src
 COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY server/tsconfig*.json ./server/
 COPY scripts ./scripts
+COPY public ./public
 
 # Build frontend and backend
 RUN npm run build
@@ -70,6 +74,10 @@ RUN chmod +x /start.sh
 
 # Copy common directory
 COPY common ./common
+
+# Copy .env file to the root and server directories
+COPY --from=builder /app/.env ./.env
+COPY --from=builder /app/.env ./server/.env
 
 # Expose port
 EXPOSE 3000

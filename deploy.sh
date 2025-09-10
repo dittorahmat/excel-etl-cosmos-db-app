@@ -23,6 +23,9 @@ fi
 
 echo "Docker and Docker Compose are installed."
 
+# NOTE: For zero-downtime deployments, use the zero-downtime-deploy.sh script instead
+echo "NOTE: For zero-downtime deployments, consider using ./zero-downtime-deploy.sh"
+
 # Create a directory for the application
 APP_DIR="/opt/excel-to-cosmos"
 echo "Creating application directory at $APP_DIR"
@@ -49,5 +52,6 @@ echo "Checking application status..."
 docker-compose ps
 
 echo "Deployment completed!"
-echo "The application should be accessible at http://your-server-ip:3000"
+echo "The application should be accessible at https://iesr.indonesiacentral.cloudapp.azure.com"
+echo "For zero-downtime deployments, use: ./zero-downtime-deploy.sh"
 echo "Check logs with: docker-compose logs -f"
