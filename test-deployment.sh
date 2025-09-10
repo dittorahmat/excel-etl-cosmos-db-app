@@ -20,7 +20,7 @@ fi
 echo "✓ Docker and Docker Compose are installed"
 
 # Check if deployment scripts exist
-SCRIPTS=("improved-zero-downtime-deploy.sh" "blue-green-deploy.sh")
+SCRIPTS=("improved-zero-downtime-deploy.sh")
 
 for script in "${SCRIPTS[@]}"; do
     if [ -f "$script" ] && [ -x "$script" ]; then
@@ -38,6 +38,5 @@ else
 fi
 
 echo ""
-echo "Run the deployment scripts with:"
+echo "Run the deployment script with:"
 echo "  ./improved-zero-downtime-deploy.sh"
-echo "  ./blue-green-deploy.sh"

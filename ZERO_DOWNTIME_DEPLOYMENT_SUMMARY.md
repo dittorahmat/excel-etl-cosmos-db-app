@@ -8,11 +8,11 @@
 - Configured automatic rollback on failure
 - Set up proper restart policies
 
-### 2. Created zero-downtime-deploy.sh
-- New deployment script that implements zero-downtime deployment
-- Uses docker-compose's built-in rolling update capabilities
-- Includes cleanup of unused containers and images
-- Implements health checking before completing deployment
+### 2. Created improved-zero-downtime-deploy.sh
+- New deployment script that implements improved zero-downtime deployment
+- Updates services one by one to minimize downtime
+- Includes health checks before proceeding
+- Implements error handling and rollback mechanisms
 
 ### 3. Updated deploy.sh
 - Added reference to the new zero-downtime deployment option
@@ -26,9 +26,9 @@
 ## How to Use Zero-Downtime Deployment
 
 1. Ensure you have a proper `.env` file with your Azure credentials
-2. Run the zero-downtime deployment script:
+2. Run the improved zero-downtime deployment script:
    ```bash
-   ./zero-downtime-deploy.sh
+   ./improved-zero-downtime-deploy.sh
    ```
 
 This will:

@@ -25,7 +25,7 @@ Ensure you have:
 Run the deployment script:
 
 ```bash
-./zero-downtime-deploy.sh
+./improved-zero-downtime-deploy.sh
 ```
 
 This script will:
