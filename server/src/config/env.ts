@@ -1,67 +1,33 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+// Use unified configuration
+import { config } from '../../../config/index.js';
 
 // Get the directory name in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Function to load environment variables
+// Function to load environment variables (now uses unified config)
 export function loadEnv() {
-  // Debug: Log the current working directory and module paths
-  console.log('[env.ts] Current working directory:', process.cwd());
-  console.log('[env.ts] Module directory:', __dirname);
-
-  // Try to load environment variables from the server/.env file first, then fall back to the root .env
-  const envPaths = [
-    path.resolve(__dirname, '../../../.env'), // for dist
-    path.resolve(__dirname, '../../.env'),   // for src
-    path.resolve(process.cwd(), 'server/.env') // fallback to server/.env from root
-  ];
+  // Load environment variables from the root .env file
+  const envPath = path.resolve(__dirname, '../../../.env');
   
-  // Initialize result with proper type
-  let result: { parsed: { [key: string]: string } | undefined } = { parsed: undefined };
-  
-  // Try each path until we find a valid .env file
-  for (const envPath of envPaths) {
-    console.log(`[env.ts] Attempting to load .env from: ${envPath}`);
-    try {
-      const envConfig = dotenv.config({ path: envPath });
-      if (!envConfig.error && envConfig.parsed) {
-        result = { parsed: envConfig.parsed };
-        console.log(`[env.ts] Successfully loaded .env from: ${envPath}`);
-        break;
-      } else if (envConfig.error) {
-        console.log(`[env.ts] Failed to load .env from ${envPath}: ${envConfig.error.message}`);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[env.ts] Error loading .env from ${envPath}:`, errorMessage);
+  try {
+    const envConfig = dotenv.config({ path: envPath });
+    if (envConfig.error) {
+      console.log(`[env.ts] Failed to load .env from ${envPath}: ${envConfig.error.message}`);
+    } else {
+      console.log(`[env.ts] Successfully loaded .env from: ${envPath}`);
     }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[env.ts] Error loading .env from ${envPath}:`, errorMessage);
   }
+
+  // Use the unified configuration
+  const { server, shared } = config;
   
-  if (!result.parsed) {
-    console.warn('[env.ts] No .env file found. Using environment variables from process.env');
-    result.parsed = {}; // Initialize as empty object to prevent null reference
-  }
-
-  // Manually set process.env with the parsed values to ensure they're available
-  for (const [key, value] of Object.entries(result.parsed || {})) {
-    if (value !== undefined) {
-      process.env[key] = value;
-    }
-  }
-
-  // Ensure NODE_ENV is set to production if the server was started with --prod flag
-  // Check if the process was started with --prod or --production flag
-  const args = process.argv.slice(2);
-  const isProductionFlag = args.some(arg => arg === '--prod' || arg === '--production');
-  
-  if (isProductionFlag && process.env.NODE_ENV !== 'production') {
-    console.log('[env.ts] Forcing NODE_ENV to production because --prod flag was used');
-    process.env.NODE_ENV = 'production';
-  }
-
   // Check if required environment variables are set
   const requiredEnvVars = [
     'AZURE_STORAGE_CONNECTION_STRING',
@@ -80,44 +46,44 @@ export function loadEnv() {
     console.log('[env.ts] All required environment variables are set.');
   }
 
-  console.log('[env.ts] Debugging AZURE_STORAGE_CONNECTION_STRING:', process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
-  console.log('[env.ts] Debugging AZURE_COSMOSDB_ENDPOINT:', process.env.AZURE_COSMOSDB_ENDPOINT ? 'SET' : 'NOT SET');
-  console.log('[env.ts] Debugging AZURE_COSMOSDB_KEY:', process.env.AZURE_COSMOSDB_KEY ? 'SET' : 'NOT SET');
+  console.log('[env.ts] Debugging AZURE_STORAGE_CONNECTION_STRING:', server.azureStorage.connectionString ? 'SET' : 'NOT SET');
+  console.log('[env.ts] Debugging AZURE_COSMOSDB_ENDPOINT:', server.azureCosmos.endpoint ? 'SET' : 'NOT SET');
+  console.log('[env.ts] Debugging AZURE_COSMOSDB_KEY:', server.azureCosmos.key ? 'SET' : 'NOT SET');
 
-  // Create and return the env object
+  // Create and return the env object from unified config
   const env = {
     // Server Configuration
-    PORT: process.env.PORT || '3001',
-    NODE_ENV: process.env.NODE_ENV || 'development',
-    AUTH_ENABLED: process.env.AUTH_ENABLED === 'true',
-    FRONTEND_URL: process.env.FRONTEND_URL || '',
+    PORT: server.server.port.toString(),
+    NODE_ENV: shared.env.nodeEnv,
+    AUTH_ENABLED: shared.auth.enabled,
+    FRONTEND_URL: '',
     
     // Azure Storage Configuration
-    AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
-    AZURE_STORAGE_CONTAINER: process.env.AZURE_STORAGE_CONTAINER || 'excel-uploads',
+    AZURE_STORAGE_CONNECTION_STRING: server.azureStorage.connectionString,
+    AZURE_STORAGE_CONTAINER: server.azureStorage.container,
     
     // Azure Cosmos DB Configuration
-    AZURE_COSMOSDB_ENDPOINT: process.env.AZURE_COSMOSDB_ENDPOINT || '',
-    AZURE_COSMOSDB_KEY: process.env.AZURE_COSMOSDB_KEY || '',
-    AZURE_COSMOSDB_DATABASE: process.env.AZURE_COSMOSDB_DATABASE || 'excel-upload-db',
-    AZURE_COSMOSDB_CONTAINER: process.env.AZURE_COSMOSDB_CONTAINER || 'excel-records',
-    AZURE_COSMOSDB_PARTITION_KEY: process.env.AZURE_COSMOSDB_PARTITION_KEY || '/id',
+    AZURE_COSMOSDB_ENDPOINT: server.azureCosmos.endpoint,
+    AZURE_COSMOSDB_KEY: server.azureCosmos.key,
+    AZURE_COSMOSDB_DATABASE: server.azureCosmos.database,
+    AZURE_COSMOSDB_CONTAINER: server.azureCosmos.container,
+    AZURE_COSMOSDB_PARTITION_KEY: server.azureCosmos.partitionKey,
     
     // CORS Configuration
-    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:5173',
+    ALLOWED_ORIGINS: server.cors.origins.join(','),
     
     // File Upload Configuration
-    FILE_SIZE_LIMIT: process.env.FILE_SIZE_LIMIT ? parseInt(process.env.FILE_SIZE_LIMIT, 10) : 10485760, // 10MB default
+    FILE_SIZE_LIMIT: server.fileUpload.sizeLimit,
     
     // Logging
-    LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+    LOG_LEVEL: server.logging.level,
     
     // Azure AD Authentication (if needed)
-    AZURE_TENANT_ID: process.env.AZURE_TENANT_ID || '',
-    AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID || '',
+    AZURE_TENANT_ID: shared.azure.tenantId,
+    AZURE_CLIENT_ID: shared.azure.clientId,
     AZURE_CLIENT_SECRET: process.env.AZURE_CLIENT_SECRET || '',
     AZURE_AUDIENCE: process.env.AZURE_AUDIENCE || '',
-    AZURE_SCOPE: process.env.AZURE_SCOPE || '',
+    AZURE_SCOPE: shared.azure.apiScope,
   } as const;
 
   // Log the loaded configuration (without sensitive values)

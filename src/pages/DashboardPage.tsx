@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { useAuth } from '../auth/useAuth';
 import { Loader2, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -11,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileListTable } from '../components/FileListTable';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { formatDateAlt as formatDate } from '../utils/formatters';
 
 // Import libraries for export functionality
 import * as XLSX from 'xlsx';
@@ -42,15 +42,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   } = useDashboardData();
 
   const [activeTab, setActiveTab] = useState('files');
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'PPpp');
-    } catch (_e) {
-      return dateString;
-    }
-  };
 
   // Export to CSV function
   const exportToCSV = (data: any[], fields: string[]) => {

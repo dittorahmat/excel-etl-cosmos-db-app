@@ -1,39 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../utils/api';
 import { FileText, Download, Loader2, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-
-// ========================================================================
-// UTILITY FUNCTIONS
-// ========================================================================
-
-/**
- * Format bytes into human-readable units
- * @param bytes - Number of bytes to format
- * @param decimals - Number of decimal places to show
- * @returns Formatted string with unit (e.g., "1.25 MB")
- */
-const formatBytes = (bytes: number, decimals = 2): string => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-};
-
-/**
- * Format date into relative time (e.g., "2 hours ago")
- * @param dateString - ISO date string to format
- * @returns Formatted relative time string
- */
-const formatDate = (dateString: string): string => {
-  try {
-    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-  } catch (_error) {
-    return 'Unknown date';
-  }
-};
+import { formatBytes, formatDate } from '../utils/formatters';
 
 // ========================================================================
 // TYPE DEFINITIONS

@@ -2,18 +2,23 @@
 
 import { startServer } from './config/server.js';
 import { logger } from './utils/logger.js';
+// Load unified configuration
+import { config } from '../../config/index.js';
 
 /**
  * Main entry point for the application
  */
 async function main() {
   try {
+    // Load environment variables through unified config
+    const { server: serverConfig } = config;
+    
     // Check for command line arguments
     const args = process.argv.slice(2);
-    let port: number | string | undefined;
-    let isProduction = false;
+    let port: number | string | undefined = serverConfig.server.port;
+    let isProduction = serverConfig.env.isProduction;
     
-    // Parse command line arguments
+    // Parse command line arguments (override config)
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--port' && args[i + 1]) {
         port = args[i + 1];
@@ -39,7 +44,7 @@ async function main() {
     
     // Log the effective configuration
     console.log(`[Server Startup] Starting server with:`);
-    console.log(`  - Port: ${process.env.PORT || 'default'}`);
+    console.log(`  - Port: ${process.env.PORT || port || 'default'}`);
     console.log(`  - Mode: ${process.env.NODE_ENV || 'default'}`);
     
     // Start the server

@@ -1,171 +1,60 @@
 module.exports = {
   root: true,
   env: {
-    node: true,
     browser: true,
-    es2021: true,
+    node: true,
+    es2020: true,
   },
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaVersion: 2020,
+    sourceType: 'module',
+    project: ['./tsconfig.json'],
+    tsconfigRootDir: __dirname,
+    createDefaultProgram: true,
+  },
+  plugins: ['@typescript-eslint', 'react', 'react-hooks'],
   extends: [
     'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:react/recommended',
     'plugin:react-hooks/recommended',
+    'prettier',
   ],
-  parser: '@babel/eslint-parser',
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    ecmaFeatures: {
-      jsx: true,
-    },
-    requireConfigFile: false,
-    babelOptions: {
-      presets: ['@babel/preset-env', '@babel/preset-react'],
-    },
+  rules: {
+    // Add any project-specific rules here
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    'react/react-in-jsx-scope': 'off',
   },
-  plugins: ['react-hooks', 'react-refresh'],
   settings: {
     react: {
       version: 'detect',
     },
   },
-  rules: {
-    'react-refresh/only-export-components': [
-      'warn',
-      { allowConstantExport: true },
-    ],
-    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-  },
   overrides: [
-    // Server-side JavaScript files (exclude from TypeScript processing)
     {
-      files: [
-        'server/**/*.js',
-        'server/test-*.js',
-        'server/**/test-*.js',
-        '**/test-*.js'
-      ],
-      excludedFiles: ['**/*.ts', '**/*.tsx'],
-      parser: 'espree',
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          globalReturn: true,
-          impliedStrict: true
-        }
-      },
+      files: ['**/*.test.ts', '**/*.spec.ts'],
       env: {
-        node: true,
-        es2021: true
+        jest: true,
       },
       rules: {
-        'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      },
-      // Explicitly disable TypeScript rules for these files
-      extends: ['eslint:recommended'],
-      plugins: []
-    },
-    // Client-side JavaScript files
-    {
-      files: ['**/*.js', '**/*.jsx'],
-      excludedFiles: ['server/**/*.js'],
-      parser: 'espree',
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true,
-          globalReturn: false,
-          impliedStrict: true
-        }
-      },
-      env: {
-        browser: true,
-        es2021: true,
-        node: true
-      },
-      rules: {
-        'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      }
-    },
-    // Server-side TypeScript files
-    {
-      files: ['server/**/*.ts', 'server/scripts/**/*.ts'],
-      extends: [
-        'eslint:recommended',
-        'plugin:@typescript-eslint/recommended',
-      ],
-      parser: '@typescript-eslint/parser',
-      parserOptions: {
-        project: ['./server/tsconfig.json', './server/tsconfig.server.build.json'],
-        tsconfigRootDir: __dirname,
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        createDefaultProgram: true,
-      },
-      rules: {
-        '@typescript-eslint/no-explicit-any': 'warn',
-        'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      },
-      env: {
-        node: true,
-        es2021: true
-      }
-    },
-    // Client-side TypeScript files
-    {
-      files: ['**/*.ts', '**/*.tsx'],
-      excludedFiles: ['server/**/*.ts', 'server/scripts/**/*.ts'],
-      extends: [
-        'eslint:recommended',
-        'plugin:react-hooks/recommended',
-        'plugin:@typescript-eslint/recommended',
-      ],
-      parser: '@typescript-eslint/parser',
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true,
-        },
-        project: './tsconfig.eslint.json',
-        tsconfigRootDir: __dirname,
-      },
-      plugins: ['@typescript-eslint', 'react-hooks', 'react-refresh'],
-      rules: {
-        'react-refresh/only-export-components': [
-          'warn',
-          { allowConstantExport: true },
-        ],
-        '@typescript-eslint/no-explicit-any': 'warn',
-        '@typescript-eslint/no-unused-vars': [
-          'error',
-          {
-            argsIgnorePattern: '^_',
-            varsIgnorePattern: '^_',
-            caughtErrorsIgnorePattern: '^_',
-          },
-        ],
-        'no-undef': 'off', // Handled by TypeScript
+        '@typescript-eslint/no-explicit-any': 'off', // Allow any in test files
       },
     },
   ],
   ignorePatterns: [
-    '**/node_modules',
     '**/dist',
-    '**/build',
+    '**/node_modules',
     '**/coverage',
-    '**/.next',
-    '**/out',
-    '**/public',
     '**/*.d.ts',
     '**/__tests__/**',
-    '**/*.test.*',
-    '**/*.spec.*',
+    '**/*.test.ts',
+    '**/*.spec.ts',
     '**/test/**',
     '**/test-utils/**',
     '**/__mocks__/**',
     '**/mocks/**',
-    'vite.config.*',
-    'vitest.*.config.*',
+    '**/vite.config.*'
   ],
 };

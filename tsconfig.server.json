@@ -1,33 +1,38 @@
 {
-  "extends": "./tsconfig.json",
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Server",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": ".",
-    "baseUrl": ".",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "target": "ES2022",
+    "outDir": "./server/dist",
+    "rootDir": "./server",
+    "types": ["node"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noEmit": false,
     "composite": true,
-    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
-    "paths": {
-      "@/server/*": ["server/src/*"],
-      "@/server/test-utils/*": ["server/src/test-utils/*"],
-      "@common/*": ["common/*"]
-    }
+    "declaration": true,
+    "declarationMap": true
   },
   "include": [
-    "server/src/**/*.ts",
-    "server/src/**/*.d.ts",
-    "common/**/*.ts"
+    "server/src/**/*",
+    "server/scripts/**/*",
+    "tests/server/**/*",
+    "tests/shared/**/*"
   ],
   "exclude": [
+    "node_modules",
+    "dist",
+    "build",
     "**/node_modules",
     "**/dist",
-    "**/coverage",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "server/test/**/*"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
+    "**/build",
+    "src",
+    "common"
   ]
 }

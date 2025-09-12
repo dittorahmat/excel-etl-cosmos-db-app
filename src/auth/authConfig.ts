@@ -1,21 +1,6 @@
 import { LogLevel } from '@azure/msal-browser';
-
-// Helper to safely get origin in both browser and test environments
-const getOrigin = (): string => {
-  if (typeof window !== 'undefined' && window.location) {
-    return window.location.origin;
-  }
-  // Try public variables first, then fall back to non-public ones
-  const env = import.meta.env;
-  return env.VITE_PUBLIC_AZURE_REDIRECT_URI || env.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000';
-};
-
-// Helper to get environment variables with fallback to public variables and window config
-const getEnv = (key: string, fallback = ''): string => {
-  const env = import.meta.env;
-  const windowEnv = typeof window !== 'undefined' && window.__APP_CONFIG__ ? window.__APP_CONFIG__ : {};
-  return env[key] || env[`VITE_PUBLIC_${key}`] || windowEnv[key] || windowEnv[`VITE_PUBLIC_${key}`] || fallback;
-};
+// Import unified configuration
+import { config } from '../../config/index.js';
 
 // Extend the Window interface to include our custom properties
 declare global {
@@ -27,8 +12,10 @@ declare global {
   }
 }
 
-// Function to get authentication configuration
+// Function to get authentication configuration using unified config
 const getAuthConfig = () => {
+  const { shared } = config;
+  
   const env = import.meta.env;
   const windowEnv = typeof window !== 'undefined' && window.__APP_CONFIG__ ? window.__APP_CONFIG__ : {};
 
@@ -45,6 +32,7 @@ const getAuthConfig = () => {
   // Check if authentication is enabled
   // Auth is enabled if any of these are explicitly set to 'true'
   const isAuthEnabled = 
+    shared.auth.enabled ||
     env.VITE_AUTH_ENABLED === 'true' || 
     windowEnv.VITE_AUTH_ENABLED === 'true' || 
     windowEnv.AUTH_ENABLED === 'true' ||
@@ -59,7 +47,7 @@ const getAuthConfig = () => {
     (typeof window !== 'undefined' && window.ENV?.VITE_AUTH_ENABLED === 'false') ||
     (typeof window !== 'undefined' && window.ENV?.AUTH_ENABLED === 'false');
 
-  const isDevelopment = env.DEV || 
+  const isDevelopment = shared.env.isDevelopment || 
                        (typeof window !== 'undefined' && window.location.hostname === 'localhost');
 
   // Use dummy auth only if:
@@ -92,22 +80,22 @@ const getAuthConfig = () => {
     console.log('Authentication is disabled. Using dummy authentication.');
   }
 
-  // Configuration values
+  // Configuration values from unified config
   const clientId = useDummyAuth || forceDummyAuth
     ? '00000000-0000-0000-0000-000000000000' 
-    : getEnv('VITE_AZURE_CLIENT_ID') || getEnv('VITE_PUBLIC_AZURE_CLIENT_ID');
+    : shared.azure.clientId;
 
   const tenantId = useDummyAuth || forceDummyAuth
     ? '00000000-0000-0000-0000-000000000000' 
-    : getEnv('VITE_AZURE_TENANT_ID') || getEnv('VITE_PUBLIC_AZURE_TENANT_ID');
+    : shared.azure.tenantId;
 
   const redirectUri = useDummyAuth || forceDummyAuth
     ? 'http://localhost:3000' 
-    : getEnv('VITE_AZURE_REDIRECT_URI') || getEnv('VITE_PUBLIC_AZURE_REDIRECT_URI') || getOrigin();
+    : shared.azure.redirectUri;
 
   const apiScope = useDummyAuth || forceDummyAuth
     ? 'api://00000000-0000-0000-0000-000000000000/access_as_user' 
-    : getEnv('VITE_API_SCOPE') || getEnv('VITE_PUBLIC_API_SCOPE') || `api://${clientId}/access_as_user`;
+    : shared.azure.apiScope;
 
   console.log('Auth configuration:', {
     isAuthEnabled,
@@ -166,15 +154,17 @@ export const getAzureAdConfig = () => {
     env: process.env.NODE_ENV
   });
 
+  const { shared } = config;
+  
   return {
     clientId: authConfig.clientId,
     tenantId: authConfig.tenantId,
     redirectUri: authConfig.redirectUri,
-    scopes: (getEnv('VITE_AZURE_SCOPES', 'User.Read openid profile email')).split(' '),
-    authority: `https://login.microsoftonline.com/${authConfig.tenantId}`,
+    scopes: shared.azure.scopes,
+    authority: shared.azure.authority,
     knownAuthorities: [
       'login.microsoftonline.com',
-      `https://login.microsoftonline.com/${authConfig.tenantId}`
+      shared.azure.authority
     ],
     // Add API scope for backend access
     apiScope: authConfig.apiScope
@@ -251,24 +241,25 @@ export const loginRequest = getLoginRequest();
 // API Configuration
 export const getApiConfig = () => {
   const authConfig = getAuthConfig();
+  const { client, shared } = config;
   
   // In production, the API is served from the same origin
   // In development, it's on a separate port
-  const isDev = import.meta.env.DEV;
-  const apiBase = isDev ? (getEnv('VITE_API_BASE_URL') || 'http://localhost:3001') : '';
+  const isDev = shared.env.isDevelopment;
+  const apiBase = isDev ? (shared.api.baseUrl || 'http://localhost:3001') : client.api.baseUrl;
   
-  const config = {
+  const configResult = {
     scopes: [authConfig.apiScope],
     uri: apiBase,
   };
   // Log the API configuration for debugging in development and production
   if (typeof window !== 'undefined') {
     console.log('API Config (Runtime):', {
-      scope: config.scopes[0],
-      uri: config.uri
+      scope: configResult.scopes[0],
+      uri: configResult.uri
     });
   }
-  return config;
+  return configResult;
 };
 
 // Validate required configuration
