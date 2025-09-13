@@ -79,8 +79,8 @@ export async function uploadToBlobStorage(
         throw error;
       }
       
-      accountName = matches[1];
-      accountKey = matches[2];
+      accountName = matches[1] || '';
+      accountKey = matches[2] || '';
       
       blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     }
@@ -90,8 +90,8 @@ export async function uploadToBlobStorage(
     if (!accountName || !accountKey) {
       const accountMatches = connectionString.match(/AccountName=([^;]+);AccountKey=([^;]+)/i);
       if (accountMatches) {
-        accountName = accountMatches[1];
-        accountKey = accountMatches[2];
+        accountName = accountMatches[1] || '';
+        accountKey = accountMatches[2] || '';
       }
     }
     

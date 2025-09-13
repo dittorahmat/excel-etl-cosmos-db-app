@@ -172,7 +172,7 @@ export function createApp(azureServices: {
     const __dirname = path.dirname(__filename);
     
     // Path to the static files in the server/dist/public directory
-    const staticPath = path.join(__dirname, '../../public');
+    const staticPath = path.join(__dirname, '../../../public');
     const indexPath = path.join(staticPath, 'index.html');
     
     if (!fs.existsSync(staticPath) || !fs.existsSync(indexPath)) {
@@ -220,7 +220,7 @@ export function createApp(azureServices: {
         }
         
         // Send the main HTML file for all other routes
-        res.sendFile(path.join(staticPath, 'index.html'));
+        return res.sendFile(path.join(staticPath, 'index.html'));
       });
     }
 

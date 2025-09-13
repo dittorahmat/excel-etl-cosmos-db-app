@@ -648,7 +648,7 @@ export class IngestionService {
       
       this.logger.info('Found import to delete', { 
         importId: fullImportId,
-        fileName: importResult[0].fileName
+        fileName: importResult[0]?.fileName || 'Unknown'
       });
 
       // Delete import metadata

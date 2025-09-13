@@ -43,17 +43,17 @@ export async function isPortInUse(port: number): Promise<boolean> {
  * @param port The port number to check
  * @returns The process ID or null if not found
  */
-export async function getProcessIdOnPort(port: number): Promise<number | null> {
+export async function getPidOnPort(port: number): Promise<number | null> {
   try {
     const { execSync } = await import('child_process');
     const isWindows = process.platform === 'win32';
     
     if (isWindows) {
-      const result = execSync(`netstat -ano | findstr :${port}`).toString();
+      const result = execSync(`netstat -ano | findstr :${String(port)}`).toString();
       const match = result.match(/\s+(\d+)\s*$/m);
-      return match ? parseInt(match[1], 10) : null;
+      return match && match[1] ? parseInt(match[1], 10) : null;
     } else {
-      const result = execSync(`lsof -i :${port} -t`).toString().trim();
+      const result = execSync(`lsof -i :${String(port)} -t`).toString().trim();
       return result ? parseInt(result, 10) : null;
     }
   } catch (error) {

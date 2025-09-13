@@ -11,12 +11,12 @@ import { config } from '../../config/index.js';
 async function main() {
   try {
     // Load environment variables through unified config
-    const { server: serverConfig } = config;
+    const { server: serverConfig, shared } = config;
     
     // Check for command line arguments
     const args = process.argv.slice(2);
     let port: number | string | undefined = serverConfig.server.port;
-    let isProduction = serverConfig.env.isProduction;
+    let isProduction = shared.env.isProduction;
     
     // Parse command line arguments (override config)
     for (let i = 0; i < args.length; i++) {

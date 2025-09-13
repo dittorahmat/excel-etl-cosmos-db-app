@@ -22,7 +22,7 @@ declare global {
 // Mock matchMedia for MUI components
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -99,8 +99,8 @@ const { mockMsalInstance } = vi.hoisted(() => {
 });
 
 // Mock MSAL Browser
-vi.mock('@azure/msal-browser', async (importOriginal) => {
-  const actual = await importOriginal();
+vi.mock('@azure/msal-browser', async () => {
+  const actual = await vi.importActual('@azure/msal-browser');
   return {
     ...(actual as object),
     PublicClientApplication: vi.fn().mockImplementation(() => mockMsalInstance),
@@ -223,7 +223,7 @@ afterAll(() => {
 // Suppress expected error logs in tests
 beforeEach(() => {
   // Suppress React 18 act() warnings
-  vi.spyOn(console, 'error').mockImplementation((...args) => {
+  vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {
     // Ignore React 18 act() warnings
     if (typeof args[0] === 'string' && args[0].includes('act(...)')) {
       return;
@@ -232,7 +232,7 @@ beforeEach(() => {
   });
   
   // Suppress React 18 deprecation warnings
-  vi.spyOn(console, 'warn').mockImplementation((...args) => {
+  vi.spyOn(console, 'warn').mockImplementation((...args: any[]) => {
     // Ignore React 18 deprecation warnings
     if (typeof args[0] === 'string' && 
         (args[0].includes('ReactDOM.render') || 

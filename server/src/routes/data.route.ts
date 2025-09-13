@@ -11,6 +11,7 @@ const conditionalAuth = (req: Request, res: Response, next: NextFunction) => {
     return authMiddleware.authenticateToken(req, res, next);
   }
   next();
+  return;
 };
 
 const router = Router();

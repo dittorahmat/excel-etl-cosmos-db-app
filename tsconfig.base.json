@@ -40,7 +40,8 @@
       "@common/*": ["common/src/*"],
       "@server/*": ["server/src/*"],
       "@test/*": ["tests/*"]
-    }
+    },
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
   "exclude": [
     "node_modules",

@@ -57,5 +57,7 @@ export const getTokenFromHeader = (authHeader: string | undefined): string | nul
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
-  return authHeader.split(' ')[1];
+  const parts = authHeader.split(' ');
+  const token = parts.length > 1 ? parts[1] : null;
+  return token || null;
 };

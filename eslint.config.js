@@ -1,14 +1,16 @@
-import globals from 'globals';
-import pluginJs from '@eslint/js';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import pluginReact from 'eslint-plugin-react';
 import pluginReactHooks from 'eslint-plugin-react-hooks';
 import pluginReactRefresh from 'eslint-plugin-react-refresh';
-import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  pluginReact.configs.flat?.recommended || {},
   {
     files: ['src/**/*.{ts,tsx}', 'server/src/**/*.{ts,tsx}'],
     ignores: [
-      // Standard ignores
       '**/node_modules/**',
       '**/dist/**',
       '**/build/**',
@@ -26,18 +28,15 @@ export default tseslint.config(
       '**/mocks/**',
       'vite.config.*',
       'vitest.*.config.*',
-      // Additional directories to ignore
       'api/dist/**',
       'deployment/dist/**',
       'server/dist/**',
       'server/coverage/**',
       'server/dist_test/**',
       'test_deployment/dist/**',
-      // Specific files to ignore
       'server.js',
       'test-files/**',
       'test/setup.js',
-      // Problematic directories
       'src/__mocks__/**',
       'src/__tests__/**',
       'src/test/**',
@@ -45,15 +44,47 @@ export default tseslint.config(
       'server/src/test/**',
       'server/src/test-utils/**',
     ],
-    extends: [
-      pluginJs.configs.recommended,
-      ...tseslint.configs.recommended,
-    ],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      sourceType: 'module',
+      parserOptions: {
+        project: './tsconfig.json',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        // Browser globals
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        fetch: 'readonly',
+        Promise: 'readonly',
+        // Node.js globals
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        // Jest globals
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
     },
     plugins: {
+      react: pluginReact,
       'react-hooks': pluginReactHooks,
       'react-refresh': pluginReactRefresh,
     },
@@ -82,15 +113,10 @@ export default tseslint.config(
         }
       ]
     },
-  },
-  {
-    files: ['server/src/**/*.{ts,tsx}'],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.node,
-    },
-    rules: {
-      ...pluginJs.configs.recommended.rules,
+    settings: {
+      react: {
+        version: 'detect',
+      },
     },
   }
 );

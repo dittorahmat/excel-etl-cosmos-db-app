@@ -9,6 +9,11 @@ router.get('/status/:importId', async (req: Request, res: Response) => {
   const { importId } = req.params;
   logger.info(`Checking status for import ${importId}`);
 
+  // Validate importId
+  if (!importId) {
+    return res.status(400).json({ message: 'Import ID is required' });
+  }
+
   try {
     const importData = await ingestionService.getImport(importId);
 

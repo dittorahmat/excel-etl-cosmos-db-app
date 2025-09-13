@@ -1,7 +1,7 @@
-import { loadEnv } from './env';
-import { getServerConfig } from './server';
-import { getClientConfig } from './client';
-import { getSharedConfig } from './shared';
+import { loadEnv } from './env.js';
+import { getServerConfig } from './server.js';
+import { getClientConfig } from './client.js';
+import { getSharedConfig } from './shared.js';
 
 // Load environment variables
 const env = loadEnv();

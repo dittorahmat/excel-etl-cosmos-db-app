@@ -159,6 +159,7 @@ export function requireRole(roles: string[]) {
     }
 
     next();
+    return;
   };
 }
 

@@ -22,12 +22,14 @@
       "@/*": ["src/*"],
       "@common/*": ["common/*"],
       "@server/*": ["server/src/*"]
-    }
+    },
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": [
     "src/**/*",
     "server/src/**/*",
-    "common/src/**/*"
+    "common/src/**/*",
+    "types/**/*"
   ],
   "exclude": [
     "node_modules",

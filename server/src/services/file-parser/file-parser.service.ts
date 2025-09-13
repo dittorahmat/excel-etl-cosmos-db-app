@@ -194,7 +194,7 @@ export class FileParserService {
           for (let j = 0; j < Math.min(headers.length, rowData.length); j++) {
             const header = headers[j];
             const value = rowData[j];
-            if (value !== null && value !== undefined && value !== '') {
+            if (header && value !== null && value !== undefined && value !== '') {
               row[header] = value;
               isEmpty = false;
             }

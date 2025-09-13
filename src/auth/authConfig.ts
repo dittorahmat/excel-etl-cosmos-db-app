@@ -1,6 +1,4 @@
 import { LogLevel } from '@azure/msal-browser';
-// Import unified configuration
-import { config } from '../../config/index.js';
 
 // Extend the Window interface to include our custom properties
 declare global {
@@ -12,42 +10,39 @@ declare global {
   }
 }
 
-// Function to get authentication configuration using unified config
+// Function to get authentication configuration for browser environment
 const getAuthConfig = () => {
-  const { shared } = config;
-  
-  const env = import.meta.env;
+  // Get configuration from window.__APP_CONFIG__ in browser environment
   const windowEnv = typeof window !== 'undefined' && window.__APP_CONFIG__ ? window.__APP_CONFIG__ : {};
+  
+  // Also check window.ENV for backward compatibility
+  const legacyWindowEnv = typeof window !== 'undefined' && window.ENV ? window.ENV : {};
 
   // Debug: Log all environment variables
   console.log('Environment variables:', {
-    VITE_AUTH_ENABLED: env.VITE_AUTH_ENABLED,
-    VITE_AZURE_CLIENT_ID: env.VITE_AZURE_CLIENT_ID,
-    NODE_ENV: env.NODE_ENV,
-    MODE: env.MODE,
-    DEV: env.DEV,
-    PROD: env.PROD
+    VITE_AUTH_ENABLED: windowEnv.VITE_AUTH_ENABLED || legacyWindowEnv.VITE_AUTH_ENABLED,
+    VITE_AZURE_CLIENT_ID: windowEnv.VITE_AZURE_CLIENT_ID || legacyWindowEnv.VITE_AZURE_CLIENT_ID,
+    NODE_ENV: windowEnv.NODE_ENV || legacyWindowEnv.NODE_ENV,
+    MODE: windowEnv.MODE || legacyWindowEnv.MODE,
   });
 
   // Check if authentication is enabled
   // Auth is enabled if any of these are explicitly set to 'true'
   const isAuthEnabled = 
-    shared.auth.enabled ||
-    env.VITE_AUTH_ENABLED === 'true' || 
+    windowEnv.AUTH_ENABLED === 'true' || 
     windowEnv.VITE_AUTH_ENABLED === 'true' || 
-    windowEnv.AUTH_ENABLED === 'true' ||
-    (typeof window !== 'undefined' && window.ENV?.VITE_AUTH_ENABLED === 'true') ||
-    (typeof window !== 'undefined' && window.ENV?.AUTH_ENABLED === 'true');
+    legacyWindowEnv.AUTH_ENABLED === 'true' ||
+    legacyWindowEnv.VITE_AUTH_ENABLED === 'true';
 
   // Check if auth is explicitly disabled
   const isAuthDisabled = 
-    env.VITE_AUTH_ENABLED === 'false' || 
+    windowEnv.AUTH_ENABLED === 'false' || 
     windowEnv.VITE_AUTH_ENABLED === 'false' || 
-    windowEnv.AUTH_ENABLED === 'false' ||
-    (typeof window !== 'undefined' && window.ENV?.VITE_AUTH_ENABLED === 'false') ||
-    (typeof window !== 'undefined' && window.ENV?.AUTH_ENABLED === 'false');
+    legacyWindowEnv.AUTH_ENABLED === 'false' ||
+    legacyWindowEnv.VITE_AUTH_ENABLED === 'false';
 
-  const isDevelopment = shared.env.isDevelopment || 
+  const isDevelopment = windowEnv.NODE_ENV === 'development' || 
+                       legacyWindowEnv.NODE_ENV === 'development' ||
                        (typeof window !== 'undefined' && window.location.hostname === 'localhost');
 
   // Use dummy auth only if:
@@ -64,15 +59,17 @@ const getAuthConfig = () => {
 
   // Debug: Log authentication configuration
   console.log('Auth Configuration:', {
-    'import.meta.env.VITE_AUTH_ENABLED': env.VITE_AUTH_ENABLED,
-    'import.meta.env.DEV': env.DEV,
+    'window.__APP_CONFIG__.VITE_AUTH_ENABLED': windowEnv.VITE_AUTH_ENABLED,
+    'window.__APP_CONFIG__.AUTH_ENABLED': windowEnv.AUTH_ENABLED,
+    'window.ENV.VITE_AUTH_ENABLED': legacyWindowEnv.VITE_AUTH_ENABLED,
+    'window.ENV.AUTH_ENABLED': legacyWindowEnv.AUTH_ENABLED,
     'window.location.hostname': typeof window !== 'undefined' ? window.location.hostname : 'N/A',
     'isAuthEnabled': isAuthEnabled,
     'isDevelopment': isDevelopment,
     'useDummyAuth': useDummyAuth,
     'forceDummyAuth': forceDummyAuth,
     'window.ENV': typeof window !== 'undefined' ? window.ENV : 'N/A',
-    'window.__APP_CONFIG__': typeof window !== 'undefined' ? window.__APP_CONFIG__ : 'N/A'
+    '__APP_CONFIG__': typeof window !== 'undefined' ? window.__APP_CONFIG__ : 'N/A'
   });
 
   // If auth is disabled, don't validate Azure AD settings
@@ -80,22 +77,22 @@ const getAuthConfig = () => {
     console.log('Authentication is disabled. Using dummy authentication.');
   }
 
-  // Configuration values from unified config
+  // Configuration values from browser environment
   const clientId = useDummyAuth || forceDummyAuth
     ? '00000000-0000-0000-0000-000000000000' 
-    : shared.azure.clientId;
+    : (windowEnv.VITE_AZURE_CLIENT_ID || legacyWindowEnv.VITE_AZURE_CLIENT_ID || '');
 
   const tenantId = useDummyAuth || forceDummyAuth
     ? '00000000-0000-0000-0000-000000000000' 
-    : shared.azure.tenantId;
+    : (windowEnv.VITE_AZURE_TENANT_ID || legacyWindowEnv.VITE_AZURE_TENANT_ID || '');
 
   const redirectUri = useDummyAuth || forceDummyAuth
     ? 'http://localhost:3000' 
-    : shared.azure.redirectUri;
+    : (windowEnv.VITE_AZURE_REDIRECT_URI || legacyWindowEnv.VITE_AZURE_REDIRECT_URI || 'http://localhost:3000');
 
   const apiScope = useDummyAuth || forceDummyAuth
     ? 'api://00000000-0000-0000-0000-000000000000/access_as_user' 
-    : shared.azure.apiScope;
+    : (windowEnv.VITE_API_SCOPE || legacyWindowEnv.VITE_API_SCOPE || '');
 
   console.log('Auth configuration:', {
     isAuthEnabled,
@@ -115,7 +112,7 @@ const getAuthConfig = () => {
     }
 
     if (isDevelopment && (clientId.includes('your-') || clientId === 'YOUR_CLIENT_ID')) {
-      throw new Error(`Invalid Azure AD Client ID: \"${clientId}\". Please replace with your actual Azure AD Application (Client) ID from the Azure Portal.`);
+      throw new Error(`Invalid Azure AD Client ID: "${clientId}". Please replace with your actual Azure AD Application (Client) ID from the Azure Portal.`);
     }
 
     if (isDevelopment && !tenantId) {
@@ -123,7 +120,7 @@ const getAuthConfig = () => {
     }
 
     if (isDevelopment && (tenantId.includes('your-') || tenantId === 'YOUR_TENANT_ID')) {
-      throw new Error(`Invalid Azure AD Tenant ID: \"${tenantId}\". Please replace with your actual Azure AD Directory (Tenant) ID from the Azure Portal.`);
+      throw new Error(`Invalid Azure AD Tenant ID: "${tenantId}". Please replace with your actual Azure AD Directory (Tenant) ID from the Azure Portal.`);
     }
   } else {
     console.log('Skipping Azure AD validation as authentication is disabled or forced to dummy auth');
@@ -151,20 +148,18 @@ export const getAzureAdConfig = () => {
     tenantId: authConfig.tenantId || 'MISSING',
     redirectUri: authConfig.redirectUri || 'MISSING',
     apiScope: authConfig.apiScope ? '***' : 'MISSING',
-    env: process.env.NODE_ENV
+    env: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
   });
 
-  const { shared } = config;
-  
   return {
     clientId: authConfig.clientId,
     tenantId: authConfig.tenantId,
     redirectUri: authConfig.redirectUri,
-    scopes: shared.azure.scopes,
-    authority: shared.azure.authority,
+    scopes: ['User.Read', 'openid', 'profile', 'email'],
+    authority: `https://login.microsoftonline.com/${authConfig.tenantId}`,
     knownAuthorities: [
       'login.microsoftonline.com',
-      shared.azure.authority
+      `https://login.microsoftonline.com/${authConfig.tenantId}`
     ],
     // Add API scope for backend access
     apiScope: authConfig.apiScope
@@ -219,7 +214,7 @@ export const getMsalConfig = () => {
               console.log(message);
           }
         },
-        logLevel: import.meta.env.DEV ? LogLevel.Info : LogLevel.Error,
+        logLevel: typeof window !== 'undefined' && window.location.hostname === 'localhost' ? LogLevel.Info : LogLevel.Error,
       },
     },
   };
@@ -241,12 +236,11 @@ export const loginRequest = getLoginRequest();
 // API Configuration
 export const getApiConfig = () => {
   const authConfig = getAuthConfig();
-  const { client, shared } = config;
   
   // In production, the API is served from the same origin
   // In development, it's on a separate port
-  const isDev = shared.env.isDevelopment;
-  const apiBase = isDev ? (shared.api.baseUrl || 'http://localhost:3001') : client.api.baseUrl;
+  const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+  const apiBase = isDev ? 'http://localhost:3001' : '';
   
   const configResult = {
     scopes: [authConfig.apiScope],
@@ -269,12 +263,14 @@ if (!azureAdConfig.clientId) {
 }
 
 // Only log in development environment
-if (import.meta.env.DEV && !import.meta.env.VITEST) {
+if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
   console.log('Azure AD Config:', {
-    clientId: azureAdConfig.clientId ? '***' : 'MISSING',
+    clientId: azureAdConfig.clientId ? `***` : 'MISSING',
     tenantId: azureAdConfig.tenantId,
     redirectUri: azureAdConfig.redirectUri,
     authority: azureAdConfig.authority,
-    scopes: azureAdConfig.scopes
+    scopes: azureAdConfig.scopes,
+    knownAuthorities: azureAdConfig.knownAuthorities,
+    apiScope: azureAdConfig.apiScope ? '***' : 'MISSING'
   });
 }

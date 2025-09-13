@@ -132,11 +132,15 @@ export class ApiKeyUsageRepository {
         stats.byStatusCode[record.statusCode] = (stats.byStatusCode[record.statusCode] || 0) + 1;
         
         // Count by endpoint
-        const endpoint = `${record.method} ${record.path}`;
+        const method = record.method || '';
+        const path = record.path || '';
+        const endpoint = `${method} ${path}` || 'unknown';
         stats.byEndpoint[endpoint] = (stats.byEndpoint[endpoint] || 0) + 1;
         
         // Count by day
-        const day = record.timestamp.split('T')[0];
+        const timestamp = record.timestamp || '';
+        const dayParts = timestamp.split('T');
+        const day = dayParts[0] || 'unknown';
         stats.byDay[day] = (stats.byDay[day] || 0) + 1;
         
         // Track success rate (2xx status codes)

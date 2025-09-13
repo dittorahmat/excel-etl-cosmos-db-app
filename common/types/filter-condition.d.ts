@@ -5,3 +5,4 @@ export interface FilterCondition {
     value: string | number | boolean | null;
     value2?: string | number | boolean | null;
 }
+//# sourceMappingURL=filter-condition.d.ts.map

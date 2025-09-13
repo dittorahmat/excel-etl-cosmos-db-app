@@ -73,7 +73,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             const relatedFieldQuery = container.items.query({
               query: "SELECT c.fileName FROM c WHERE c._partitionKey = 'imports' AND ARRAY_CONTAINS(c.headers, @fieldName)",
               parameters: [{ name: '@fieldName', value: fieldName }]
-            });
+            } as import('@azure/cosmos').SqlQuerySpec);
             
             const relatedFieldResult = await relatedFieldQuery.fetchAll();
             const fileNames = relatedFieldResult.resources.map(resource => resource.fileName);
@@ -194,7 +194,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         console.error('Error fetching fields from Cosmos DB, falling back to static data:', error);
         
         // Fallback to static data if there's an error
-        res.status(200).json({
+        return res.status(200).json({
           success: true,
           fields: [
             { name: 'test1', type: 'string', label: 'Test 1' },
@@ -204,6 +204,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
+      return;
     }
   );
 

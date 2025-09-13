@@ -9,7 +9,8 @@
     "paths": {
       "@/server/*": ["src/*"],
       "@/server/test-utils/*": ["src/test-utils/*"],
-      "@common/*": ["../common/*"]
+      "@common/*": ["../common/*"],
+      "@/config/*": ["../config/*"]
     },
     "types": ["node"],
     "lib": ["ES2023"],
@@ -19,7 +20,8 @@
   "include": [
     "src/**/*.ts",
     "scripts/**/*.ts",
-    "../common/types/**/*.ts"
+    "../common/types/**/*.ts",
+    "../config/**/*.ts"
   ],
   "exclude": [
     "node_modules",

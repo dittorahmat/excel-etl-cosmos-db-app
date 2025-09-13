@@ -91,12 +91,12 @@ export async function getProcessIdOnPort(port: number): Promise<string | null> {
 
       // On Windows, extract the PID from the netstat output
       if (process.platform === 'win32') {
-        const match = stdout.match(/\s+(\d+)\s*$/m);
-        return resolve(match ? match[1] : null);
+        const match = stdout?.match(/\s+(\d+)\s*$/m);
+        return resolve(match && match[1] ? match[1] : null);
       }
 
       // On Unix-like systems, the output is just the PID
-      resolve(lines[0].trim() || null);
+      resolve((lines[0]?.trim()) || null);
     });
   });
 }
