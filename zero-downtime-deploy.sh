@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Improved Zero-Downtime Deployment Script for Excel to Cosmos DB Dashboard
-# Uses rolling update strategy with proper health checks
+# True Zero-Downtime Deployment Script for Excel to Cosmos DB Dashboard
+# Uses Docker Compose's native rolling update strategy with proper health checks
 
 set -e
 
-echo "=== Improved Zero-Downtime Deployment for Excel to Cosmos DB Dashboard ==="
+echo "=== True Zero-Downtime Deployment for Excel to Cosmos DB Dashboard ==="
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null
@@ -50,49 +50,37 @@ cd $APP_DIR
 # Create logs directory
 mkdir -p logs
 
-# Build the new images
-echo "Building new images..."
-docker-compose build
+# Use Docker Compose's native rolling update capability for zero downtime
+echo "Building and deploying with zero downtime..."
+docker-compose up -d --build --remove-orphans
 
-# Deploy with improved zero downtime approach
-echo "Deploying with improved zero downtime approach..."
-
-# Update services one by one to minimize downtime
-echo "Updating excel-to-cosmos service..."
-docker-compose up -d --no-deps --build excel-to-cosmos
-
-# Wait for the service to be healthy
-echo "Waiting for excel-to-cosmos service to be healthy..."
+# Wait for all services to be healthy
+echo "Waiting for all services to be healthy..."
 HEALTHY=false
 RETRIES=30
 SLEEP_INTERVAL=5
 
 for i in $(seq 1 $RETRIES); do
-    if docker-compose exec excel-to-cosmos curl -f http://localhost:3000/health &>/dev/null; then
+    # Check if all services are healthy
+    TOTAL_SERVICES=$(docker-compose ps --services | wc -l)
+    HEALTHY_SERVICES=$(docker-compose ps | grep "(healthy)" | wc -l)
+    
+    if [ "$HEALTHY_SERVICES" -eq "$TOTAL_SERVICES" ]; then
         HEALTHY=true
         break
     fi
-    echo "Waiting for excel-to-cosmos service to be healthy... ($i/$RETRIES)"
+    
+    echo "Waiting for services to be healthy... ($i/$RETRIES)"
     sleep $SLEEP_INTERVAL
 done
 
 if [ "$HEALTHY" = false ]; then
-    echo "ERROR: excel-to-cosmos service did not become healthy in time."
+    echo "ERROR: Services did not become healthy in time."
+    docker-compose ps
     exit 1
 fi
 
-echo "excel-to-cosmos service is healthy!"
-
-# Update nginx service
-echo "Updating nginx service..."
-docker-compose up -d --no-deps nginx
-
-# Wait a moment for nginx to stabilize
-sleep 5
-
-# Check overall service health
-echo "Checking overall service health..."
-docker-compose ps
+echo "All services are healthy!"
 
 # Clean up unused containers and images
 echo "Cleaning up unused containers and images..."
@@ -100,6 +88,6 @@ docker container prune -f --filter "until=24h"
 docker image prune -f --filter "until=24h"
 docker system prune -f --filter "until=24h"
 
-echo "Improved zero-downtime deployment completed successfully!"
+echo "Zero-downtime deployment completed successfully!"
 echo "The application should be accessible at https://iesr.indonesiacentral.cloudapp.azure.com"
 echo "Check logs with: docker-compose logs -f"

@@ -28,17 +28,20 @@ RUN npm install tailwindcss@3.4.3 postcss@8.4.38 autoprefixer@10.4.20 --save-dev
 COPY .env ./
 COPY postcss.config.cjs ./
 COPY tailwind.config.js ./
+COPY tsconfig.base.json ./
 
 # Copy .env file to server directory as well
 COPY .env ./server/.env
 
 # Copy shared code
 COPY common ./common
+COPY config ./config
 
 # Copy source code
 COPY src ./src
 COPY server/src ./server/src
 COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY tsconfig.client.json tsconfig.server.json tsconfig.common.json ./
 COPY server/tsconfig*.json ./server/
 COPY scripts ./scripts
 COPY public ./public

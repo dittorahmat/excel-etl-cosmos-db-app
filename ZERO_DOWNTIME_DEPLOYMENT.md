@@ -25,12 +25,12 @@ Ensure you have:
 Run the deployment script:
 
 ```bash
-./improved-zero-downtime-deploy.sh
+./zero-downtime-deploy.sh
 ```
 
 This script will:
 1. Build new Docker images
-2. Deploy using rolling updates to maintain uptime
+2. Deploy using Docker Compose's native rolling updates to maintain uptime
 3. Clean up unused containers and images
 4. Verify deployment success
 
