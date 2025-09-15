@@ -2,7 +2,7 @@ import { useAuth } from '../auth/useAuth';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Lock } from 'lucide-react';
-import { cn } from '../lib/utils';
+
 
 export const LoginPage: React.FC = () => {
     const { login } = useAuth();

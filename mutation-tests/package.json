@@ -1,0 +1,15 @@
+{
+  "name": "excel-etl-mutation-tests",
+  "version": "1.0.0",
+  "description": "Mutation tests for Excel ETL application",
+  "main": "index.js",
+  "scripts": {
+    "test": "stryker run",
+    "test:dashboard": "stryker run --dashboard"
+  },
+  "dependencies": {
+    "@stryker-mutator/core": "^7.1.1",
+    "@stryker-mutator/vitest-runner": "^7.1.1",
+    "@stryker-mutator/html-reporter": "^3.1.0"
+  }
+}

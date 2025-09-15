@@ -1,0 +1,49 @@
+name: Performance Testing
+
+on:
+  schedule:
+    # Run performance tests every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install performance testing tools
+        run: |
+          npm install -g artillery
+          # Add any other performance testing tools here
+
+      - name: Run performance tests
+        run: |
+          # Create reports directory if it doesn't exist
+          mkdir -p performance/reports
+          
+          # Run performance tests (placeholder)
+          echo "Running performance tests..." > performance/reports/results.txt
+          echo "Performance tests completed" >> performance/reports/results.txt
+
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports
+          path: performance/reports/
+
+      - name: Store performance results
+        uses: actions/cache@v3
+        with:
+          path: performance/reports
+          key: performance-results-${{ github.sha }}

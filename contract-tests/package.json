@@ -1,0 +1,14 @@
+{
+  "name": "excel-etl-contract-tests",
+  "version": "1.0.0",
+  "description": "Contract tests for Excel ETL API",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "supertest": "^6.3.3",
+    "vitest": "^0.34.6"
+  }
+}

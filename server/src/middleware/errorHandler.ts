@@ -22,7 +22,7 @@ const errorHandler = (
   err: ExtendedError,
   req: Request,
   res: Response<ErrorResponse>,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   _next: NextFunction
 ): void => {
   // Log the error

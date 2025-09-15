@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { logger } from '../../../../utils/logger.js';
-import { AzureCosmosDB } from '../../../../types/azure.js';
 import { ingestionService } from '../../../../services/ingestion/ingestion.service.js';
 
 export class DeleteImportHandler {

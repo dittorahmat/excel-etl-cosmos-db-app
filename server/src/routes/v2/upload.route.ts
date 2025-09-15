@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import multer from 'multer';
+import multer, { MulterError } from 'multer';
 import type { Express } from 'express';
 
 const router = Router();
@@ -9,11 +9,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import * as authMiddleware from '../../middleware/auth.js';
 import { ingestionService } from '../../services/ingestion/ingestion.service.js';
+
 import path from 'path';
 import fs from 'fs/promises';
 
 // Type imports
-import type { FileTypeError } from '../../types/custom.js';
 
 const uploadDir = path.join(process.cwd(), 'tmp_uploads');
 
@@ -260,7 +260,7 @@ async function uploadHandler(req: Request, res: Response) {
       fileType,
       userId
     ).catch(error => {
-      logger.error('Error in ingestionService.importFile', {
+      logger.error('Error in ingestionService.startImport', {
         requestId,
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
@@ -366,7 +366,7 @@ router.get('/health', (_req, res) => {
 // Error handling middleware
 router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   // Handle multer errors
-  if (err instanceof multer.MulterError) {
+  if (err instanceof MulterError) {
     const multerError = err;
     if ((multerError as any).code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json(

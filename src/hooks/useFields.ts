@@ -47,7 +47,7 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
 
       if (data.success) {
         // Map fields from backend format {name, type, label} to frontend format {value, label, type}
-        let resultFields = data.fields.map((field: any) => ({
+        const resultFields = data.fields.map((field: any) => ({
           value: field.name,
           label: field.label,
           type: field.type

@@ -1,5 +1,5 @@
-import { PublicClientApplication, type Configuration, type AccountInfo, type AuthenticationResult } from '@azure/msal-browser';
-import { getMsalConfig, getAzureAdConfig } from './authConfig';
+import { PublicClientApplication, type AccountInfo, type AuthenticationResult } from '@azure/msal-browser';
+import { getMsalConfig } from './authConfig';
 import { assertMsalConfig } from './authUtils';
 
 // Create a function that returns the MSAL instance when needed
@@ -47,7 +47,7 @@ const createMockMsalInstance = () => {
   };
   
   // Create a mock event dispatcher
-  const eventCallbacks: Record<string, Function> = {};
+  const eventCallbacks: Record<string, (...args: any[]) => void> = {};
   
   // Return the mock MSAL instance
   return {
@@ -101,7 +101,7 @@ const createMockMsalInstance = () => {
     },
     
     // Event handling
-    addEventCallback: (callback: Function) => {
+    addEventCallback: (callback: (...args: any[]) => void) => {
       console.log('Mock: addEventCallback called');
       const callbackId = `callback-${Date.now()}`;
       eventCallbacks[callbackId] = callback;
@@ -155,7 +155,6 @@ const createMockMsalInstance = () => {
 const createRealMsalInstance = () => {
   try {
     // Check if authentication is disabled
-    const azureAdConfig = getAzureAdConfig();
     const msalConfig = getMsalConfig();
     
     console.log('MSAL Instance - Environment variables:', {

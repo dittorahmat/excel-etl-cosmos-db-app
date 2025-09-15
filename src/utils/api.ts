@@ -4,7 +4,7 @@ import {
   LogLevel
 } from '@azure/msal-browser';
 import { getMsalInstance } from '../auth/msalInstance';
-import { getApiConfig, getAzureAdConfig } from '../auth/authConfig';
+import { getApiConfig } from '../auth/authConfig';
 
 // Check if authentication is enabled
 const isDevelopment = import.meta.env.DEV;
@@ -42,8 +42,7 @@ interface ErrorResponseData {
   [key: string]: unknown;
 }
 
-// Get API base URL from environment variables with fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
 
 // Rate limiting configuration
 const _RATE_LIMIT_RETRY_ATTEMPTS = import.meta.env.DEV ? 0 : 3;
@@ -624,7 +623,9 @@ export const api: ApiClient = {
     // For FormData, let the browser set the content type with the boundary
     if (body instanceof FormData) {
       // Remove any existing content-type header to let the browser set it with the boundary
-      const { 'content-type': _unusedContentType, ...headersWithoutContentType } = headers;
+      const headersWithoutContentType = Object.fromEntries(
+        Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'content-type')
+      );
       return authFetch<T>(endpoint, {
         ...options,
         headers: headersWithoutContentType as HeadersInit,

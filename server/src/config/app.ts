@@ -14,6 +14,9 @@ import authRoute from '../routes/auth.route.js';
 import type { AzureCosmosDB, AzureBlobStorage, CosmosClient, Database } from '../types/azure.js';
 import { env } from './env.js';
 
+// Import enhanced security middleware
+import { securityHeaders, fileUploadLimits, requestId } from '../middleware/security.js';
+
 export function createApp(azureServices: { 
   cosmosDb: AzureCosmosDB; 
   blobStorage: AzureBlobStorage; 
@@ -21,6 +24,15 @@ export function createApp(azureServices: {
   cosmosClient: CosmosClient; 
 }): Express {
   const app = express();
+
+  // Add request ID middleware
+  app.use(requestId());
+
+  // Add security headers
+  app.use(securityHeaders());
+
+  // Add file upload limits
+  app.use(fileUploadLimits());
 
   // CORS configuration
   const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : [];

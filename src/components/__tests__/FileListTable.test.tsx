@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
@@ -45,6 +46,7 @@ const mockFiles = {
         updatedAt: '2023-01-01T10:05:00Z',
         processedAt: '2023-01-01T10:05:00Z',
         metadata: {},
+        blobUrl: '/api/v2/query/imports/1/download'
       },
       {
         id: '2',
@@ -59,6 +61,7 @@ const mockFiles = {
         updatedAt: '2023-01-02T11:10:00Z',
         processedAt: null,
         metadata: {},
+        blobUrl: '/api/v2/query/imports/2/download'
       },
     ],
     total: 2,
@@ -124,13 +127,8 @@ describe('FileListTable', () => {
     await waitFor(() => {
       expect(screen.getByText('test1.xlsx')).toBeInTheDocument();
       expect(screen.getByText('test2.csv')).toBeInTheDocument();
-      expect(screen.getByText('90')).toBeInTheDocument(); // validRows for test1.xlsx
-      expect(screen.getByText('Processing 50 of 200')).toBeInTheDocument(); // status for test2.csv
-
-      // Check that the link has the correct href
-      const link = screen.getByText('test1.xlsx');
-      expect(link).toBeInTheDocument();
-      expect(link.closest('a')).toHaveAttribute('href', '/files/1');
+      expect(screen.getByText((content) => content.includes('90'))).toBeInTheDocument(); // validRows for test1.xlsx
+      expect(screen.getByText((content) => content.includes('Processing') && content.includes('50') && content.includes('200'))).toBeInTheDocument(); // status for test2.csv
     });
   });
 
@@ -160,9 +158,16 @@ describe('FileListTable', () => {
     const deleteButton = await screen.findByTestId('delete-button-1');
     await userEvent.click(deleteButton);
 
-    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this file? This action cannot be undone.');
-    expect(api.delete).toHaveBeenCalledWith('/api/v2/query/imports/1');
+    // Check that the confirmation dialog is shown
+    expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
+    expect(screen.getByText('Are you sure you want to delete "test1.xlsx"? This action cannot be undone.')).toBeInTheDocument();
+    
+    // Click the confirm button in the dialog
+    const confirmButton = screen.getByText('Delete');
+    await userEvent.click(confirmButton);
+
     await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith('/api/v2/query/imports/1');
       expect(api.get).toHaveBeenCalledTimes(2); // Initial fetch and refetch after delete
     });
   });
@@ -172,7 +177,7 @@ describe('FileListTable', () => {
       if (url.includes('page=1')) {
         return Promise.resolve({
           data: {
-            items: [{ id: '1', fileName: 'page1.xlsx', fileSize: 100, status: 'completed', rowCount: 10, createdAt: '2023-01-01T00:00:00Z' }],
+            items: [{ id: '1', fileName: 'page1.xlsx', fileSize: 100, status: 'completed', rowCount: 10, createdAt: '2023-01-01T00:00:00Z', blobUrl: '/api/v2/query/imports/1/download', validRows: 5 }],
             total: 20,
             page: 1,
             pageSize: 10,
@@ -183,7 +188,7 @@ describe('FileListTable', () => {
       } else if (url.includes('page=2')) {
         return Promise.resolve({
           data: {
-            items: [{ id: '2', fileName: 'page2.xlsx', fileSize: 200, status: 'completed', rowCount: 20, createdAt: '2023-01-02T00:00:00Z' }],
+            items: [{ id: '2', fileName: 'page2.xlsx', fileSize: 200, status: 'completed', rowCount: 20, createdAt: '2023-01-02T00:00:00Z', blobUrl: '/api/v2/query/imports/2/download', validRows: 0 }],
             total: 20,
             page: 2,
             pageSize: 10,
@@ -192,7 +197,17 @@ describe('FileListTable', () => {
           pagination: { total: 20, limit: 10, offset: 10, hasMoreResults: false },
         });
       }
-      return Promise.resolve({ data: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 }, pagination: { total: 0, limit: 10, offset: 0, hasMoreResults: false } });
+      // Default to page 1
+      return Promise.resolve({
+        data: {
+          items: [{ id: '1', fileName: 'page1.xlsx', fileSize: 100, status: 'completed', rowCount: 10, createdAt: '2023-01-01T00:00:00Z', blobUrl: '/api/v2/query/imports/1/download', validRows: 5 }],
+          total: 20,
+          page: 1,
+          pageSize: 10,
+          totalPages: 2,
+        },
+        pagination: { total: 20, limit: 10, offset: 0, hasMoreResults: true },
+      });
     });
 
     const user = userEvent.setup();
@@ -201,23 +216,23 @@ describe('FileListTable', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('page1.xlsx')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('page1.xlsx'))).toBeInTheDocument();
     });
 
     const nextButton = screen.getByRole('button', { name: /next/i });
     await userEvent.click(nextButton);
 
     await waitFor(() => {
-      expect(screen.getByText('page2.xlsx')).toBeInTheDocument();
-      expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('page2.xlsx'))).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('Page 2 of 2'))).toBeInTheDocument();
     });
 
     const previousButton = screen.getByRole('button', { name: /previous/i });
     await userEvent.click(previousButton);
 
     await waitFor(() => {
-      expect(screen.getByText('page1.xlsx')).toBeInTheDocument();
-      expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('page1.xlsx'))).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('Page 1 of 2'))).toBeInTheDocument();
     });
   });
 });

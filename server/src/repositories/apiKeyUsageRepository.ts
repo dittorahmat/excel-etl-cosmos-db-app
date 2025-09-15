@@ -134,7 +134,7 @@ export class ApiKeyUsageRepository {
         // Count by endpoint
         const method = record.method || '';
         const path = record.path || '';
-        const endpoint = `${method} ${path}` || 'unknown';
+        const endpoint = `${method} ${path}`;
         stats.byEndpoint[endpoint] = (stats.byEndpoint[endpoint] || 0) + 1;
         
         // Count by day

@@ -5,22 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
 import { MainLayout } from './components/layout/MainLayout';
-import { Loader2, Sun, Moon } from 'lucide-react';
-
-// Extend the Window interface to include our custom properties
-declare global {
-  interface Window {
-    FORCE_DUMMY_AUTH?: boolean;
-    USE_DUMMY_AUTH?: boolean;
-    SKIP_MSAL_INIT?: boolean;
-    APP_CONFIG?: {
-      auth?: {
-        useDummyAuth?: boolean;
-      };
-    };
-    ENV?: Record<string, string>;
-  }
-}
+import { Loader2 } from 'lucide-react';
 
 // Debugging React version and environment
 console.log('React version:', React.version);
@@ -58,134 +43,61 @@ const ProtectedRoute: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
   
-  // Check if dummy auth is enabled from multiple sources
-  const useDummyAuth = 
-    window.FORCE_DUMMY_AUTH === true || 
-    window.USE_DUMMY_AUTH === true ||
-    (window.APP_CONFIG?.auth?.useDummyAuth === true) ||
-    localStorage.getItem('useDummyAuth') === 'true';
-    
-  console.log('ProtectedRoute - Dummy Auth Flags:', {
-    USE_DUMMY_AUTH: (window as any).USE_DUMMY_AUTH,
-    FORCE_DUMMY_AUTH: (window as any).FORCE_DUMMY_AUTH,
-    APP_CONFIG_AUTH: (window as any).APP_CONFIG?.auth,
-    LOCAL_STORAGE: localStorage.getItem('useDummyAuth')
-  });
-  
-  console.log('ProtectedRoute - useDummyAuth:', useDummyAuth);
+  // Check if dummy auth is enabled
+  const useDummyAuth = import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+                      (!import.meta.env.VITE_AUTH_ENABLED && import.meta.env.DEV);
 
   // If using dummy auth, always allow access
   if (useDummyAuth) {
-    console.log('ProtectedRoute: Using dummy auth, allowing access');
     return <Outlet />;
   }
 
   // Show loading spinner while checking auth status
   if (loading) {
-    console.log('ProtectedRoute: Loading auth status...');
     return <LoadingSpinner />;
   }
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    console.log('ProtectedRoute: Not authenticated, redirecting to /login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // User is authenticated, render the protected route
-  console.log('ProtectedRoute: User is authenticated, allowing access');
   return <Outlet />;
 };
 
 // Public route that redirects to dashboard if already authenticated or if dummy auth is enabled
 const PublicRoute: FC<{ children: ReactNode }> = ({ children }) => {
-  // Use the auth context with default values
-  const {
-    isAuthenticated = false,
-    loading = true,
-    user = null,
-    error = null
-  } = useAuth(); // This will throw if not within an AuthProvider
+  const { isAuthenticated, loading } = useAuth();
   
-  // Check if dummy auth is enabled from multiple sources
-  const useDummyAuth = 
-    window.FORCE_DUMMY_AUTH === true || 
-    window.USE_DUMMY_AUTH === true || 
-    window.APP_CONFIG?.auth?.useDummyAuth === true ||
-    localStorage.getItem('useDummyAuth') === 'true';
-  
-  // Log all the values for debugging
-  console.log('PublicRoute - Dummy Auth Flags:', {
-    USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-    FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
-    APP_CONFIG_AUTH: window.APP_CONFIG?.auth,
-    LOCAL_STORAGE: localStorage.getItem('useDummyAuth'),
-    windowFlags: {
-      USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-      FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
-      APP_CONFIG: window.APP_CONFIG,
-      ENV: window.ENV
-    }
-  });
-  
-  console.log('PublicRoute - useDummyAuth:', useDummyAuth);
-
-  // Log when auth state changes
-  useEffect(() => {
-    console.log('PublicRoute - Auth state changed:', { 
-      isAuthenticated, 
-      loading, 
-      user: user ? 'User exists' : 'No user',
-      useDummyAuth,
-      timestamp: new Date().toISOString() 
-    });
-    
-    // If we're in dummy auth mode, log that we're forcing authentication
-    if (useDummyAuth) {
-      console.log('PublicRoute - Dummy auth mode is active, will redirect to dashboard');
-      console.log('PublicRoute - Current path:', window.location.pathname);
-    }
-  }, [isAuthenticated, loading, user, useDummyAuth]);
+  // Check if dummy auth is enabled
+  const useDummyAuth = import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+                      (!import.meta.env.VITE_AUTH_ENABLED && import.meta.env.DEV);
 
   // If dummy auth is enabled, redirect to dashboard immediately
   if (useDummyAuth) {
-    console.log('PublicRoute: Dummy auth is enabled, checking if we need to redirect...');
-    console.log('PublicRoute: Current path:', window.location.pathname);
-    
     // Only redirect if we're not already on the dashboard
     if (window.location.pathname !== '/dashboard') {
-      console.log('PublicRoute: Redirecting to /dashboard');
       return <Navigate to="/dashboard" replace />;
     } else {
-      console.log('PublicRoute: Already on dashboard, rendering children');
       return <>{children}</>;
     }
   }
 
   // Show loading spinner while checking auth status
   if (loading) {
-    console.log('PublicRoute: Loading authentication state...');
     return <LoadingSpinner />;
   }
 
   // If authenticated, redirect to dashboard
   if (isAuthenticated) {
-    console.log('PublicRoute: User is authenticated, checking if we need to redirect to /dashboard');
-    console.log('PublicRoute: Current path:', window.location.pathname);
-    
     // Only redirect if we're not already on the dashboard
     if (window.location.pathname !== '/dashboard') {
-      console.log('PublicRoute: Redirecting to /dashboard');
       return <Navigate to="/dashboard" replace />;
     } else {
-      console.log('PublicRoute: Already on dashboard, rendering children');
       return <>{children}</>;
     }
   }
-  
-  // If we get here, user is not authenticated and dummy auth is disabled
-  console.log('PublicRoute: User is not authenticated and dummy auth is disabled, showing login page');
-  console.log('PublicRoute: Current path:', window.location.pathname);
   
   // If not authenticated, render the children (login page)
   return <>{children}</>;

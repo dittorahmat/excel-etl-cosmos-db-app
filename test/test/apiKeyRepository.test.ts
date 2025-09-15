@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
-import { ApiKeyRepository } from '../src/repositories/apiKeyRepository.js';
-import { initializeCosmosDB } from '../src/services/cosmos-db/cosmos-db.service.js';
+import { ApiKeyRepository } from '../../server/src/repositories/apiKeyRepository.js';
+import { initializeCosmosDB } from '../../server/src/services/cosmos-db/cosmos-db.service.js';
 
-vi.mock('../src/services/cosmos-db/cosmos-db.service.js');
-import type { ApiKey } from '../src/types/apiKey.js';
-import { generateApiKey, hashApiKey } from '../src/utils/apiKeyUtils.js';
+vi.mock('../../server/src/services/cosmos-db/cosmos-db.service.js');
+import type { ApiKey } from '../../server/src/types/apiKey.js';
+import { generateApiKey, hashApiKey } from '../../server/src/utils/apiKeyUtils.js';
 
 // Mock the apiKeyUtils module
 vi.mock('../src/utils/apiKeyUtils.js', () => ({

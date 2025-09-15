@@ -30,7 +30,7 @@ vi.mock('redis', () => ({
 }));
 
 // Import the module after setting up mocks
-import { createRateLimiter } from '../src/middleware/rateLimit.js';
+import { createRateLimiter } from '../../server/src/middleware/rateLimit.js';
 
 // Mock the Date.now() function to control time in tests
 const mockDateNow = vi.spyOn(Date, 'now');

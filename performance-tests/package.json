@@ -1,0 +1,14 @@
+{
+  "name": "excel-etl-performance-tests",
+  "version": "1.0.0",
+  "description": "Performance tests for Excel ETL application",
+  "main": "index.js",
+  "scripts": {
+    "test": "artillery run scenarios/api-load-test.yml",
+    "test:report": "artillery run scenarios/api-load-test.yml --output reports/load-test-report.json && artillery report reports/load-test-report.json",
+    "test:stress": "artillery run scenarios/stress-test.yml"
+  },
+  "dependencies": {
+    "artillery": "^2.0.0-31"
+  }
+}

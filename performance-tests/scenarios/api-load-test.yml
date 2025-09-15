@@ -1,0 +1,55 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up load"
+    - duration: 600
+      arrivalRate: 50
+      name: "Sustained max load"
+  variables:
+    userId:
+      - "user-1"
+      - "user-2"
+      - "user-3"
+      - "user-4"
+      - "user-5"
+
+scenarios:
+  - name: "API Health Check"
+    flow:
+      - loop:
+        - get:
+            url: "/health"
+        - think: 1
+        count: 10
+
+  - name: "API Public Endpoint"
+    flow:
+      - loop:
+        - get:
+            url: "/api/public"
+        - think: 1
+        count: 10
+
+  - name: "API Data Endpoint"
+    flow:
+      - loop:
+        - get:
+            url: "/api/data"
+            headers:
+              Authorization: "Bearer {{ userId }}"
+        - think: 2
+        count: 5
+
+  - name: "API Fields Endpoint"
+    flow:
+      - loop:
+        - get:
+            url: "/api/fields"
+        - think: 1
+        count: 10

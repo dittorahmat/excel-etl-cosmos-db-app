@@ -7,6 +7,7 @@ declare module 'multer' {
     encoding: string;
     mimetype: string;
     size: number;
+    stream: import('stream').Readable; // Add the missing stream property
     destination: string;
     filename: string;
     path: string;

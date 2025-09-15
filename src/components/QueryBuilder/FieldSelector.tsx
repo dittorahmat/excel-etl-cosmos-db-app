@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Badge } from "../ui/badge";
 
-import { FieldOption } from "./types";
+
 import { useFields } from "@/hooks/useFields";
 
 interface FieldSelectorProps {

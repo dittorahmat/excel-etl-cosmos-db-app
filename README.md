@@ -22,6 +22,32 @@ A modern React dashboard application for uploading Excel files, visualizing data
 - **Comprehensive Testing**: Includes a robust test suite with Vitest and React Testing Library for thorough unit and integration testing.
 - **Centralized Logging & Monitoring**: Implements detailed request logging, API key usage tracking, and health check endpoints for operational visibility.
 
+## 🧪 Testing
+
+This project includes a comprehensive test suite with unit, integration, and end-to-end tests. For detailed information about our testing strategy, see [TESTING.md](TESTING.md).
+
+### Test Commands
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run server tests only
+npm run test:server
+
+# Run client tests only
+npm run test:client
+
+# Run end-to-end tests
+npm run test:e2e
+```
+
 ## 🚀 Getting Started
 
 ### Prerequisites

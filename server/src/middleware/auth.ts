@@ -1,10 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { config } from 'dotenv';
-
-// Load environment variables
-config();
 
 // Type for the token payload
 export interface TokenPayload extends JwtPayload {
@@ -15,18 +11,32 @@ export interface TokenPayload extends JwtPayload {
   scp?: string;
 }
 
+// Check if authentication is enabled
+const isAuthEnabled = process.env.AUTH_ENABLED === 'true' || process.env.VITE_AUTH_ENABLED === 'true';
 
+// Initialize JWKS client for token validation (only if auth is enabled)
+let jwksClientInstance: jwksClient.JwksClient | null = null;
 
-// Initialize JWKS client for token validation
-const jwksClientInstance = jwksClient({
-  jwksUri: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/discovery/v2.0/keys`,
-  cache: true,
-  rateLimit: true,
-  jwksRequestsPerMinute: 5,
-});
+if (isAuthEnabled) {
+  jwksClientInstance = jwksClient({
+    jwksUri: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/discovery/v2.0/keys`,
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+  });
+}
 
 // Get the signing key for JWT validation
 const getKey = (header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) => {
+  if (!isAuthEnabled) {
+    // If auth is disabled, provide a mock key
+    return callback(null, 'mock-key');
+  }
+  
+  if (!jwksClientInstance) {
+    return callback(new Error('JWKS client not initialized'));
+  }
+  
   if (!header.kid) {
     return callback(new Error('No KID in token header'));
   }
@@ -40,15 +50,11 @@ const getKey = (header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) => {
   });
 };
 
-
-
-// Middleware to validate JWT tokens
-
 // Middleware to validate JWT tokens
 const validateToken = (token: string): Promise<TokenPayload> => {
   return new Promise((resolve, reject) => {
-    if (process.env.NODE_ENV === 'test') {
-      // In the test environment, resolve with a mock payload
+    // In test environment or when auth is disabled, resolve with a mock payload
+    if (process.env.NODE_ENV === 'test' || !isAuthEnabled) {
       return resolve({
         oid: 'test-user-oid',
         name: 'Test User',
@@ -77,8 +83,8 @@ const validateToken = (token: string): Promise<TokenPayload> => {
 };
 
 const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
-  if (process.env.NODE_ENV === 'test') {
-    // Bypass authentication in test environment
+  // In test environment or when auth is disabled, bypass authentication
+  if (process.env.NODE_ENV === 'test' || !isAuthEnabled) {
     req.user = {
       oid: 'test-user-oid',
       name: 'Test User',
@@ -108,8 +114,8 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
 
 const checkRole = (requiredRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (process.env.NODE_ENV === 'test') {
-      // Bypass role check in test environment
+    // In test environment or when auth is disabled, bypass role check
+    if (process.env.NODE_ENV === 'test' || !isAuthEnabled) {
       return next();
     }
 

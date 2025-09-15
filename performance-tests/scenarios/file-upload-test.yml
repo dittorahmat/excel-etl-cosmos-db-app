@@ -1,0 +1,28 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 1
+      name: "Single file uploads"
+    - duration: 120
+      arrivalRate: 1
+      rampTo: 5
+      name: "Multiple file uploads"
+  variables:
+    userId:
+      - "user-1"
+      - "user-2"
+
+scenarios:
+  - name: "File Upload Simulation"
+    flow:
+      - loop:
+        - post:
+            url: "/api/upload"
+            headers:
+              Authorization: "Bearer {{ userId }}"
+              Content-Type: "multipart/form-data"
+            formData:
+              file: "{{ filePath }}"
+        - think: 5
+        count: 3

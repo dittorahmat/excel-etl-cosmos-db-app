@@ -7,12 +7,7 @@ import { MsalProvider } from '@azure/msal-react';
 import AuthProvider from './auth/AuthProvider';
 import { customTestCleanup, waitForRender } from './test-utils-core';
 
-// Type for the wrapper component props
-// This type is used internally by the TestProviders component
-type _WrapperProps = {
-  children: React.ReactNode;
-  initialEntries?: string[];
-};
+
 
 // Export components and hooks separately to avoid Fast Refresh warnings
 const TestProviders = {
@@ -54,12 +49,12 @@ const customRender = (
   } = {}
 ) => {
   const { 
-    // initialEntries is used in the TestProviders.DefaultWrapper component
-    initialEntries: _initialEntries = ['/'], 
     wrapper: WrapperComponent, 
     userEventOptions = {},
     ...renderOptions 
   } = options;
+  
+  
 
   // Mock MSAL instance is created in the TestProviders.DefaultWrapper component
 

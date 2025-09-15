@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import multer from 'multer';
-import { uploadRouterV2 } from '../src/routes/v2/upload.route.js';
-import { ingestionService } from '../src/services/ingestion/ingestion.service.js';
-import { logger } from '../src/utils/logger.js';
+import { uploadRouterV2 } from '../../server/src/routes/v2/upload.route.js';
+import { ingestionService } from '../../server/src/services/ingestion/ingestion.service.js';
+import { logger } from '../../server/src/utils/logger.js';
 import fs from 'fs/promises';
 
 // Mock external dependencies
-vi.mock('../src/services/ingestion/ingestion.service.js');
-vi.mock('../src/utils/logger.js');
+vi.mock('../../server/src/services/ingestion/ingestion.service.js');
+vi.mock('../../server/src/utils/logger.js');
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'mock-uuid'),
 }));
@@ -24,7 +24,7 @@ vi.mock('fs/promises', async () => {
 });
 
 
-vi.mock('../src/middleware/auth.js', () => ({
+vi.mock('../../server/src/middleware/auth.js', () => ({
   authenticateToken: vi.fn((req, res, next) => {
     if (process.env.AUTH_ENABLED === 'true') {
       // Simulate successful authentication for this test
@@ -35,7 +35,6 @@ vi.mock('../src/middleware/auth.js', () => ({
     }
   }),
 }));
-
 
 
 describe('Upload Route V2', () => {
@@ -65,7 +64,7 @@ describe('Upload Route V2', () => {
     const mockFileBuffer = Buffer.from('dummy content');
 
     it('should accept a valid .xlsx file', async () => {
-      vi.mocked(ingestionService.importFile).mockResolvedValue({
+      vi.mocked(ingestionService.startImport).mockResolvedValue({
         id: 'import-123',
         totalRows: 10,
         validRows: 10,
@@ -80,7 +79,7 @@ describe('Upload Route V2', () => {
           contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         });
       expect(res.statusCode).toEqual(200);
-      expect(ingestionService.importFile).toHaveBeenCalledWith(
+      expect(ingestionService.startImport).toHaveBeenCalledWith(
         expect.stringContaining('tmp_uploads'),
         'test.xlsx',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -102,13 +101,13 @@ describe('Upload Route V2', () => {
 
     it('should return 500 if file processing fails', async () => {
       const errorMessage = 'Simulated import error';
-      vi.mocked(ingestionService.importFile).mockRejectedValue(new Error(errorMessage));
+      vi.mocked(ingestionService.startImport).mockRejectedValue(new Error(errorMessage));
 
       const res = await request(app)
         .post('/')
         .attach('file', mockFileBuffer, 'test.xlsx');
 
-      expect(ingestionService.importFile).toHaveBeenCalled();
+      expect(ingestionService.startImport).toHaveBeenCalled();
       expect(res.statusCode).toEqual(500);
       expect(res.body).toEqual({
         status: 500,
@@ -119,7 +118,7 @@ describe('Upload Route V2', () => {
     });
 
     it('should handle generic application/octet-stream with correct extension', async () => {
-      vi.mocked(ingestionService.importFile).mockResolvedValue({
+      vi.mocked(ingestionService.startImport).mockResolvedValue({
         id: 'import-123',
         totalRows: 5,
         validRows: 5,
@@ -131,7 +130,7 @@ describe('Upload Route V2', () => {
         .post('/')
         .attach('file', mockFileBuffer, 'data.xlsx');
 
-      expect(ingestionService.importFile).toHaveBeenCalledWith(
+      expect(ingestionService.startImport).toHaveBeenCalledWith(
         expect.stringContaining('tmp_uploads'),
         'data.xlsx',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -157,7 +156,7 @@ describe('Upload Route V2', () => {
 
     it('should handle general errors in middleware', async () => {
       const errorMessage = 'Generic Multer Error';
-      vi.mocked(ingestionService.importFile).mockRejectedValue(new Error(errorMessage));
+      vi.mocked(ingestionService.startImport).mockRejectedValue(new Error(errorMessage));
 
       const res = await request(app)
         .post('/')
@@ -184,7 +183,7 @@ describe('Upload Route V2', () => {
   describe('Authentication', () => {
     it('should apply authentication middleware when AUTH_ENABLED is true', async () => {
       process.env.AUTH_ENABLED = 'true';
-      vi.mocked(ingestionService.importFile).mockResolvedValue({
+      vi.mocked(ingestionService.startImport).mockResolvedValue({
         id: 'import-123',
         totalRows: 10,
         validRows: 10,

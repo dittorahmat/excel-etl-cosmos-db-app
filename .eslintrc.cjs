@@ -9,11 +9,11 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2020,
     sourceType: 'module',
-    project: ['./tsconfig.json'],
+    project: ['./tsconfig.client.json', './server/tsconfig.json'],
     tsconfigRootDir: __dirname,
     createDefaultProgram: true,
   },
-  plugins: ['@typescript-eslint', 'react', 'react-hooks'],
+  plugins: ['@typescript-eslint', 'react', 'react-hooks', 'prettier'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -22,10 +22,11 @@ module.exports = {
     'prettier',
   ],
   rules: {
-    // Add any project-specific rules here
+    'prettier/prettier': 'error',
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'react/react-in-jsx-scope': 'off',
+    'react/prop-types': 'off',
   },
   settings: {
     react: {
@@ -34,12 +35,24 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['**/*.test.ts', '**/*.spec.ts'],
+      files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
       env: {
         jest: true,
       },
       rules: {
-        '@typescript-eslint/no-explicit-any': 'off', // Allow any in test files
+        '@typescript-eslint/no-explicit-any': 'off',
+      },
+    },
+    {
+      files: ['server/src/**/*.{ts,tsx}'],
+      parserOptions: {
+        project: ['./server/tsconfig.json'],
+      },
+    },
+    {
+      files: ['src/**/*.{ts,tsx}'],
+      parserOptions: {
+        project: ['./tsconfig.client.json'],
       },
     },
   ],

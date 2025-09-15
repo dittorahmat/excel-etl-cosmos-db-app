@@ -1,11 +1,8 @@
-// OBVIOUS CHANGE TO VERIFY MODULE IS BEING BUILT 2025-08-14
-console.log('[AUTH PROVIDER MODULE] This is an obvious change to verify the module is being built');
-
-import React, { useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { AccountInfo, InteractionRequiredAuthError, EventType, EventMessage, AuthenticationResult } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { AuthContext, type AuthContextType } from './AuthContext';
-import { loginRequest } from './authConfig';
+import { getSimpleLoginRequest } from './simpleAuthConfig';
 import { isTokenExpired } from './authUtils';
 
 interface AuthProviderProps {
@@ -26,57 +23,16 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if we should use dummy auth (development, explicitly disabled, or forced)
   const isDevelopment = import.meta.env.DEV || 
                       window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      window.location.hostname.includes('localhost');
+                      window.location.hostname === '127.0.0.1';
   
-  // Check if dummy auth is forced via window flags
-  const forceDummyAuth = window.FORCE_DUMMY_AUTH === true || window.USE_DUMMY_AUTH === true;
-  
-  // Check if auth is enabled via environment variables, window.ENV, or window.__APP_CONFIG__
-  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
-  
-  // Check if auth is explicitly enabled in any of the possible sources
-  const authExplicitlyEnabled = 
-    import.meta.env.VITE_AUTH_ENABLED === 'true' || 
-    import.meta.env.AUTH_ENABLED === 'true' ||
-    windowEnvViteAuthEnabled === 'true' || 
-    windowEnvAuthEnabled === 'true' ||
-    windowEnvViteAuthEnabled === true || 
-    windowEnvAuthEnabled === true;
-
-  // Check if auth is explicitly disabled
-  const authExplicitlyDisabled = 
-    import.meta.env.VITE_AUTH_ENABLED === 'false' || 
-    import.meta.env.AUTH_ENABLED === 'false' ||
-    windowEnvViteAuthEnabled === 'false' || 
-    windowEnvAuthEnabled === 'false' ||
-    windowEnvViteAuthEnabled === false || 
-    windowEnvAuthEnabled === false;
+  // Check if auth is enabled or disabled
+  const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+  const authDisabled = import.meta.env.VITE_AUTH_ENABLED === 'false';
   
   // Use dummy auth only if:
   // 1. Auth is explicitly disabled, OR
-  // 2. We're in development and auth is not explicitly enabled, OR
-  // 3. Dummy auth is explicitly forced
-  const useDummyAuth = 
-    authExplicitlyDisabled || 
-    (!authExplicitlyEnabled && isDevelopment) ||
-    forceDummyAuth;
-  
-  // Log authentication status for debugging
-  console.log('AuthProvider - Authentication status:', {
-    forceDummyAuth,
-    viteAuthEnabled: windowEnvViteAuthEnabled,
-    authEnabled: windowEnvAuthEnabled,
-    isDevelopment,
-    useDummyAuth,
-    windowENV: window.ENV,
-    windowFlags: {
-      FORCE_DUMMY_AUTH: window.FORCE_DUMMY_AUTH,
-      USE_DUMMY_AUTH: window.USE_DUMMY_AUTH,
-      SKIP_MSAL_INIT: window.SKIP_MSAL_INIT
-    }
-  });
+  // 2. We're in development and auth is not explicitly enabled
+  const useDummyAuth = authDisabled || (!authEnabled && isDevelopment);
   
   // Mock user data for when auth is disabled
   const MOCK_USER = {
@@ -176,7 +132,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Get new token silently
       const response = await instance.acquireTokenSilent({
-        ...loginRequest,
+        ...getSimpleLoginRequest(),
         account,
       });
       
@@ -192,7 +148,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error instanceof InteractionRequiredAuthError) {
         // If silent acquisition fails, try interactive login
         try {
-          const popupResponse = await instance.acquireTokenPopup(loginRequest);
+          const popupResponse = await instance.acquireTokenPopup(getSimpleLoginRequest());
           if (popupResponse?.accessToken) {
             const expiresOn = popupResponse.expiresOn?.getTime() || Date.now() + 3600000;
             localStorage.setItem('msalToken', popupResponse.accessToken);
@@ -208,34 +164,6 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   }, [instance, accounts, useDummyAuth, isDevelopment]);
-
-  interface RequestOptions extends Omit<RequestInit, 'headers' | 'body'> {
-    headers?: HeadersInit | Record<string, string | string[] | undefined> & {
-      'Content-Type'?: string;
-    };
-    body?: BodyInit | Record<string, unknown> | null;
-    onUploadProgress?: (progressEvent: ProgressEvent<EventTarget> & { 
-      lengthComputable: boolean; 
-      loaded: number; 
-      total: number;
-    }) => void;
-  }
-
-  // Helper function to safely convert a value to a string for headers
-  const safeStringify = (value: unknown): string => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return value.toString();
-    try {
-      return JSON.stringify(value);
-    } catch (e) {
-      console.error('Error stringifying header value:', e);
-      return '';
-    }
-  };
-
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 
   // Login function
   const login = useCallback(async (): Promise<AuthenticationResult | null> => {
@@ -260,7 +188,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      const response = await instance.loginPopup(loginRequest);
+      const response = await instance.loginPopup(getSimpleLoginRequest());
       setUser(response.account || null);
       setIsAuthenticated(!!response.account);
       return response;

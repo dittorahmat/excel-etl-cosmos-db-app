@@ -4,7 +4,7 @@ import { getPort } from '../utils/port-utils.js';
 import { initializeAzureServices } from './azure-services.js';
 import { createApp } from './app.js';
 import type { Express } from 'express';
-
+import { enhancedCosmosDBService } from '../services/cosmos-db/enhanced-cosmos-db.service.js';
 
 let server: Server | null = null;
 let app: Express | null = null;
@@ -13,6 +13,10 @@ export async function startServer(port: number | string = getPort()): Promise<Se
   try {
     logger.info('Initializing Azure services...');
     const azureServices = await initializeAzureServices();
+    
+    // Initialize the enhanced Cosmos DB service
+    logger.info('Initializing enhanced Cosmos DB service...');
+    await enhancedCosmosDBService.init();
     
     logger.info('Creating Express application...');
     app = createApp(azureServices);

@@ -1,0 +1,49 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 30
+      arrivalRate: 10
+      name: "Baseline"
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 100
+      name: "Ramp up"
+    - duration: 60
+      arrivalRate: 100
+      rampTo: 500
+      name: "Stress"
+    - duration: 30
+      arrivalRate: 500
+      rampTo: 100
+      name: "Recovery"
+  variables:
+    userId:
+      - "user-1"
+      - "user-2"
+      - "user-3"
+      - "user-4"
+      - "user-5"
+
+scenarios:
+  - name: "High Load Health Checks"
+    flow:
+      - loop:
+        - get:
+            url: "/health"
+        count: 20
+
+  - name: "Concurrent Data Requests"
+    flow:
+      - loop:
+        - get:
+            url: "/api/data"
+            headers:
+              Authorization: "Bearer {{ userId }}"
+        count: 10
+
+  - name: "Concurrent Fields Requests"
+    flow:
+      - loop:
+        - get:
+            url: "/api/fields"
+        count: 15

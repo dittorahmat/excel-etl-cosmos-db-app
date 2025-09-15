@@ -6,6 +6,8 @@ import type { AzureCosmosDB } from '../../types/azure.js';
 import { uploadToBlobStorage } from '../blob-storage/upload-to-blob-storage.js';
 import type { CosmosRecord } from '../../types/azure.js';
 import fs from 'fs/promises';
+import { cosmosDbWrapper } from './cosmos-db-wrapper.js';
+import { INGESTION_CONSTANTS } from './constants.js';
 
 /**
  * Extended CosmosRecord with required fields for import metadata
@@ -52,9 +54,9 @@ export interface RowData extends CosmosRecord {
 
 export class IngestionService {
   private logger = logger.child({ module: 'ingestion-service' });
-  private readonly metadataContainerName = 'excel-records';
-  private readonly dataContainerName = 'excel-records';
-  private readonly metadataPartitionKey = 'imports';
+  private readonly metadataContainerName = INGESTION_CONSTANTS.METADATA_CONTAINER_NAME;
+  private readonly dataContainerName = INGESTION_CONSTANTS.DATA_CONTAINER_NAME;
+  private readonly metadataPartitionKey = INGESTION_CONSTANTS.METADATA_PARTITION_KEY;
 
   /**
    * Start the file import process
@@ -315,42 +317,21 @@ export class IngestionService {
    * Save import metadata to Cosmos DB
    */
   private async saveImportMetadata(metadata: ImportMetadata, cosmosDb: AzureCosmosDB): Promise<void> {
-    try {
-      const record = {
-        ...metadata,
-        id: `import_${metadata.id}`, // Prefix to distinguish from row documents
-        _partitionKey: this.metadataPartitionKey, // Use fixed partition key for metadata
-        documentType: 'excel-import', // Add document type for filtering
-        _importId: metadata.id, // Add _importId for consistency with row documents
-      };
-      
-      this.logger.debug('Saving import metadata', { 
-        importId: metadata.id,
-        container: this.metadataContainerName,
-        record: {
-          ...record,
-          // Don't log the entire file content
-          fileBuffer: '[Buffer]',
-        }
-      });
-      
-      const result = await cosmosDb.upsertRecord(
-        record,
-        this.metadataContainerName
-      );
-      
-      this.logger.debug('Import metadata saved', { 
-        importId: metadata.id,
-        etag: result.resource?._etag,
-        partitionKey: this.metadataPartitionKey
-      });
-    } catch (error) {
-      this.logger.error('Failed to save import metadata', {
-        importId: metadata.id,
-        error,
-      });
-      throw new Error(`Failed to save import metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    const record = {
+      ...metadata,
+      id: `import_${metadata.id}`, // Prefix to distinguish from row documents
+      _partitionKey: this.metadataPartitionKey, // Use fixed partition key for metadata
+      documentType: INGESTION_CONSTANTS.DOCUMENT_TYPES.IMPORT, // Add document type for filtering
+      _importId: metadata.id, // Add _importId for consistency with row documents
+    };
+
+    await cosmosDbWrapper.upsertRecordWithLogging(
+      cosmosDb,
+      record,
+      this.metadataContainerName,
+      'save import metadata',
+      this.logger
+    );
   }
 
   /**
@@ -362,7 +343,7 @@ export class IngestionService {
       return;
     }
 
-    const BATCH_SIZE = 100; // Cosmos DB batch limit
+    const BATCH_SIZE = INGESTION_CONSTANTS.BATCH_SIZE; // Cosmos DB batch limit
     const importId = rows[0]?._importId;
 
     if (!importId) {
@@ -388,14 +369,14 @@ export class IngestionService {
         
         // Execute batch operations
         const results = await Promise.allSettled(
-          batch.map((row) => {
+          batch.map(async (row) => {
             const record = {
               ...row,
               // Use a composite ID to ensure uniqueness
               id: `row_${row._importId}_${row._rowNumber}`,
               _partitionKey: `import_${row._importId}`, // Match the import's partition key
               _rowId: row._rowNumber, // Store row number for easier querying
-              documentType: 'excel-row', // Add document type for easier querying
+              documentType: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW, // Add document type for easier querying
             };
             
             // Log the row being processed
@@ -408,15 +389,22 @@ export class IngestionService {
             };
             this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId}`, rowLogData);
             
-            // Execute the upsert operation
-            return cosmosDb.upsertRecord(record, this.dataContainerName).then(result => {
-              this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
-                rowId: record.id,
-                statusCode: result.statusCode,
-                etag: result.etag
-              });
-              return result;
+            // Execute the upsert operation using the wrapper
+            const result = await cosmosDbWrapper.upsertRecordWithLogging(
+              cosmosDb,
+              record,
+              this.dataContainerName,
+              `upsert row ${row._rowNumber} for import ${row._importId}`,
+              this.logger
+            );
+            
+            this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
+              rowId: record.id,
+              statusCode: result.statusCode,
+              etag: result.etag
             });
+            
+            return result;
           })
         );
 
@@ -621,7 +609,7 @@ export class IngestionService {
       const importParams = [
         { name: '@id', value: fullImportId },
         { name: '@partitionKey', value: 'imports' }, // This is the _partitionKey field value
-        { name: '@documentType', value: 'excel-import' }
+        { name: '@documentType', value: INGESTION_CONSTANTS.DOCUMENT_TYPES.IMPORT }
       ];
       
       this.logger.info('Querying for import metadata', {
@@ -660,10 +648,13 @@ export class IngestionService {
           containerName: this.metadataContainerName
         });
         
-        await cosmosDb.deleteRecord(
+        await cosmosDbWrapper.deleteRecordWithLogging(
+          cosmosDb,
           fullImportId,
           fullImportId, // Use the item's ID as the partition key
-          this.metadataContainerName
+          this.metadataContainerName,
+          'delete import metadata',
+          this.logger
         );
         this.logger.info('Deleted import metadata', { importId: fullImportId });
       } catch (deleteError) {
@@ -688,7 +679,7 @@ export class IngestionService {
       const rowQuery = 'SELECT c.id FROM c WHERE c._partitionKey = @partitionKey AND c.documentType = @documentType';
       const rowParams = [
         { name: '@partitionKey', value: rowPartitionKey },
-        { name: '@documentType', value: 'excel-row' }
+        { name: '@documentType', value: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW }
       ];
       
       this.logger.info('Querying for rows to delete', {
@@ -718,10 +709,13 @@ export class IngestionService {
             containerName: this.dataContainerName
           });
           
-          await cosmosDb.deleteRecord(
+          await cosmosDbWrapper.deleteRecordWithLogging(
+            cosmosDb,
             row.id,
             row.id, // Use the row's ID as the partition key
-            this.dataContainerName
+            this.dataContainerName,
+            `delete row ${row.id} for import ${fullImportId}`,
+            this.logger
           );
           deletedRowCount++;
         } catch (deleteError) {

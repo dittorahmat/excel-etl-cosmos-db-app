@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../utils/api';
-import { FileText, Download, Loader2, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Trash2 } from 'lucide-react';
 import { formatBytes, formatDate } from '../utils/formatters';
 
 // ========================================================================
@@ -145,53 +145,17 @@ export function FileListTable() {
   // ========================================================================
   
   /**
-   * Handle file download action
-   * @param file - File to download
-   */
-  const handleDownload = async (file: FileData) => {
-    try {
-      if (!file.downloadUrl) {
-        console.error('No download URL available for file:', file.id);
-        return;
-      }
-      
-      // For direct blob URL access (if blobs are publicly accessible)
-      if (file.downloadUrl.startsWith('http')) {
-        window.open(file.downloadUrl, '_blank');
-        return;
-      }
-      
-      // If we need to go through the API for authentication
-      const response = await fetch(file.downloadUrl, {
-        headers: {
-          'Accept': 'application/octet-stream',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.statusText}`);
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', file.downloadFileName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
-  };
 
-  /**
    * Handle delete button click - show confirmation dialog
+
    * @param file - File to delete
+
    */
+
   const handleDelete = (file: FileData) => {
+
     setShowConfirmDelete(file);
+
   };
 
   /**
@@ -317,7 +281,7 @@ export function FileListTable() {
               </tr>
             ) : files.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid="no-files-message">
                   No files uploaded yet.
                 </td>
               </tr>
@@ -330,7 +294,7 @@ export function FileListTable() {
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-900">{file.name}</span>
                         <span className="text-xs text-gray-500">
-                          {file.recordCount} records
+                          {file.recordCount} records{file.status === 'completed' && file.processedCount !== undefined ? ` (${file.processedCount} valid)` : ''}
                         </span>
                       </div>
                     </div>
@@ -347,7 +311,9 @@ export function FileListTable() {
                         }`}
                       />
                       <span className="text-sm text-gray-900 capitalize">
-                        {file.status}
+                        {file.status === 'processing' && file.processedCount !== undefined && file.recordCount !== undefined
+                          ? `Processing ${file.processedCount} of ${file.recordCount}`
+                          : file.status}
                       </span>
                     </div>
                   </td>
@@ -363,6 +329,7 @@ export function FileListTable() {
                       className="text-red-600 hover:text-red-900"
                       title="Delete file"
                       disabled={isDeleting !== null}
+                      data-testid={`delete-button-${file.id}`}
                     >
                       <Trash2 className="h-5 w-5" />
                     </button>
