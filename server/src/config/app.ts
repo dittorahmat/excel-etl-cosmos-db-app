@@ -179,22 +179,9 @@ export function createApp(azureServices: {
 
   // Serve static files in production
   if (process.env.NODE_ENV === 'production') {
-    // Get the directory name in ES modules
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    
-    // Path to the static files in the server/dist/public directory
-    const staticPath = path.join(__dirname, '../../../server/dist/public');
+    // Use absolute path to avoid issues with working directory
+    const staticPath = path.join(process.cwd(), 'server/dist/public');
     const indexPath = path.join(staticPath, 'index.html');
-    
-    if (!fs.existsSync(staticPath) || !fs.existsSync(indexPath)) {
-      logger.error('Frontend build not found at:', staticPath);
-      logger.error('Make sure to run `npm run build` before starting the server');
-      // Return the app without static file serving if build files are missing
-      return app;
-    }
-    
-    logger.info('Serving static files from:', staticPath);
     
     // Serve static files with proper caching headers
     app.use(express.static(staticPath, {
@@ -217,6 +204,23 @@ export function createApp(azureServices: {
         } else if (ext === '.html') {
           res.setHeader('Content-Type', 'text/html');
         }
+        
+        // Set Content Security Policy for static files
+        const cspValue = 
+          "default-src 'self'; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://login.microsoftonline.com https://*.microsoft.com; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' data: https:; " +
+          "font-src 'self' data:; " +
+          "connect-src 'self' https://login.microsoftonline.com https://*.microsoft.com; " +
+          "media-src 'self'; " +
+          "object-src 'none'; " +
+          "child-src 'self'; " +
+          "frame-ancestors 'none'; " +
+          "form-action 'self'; " +
+          "base-uri 'self';";
+          
+        res.setHeader('Content-Security-Policy', cspValue);
       }
     }));
       

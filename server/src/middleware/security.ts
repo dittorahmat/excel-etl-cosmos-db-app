@@ -5,36 +5,29 @@ import type { Request, Response, NextFunction } from 'express';
  */
 export const securityHeaders = () => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    // Prevent XSS attacks
+    // Set all security headers
     res.setHeader('X-XSS-Protection', '1; mode=block');
-    
-    // Prevent MIME type sniffing
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    
-    // Prevent clickjacking
     res.setHeader('X-Frame-Options', 'DENY');
-    
-    // Control referrer information
     res.setHeader('Referrer-Policy', 'no-referrer');
-    
-    // Control features available to the page
     res.setHeader('Permissions-Policy', "geolocation=(), microphone=(), camera=()");
     
-    // Content Security Policy
-    res.setHeader('Content-Security-Policy', 
+    // Content Security Policy - Properly configured for MSAL authentication
+    const cspValue = 
       "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://login.microsoftonline.com https://*.microsoft.com; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
       "font-src 'self' data:; " +
-      "connect-src 'self'; " +
+      "connect-src 'self' https://login.microsoftonline.com https://*.microsoft.com; " +
       "media-src 'self'; " +
       "object-src 'none'; " +
       "child-src 'self'; " +
       "frame-ancestors 'none'; " +
       "form-action 'self'; " +
-      "base-uri 'self';"
-    );
+      "base-uri 'self';";
+      
+    res.setHeader('Content-Security-Policy', cspValue);
     
     // Strict Transport Security (only if HTTPS is enabled)
     if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
