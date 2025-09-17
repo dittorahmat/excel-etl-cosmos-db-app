@@ -195,46 +195,6 @@ export function createApp(azureServices: {
     }
     
     logger.info('Serving static files from:', staticPath);
-    
-    // Serve static files with proper caching headers
-    app.use(express.static(staticPath, {
-      etag: true,
-      lastModified: true,
-      maxAge: '1y',
-      setHeaders: (res, filePath) => {
-        const ext = path.extname(filePath);
-        // Set immutable cache for hashed assets
-        if (['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot'].includes(ext)) {
-          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        }
-        // Ensure proper MIME types
-        if (ext === '.css') {
-          res.setHeader('Content-Type', 'text/css');
-        } else if (ext === '.js') {
-          res.setHeader('Content-Type', 'application/javascript');
-        } else if (ext === '.json') {
-          res.setHeader('Content-Type', 'application/json');
-        } else if (ext === '.html') {
-          res.setHeader('Content-Type', 'text/html');
-        }
-      }
-    }));
-      
-      // Serve index.html for all other routes (client-side routing)
-      app.get('*', (req: Request, res: Response) => {
-        // Don't serve index.html for API routes
-        if (req.path.startsWith('/api')) {
-          return res.status(404).json({
-            success: false,
-            error: 'Not Found',
-            message: 'The requested API resource was not found',
-          });
-        }
-        
-        // Send the main HTML file for all other routes
-        return res.sendFile(path.join(staticPath, 'index.html'));
-      });
-    }
 
   // Error handler
   app.use((err: Error & { statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {
