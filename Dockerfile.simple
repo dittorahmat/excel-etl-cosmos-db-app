@@ -72,7 +72,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 
 # Copy necessary runtime files
-COPY start-simple.sh /start.sh
+COPY start-simple-fixed.sh /start.sh
 RUN chmod +x /start.sh
 
 # Copy common directory

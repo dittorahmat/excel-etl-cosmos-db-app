@@ -2,7 +2,7 @@
 
 A modern React dashboard application for uploading Excel files, visualizing data, and managing Azure Cosmos DB integration. Features Azure AD authentication, real-time data visualization, and a responsive UI built with Shadcn UI components.
 
-> **Note**: For deployment instructions, please refer to `DOCKER_EASYPANEL_DEPLOYMENT_GUIDE.md` which provides comprehensive instructions for deploying the application using Docker via EasyPanel.
+
 
 ## Features
 
@@ -520,9 +520,32 @@ If an API key is compromised:
 
 ## Deployment
 
-For detailed deployment instructions, please refer to `DOCKER_EASYPANEL_DEPLOYMENT_GUIDE.md` which provides comprehensive instructions for deploying the application using Docker via EasyPanel. This is the recommended and most reliable deployment method.
+The application is deployed using Docker Compose with a multi-stage Dockerfile that builds the application in a builder stage and creates a minimal production image with only runtime dependencies.
 
-The application uses a multi-stage Dockerfile that builds the application in a builder stage and creates a minimal production image with only runtime dependencies.
+The current deployment is configured with:
+- HTTPS support using Let's Encrypt certificates
+- Nginx as a reverse proxy
+- Automatic HTTP to HTTPS redirection
+- Health checks for monitoring
+
+To deploy the application:
+
+```bash
+# Build and start the application
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Check container status
+docker-compose ps
+```
+
+The application will be accessible at:
+- `https://YOUR_DOMAIN` (HTTPS)
+- HTTP requests will automatically redirect to HTTPS
+
+For customizing the deployment (domain, certificates, etc.), modify the `docker-compose.yml` file and associated configuration files.
 
 ### HTTPS Setup
 

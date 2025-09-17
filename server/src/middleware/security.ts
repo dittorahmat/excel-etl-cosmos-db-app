@@ -27,10 +27,11 @@ export const securityHeaders = () => {
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: https:; " +
       "font-src 'self' data:; " +
-      "connect-src 'self'; " +
+      "connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com; " +
       "media-src 'self'; " +
       "object-src 'none'; " +
       "child-src 'self'; " +
+      "frame-src 'self' https://login.microsoftonline.com; " +
       "frame-ancestors 'none'; " +
       "form-action 'self'; " +
       "base-uri 'self';"

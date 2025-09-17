@@ -184,7 +184,7 @@ export function createApp(azureServices: {
     const __dirname = path.dirname(__filename);
     
     // Path to the static files in the server/dist/public directory
-    const staticPath = path.join(__dirname, '../../../server/dist/public');
+    const staticPath = path.join(__dirname, '../../../public');
     const indexPath = path.join(staticPath, 'index.html');
     
     if (!fs.existsSync(staticPath) || !fs.existsSync(indexPath)) {
