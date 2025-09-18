@@ -55,6 +55,130 @@ export class FileParserService {
   private logger = logger.child({ module: 'file-parser' });
 
   /**
+   * Process a cell value to ensure proper type handling
+   * @param value The raw cell value
+   * @returns The processed value with proper types
+   */
+  private processCellValue(value: unknown): unknown {
+    // For Excel, numbers might come through as Number objects
+    if (typeof value === 'number') {
+      return value;
+    }
+    
+    // For Excel, dates might come through as Date objects
+    if (value instanceof Date) {
+      return value;
+    }
+    
+    // For strings that might be numbers or dates
+    if (typeof value === 'string') {
+      // Try to parse as number first
+      if (this.isNumericString(value)) {
+        return this.parseNumericString(value);
+      }
+      
+      // Try to parse as date
+      if (this.isDateString(value)) {
+        return this.parseDateString(value);
+      }
+      
+      return value;
+    }
+    
+    return value;
+  }
+
+  /**
+   * Check if a string matches the dd-mm-yyyy date format
+   * @param value The string to check
+   * @returns True if the string matches the date format
+   */
+  private isDateString(value: string): boolean {
+    // Regular expression for dd-mm-yyyy format
+    const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
+    return dateRegex.test(value);
+  }
+
+  /**
+   * Parse a date string in dd-mm-yyyy format
+   * @param dateString The date string to parse
+   * @returns A Date object or the original string if parsing fails
+   */
+  private parseDateString(dateString: string): Date | string {
+    try {
+      const parts = dateString.split('-');
+      if (parts.length !== 3) {
+        return dateString;
+      }
+      
+      // Check that all parts exist
+      if (parts[0] === undefined || parts[1] === undefined || parts[2] === undefined) {
+        return dateString;
+      }
+      
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      
+      // Check if all parts are valid numbers
+      if (isNaN(day) || isNaN(month) || isNaN(year)) {
+        return dateString;
+      }
+      
+      // Create date (month is 0-indexed in JavaScript)
+      const date = new Date(year, month - 1, day);
+      
+      // Validate that the date is valid
+      if (
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day
+      ) {
+        return date;
+      }
+      
+      // Return original string if date is invalid
+      return dateString;
+    } catch (error) {
+      // Return original string if parsing fails
+      return dateString;
+    }
+  }
+
+  /**
+   * Check if a string represents a numeric value
+   * @param value The string to check
+   * @returns True if the string represents a valid number
+   */
+  private isNumericString(value: string): boolean {
+    // Regular expression for numeric values (integer or float with dot as decimal separator)
+    const numericRegex = /^-?\d+(\.\d+)?$/;
+    return numericRegex.test(value);
+  }
+
+  /**
+   * Parse a numeric string
+   * @param numericString The numeric string to parse
+   * @returns A Number object or the original string if parsing fails
+   */
+  private parseNumericString(numericString: string): number | string {
+    try {
+      const num = parseFloat(numericString);
+      
+      // Check if the parsed number is valid and matches the original string
+      if (!isNaN(num) && isFinite(num)) {
+        return num;
+      }
+      
+      // Return original string if number is invalid
+      return numericString;
+    } catch (error) {
+      // Return original string if parsing fails
+      return numericString;
+    }
+  }
+
+  /**
    * Parse an Excel file buffer
    */
   async parseExcel(
@@ -145,7 +269,7 @@ export class FileParserService {
         this.logger.debug('Converting worksheet to JSON...');
         jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
           header: 1, // Get raw data including headers
-          raw: false, // Get formatted strings
+          raw: true, // Changed from false to true to preserve data types
           defval: null, // Use null for empty cells
           blankrows: false,
         });
@@ -196,7 +320,7 @@ export class FileParserService {
             const header = headers[j];
             const value = rowData[j];
             if (header && value !== null && value !== undefined && value !== '') {
-              row[header] = value;
+              row[header] = this.processCellValue(value);
               isEmpty = false;
             }
           }
@@ -295,7 +419,21 @@ export class FileParserService {
           },
           mapValues: ({ value }: { value: string }) => {
             // Convert empty strings to null for consistency
-            return value === '' ? null : value;
+            if (value === '') {
+              return null;
+            }
+            
+            // Try to parse as number first
+            if (this.isNumericString(value)) {
+              return this.parseNumericString(value);
+            }
+            
+            // Try to parse as date if it matches our format
+            if (this.isDateString(value)) {
+              return this.parseDateString(value);
+            }
+            
+            return value;
           },
           skipLines: 0,
           strict: false,
