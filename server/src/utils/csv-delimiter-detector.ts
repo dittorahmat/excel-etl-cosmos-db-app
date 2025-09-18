@@ -34,7 +34,9 @@ export async function detectCsvDelimiter(filePath: string): Promise<string> {
       for (const delimiter of delimiters) {
         // Count occurrences of delimiter not within quotes
         const count = countDelimiterOutsideQuotes(line, delimiter);
-        delimiterCounts[delimiter].push(count);
+        if (delimiterCounts[delimiter]) {
+          delimiterCounts[delimiter].push(count);
+        }
       }
     }
     
@@ -44,7 +46,7 @@ export async function detectCsvDelimiter(filePath: string): Promise<string> {
     
     for (const delimiter of delimiters) {
       const counts = delimiterCounts[delimiter];
-      if (counts.length === 0) continue;
+      if (!counts || counts.length === 0) continue;
       
       // Calculate consistency (how many lines have the same count)
       const consistency = calculateConsistency(counts);
@@ -53,7 +55,8 @@ export async function detectCsvDelimiter(filePath: string): Promise<string> {
       
       // If this delimiter is more consistent, or if it's tied but has more total occurrences
       const totalOccurrences = counts.reduce((sum, count) => sum + count, 0);
-      const bestTotalOccurrences = delimiterCounts[bestDelimiter]?.reduce((sum, count) => sum + count, 0) || 0;
+      const bestCounts = delimiterCounts[bestDelimiter];
+      const bestTotalOccurrences = bestCounts ? bestCounts.reduce((sum, count) => sum + count, 0) : 0;
       
       if (consistency > bestConsistency || 
           (consistency === bestConsistency && totalOccurrences > bestTotalOccurrences)) {

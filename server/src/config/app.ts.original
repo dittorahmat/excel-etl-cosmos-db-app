@@ -196,15 +196,6 @@ export function createApp(azureServices: {
     
     logger.info('Serving static files from:', staticPath);
 
-    // Serve static files
-    app.use(express.static(staticPath));
-
-    // Handle React routing, return all requests to React app
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(indexPath);
-    });
-  }
-
   // Error handler
   app.use((err: Error & { statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {
     logger.error('Unhandled error:', { error: err });
@@ -219,6 +210,7 @@ export function createApp(azureServices: {
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
   });
-  
+
+
   return app;
 }
