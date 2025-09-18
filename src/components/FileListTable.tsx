@@ -116,6 +116,10 @@ export function FileListTable() {
           downloadFileName: item.fileName || `file-${item.id || 'unknown'}.xlsx`
         }));
 
+        // Debug log to see what data we're getting
+        console.log('File data from API:', response.data.items);
+        console.log('Mapped file data:', mappedFiles);
+
         setFiles(mappedFiles);
         setTotalPages(response.data.totalPages || 1);
         setError(null);
@@ -294,7 +298,7 @@ export function FileListTable() {
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-900">{file.name}</span>
                         <span className="text-xs text-gray-500">
-                          {file.recordCount} records{file.status === 'completed' && file.processedCount !== undefined ? ` (${file.processedCount} valid)` : ''}
+                          {file.recordCount} records ({file.processedCount} valid)
                         </span>
                       </div>
                     </div>
