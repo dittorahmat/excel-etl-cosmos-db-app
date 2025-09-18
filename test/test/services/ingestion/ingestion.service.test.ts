@@ -81,7 +81,8 @@ describe('IngestionService', () => {
 
     expect(fs.readFile).toHaveBeenCalledWith(filePath);
     expect(uploadToBlobStorage).toHaveBeenCalledWith(expect.any(Buffer), expect.stringContaining(fileName), fileType);
-    expect(fileParserService.parseFile).not.toHaveBeenCalled(); // Not called yet because processing is async
+    // With the new implementation, parseFile is called immediately for delimiter detection
+    expect(fileParserService.parseFile).toHaveBeenCalled(); 
     expect(mockCosmosDb.upsertRecord).toHaveBeenCalledWith(expect.objectContaining({
       documentType: 'excel-import',
       fileName,
@@ -108,7 +109,8 @@ describe('IngestionService', () => {
 
     expect(fs.readFile).toHaveBeenCalledWith(filePath);
     expect(uploadToBlobStorage).toHaveBeenCalledWith(expect.any(Buffer), expect.stringContaining(fileName), fileType);
-    expect(fileParserService.parseFile).not.toHaveBeenCalled(); // Should not be called if upload fails
+    // With the new implementation, parseFile is called immediately for delimiter detection
+    expect(fileParserService.parseFile).toHaveBeenCalled();
     expect(initializeCosmosDB).toHaveBeenCalledTimes(1); // Corrected: initializeCosmosDB is a singleton, called once at the start of startImport
     // We can't easily check the upsert calls here because they happen asynchronously
   });

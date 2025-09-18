@@ -5,6 +5,7 @@ import { Transform } from 'stream';
 import { logger } from '../../utils/logger.js';
 import csv from 'csv-parser';
 import * as fs from 'fs';
+import { detectCsvDelimiter } from '../../utils/csv-delimiter-detector.js';
 
 interface ParseOptions {
   /**
@@ -234,7 +235,8 @@ export class FileParserService {
    */
   async parseCsv(
     fileStream: Readable,
-    options: ParseOptions = {}
+    options: ParseOptions = {},
+    delimiter: string = ','
   ): Promise<ParseResult> {
     const result: ParseResult = {
       rows: [],
@@ -278,7 +280,7 @@ export class FileParserService {
         },
       });
 
-      // Set up the pipeline
+      // Set up the pipeline with the detected delimiter
       await pipeline(
         fileStream,
         csv({
@@ -297,6 +299,7 @@ export class FileParserService {
           },
           skipLines: 0,
           strict: false,
+          separator: delimiter, // Use the detected delimiter
         }),
         transform
       );
@@ -345,16 +348,20 @@ export class FileParserService {
           error: error instanceof Error ? error.message : 'Unknown error' 
         });
         if (isCsvByMime || isCsvByExtension) {
+          // Detect delimiter for CSV files
+          const delimiter = await detectCsvDelimiter(filePath);
           const stream = fs.createReadStream(filePath);
-          return this.parseCsv(stream, options);
+          return this.parseCsv(stream, options, delimiter);
         }
         throw error;
       }
     } 
     
     if (isCsvByMime || isCsvByExtension) {
+      // Detect delimiter for CSV files
+      const delimiter = await detectCsvDelimiter(filePath);
       const stream = fs.createReadStream(filePath);
-      return this.parseCsv(stream, options);
+      return this.parseCsv(stream, options, delimiter);
     }
 
     throw new Error(`Unsupported file type: ${mimeType} (extension: .${fileExtension})`);
