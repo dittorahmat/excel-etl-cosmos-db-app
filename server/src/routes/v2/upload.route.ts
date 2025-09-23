@@ -8,6 +8,7 @@ const router = Router();
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger.js';
 import * as authMiddleware from '../../middleware/auth.js';
+import { accessControlMiddleware } from '../../middleware/access-control.middleware.js';
 import { ingestionService } from '../../services/ingestion/ingestion.service.js';
 
 import path from 'path';
@@ -341,11 +342,12 @@ async function uploadHandler(req: Request, res: Response) {
 // Apply authentication middleware if enabled
 const authRequired = process.env.AUTH_ENABLED === 'true';
 
-// Define the upload route with conditional authentication
+// Define the upload route with conditional authentication and access control
 if (authRequired) {
   router.post(
     '/',
     authMiddleware.authenticateToken,
+    accessControlMiddleware,
     upload.single('file'),
     uploadHandler
   );
@@ -353,6 +355,7 @@ if (authRequired) {
   // In development, allow uploads without authentication
   router.post(
     '/',
+    accessControlMiddleware,
     upload.single('file'),
     uploadHandler
   );
