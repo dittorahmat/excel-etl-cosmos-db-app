@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { QueryBuilder } from '../components/QueryBuilder/QueryBuilder';
 import { Button } from '../components/ui/button';
+import { ApiGenerationModal } from '../components/ApiGeneration';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileListTable } from '../components/FileListTable';
@@ -36,12 +37,14 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     fieldsLoading,
     sortField,
     sortDirection,
+    currentFilters, // Get current filters from the hook
     handleExecuteQuery,
     handleFieldsChange,
     handleSort,
   } = useDashboardData();
 
-  const [activeTab, setActiveTab] = useState('files');
+  const [activeTab, setActiveTab] = useState('query');
+  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
 
   // Export to CSV function
   const exportToCSV = (data: any[], fields: string[]) => {
@@ -180,8 +183,24 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                   </div>
                 ) : queryResult.items.length > 0 ? (
                   <>
-                    {/* Export Buttons */}
+                    {/* Export and API Buttons */}
                     <div className="flex justify-end mb-4 space-x-2">
+                      <ApiGenerationModal 
+                        selectedFields={selectedFields}
+                        filters={currentFilters || []} // Using current filters from the hook
+                        baseUrl="/api/v2/query/rows"
+                        isOpen={isApiModalOpen}
+                        onOpenChange={setIsApiModalOpen}
+                        trigger={
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="flex items-center"
+                          >
+                            Create API
+                          </Button>
+                        }
+                      />
                       <Button 
                         onClick={() => exportToCSV(queryResult.items, queryResult.fields)}
                         variant="outline" 

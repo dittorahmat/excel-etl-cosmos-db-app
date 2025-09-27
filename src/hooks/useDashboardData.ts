@@ -24,6 +24,7 @@ interface QueryResult {
   totalPages: number;
   hasMore: boolean;
   continuationToken?: string;
+  filters?: FilterCondition[]; // Add filters to QueryResult
 }
 
 interface FilterCondition {
@@ -61,6 +62,9 @@ export const useDashboardData = () => {
   // State for sorting
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // State for filters
+  const [currentFilters, setCurrentFilters] = useState<FilterCondition[]>([]);
 
   // Load available fields from the server
   const loadAvailableFields = useCallback(async () => {
@@ -131,6 +135,9 @@ export const useDashboardData = () => {
     
     setLoading(true);
     setError(null);
+    
+    // Update current filters to the ones used in this query
+    setCurrentFilters(query.filters);
     
     try {
       const fieldsToQuery = selectedFields.length > 0 
@@ -283,6 +290,7 @@ export const useDashboardData = () => {
     fieldsLoading,
     sortField,
     sortDirection,
+    currentFilters, // Add currentFilters to the return value
     setQueryResult,
     setSelectedFields,
     handleExecuteQuery,

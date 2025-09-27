@@ -30,23 +30,13 @@ const menuItems: MenuItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Data Upload',
+    title: 'Edit Database',
     path: '/upload',
-    icon: Upload,
+    icon: Database,
   },
 ];
 
 const adminMenuItems: MenuItem[] = [
-  {
-    title: 'API Keys',
-    path: '/api-keys',
-    icon: KeyRound,
-  },
-  {
-    title: 'API Query Builder',
-    path: '/api-query-builder',
-    icon: Database, // Using Database icon for now, can be changed later
-  },
 ];
 
 export const Sidebar = () => {
