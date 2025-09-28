@@ -72,12 +72,11 @@ export function UploadPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Only check for auth token if auth is enabled
-      // For now, we're explicitly disabling auth check to fix upload issues in VPS
-      // TODO: Re-enable proper auth check once we resolve environment variable reading issues
-      const isAuthEnabled = false;
+      // Check if authentication is enabled and get token if needed
+      // Use the same logic as other parts of the application
+      const authEnabled = process.env.AUTH_ENABLED === 'true' || process.env.VITE_AUTH_ENABLED === 'true';
 
-      if (isAuthEnabled) {
+      if (authEnabled) {
         const token = await getAuthToken();
         if (!token) {
           throw new Error('No authentication token available. Please sign in again.');
