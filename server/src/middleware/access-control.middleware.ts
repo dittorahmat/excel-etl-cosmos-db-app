@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { DatabaseAccessControlService } from '../services/access-control/database-access-control.service.js';
 
 // Define the structure for user information
 interface User {
@@ -19,8 +20,8 @@ export async function accessControlMiddleware(req: Request, res: Response, next:
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Check if the user is authorized based on environment variable configuration
-    const isAuthorized = await isUserAuthorized(user.email);
+    // Check if the user is authorized using the DatabaseAccessControlService
+    const isAuthorized = await DatabaseAccessControlService.isUserAuthorized(user.email);
     
     if (!isAuthorized) {
       // Log the access attempt for security monitoring
@@ -68,29 +69,4 @@ async function getUserFromToken(authorizationHeader?: string): Promise<User | nu
     console.error('Error decoding token:', error);
     return null;
   }
-}
-
-/**
- * Check if a user is authorized based on environment variable configuration
- */
-async function isUserAuthorized(userEmail?: string): Promise<boolean> {
-  if (!userEmail) {
-    return false;
-  }
-
-  // Get authorized emails from environment variable
-  const authorizedEmails = process.env.AUTHORIZED_UPLOAD_USERS || '';
-  
-  // If no emails are configured, allow all authenticated users (backward compatibility)
-  if (!authorizedEmails.trim()) {
-    return true;
-  }
-
-  // Check if the user's email is in the authorized list
-  const emailList = authorizedEmails
-    .split(',')
-    .map(email => email.trim().toLowerCase())
-    .filter(email => email.length > 0);
-  
-  return emailList.includes(userEmail.toLowerCase());
 }
