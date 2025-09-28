@@ -9,7 +9,6 @@ import { Button } from '../components/ui/button';
 import { ApiGenerationModal } from '../components/ApiGeneration';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { FileListTable } from '../components/FileListTable';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { formatDateAlt as formatDate } from '../utils/formatters';
 
@@ -120,20 +119,8 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       <div className="grid gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="query">Query Builder & Results</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="files" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Uploaded Files</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FileListTable />
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="query" className="space-y-4">
             <Card>

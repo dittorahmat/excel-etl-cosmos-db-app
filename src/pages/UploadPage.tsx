@@ -5,12 +5,15 @@ import { ToastAction } from '../components/ui/toast';
 import { Upload as UploadIcon, FileCheck } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { api, getAuthToken } from '../utils/api';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { FileListTable } from '../components/FileListTable';
 
 export function UploadPage() {
   console.log('Rendering UploadPage component');
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [activeTab, setActiveTab] = useState('upload');
   
   // Debug log when component mounts
   useEffect(() => {
@@ -160,75 +163,90 @@ export function UploadPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="p-6 h-full flex flex-col min-h-[400px] border">
-          <h2 className="text-xl font-semibold mb-4">File Upload</h2>
-          <div className="flex-grow flex flex-col justify-center">
-            <FileUpload 
-              onUpload={handleFileUpload}
-              accept={['.xlsx', '.xls', '.csv']}
-              maxSize={10 * 1024 * 1024} // 10MB
-              progress={uploadProgress}
-              isUploading={isUploading}
-            />
-            <p className="text-sm text-gray-500 mt-4 text-center">
-              Debug: isUploading={isUploading ? 'true' : 'false'}, progress={uploadProgress}%
-            </p>
-          </div>
-        </Card>
-        
-        <div className="space-y-6">
-          <Card className="p-6 border">
-            <div className="flex items-center mb-4">
-              <div className="p-2 mr-3 bg-blue-100 rounded-full flex items-center justify-center">
-                <UploadIcon className="h-5 w-5 text-blue-600" />
-              </div>
-              <h2 className="text-xl font-semibold">How to upload files</h2>
-            </div>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start">
-                <span className="mr-2">1.</span>
-                <span>Click "Select File" or drag and drop your file into the upload area</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">2.</span>
-                <span>Supported formats: .xlsx, .xls, .csv (Max 10MB)</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">3.</span>
-                <span>Click "Upload File" to process your data</span>
-              </li>
-            </ul>
-          </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="upload">Upload</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
+        </TabsList>
 
-          <Card className="p-6 border">
-            <div className="flex items-center mb-4">
-              <div className="p-2 mr-3 bg-green-100 rounded-full flex items-center justify-center">
-                <FileCheck className="h-5 w-5 text-green-600" />
+        <TabsContent value="upload" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="p-6 h-full flex flex-col min-h-[400px] border">
+              <h2 className="text-xl font-semibold mb-4">File Upload</h2>
+              <div className="flex-grow flex flex-col justify-center">
+                <FileUpload 
+                  onUpload={handleFileUpload}
+                  accept={['.xlsx', '.xls', '.csv']}
+                  maxSize={10 * 1024 * 1024} // 10MB
+                  progress={uploadProgress}
+                  isUploading={isUploading}
+                />
+                <p className="text-sm text-gray-500 mt-4 text-center">
+                  Debug: isUploading={isUploading ? 'true' : 'false'}, progress={uploadProgress}%
+                </p>
               </div>
-              <h2 className="text-xl font-semibold">File Requirements</h2>
+            </Card>
+            
+            <div className="space-y-6">
+              <Card className="p-6 border">
+                <div className="flex items-center mb-4">
+                  <div className="p-2 mr-3 bg-blue-100 rounded-full flex items-center justify-center">
+                    <UploadIcon className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold">How to upload files</h2>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <span className="mr-2">1.</span>
+                    <span>Click "Select File" or drag and drop your file into the upload area</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">2.</span>
+                    <span>Supported formats: .xlsx, .xls, .csv (Max 10MB)</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">3.</span>
+                    <span>Click "Upload File" to process your data</span>
+                  </li>
+                </ul>
+              </Card>
+
+              <Card className="p-6 border">
+                <div className="flex items-center mb-4">
+                  <div className="p-2 mr-3 bg-green-100 rounded-full flex items-center justify-center">
+                    <FileCheck className="h-5 w-5 text-green-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold">File Requirements</h2>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>First row should contain column headers</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Each subsequent row should contain data</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Empty rows will be skipped</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Maximum file size: 10MB</span>
+                  </li>
+                </ul>
+              </Card>
             </div>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>First row should contain column headers</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>Each subsequent row should contain data</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>Empty rows will be skipped</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>Maximum file size: 10MB</span>
-              </li>
-            </ul>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="files" className="space-y-4">
+          <Card>
+            <FileListTable />
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
