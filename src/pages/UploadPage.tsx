@@ -2,26 +2,67 @@ import { useState, useEffect } from 'react';
 import { FileUpload } from '../components/upload/FileUpload';
 import { useToast } from '../components/ui/use-toast';
 import { ToastAction } from '../components/ui/toast';
-import { Upload as UploadIcon, FileCheck } from 'lucide-react';
+import { Upload as UploadIcon, FileCheck, Lock, AlertCircle } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { api, getAuthToken } from '../utils/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { FileListTable } from '../components/FileListTable';
+import { useAuth } from '../auth/AuthContext';
+import { Button } from '../components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 export function UploadPage() {
   console.log('Rendering UploadPage component');
   const { toast } = useToast();
+  const { isAuthenticated, user, login } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [activeTab, setActiveTab] = useState('upload');
+  const [checkingAuthorization, setCheckingAuthorization] = useState(false);
+  const [authorized, setAuthorized] = useState<boolean | null>(null); // null = not checked yet
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
   
-  // Debug log when component mounts
-  useEffect(() => {
-    console.log('UploadPage mounted');
-    return () => {
+  // Check authorization when user is authenticated
+  const checkAuthorization = async () => {
+    if (!isAuthenticated) {
+      setCheckingAuthorization(false);
+      setAuthorized(false);
+      return;
+    }
+
+    setCheckingAuthorization(true);
+    setError(null);
+    
+    try {
+      const response = await api.get<{ authorized: boolean; email: string }>('/api/v2/access-control/check-authorization');
+      setAuthorized(response.authorized);
+    } catch (err) {
+      console.error('Authorization check failed:', err);
+      setAuthorized(false);
+      setError(err instanceof Error ? err.message : 'Failed to check authorization');
+    } finally {
+      setCheckingAuthorization(false);
+    }
+  };
+
+  // Handle login and then check authorization
+  const handleLogin = async () => {
+    try {
+      // First attempt authentication if needed
+      if (!isAuthenticated) {
+        await login();
+      }
       
-    };
-  }, []);
+      // After authentication (or if already authenticated), check authorization
+      setTimeout(() => {
+        checkAuthorization();
+      }, 500); // Small delay to ensure auth state is updated
+    } catch (err) {
+      console.error('Login failed:', err);
+      setError('Login failed. Please try again.');
+    }
+  };
 
   const handleFileUpload = async (file: File): Promise<{ data?: { rowCount?: number }, count?: number }> => {
     setIsUploading(true);
@@ -149,6 +190,110 @@ export function UploadPage() {
     }
   };
 
+  // Show access denied page if user is not authorized
+  if (authorized === false && !checkingAuthorization) {
+    return (
+      <div className="container max-w-7xl py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <p className="text-gray-600">Check access permissions to upload functionality.</p>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="bg-red-100 p-4 rounded-full mb-4">
+            <Lock className="h-12 w-12 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-6 text-center max-w-md">
+            You don't have permission to access the upload functionality.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            Please contact your administrator if you believe this is an error.
+          </p>
+          <Button onClick={() => navigate('/')} variant="outline">
+            Go to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking authorization
+  if (checkingAuthorization) {
+    return (
+      <div className="container max-w-7xl py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <p className="text-gray-600">Checking your access permissions...</p>
+        </div>
+        
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600">Checking your access permissions...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if authorization check failed
+  if (error && !checkingAuthorization) {
+    return (
+      <div className="container max-w-7xl py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <p className="text-gray-600">Upload your Excel or CSV file to process and store the data in Cosmos DB.</p>
+        </div>
+        
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="bg-gray-100 p-6 rounded-lg max-w-md w-full text-center">
+            <h2 className="text-xl font-semibold mb-4">Access Check Failed</h2>
+            <p className="text-gray-600 mb-6">
+              There was an issue checking your access permissions. Please try again.
+            </p>
+            <Button onClick={handleLogin} className="w-full">
+              Retry Access Check
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if authorization hasn't been checked yet
+  if (authorized === null) {
+    return (
+      <div className="container max-w-7xl py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <p className="text-gray-600">Please authenticate and check your access to upload functionality.</p>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="bg-gray-100 p-6 rounded-lg max-w-md w-full text-center">
+            <div className="flex justify-center mb-4">
+              <Lock className="h-12 w-12 text-gray-600" />
+            </div>
+            <h2 className="text-xl font-semibold mb-4">Authorization Required</h2>
+            <p className="text-gray-600 mb-6">
+              Please log in to check if you have access to upload files.
+            </p>
+            <Button onClick={handleLogin} className="w-full">
+              Log In & Check Access
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render the normal upload page if user is authorized
   return (
     <div className="container max-w-7xl py-8 px-4">
       <div className="mb-8">

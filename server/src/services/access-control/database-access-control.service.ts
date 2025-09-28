@@ -73,7 +73,7 @@ export class DatabaseAccessControlService {
       
       if (resources.length > 0) {
         const configDoc = resources[0];
-        if (Array.isArray(configDoc.authorizedUploadUsers)) {
+        if (configDoc && Array.isArray(configDoc.authorizedUploadUsers)) {
           authorizedUsers = configDoc.authorizedUploadUsers
             .map(email => email.trim().toLowerCase())
             .filter(email => email.length > 0);
@@ -82,10 +82,12 @@ export class DatabaseAccessControlService {
             userCount: authorizedUsers.length,
             users: authorizedUsers
           });
-        } else {
+        } else if (configDoc) {
           logger.warn('Authorization config document found but authorizedUploadUsers is not an array', {
             authorizedUploadUsers: configDoc.authorizedUploadUsers
           });
+        } else {
+          logger.warn('Authorization config document not found in database');
         }
       } else {
         logger.warn('Authorization config document not found in database');
