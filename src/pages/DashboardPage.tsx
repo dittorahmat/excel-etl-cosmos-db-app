@@ -49,16 +49,16 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const exportToCSV = (data: any[], fields: string[]) => {
     // Create header row
     const headers = fields.join(',');
-    
+
     // Create data rows
     const rows = data.map(item => {
       return fields.map(field => {
         const value = item[field];
         // Handle special formatting for dates
-        const formattedValue = typeof value === 'string' && value.includes('T') 
-          ? formatDate(value) 
+        const formattedValue = typeof value === 'string' && value.includes('T')
+          ? formatDate(value)
           : String(value || '');
-        
+
         // Escape quotes and wrap in quotes if needed
         if (typeof formattedValue === 'string' && (formattedValue.includes(',') || formattedValue.includes('"') || formattedValue.includes('\n'))) {
           return `"${formattedValue.replace(/"/g, '""')}"`;
@@ -66,10 +66,10 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         return formattedValue;
       }).join(',');
     });
-    
+
     // Combine headers and rows
     const csvContent = [headers, ...rows].join('\n');
-    
+
     // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -89,20 +89,20 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       const formattedItem: Record<string, any> = {};
       fields.forEach(field => {
         const value = item[field];
-        formattedItem[field] = typeof value === 'string' && value.includes('T') 
-          ? formatDate(value) 
+        formattedItem[field] = typeof value === 'string' && value.includes('T')
+          ? formatDate(value)
           : value;
       });
       return formattedItem;
     });
-    
+
     // Create worksheet
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
-    
+
     // Create workbook
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
-    
+
     // Export to file
     XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
@@ -125,7 +125,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
           <TabsContent value="query" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Build Your Query</CardTitle>
+                <CardTitle>Search Database</CardTitle>
               </CardHeader>
               <CardContent>
                 {fieldsLoading ? (
@@ -134,7 +134,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                     <span className="ml-2">Loading fields...</span>
                   </div>
                 ) : fieldDefinitions.length > 0 ? (
-                  <QueryBuilder 
+                  <QueryBuilder
                     fields={fieldDefinitions}
                     selectedFields={selectedFields}
                     onFieldsChange={handleFieldsChange}
@@ -163,7 +163,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                     <span className="block sm:inline">{error}</span>
                   </div>
                 )}
-                
+
                 {loading ? (
                   <div className="flex justify-center items-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -172,15 +172,15 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                   <>
                     {/* Export and API Buttons */}
                     <div className="flex justify-end mb-4 space-x-2">
-                      <ApiGenerationModal 
+                      <ApiGenerationModal
                         selectedFields={selectedFields}
                         filters={currentFilters || []} // Using current filters from the hook
                         baseUrl="/api/v2/query/rows"
                         isOpen={isApiModalOpen}
                         onOpenChange={setIsApiModalOpen}
                         trigger={
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="flex items-center"
                           >
@@ -188,18 +188,18 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                           </Button>
                         }
                       />
-                      <Button 
+                      <Button
                         onClick={() => exportToCSV(queryResult.items, queryResult.fields)}
-                        variant="outline" 
+                        variant="outline"
                         size="sm"
                         className="flex items-center"
                       >
                         <Download className="mr-2 h-4 w-4" />
                         Export CSV
                       </Button>
-                      <Button 
+                      <Button
                         onClick={() => exportToExcel(queryResult.items, queryResult.fields)}
-                        variant="outline" 
+                        variant="outline"
                         size="sm"
                         className="flex items-center"
                       >
@@ -207,7 +207,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                         Export Excel
                       </Button>
                     </div>
-                    
+
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>

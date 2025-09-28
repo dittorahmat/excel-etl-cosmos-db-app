@@ -22,7 +22,7 @@ export function UploadPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null); // null = not checked yet
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  
+
   // Check authorization when user is authenticated
   const checkAuthorization = async () => {
     if (!isAuthenticated) {
@@ -33,7 +33,7 @@ export function UploadPage() {
 
     setCheckingAuthorization(true);
     setError(null);
-    
+
     try {
       const response = await api.get<{ authorized: boolean; email: string }>('/api/v2/access-control/check-authorization');
       setAuthorized(response.authorized);
@@ -53,7 +53,7 @@ export function UploadPage() {
       if (!isAuthenticated) {
         await login();
       }
-      
+
       // After authentication (or if already authenticated), check authorization
       setTimeout(() => {
         checkAuthorization();
@@ -67,23 +67,23 @@ export function UploadPage() {
   const handleFileUpload = async (file: File): Promise<{ data?: { rowCount?: number }, count?: number }> => {
     setIsUploading(true);
     setUploadProgress(0);
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Only check for auth token if auth is enabled
       // For now, we're explicitly disabling auth check to fix upload issues in VPS
       // TODO: Re-enable proper auth check once we resolve environment variable reading issues
       const isAuthEnabled = false;
-      
+
       if (isAuthEnabled) {
         const token = await getAuthToken();
         if (!token) {
           throw new Error('No authentication token available. Please sign in again.');
         }
       }
-      
+
       // Use the direct upload endpoint instead of the v2 query imports endpoint
       interface UploadResponse {
         success?: boolean;
@@ -108,14 +108,14 @@ export function UploadPage() {
           errors?: Array<{ row: number; error: string }>;
         };
       }
-      
+
       const response = await api.post<UploadResponse>('/api/v2/upload', formData, {
         // Don't set Content-Type header - let the browser set it with the correct boundary
         // The API client will automatically add the Authorization header
-        onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & { 
-          lengthComputable: boolean; 
-          loaded: number; 
-          total: number 
+        onUploadProgress: (progressEvent: ProgressEvent<EventTarget> & {
+          lengthComputable: boolean;
+          loaded: number;
+          total: number
         }) => {
           if (progressEvent.lengthComputable) {
             const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
@@ -128,19 +128,19 @@ export function UploadPage() {
       if (!response) {
         throw new Error('No response from server');
       }
-      
+
       // Handle different response structures
       const responseData = response.data || response;
-      
+
       // If we have a success flag, check it
       if (responseData.success === false) {
         throw new Error(responseData.message || 'Upload failed');
       }
-      
+
       // If we got here, consider it a success
       const rowCount = responseData.totalRows || responseData.rowCount || 0;
       const message = responseData.message || `Successfully uploaded ${file.name}`;
-      
+
       toast({
         title: 'Upload Successful',
         description: `${message}${rowCount ? ` Processed ${rowCount} rows.` : ''}`,
@@ -155,18 +155,18 @@ export function UploadPage() {
         open: true,
         onOpenChange: () => {}
       });
-      
+
       // Reset form
       setUploadProgress(100);
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
       }, 1000);
-      
+
       return { data: { rowCount }, count: rowCount };
     } catch (error) {
       console.error('Upload error:', error);
-      
+
       let errorMessage = 'Failed to upload file. Please try again.';
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -175,7 +175,7 @@ export function UploadPage() {
       } else if (error && typeof error === 'object' && 'message' in error) {
         errorMessage = String(error.message);
       }
-      
+
       toast({
         variant: 'destructive',
         title: 'Upload Failed',
@@ -183,7 +183,7 @@ export function UploadPage() {
         open: true,
         onOpenChange: () => {}
       });
-      
+
       setIsUploading(false);
       setUploadProgress(0);
       throw error;
@@ -195,10 +195,10 @@ export function UploadPage() {
     return (
       <div className="container max-w-7xl py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <h1 className="text-3xl font-bold mb-2">Edit Database</h1>
           <p className="text-gray-600">Check access permissions to upload functionality.</p>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center py-12">
           <div className="bg-red-100 p-4 rounded-full mb-4">
             <Lock className="h-12 w-12 text-red-600" />
@@ -223,10 +223,10 @@ export function UploadPage() {
     return (
       <div className="container max-w-7xl py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <h1 className="text-3xl font-bold mb-2">Edit Database</h1>
           <p className="text-gray-600">Checking your access permissions...</p>
         </div>
-        
+
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -242,15 +242,15 @@ export function UploadPage() {
     return (
       <div className="container max-w-7xl py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <h1 className="text-3xl font-bold mb-2">Edit Database</h1>
           <p className="text-gray-600">Upload your Excel or CSV file to process and store the data in Cosmos DB.</p>
         </div>
-        
+
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center py-12">
           <div className="bg-gray-100 p-6 rounded-lg max-w-md w-full text-center">
             <h2 className="text-xl font-semibold mb-4">Access Check Failed</h2>
@@ -271,10 +271,10 @@ export function UploadPage() {
     return (
       <div className="container max-w-7xl py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Upload Excel/CSV File</h1>
+          <h1 className="text-3xl font-bold mb-2">Edit Database</h1>
           <p className="text-gray-600">Please authenticate and check your access to upload functionality.</p>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center py-12">
           <div className="bg-gray-100 p-6 rounded-lg max-w-md w-full text-center">
             <div className="flex justify-center mb-4">
@@ -298,9 +298,9 @@ export function UploadPage() {
     <div className="container max-w-7xl py-8 px-4">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2 flex items-center">
-          Upload Excel/CSV File
+          Edit Database
           <span className="ml-4 text-sm font-normal text-gray-500">
-            Component is mounted
+
           </span>
         </h1>
         <p className="text-gray-600">
@@ -310,8 +310,8 @@ export function UploadPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="upload">Upload</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
+          <TabsTrigger value="upload">Upload Files</TabsTrigger>
+          <TabsTrigger value="files">Delete Data Entry</TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="space-y-4">
@@ -319,7 +319,7 @@ export function UploadPage() {
             <Card className="p-6 h-full flex flex-col min-h-[400px] border">
               <h2 className="text-xl font-semibold mb-4">File Upload</h2>
               <div className="flex-grow flex flex-col justify-center">
-                <FileUpload 
+                <FileUpload
                   onUpload={handleFileUpload}
                   accept={['.xlsx', '.xls', '.csv']}
                   maxSize={10 * 1024 * 1024} // 10MB
@@ -331,7 +331,7 @@ export function UploadPage() {
                 </p>
               </div>
             </Card>
-            
+
             <div className="space-y-6">
               <Card className="p-6 border">
                 <div className="flex items-center mb-4">

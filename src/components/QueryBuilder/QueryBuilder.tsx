@@ -52,7 +52,7 @@ export function QueryBuilder({
       type: field.type,
     }));
   }, [fields]);
-  
+
   // Handle fields change
   const handleFieldsChange = useCallback((newFields: string[]) => {
     console.log('[QueryBuilder] Fields changed:', newFields);
@@ -102,7 +102,7 @@ export function QueryBuilder({
     return (
       <Card className={cn("w-full", className)}>
         <CardHeader>
-          <CardTitle>Build Your API Query</CardTitle>
+          <CardTitle></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center p-8">
@@ -119,7 +119,7 @@ export function QueryBuilder({
     return (
       <Card className={cn("w-full", className)}>
         <CardHeader>
-          <CardTitle>Build Your API Query</CardTitle>
+          <CardTitle></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="p-4 text-center text-muted-foreground">
@@ -134,7 +134,7 @@ export function QueryBuilder({
   return (
     <Card className={cn("w-full", className)}>
       <CardHeader>
-        <CardTitle>Build Your API Query</CardTitle>
+        <CardTitle></CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
