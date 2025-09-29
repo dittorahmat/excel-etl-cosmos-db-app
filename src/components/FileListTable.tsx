@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../utils/api';
-import { FileText, Loader2, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Trash2, Search, X } from 'lucide-react';
 import { formatBytes, formatDate } from '../utils/formatters';
 
 // ========================================================================
@@ -57,6 +57,7 @@ interface FileData {
  * FileListTable component displays a table of uploaded files with actions
  * Features:
  * - File listing with pagination
+ * - File search functionality
  * - File download functionality
  * - File deletion with confirmation
  * - Responsive design
@@ -67,6 +68,9 @@ export function FileListTable() {
   // ========================================================================
   
   const [files, setFiles] = useState<FileData[]>([]);
+  const [filteredFiles, setFilteredFiles] = useState<FileData[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -78,6 +82,31 @@ export function FileListTable() {
   const isMounted = useRef(true);
 
   // ========================================================================
+  // SEARCH FUNCTIONALITY
+  // ========================================================================
+  
+  // Debounce search term to avoid excessive filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  // Filter files based on search term
+  useEffect(() => {
+    if (!debouncedSearchTerm) {
+      setFilteredFiles(files);
+    } else {
+      const filtered = files.filter(file => 
+        file.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      );
+      setFilteredFiles(filtered);
+    }
+  }, [debouncedSearchTerm, files]);
+
+  // ========================================================================
   // DATA FETCHING
   // ========================================================================
   
@@ -87,6 +116,17 @@ export function FileListTable() {
   const fetchFiles = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('pageSize', pageSize.toString());
+      
+      // Add search term if present
+      if (debouncedSearchTerm) {
+        queryParams.append('search', debouncedSearchTerm);
+      }
+      
       const response = await api.get<{ 
         data: {
           items: ImportMetadata[];
@@ -95,7 +135,7 @@ export function FileListTable() {
           pageSize: number;
           totalPages: number;
         };
-      }>(`/api/v2/query/imports?page=${page}&pageSize=${pageSize}`);
+      }>(`/api/v2/query/imports?${queryParams.toString()}`);
       
       if (response?.data?.items) {
         // Map API response to component-friendly format
@@ -130,15 +170,22 @@ export function FileListTable() {
         setLoading(false);
       }
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, debouncedSearchTerm]);
 
-  // Fetch files when page changes
+  // Fetch files when page or search term changes
   useEffect(() => {
     fetchFiles();
     return () => {
       isMounted.current = false;
     };
-  }, [page, fetchFiles]);
+  }, [page, pageSize, debouncedSearchTerm]);
+  
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
+  }, [debouncedSearchTerm, page]);
 
   // ========================================================================
   // ACTION HANDLERS
@@ -198,7 +245,7 @@ export function FileListTable() {
   // ========================================================================
   
   // Loading state
-  if (loading && files.length === 0) {
+  if (loading && files.length === 0 && filteredFiles.length === 0) {
     return (
       <div className="flex items-center justify-center h-64" data-testid="loading-indicator">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -209,6 +256,30 @@ export function FileListTable() {
 
   return (
     <div className="w-full">
+      {/* Search Bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search files..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Error messages */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -270,7 +341,7 @@ export function FileListTable() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {loading && files.length === 0 ? (
+            {loading && filteredFiles.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                   <div className="flex items-center justify-center space-x-2">
@@ -279,14 +350,14 @@ export function FileListTable() {
                   </div>
                 </td>
               </tr>
-            ) : files.length === 0 ? (
+            ) : filteredFiles.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid="no-files-message">
-                  No files uploaded yet.
+                  {debouncedSearchTerm ? 'No files match your search.' : 'No files uploaded yet.'}
                 </td>
               </tr>
             ) : (
-              files.map((file) => (
+              filteredFiles.map((file) => (
                 <tr key={file.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -342,7 +413,7 @@ export function FileListTable() {
       </div>
 
       {/* Pagination controls */}
-      {totalPages > 1 && (
+      {!debouncedSearchTerm && totalPages > 1 && (
         <div className="flex items-center justify-end space-x-2 py-4">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
