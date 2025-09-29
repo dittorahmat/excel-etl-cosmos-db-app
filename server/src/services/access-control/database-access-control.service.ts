@@ -67,7 +67,19 @@ export class DatabaseAccessControlService {
         ]
       };
       
-      const { resources } = await container.items.query<AuthorizationConfig>(querySpec).fetchAll();
+      // Add timeout handling - use Promise.race properly
+      const queryPromise = container.items.query<AuthorizationConfig>(querySpec).fetchAll();
+      
+      // Create timeout promise that rejects when time expires
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Cosmos DB query timeout')), 10000) // 10 second timeout
+      );
+      
+      // Wait for either the query to complete or the timeout
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      
+      // If we get here, the query completed within the timeout, so extract resources
+      const { resources } = result as { resources: AuthorizationConfig[] };
       
       let authorizedUsers: string[] = [];
       
@@ -103,7 +115,10 @@ export class DatabaseAccessControlService {
 
       return authorizedUsers;
     } catch (error) {
-      logger.error('Error fetching authorized users from database:', error);
+      logger.error('Error fetching authorized users from database:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       
       // If DB query fails, remove any cached value and return empty array
       if (DatabaseAccessControlService.CACHE_DURATION_MS > 0) {
@@ -118,14 +133,21 @@ export class DatabaseAccessControlService {
    * First tries to get from database, falls back to environment variables if DB is unavailable or returns empty
    */
   public static async getAuthorizedUsersWithFallback(): Promise<string[]> {
+    logger.info('Starting getAuthorizedUsersWithFallback function');
+    
     // First try to get from database
     let authorizedUsers = await DatabaseAccessControlService.getAuthorizedUsersFromDatabase();
+    logger.info('Database query returned', { 
+      userCount: authorizedUsers.length, 
+      users: authorizedUsers 
+    });
     
     // If database query returned empty list, fall back to environment variables
     if (authorizedUsers.length === 0) {
       logger.info('Falling back to environment variables for authorized users');
       
       const envAuthorizedEmails = process.env.AUTHORIZED_UPLOAD_USERS || '';
+      logger.info('Environment variable AUTHORIZED_UPLOAD_USERS value', { envAuthorizedEmails });
       
       if (envAuthorizedEmails.trim()) {
         authorizedUsers = envAuthorizedEmails
@@ -148,6 +170,11 @@ export class DatabaseAccessControlService {
         users: authorizedUsers
       });
     }
+    
+    logger.info('Final authorized users list', { 
+      userCount: authorizedUsers.length, 
+      users: authorizedUsers 
+    });
     
     return authorizedUsers;
   }

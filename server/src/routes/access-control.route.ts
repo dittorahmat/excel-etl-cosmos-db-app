@@ -40,11 +40,30 @@ router.get('/check-authorization', authRequired ? authMiddleware.authenticateTok
                      (user.idTokenClaims?.email || user.idTokenClaims?.preferred_username);
     
     if (!userEmail) {
+      logger.warn('User email not found in authentication token', {
+        userObjectKeys: Object.keys(user || {}),
+        user: user ? JSON.stringify(user) : 'undefined'
+      });
       return res.status(400).json({ 
         authorized: false, 
         message: 'User email not found in authentication token' 
       });
     }
+
+    // Log the email being used for authorization for debugging
+    logger.info('Authorization check - extracting email from user object', {
+      extractedEmail: userEmail,
+      originalUserObject: {
+        email: user.email,
+        preferred_username: user.preferred_username,
+        username: user.username,
+        idTokenClaims: user.idTokenClaims ? {
+          email: user.idTokenClaims.email,
+          preferred_username: user.idTokenClaims.preferred_username
+        } : undefined
+      },
+      timestamp: new Date().toISOString()
+    });
 
     // Check if user is authorized using the DatabaseAccessControlService
     const isAuthorized = await DatabaseAccessControlService.isUserAuthorized(userEmail);
