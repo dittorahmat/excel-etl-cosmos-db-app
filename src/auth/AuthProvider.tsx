@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, ReactNode } from 'rea
 import { AccountInfo, InteractionRequiredAuthError, EventType, EventMessage, AuthenticationResult } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { AuthContext, type AuthContextType } from './AuthContext';
-import { getSimpleLoginRequest } from './simpleAuthConfig';
+import { getSimpleLoginRequest, getSimpleApiConfig } from './simpleAuthConfig';
 import { isTokenExpired } from './authUtils';
 
 interface AuthProviderProps {
@@ -117,7 +117,8 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     if (accounts.length === 0) {
-      throw new Error('No active account');
+      console.warn('No active account found. User needs to log in first.');
+      return null; // Return null instead of throwing to allow graceful degradation
     }
     
     const account = accounts[0];
@@ -130,9 +131,29 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     try {
-      // Get new token silently
+      // Get new token silently - use API-specific scope instead of login scopes
+      const apiConfig = getSimpleApiConfig();
+      
+      // Validate that we have proper API scopes before attempting to acquire token
+      if (!apiConfig.scopes || apiConfig.scopes.length === 0 || apiConfig.scopes[0] === '') {
+        console.warn('API scopes not configured properly. Check VITE_API_SCOPE environment variable.');
+        // Fallback to basic scopes if API scopes are not configured
+        const fallbackResponse = await instance.acquireTokenSilent({
+          scopes: ['User.Read'], // Basic Microsoft Graph scope as fallback
+          account,
+        });
+        
+        if (fallbackResponse?.accessToken) {
+          const expiresOn = fallbackResponse.expiresOn?.getTime() || Date.now() + 600000; // 10 minutes
+          localStorage.setItem('msalToken', fallbackResponse.accessToken);
+          localStorage.setItem('msalTokenExpiry', expiresOn.toString());
+          return fallbackResponse.accessToken;
+        }
+        return null;
+      }
+      
       const response = await instance.acquireTokenSilent({
-        ...getSimpleLoginRequest(),
+        scopes: apiConfig.scopes,
         account,
       });
       
@@ -146,22 +167,43 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return null;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
-        // If silent acquisition fails, try interactive login
+        // If silent acquisition fails, try interactive login with API scopes
         try {
-          const popupResponse = await instance.acquireTokenPopup(getSimpleLoginRequest());
-          if (popupResponse?.accessToken) {
-            const expiresOn = popupResponse.expiresOn?.getTime() || Date.now() + 3600000;
-            localStorage.setItem('msalToken', popupResponse.accessToken);
-            localStorage.setItem('msalTokenExpiry', expiresOn.toString());
-            return popupResponse.accessToken;
+          const apiConfig = getSimpleApiConfig();
+          if (!apiConfig.scopes || apiConfig.scopes.length === 0 || apiConfig.scopes[0] === '') {
+            console.warn('API scopes not configured properly for interactive login.');
+            // Fallback to basic scopes for interactive login too
+            const popupResponse = await instance.acquireTokenPopup({
+              scopes: ['User.Read'],
+              account,
+            });
+            if (popupResponse?.accessToken) {
+              const expiresOn = popupResponse.expiresOn?.getTime() || Date.now() + 600000; // 10 minutes
+              localStorage.setItem('msalToken', popupResponse.accessToken);
+              localStorage.setItem('msalTokenExpiry', expiresOn.toString());
+              return popupResponse.accessToken;
+            }
+          } else {
+            const popupResponse = await instance.acquireTokenPopup({
+              scopes: apiConfig.scopes,
+              account,
+            });
+            if (popupResponse?.accessToken) {
+              const expiresOn = popupResponse.expiresOn?.getTime() || Date.now() + 3600000;
+              localStorage.setItem('msalToken', popupResponse.accessToken);
+              localStorage.setItem('msalTokenExpiry', expiresOn.toString());
+              return popupResponse.accessToken;
+            }
           }
         } catch (popupError) {
           console.error('Error acquiring token interactively:', popupError);
           throw popupError;
         }
+      } else {
+        console.warn('Token acquisition failed, likely due to missing API scopes configuration:', error);
       }
       console.error('Token acquisition failed:', error);
-      throw error;
+      throw error; // Re-throw to trigger the error handling in the component
     }
   }, [instance, accounts, useDummyAuth, isDevelopment]);
 
@@ -188,9 +230,32 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
+      // First, try to login with basic scopes
       const response = await instance.loginPopup(getSimpleLoginRequest());
       setUser(response.account || null);
       setIsAuthenticated(!!response.account);
+      
+      // After login, acquire token for the API to ensure it's available
+      try {
+        const apiConfig = getSimpleApiConfig();
+        await instance.acquireTokenSilent({
+          scopes: apiConfig.scopes,
+          account: response.account || undefined,
+        });
+      } catch (tokenError) {
+        console.warn('Could not acquire API token silently, user may need to consent:', tokenError);
+        // Try with popup as fallback
+        try {
+          const apiConfig = getSimpleApiConfig();
+          await instance.acquireTokenPopup({
+            scopes: apiConfig.scopes,
+            account: response.account || undefined,
+          });
+        } catch (popupError) {
+          console.error('Could not acquire API token with popup either:', popupError);
+        }
+      }
+      
       return response;
     } catch (error) {
       setError(error instanceof Error ? error : new Error('Login failed'));

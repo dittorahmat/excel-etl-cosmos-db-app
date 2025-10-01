@@ -175,7 +175,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                       <ApiGenerationModal
                         selectedFields={selectedFields}
                         filters={currentFilters || []} // Using current filters from the hook
-                        baseUrl="/api/v2/query/rows"
+                        baseUrl="/api/query/rows"
                         isOpen={isApiModalOpen}
                         onOpenChange={setIsApiModalOpen}
                         trigger={

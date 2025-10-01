@@ -60,7 +60,6 @@ const QueryBuilderPage: React.FC = () => {
         onExecute={handleExecute}
         fieldsLoading={fieldsLoading}
         error={error}
-        baseUrl="/api/v2/query/rows"
       />
     </div>
   );

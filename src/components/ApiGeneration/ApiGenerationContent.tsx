@@ -3,6 +3,7 @@ import { Button } from '../ui/button';
 import { Copy } from 'lucide-react';
 import { Label } from '../ui/label';
 import { FilterCondition } from '../QueryBuilder/types';
+import { useAuth } from '../../auth/AuthContext';
 
 interface ApiGenerationContentProps {
   selectedFields: string[];
@@ -10,52 +11,148 @@ interface ApiGenerationContentProps {
   baseUrl?: string;
 }
 
-export function ApiGenerationContent({ 
-  selectedFields, 
-  filters, 
-  baseUrl = '/api/v2/query/rows'
+export function ApiGenerationContent({
+  selectedFields,
+  filters,
+  baseUrl = '/api/query/rows-get'
 }: ApiGenerationContentProps) {
   const [generatedUrl, setGeneratedUrl] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const { getAccessToken } = useAuth();
 
   // Generate API URL
-  const generateApiUrl = useCallback(() => {
-    const body = {
-      fields: selectedFields,
-      filters: filters.filter(f => f.field && f.operator && f.value),
-      limit: 10,
-      offset: 0,
-    };
+  const generateApiUrl = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Get the real access token
+      console.log('Attempting to get access token...');
+      const token = await getAccessToken();
+      console.log('Token retrieved:', token ? 'Yes' : 'No', token);
+      if (!token) {
+        throw new Error('No access token available. User may not be authenticated or API scopes may not be configured.');
+      }
+      const tokenValue = token;
 
-    // Using the GET endpoint with query parameters
-    const baseUrlGet = baseUrl.replace('/rows', '/rows-get');
-    const fullUrl = `${window.location.origin}${baseUrlGet}`;
+      const body = {
+        fields: selectedFields,
+        filters: filters.filter(f => f.field && f.operator && f.value),
+        limit: 10,
+        offset: 0,
+      };
 
-    // Build query parameters
-    const queryParams = new URLSearchParams();
-    queryParams.append('fields', selectedFields.join(','));
+      // Using the GET endpoint with query parameters
+      const fullUrl = `${window.location.origin}${baseUrl}`;
 
-    if (body.filters.length > 0) {
-      queryParams.append('filters', JSON.stringify(body.filters));
-    }
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      queryParams.append('fields', selectedFields.join(','));
 
-    queryParams.append('limit', body.limit.toString());
-    queryParams.append('offset', body.offset.toString());
+      if (body.filters.length > 0) {
+        queryParams.append('filters', JSON.stringify(body.filters));
+      }
 
-    const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
+      queryParams.append('limit', body.limit.toString());
+      queryParams.append('offset', body.offset.toString());
 
-    const pythonCode = `import requests
+      const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
+
+      const pythonCode = `import requests
+
+# IMPORTANT: Before running this code, make sure the web application is configured for 
+# real Azure AD authentication by setting VITE_AUTH_ENABLED=true in your .env file.
+#
+# The access token below is retrieved from the browser's authentication context.
+# Make sure you are logged in to the web application before copying this code.
+# If the token has expired (indicated by 403 errors), refresh the page to get a new one.
+# The token will be valid for a limited time, so use it promptly.
+
+# Check that you have real authentication enabled in the frontend - if not, you'll get mock tokens
+# that won't work with the backend API. This can happen if VITE_AUTH_ENABLED is not set to 'true'.
 
 url = "${fullUrlWithParams}"
 headers = {
-    "x-api-key": "YOUR_API_KEY"
+    "Authorization": "Bearer ${tokenValue}"
 }
 
 response = requests.get(url, headers=headers)
-print(response.status_code)
-print(response.json())`;
+print(f"Status code: {response.status_code}")
+if response.status_code == 200:
+    print("Success! Data retrieved:")
+    print(response.json())
+else:
+    print(f"Error: {response.text}")
+    if response.status_code == 403:
+        print("403 error indicates either an invalid/expired token or that mock tokens are being used.")
+        print("Ensure VITE_AUTH_ENABLED=true in your .env file and you're properly authenticated.")
+    print("If you received a 403 error, your token may have expired. Refresh the page and try again.")`;
 
-    setGeneratedUrl(pythonCode);
-  }, [selectedFields, filters, baseUrl]);
+      setGeneratedUrl(pythonCode);
+    } catch (error) {
+      console.error('Error generating API URL with real token:', error);
+      console.log('Using fallback code with placeholder token.');
+      
+      // Fallback to the original approach with a warning
+      const body = {
+        fields: selectedFields,
+        filters: filters.filter(f => f.field && f.operator && f.value),
+        limit: 10,
+        offset: 0,
+      };
+
+      // Using the GET endpoint with query parameters
+      const fullUrl = `${window.location.origin}${baseUrl}`;
+
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      queryParams.append('fields', selectedFields.join(','));
+
+      if (body.filters.length > 0) {
+        queryParams.append('filters', JSON.stringify(body.filters));
+      }
+
+      queryParams.append('limit', body.limit.toString());
+      queryParams.append('offset', body.offset.toString());
+
+      const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
+
+      const pythonCode = `import requests
+
+# Error: Could not retrieve access token. Please ensure you are logged in to the web application.
+# This endpoint requires a Bearer token from Azure AD.
+# 
+# To get a valid token:
+# 1. Make sure VITE_AUTH_ENABLED=true is set in your .env file
+# 2. Log in to the web application using Azure AD 
+# 3. Open browser developer tools (F12)
+# 4. Go to the "Storage" or "Application" tab
+# 5. Look for the access token in session storage or local storage
+# 6. Replace "YOUR_ACTUAL_TOKEN" below with the actual token
+#
+# If you're getting 403 errors with mock tokens, ensure real authentication is enabled
+# by setting VITE_AUTH_ENABLED=true in your environment variables.
+
+url = "${fullUrlWithParams}"
+headers = {
+    "Authorization": "Bearer YOUR_ACTUAL_TOKEN"
+}
+
+response = requests.get(url, headers=headers)
+print(f"Status code: {response.status_code}")
+if response.status_code == 200:
+    print("Success! Data retrieved:")
+    print(response.json())
+else:
+    print(f"Error: {response.text}")
+    if response.status_code == 403:
+        print("403 error indicates either an invalid/expired token or that mock tokens are being used.")
+        print("Ensure VITE_AUTH_ENABLED=true in your .env file and you're properly authenticated.")
+    print("If you received a 403 error, your token may have expired. Refresh the page and try again.")`;
+
+      setGeneratedUrl(pythonCode);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedFields, filters, baseUrl, getAccessToken]);
 
   // Handle copy URL
   const handleCopyUrl = useCallback(() => {
@@ -65,9 +162,19 @@ print(response.json())`;
     }
   }, [generatedUrl]);
 
+  // Handle refresh token
+  const handleRefreshToken = useCallback(() => {
+    // Simply regenerate the API URL which will fetch a new token
+    generateApiUrl();
+  }, [generateApiUrl]);
+
   // Generate URL when fields or filters change
   useEffect(() => {
-    generateApiUrl();
+    // Since generateApiUrl is now async, we need to handle it properly
+    const generate = async () => {
+      await generateApiUrl();
+    };
+    generate();
   }, [selectedFields, filters, generateApiUrl]);
 
   return (
@@ -75,24 +182,45 @@ print(response.json())`;
       <div className="space-y-2">
         <Label htmlFor="apiUrl">Generated Python Code</Label>
         <div className="flex items-center space-x-2">
-          <textarea 
-            id="apiUrl" 
-            value={generatedUrl} 
-            readOnly 
-            className="flex-1 w-full h-64 p-3 border rounded-md bg-gray-100 dark:bg-gray-800 font-mono text-sm" 
+          <textarea
+            id="apiUrl"
+            value={generatedUrl}
+            readOnly
+            className="flex-1 w-full h-64 p-3 border rounded-md bg-gray-100 dark:bg-gray-800 font-mono text-sm"
           />
-          <Button 
-            onClick={handleCopyUrl} 
-            size="icon" 
-            variant="outline" 
-            aria-label="Copy URL"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
+          <div className="flex flex-col space-y-2">
+            <Button
+              onClick={handleCopyUrl}
+              size="icon"
+              variant="outline"
+              aria-label="Copy URL"
+              disabled={loading}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={handleRefreshToken}
+              size="icon"
+              variant="outline"
+              aria-label="Refresh token"
+              disabled={loading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                <path d="M21 3v5h-5"></path>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                <path d="M8 16H3v5"></path>
+              </svg>
+            </Button>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Replace `YOUR_API_KEY` with your actual API key.
-        </p>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Retrieving authorization token...</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            This API endpoint requires a Bearer token in the Authorization header.
+          </p>
+        )}
       </div>
     </div>
   );

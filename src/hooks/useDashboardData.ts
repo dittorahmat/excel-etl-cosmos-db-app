@@ -164,12 +164,12 @@ export const useDashboardData = () => {
       };
       
       console.log('[useDashboardData] Request details:', {
-        url: '/api/v2/query/rows',
+        url: '/api/query/rows',
         method: 'POST',
         body: requestBody,
       });
       
-      const url = '/api/v2/query/rows';
+      const url = '/api/query/rows';
       
       const response = await api.post<{
         success: boolean;

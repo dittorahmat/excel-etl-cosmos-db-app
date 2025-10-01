@@ -75,6 +75,7 @@ QWEN.md
 *.zip
 *.tar.gz
 *.tgz
+api-query-builder.py
 
 
 .nx/cache

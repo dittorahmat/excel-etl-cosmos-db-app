@@ -135,7 +135,7 @@ export function FileListTable() {
           pageSize: number;
           totalPages: number;
         };
-      }>(`/api/v2/query/imports?${queryParams.toString()}`);
+      }>(`/api/query/imports?${queryParams.toString()}`);
       
       if (response?.data?.items) {
         // Map API response to component-friendly format
@@ -217,7 +217,7 @@ export function FileListTable() {
     
     try {
       // Attempt to delete the file
-      await api.delete(`/api/v2/query/imports/${fileToDelete.id}`);
+      await api.delete(`/api/query/imports/${fileToDelete.id}`);
       
       // Close the confirmation dialog and refresh the file list
       setShowConfirmDelete(null);
