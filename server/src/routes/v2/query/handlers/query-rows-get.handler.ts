@@ -40,7 +40,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         return res.status(405).json({ success: false, message: 'Method Not Allowed' });
       }
       
-      const fields = req.query.fields ? (req.query.fields as string).split(',') : [];
+      const fields = req.query.fields ? decodeURIComponent(req.query.fields as string).split(',') : [];
       let filters: FilterCondition[] = [];
       if (req.query.filters) {
         try {

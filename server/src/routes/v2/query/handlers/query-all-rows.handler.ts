@@ -56,7 +56,7 @@ export class QueryAllRowsHandler extends BaseQueryHandler {
 
       // Execute the query for import metadata
       const { items: imports = [], requestCharge: importsCharge } = await this.executeQuery<ImportMetadata>(
-        { ...queryParams, limit: 1000, offset: 0, fields: queryParams.fields ? queryParams.fields.join(',') : undefined },
+        { limit: 1000, offset: 0 },
         ['c.documentType = @documentType'],
         [{ name: '@documentType', value: 'excel-import' }]
       );
