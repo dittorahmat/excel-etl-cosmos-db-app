@@ -58,7 +58,7 @@ export function ApiGenerationContent({
 
       const pythonCode = `import requests
 
-# IMPORTANT: Before running this code, make sure the web application is configured for 
+# IMPORTANT: Before running this code, make sure the web application is configured for
 # real Azure AD authentication by setting VITE_AUTH_ENABLED=true in your .env file.
 #
 # The access token below is retrieved from the browser's authentication context.
@@ -90,7 +90,7 @@ else:
     } catch (error) {
       console.error('Error generating API URL with real token:', error);
       console.log('Using fallback code with placeholder token.');
-      
+
       // Fallback to the original approach with a warning
       const body = {
         fields: selectedFields,
@@ -116,20 +116,6 @@ else:
       const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
 
       const pythonCode = `import requests
-
-# Error: Could not retrieve access token. Please ensure you are logged in to the web application.
-# This endpoint requires a Bearer token from Azure AD.
-# 
-# To get a valid token:
-# 1. Make sure VITE_AUTH_ENABLED=true is set in your .env file
-# 2. Log in to the web application using Azure AD 
-# 3. Open browser developer tools (F12)
-# 4. Go to the "Storage" or "Application" tab
-# 5. Look for the access token in session storage or local storage
-# 6. Replace "YOUR_ACTUAL_TOKEN" below with the actual token
-#
-# If you're getting 403 errors with mock tokens, ensure real authentication is enabled
-# by setting VITE_AUTH_ENABLED=true in your environment variables.
 
 url = "${fullUrlWithParams}"
 headers = {
