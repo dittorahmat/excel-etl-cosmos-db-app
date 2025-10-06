@@ -58,17 +58,6 @@ export function ApiGenerationContent({
 
       const pythonCode = `import requests
 
-# IMPORTANT: Before running this code, make sure the web application is configured for
-# real Azure AD authentication by setting VITE_AUTH_ENABLED=true in your .env file.
-#
-# The access token below is retrieved from the browser's authentication context.
-# Make sure you are logged in to the web application before copying this code.
-# If the token has expired (indicated by 403 errors), refresh the page to get a new one.
-# The token will be valid for a limited time, so use it promptly.
-
-# Check that you have real authentication enabled in the frontend - if not, you'll get mock tokens
-# that won't work with the backend API. This can happen if VITE_AUTH_ENABLED is not set to 'true'.
-
 url = "${fullUrlWithParams}"
 headers = {
     "Authorization": "Bearer ${tokenValue}"
