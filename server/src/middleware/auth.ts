@@ -112,6 +112,36 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+// Middleware to authenticate token from URL query parameter
+const authenticateTokenFromUrl = async (req: Request, res: Response, next: NextFunction) => {
+  // In test environment or when auth is disabled, bypass authentication
+  if (process.env.NODE_ENV === 'test' || !isAuthEnabled) {
+    req.user = {
+      oid: 'test-user-oid',
+      name: 'Test User',
+      email: 'test@example.com',
+      roles: ['developer', 'admin'],
+      scp: 'user_impersonation',
+    };
+    return next();
+  }
+
+  const token = req.query.token as string;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access Denied: No token provided in URL parameter' });
+  }
+
+  try {
+    const user = await validateToken(token);
+    req.user = user; // Attach user payload to request
+    next();
+  } catch (error) {
+    console.error('Authentication error from URL:', error);
+    return res.status(403).json({ message: 'Access Denied: Invalid token' });
+  }
+};
+
 const checkRole = (requiredRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     // In test environment or when auth is disabled, bypass role check
@@ -137,5 +167,5 @@ const checkRole = (requiredRoles: string[]) => {
   };
 };
 
-export { validateToken, authenticateToken, checkRole };
+export { validateToken, authenticateToken, authenticateTokenFromUrl, checkRole };
 

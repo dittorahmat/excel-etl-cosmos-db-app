@@ -3,6 +3,9 @@ import type { Request, Response, NextFunction } from 'express';
 import multer, { MulterError } from 'multer';
 import type { Express } from 'express';
 
+// Define FileFilterCallback since it's not directly exported in multer
+type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
+
 const router = Router();
 
 import { v4 as uuidv4 } from 'uuid';
@@ -37,11 +40,11 @@ const storage = multer.diskStorage({
 });
 
 // File filter for multer
-export const fileFilter = (
+export const fileFilter = function(
   req: Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
-) => {
+  cb: any
+): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');
   console.log('Request Headers:', JSON.stringify(req.headers, null, 2));

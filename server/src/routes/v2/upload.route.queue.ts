@@ -36,11 +36,11 @@ const storage = multer.diskStorage({
 });
 
 // File filter for multer
-export const fileFilter = (
+export const fileFilter = function(
   req: Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
-) => {
+  cb: any
+): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');
   console.log('Request Headers:', JSON.stringify(req.headers, null, 2));

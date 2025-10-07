@@ -5,11 +5,11 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 // Get the current module's directory
-const __filename = fileURLToPath(import.meta.url);
+const __filename = fileURLToPath(new URL(import.meta.url));
 const __dirname = dirname(__filename);
 
 // Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 async function checkAuthorizationDocument() {
   console.log('Checking for authorization document in Cosmos DB...');
@@ -54,7 +54,7 @@ async function checkAuthorizationDocument() {
       // Check if the document has the authorizedUploadUsers field
       if (Array.isArray(resources[0].authorizedUploadUsers)) {
         console.log('\nAuthorized upload users:');
-        resources[0].authorizedUploadUsers.forEach(email => {
+        resources[0].authorizedUploadUsers.forEach((email: string) => {
           console.log(`- ${email}`);
         });
       } else {

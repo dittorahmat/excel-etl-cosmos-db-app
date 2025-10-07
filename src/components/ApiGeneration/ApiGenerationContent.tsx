@@ -36,8 +36,8 @@ export function ApiGenerationContent({
       const body = {
         fields: selectedFields,
         filters: filters.filter(f => f.field && f.operator && f.value),
-        limit: 10,
-        offset: 0,
+        // limit: 10,  // Commented out - may be needed in the future
+        // offset: 0, // Commented out - may be needed in the future
       };
 
       // Using the GET endpoint with query parameters
@@ -51,41 +51,24 @@ export function ApiGenerationContent({
         queryParams.append('filters', JSON.stringify(body.filters));
       }
 
-      queryParams.append('limit', body.limit.toString());
-      queryParams.append('offset', body.offset.toString());
+      // queryParams.append('limit', body.limit.toString());  // Commented out - may be needed in the future
+      // queryParams.append('offset', body.offset.toString()); // Commented out - may be needed in the future
+      // Add the token as a query parameter instead of in headers
+      queryParams.append('token', tokenValue);
 
       const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
 
-      const pythonCode = `import requests
-
-url = "${fullUrlWithParams}"
-headers = {
-    "Authorization": "Bearer ${tokenValue}"
-}
-
-response = requests.get(url, headers=headers)
-print(f"Status code: {response.status_code}")
-if response.status_code == 200:
-    print("Success! Data retrieved:")
-    print(response.json())
-else:
-    print(f"Error: {response.text}")
-    if response.status_code == 403:
-        print("403 error indicates either an invalid/expired token or that mock tokens are being used.")
-        print("Ensure VITE_AUTH_ENABLED=true in your .env file and you're properly authenticated.")
-    print("If you received a 403 error, your token may have expired. Refresh the page and try again.")`;
-
-      setGeneratedUrl(pythonCode);
+      setGeneratedUrl(fullUrlWithParams);
     } catch (error) {
       console.error('Error generating API URL with real token:', error);
-      console.log('Using fallback code with placeholder token.');
+      console.log('Using fallback URL with placeholder token.');
 
-      // Fallback to the original approach with a warning
+      // Fallback to URL with placeholder token
       const body = {
         fields: selectedFields,
         filters: filters.filter(f => f.field && f.operator && f.value),
-        limit: 10,
-        offset: 0,
+        // limit: 10,  // Commented out - may be needed in the future
+        // offset: 0, // Commented out - may be needed in the future
       };
 
       // Using the GET endpoint with query parameters
@@ -99,31 +82,14 @@ else:
         queryParams.append('filters', JSON.stringify(body.filters));
       }
 
-      queryParams.append('limit', body.limit.toString());
-      queryParams.append('offset', body.offset.toString());
+      // queryParams.append('limit', body.limit.toString());  // Commented out - may be needed in the future
+      // queryParams.append('offset', body.offset.toString()); // Commented out - may be needed in the future
+      // Add placeholder token as a query parameter
+      queryParams.append('token', 'YOUR_ACTUAL_TOKEN');
 
       const fullUrlWithParams = `${fullUrl}?${queryParams.toString()}`;
 
-      const pythonCode = `import requests
-
-url = "${fullUrlWithParams}"
-headers = {
-    "Authorization": "Bearer YOUR_ACTUAL_TOKEN"
-}
-
-response = requests.get(url, headers=headers)
-print(f"Status code: {response.status_code}")
-if response.status_code == 200:
-    print("Success! Data retrieved:")
-    print(response.json())
-else:
-    print(f"Error: {response.text}")
-    if response.status_code == 403:
-        print("403 error indicates either an invalid/expired token or that mock tokens are being used.")
-        print("Ensure VITE_AUTH_ENABLED=true in your .env file and you're properly authenticated.")
-    print("If you received a 403 error, your token may have expired. Refresh the page and try again.")`;
-
-      setGeneratedUrl(pythonCode);
+      setGeneratedUrl(fullUrlWithParams);
     } finally {
       setLoading(false);
     }
@@ -155,7 +121,7 @@ else:
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="apiUrl">Generated Python Code</Label>
+        <Label htmlFor="apiUrl">Generated API URL</Label>
         <div className="flex items-center space-x-2">
           <textarea
             id="apiUrl"
@@ -193,7 +159,7 @@ else:
           <p className="text-sm text-muted-foreground">Retrieving authorization token...</p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            This API endpoint requires a Bearer token in the Authorization header.
+            This API endpoint includes the authentication token as a query parameter.
           </p>
         )}
       </div>

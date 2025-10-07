@@ -50,7 +50,7 @@ export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
     );
 
     router.get('/rows-get', 
-      authMiddleware.authenticateToken,
+      authMiddleware.authenticateTokenFromUrl,
       queryRowsGetHandler.handle.bind(queryRowsGetHandler)
     );
 
