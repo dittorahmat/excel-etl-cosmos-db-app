@@ -11,11 +11,12 @@ async function addSampleData() {
     const sampleDocument = {
       id: uuidv4(),
       _partitionKey: 'sample-data',
-      documentType: 'excel-record',
-      name: 'Sample Product',
-      category: 'Electronics',
-      price: 1200,
-      quantity: 5,
+      documentType: 'excel-row',
+      Segment: 'Government',
+      Country: 'Canada',
+      'Manufacturing Price': 50,
+      'Units Sold': 1000,
+      'Sale Price': 75,
       date: new Date().toISOString(),
       location: 'Warehouse A',
     };

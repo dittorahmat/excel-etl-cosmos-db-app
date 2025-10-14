@@ -114,7 +114,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">IESR Spreadsheet Database Management App</h1>
+      <h1 className="text-2xl font-bold mb-4">IESR Database App</h1>
 
       <div className="grid gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>

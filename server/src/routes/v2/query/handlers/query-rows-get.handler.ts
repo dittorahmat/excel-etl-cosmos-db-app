@@ -50,7 +50,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
           return res.status(400).json({ success: false, message: 'Invalid filters parameter' });
         }
       }
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100000;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
       
       console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Request query parsed`, {
@@ -96,26 +96,18 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Initializing Cosmos DB container`, { containerName: this.containerName, partitionKey: this.partitionKey });
       const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
 
-      const sanitizeFieldName = (fieldName: string): string => {
-        // Allow alphanumeric, underscore, and hyphen characters
-        return fieldName.replace(/[^a-zA-Z0-9_-]/g, '');
-      };
-
-      const sanitizedFields = fields.map(sanitizeFieldName);
-      const sanitizedFilters = filters.map(filter => ({
-        ...filter,
-        field: sanitizeFieldName(filter.field)
-      }));
+      const fieldsWithNoSanitization = fields; // No sanitization to preserve field names with spaces
+      const filtersWithNoSanitization = filters; // No sanitization to preserve field names with spaces
 
       // Build the field selection part of the query
       // Build field selections and conditions with proper parameterization
-      const fieldSelections = sanitizedFields.map(field => `c["${field}"]`).join(', ');
+      const fieldSelections = fieldsWithNoSanitization.map(field => `c["${field}"]`).join(', ');
       
       // Create parameters for each field in the WHERE clause
-      const fieldConditions = sanitizedFields.map(field => `IS_DEFINED(c["${field}"])`).join(' AND ');
+      const fieldConditions = fieldsWithNoSanitization.map(field => `IS_DEFINED(c["${field}"])`).join(' AND ');
 
       // Build filter conditions
-      const filterConditions = sanitizedFilters.map((filter, index) => {
+      const filterConditions = filtersWithNoSanitization.map((filter, index) => {
         const paramName = `@filterValue${index}`;
         const paramName2 = `@filterValue2_${index}`;
         switch (filter.operator) {
@@ -148,7 +140,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         }
       }).filter(Boolean).join(' AND ');
 
-      const filterParameters = sanitizedFilters.flatMap((filter, index) => {
+      const filterParameters = filtersWithNoSanitization.flatMap((filter, index) => {
         const params = [{ name: `@filterValue${index}`, value: filter.value }];
         if (filter.operator === 'between') {
           params.push({ name: `@filterValue2_${index}`, value: filter.value2 ?? null });
