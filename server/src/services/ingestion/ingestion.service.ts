@@ -595,11 +595,11 @@ export class IngestionService {
     try {
       const cosmosDb = await initializeCosmosDB();
       
-      // Normalize the import ID - it should already be in the correct format
-      // The ID in the database is already prefixed with "import_"
-      const fullImportId = importId;
+      // Normalize the import ID - ensure it has the import_ prefix if not already present
+      // The ID in the database should have the "import_" prefix
+      const fullImportId = importId.startsWith('import_') ? importId : `import_${importId}`;
       
-      this.logger.info('Starting delete import', {
+      this.logger.info(`Starting delete import process for ID: ${fullImportId}`, {
         importId: fullImportId,
         originalImportId: importId
       });
@@ -612,7 +612,7 @@ export class IngestionService {
         { name: '@documentType', value: INGESTION_CONSTANTS.DOCUMENT_TYPES.IMPORT }
       ];
       
-      this.logger.info('Querying for import metadata', {
+      this.logger.info(`Querying for import metadata with ID: ${fullImportId}`, {
         importId: fullImportId,
         query: importQuery,
         params: importParams
@@ -624,66 +624,152 @@ export class IngestionService {
         this.metadataContainerName
       );
       
-      this.logger.info('Import metadata query result', {
+      this.logger.info(`Import metadata query result: ${importResult.length} records found`, {
         importId: fullImportId,
         resultCount: importResult.length
       });
       
       if (importResult.length === 0) {
-        this.logger.warn('Import not found for deletion', { importId: fullImportId });
+        this.logger.warn(`Import with ID ${fullImportId} not found for deletion`, { importId: fullImportId });
         throw new Error('Import not found');
       }
       
-      this.logger.info('Found import to delete', { 
+      // Extract file information
+      const fileName = importResult[0]?.fileName || 'Unknown';
+      const totalRows = importResult[0]?.totalRows || 0;
+      
+      this.logger.info(`Found import to delete - File: ${fileName}, Expected rows: ${totalRows}`, { 
         importId: fullImportId,
-        fileName: importResult[0]?.fileName || 'Unknown'
+        fileName,
+        totalRows
       });
 
       // Delete import metadata
       try {
-        this.logger.info('Deleting import metadata', {
+        // For Cosmos DB with partition key path '/id', the partition key value must be the same as the document ID
+        const metadataPartitionKeyValue = fullImportId; // Use the document ID as partition key value
+        
+        this.logger.info(`Deleting import metadata for file: ${fileName}`, {
           importId: fullImportId,
+          fileName: fileName,
           itemId: fullImportId,
-          partitionKey: fullImportId, // Use the item's ID as the partition key
+          partitionKey: metadataPartitionKeyValue, // Use document ID as partition key value
           containerName: this.metadataContainerName
         });
         
         await cosmosDbWrapper.deleteRecordWithLogging(
           cosmosDb,
           fullImportId,
-          fullImportId, // Use the item's ID as the partition key
+          metadataPartitionKeyValue, // Use document ID as partition key value
           this.metadataContainerName,
           'delete import metadata',
           this.logger
         );
-        this.logger.info('Deleted import metadata', { importId: fullImportId });
+        this.logger.info(`Successfully deleted import metadata for file: ${fileName}`, { importId: fullImportId, fileName });
       } catch (deleteError) {
-        this.logger.error('Failed to delete import metadata', {
+        this.logger.error(`Failed to delete import metadata for file: ${fileName}`, {
           importId: fullImportId,
+          fileName: fileName,
           error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
           stack: deleteError instanceof Error ? deleteError.stack : undefined
         });
         throw new Error(`Failed to delete import metadata: ${deleteError instanceof Error ? deleteError.message : 'Unknown error'}`);
       }
 
+      // Delete any content documents that might exist with the import ID as partition key
+      try {
+        // Query using _partitionKey field (for documents that may have been stored with this field)
+        const contentQuery = 'SELECT c.id FROM c WHERE c._partitionKey = @partitionKey AND NOT IS_DEFINED(c.documentType)';
+        const contentParams = [
+          { name: '@partitionKey', value: fullImportId }
+        ];
+        
+        this.logger.info(`Querying for content documents associated with import: ${fullImportId}`, {
+          importId: fullImportId,
+          fileName: fileName,
+          query: contentQuery,
+          params: contentParams
+        });
+        
+        const contentResults = await cosmosDb.query<{ id: string }>(
+          contentQuery,
+          contentParams,
+          this.dataContainerName
+        );
+        
+        this.logger.info(`Found ${contentResults.length} content documents for file: ${fileName}`, {
+          importId: fullImportId,
+          fileName: fileName,
+          contentCount: contentResults.length
+        });
+        
+        // Delete each content document
+        for (const content of contentResults) {
+          try {
+            // For Cosmos DB with partition key path '/id', use the document's ID as the partition key value
+            const contentPartitionKeyValue = content.id;
+            
+            this.logger.debug(`Deleting content document for file: ${fileName}`, {
+              importId: fullImportId,
+              fileName: fileName,
+              contentId: content.id,
+              partitionKey: contentPartitionKeyValue,
+              containerName: this.dataContainerName
+            });
+            
+            await cosmosDbWrapper.deleteRecordWithLogging(
+              cosmosDb,
+              content.id,
+              contentPartitionKeyValue, // Use document ID as partition key value
+              this.dataContainerName,
+              `delete content ${content.id} for import ${fullImportId}`,
+              this.logger
+            );
+          } catch (deleteError) {
+            this.logger.warn(`Failed to delete content document for file: ${fileName}`, {
+              importId: fullImportId,
+              fileName: fileName,
+              contentId: content.id,
+              error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+              stack: deleteError instanceof Error ? deleteError.stack : undefined
+            });
+            // Continue with other content documents even if one fails
+          }
+        }
+        
+        this.logger.info(`Completed content deletion for file: ${fileName} - ${contentResults.length} documents processed`, {
+          importId: fullImportId,
+          fileName: fileName,
+          contentCount: contentResults.length
+        });
+      } catch (contentError) {
+        this.logger.warn(`Error occurred while deleting content documents for file: ${fileName}`, {
+          importId: fullImportId,
+          fileName: fileName,
+          error: contentError instanceof Error ? contentError.message : 'Unknown error',
+          stack: contentError instanceof Error ? contentError.stack : undefined
+        });
+        // Continue with row deletion even if content deletion fails
+      }
+
       // Delete all row data for this import
       let deletedRowCount = 0;
-      const rowPartitionKey = `import_${fullImportId}`;
       
-      this.logger.info('Starting to delete rows', { 
+      this.logger.info(`Starting to delete row data for file: ${fileName}`, { 
         importId: fullImportId,
-        rowPartitionKey
+        fileName: fileName
       });
       
-      // Query all rows for this import
+      // Query all rows for this import using _partitionKey field
       const rowQuery = 'SELECT c.id FROM c WHERE c._partitionKey = @partitionKey AND c.documentType = @documentType';
       const rowParams = [
-        { name: '@partitionKey', value: rowPartitionKey },
+        { name: '@partitionKey', value: fullImportId },
         { name: '@documentType', value: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW }
       ];
       
-      this.logger.info('Querying for rows to delete', {
+      this.logger.info(`Querying for rows to delete for file: ${fileName}`, {
         importId: fullImportId,
+        fileName: fileName,
         query: rowQuery,
         params: rowParams
       });
@@ -694,33 +780,40 @@ export class IngestionService {
         this.dataContainerName
       );
       
-      this.logger.info('Found rows to delete', { 
+      this.logger.info(`Found ${rowResults.length} rows to delete for file: ${fileName} (expected ${totalRows} rows)`, { 
         importId: fullImportId,
-        rowCount: rowResults.length
+        fileName: fileName,
+        rowCount: rowResults.length,
+        expectedRowCount: totalRows
       });
       
-      // Delete each row individually
+      // Delete each row individually using the correct partition key (the row's ID since partition path is '/id')
       for (const row of rowResults) {
         try {
-          this.logger.debug('Deleting row', {
+          // For Cosmos DB with partition key path '/id', use the document's ID as the partition key value
+          const rowPartitionKeyValue = row.id;
+          
+          this.logger.debug(`Deleting row for file: ${fileName}`, {
             importId: fullImportId,
+            fileName: fileName,
             rowId: row.id,
-            partitionKey: row.id, // Use the row's ID as the partition key
+            partitionKey: rowPartitionKeyValue, // Use document ID as partition key value
             containerName: this.dataContainerName
           });
           
           await cosmosDbWrapper.deleteRecordWithLogging(
             cosmosDb,
             row.id,
-            row.id, // Use the row's ID as the partition key
+            rowPartitionKeyValue, // Use document ID as partition key value
             this.dataContainerName,
             `delete row ${row.id} for import ${fullImportId}`,
             this.logger
           );
           deletedRowCount++;
         } catch (deleteError) {
-          this.logger.warn('Failed to delete row', {
+          this.logger.warn(`Failed to delete row for file: ${fileName}`, {
             importId: fullImportId,
+            fileName: fileName,
             rowId: row.id,
             error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
             stack: deleteError instanceof Error ? deleteError.stack : undefined
@@ -729,15 +822,17 @@ export class IngestionService {
         }
       }
       
-      this.logger.info('Finished deleting rows', { 
+      this.logger.info(`Successfully deleted file: ${fileName} - ${deletedRowCount} rows deleted`, { 
         importId: fullImportId,
+        fileName: fileName,
         attempted: rowResults.length,
-        deleted: deletedRowCount
+        deleted: deletedRowCount,
+        totalRows: totalRows
       });
 
       return { deletedRows: deletedRowCount };
     } catch (error) {
-      this.logger.error('Failed to delete import', {
+      this.logger.error(`Failed to delete import for file associated with ID ${importId}`, {
         importId,
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined

@@ -72,14 +72,16 @@ export class CosmosDbWrapper {
       logger.debug(`Successfully deleted record for ${operationName}`, {
         container: containerName,
         id,
-        partitionKey
+        partitionKey,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       logger.error(`Failed to delete record for ${operationName}`, {
         container: containerName,
         id,
         partitionKey,
-        error
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       });
       throw new Error(`Failed to ${operationName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

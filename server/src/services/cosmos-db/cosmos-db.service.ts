@@ -261,15 +261,40 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
         containerName: string = defaultContainerName
       ): Promise<void> => {
         try {
+          logger.debug(`Preparing to delete record from Cosmos DB`, {
+            id,
+            partitionKey,
+            containerName,
+            partitionKeyPath: AZURE_CONFIG.cosmos.partitionKey // Log the configured partition key path
+          });
+
           const container = db.container(containerName);
-          await container.item(id, partitionKey).delete();
+          
+          logger.debug(`Accessing item for deletion`, {
+            id,
+            partitionKey,
+            containerId: container.id
+          });
+          
+          const response = await container.item(id, partitionKey).delete();
+          
+          logger.debug(`Successfully sent delete request for record`, {
+            id,
+            partitionKey,
+            containerName,
+            response: response || 'void response',
+            timestamp: new Date().toISOString()
+          });
         } catch (error: unknown) {
-          const cosmosError = error as { code?: number };
-          if (cosmosError.code !== 404) { // Only log and rethrow if it's not a not-found error
-            logger.error(`Failed to delete item ${id}:`, error);
-            throw new Error(`Failed to delete item ${id}: ${(error as Error).message}`);
-          }
-          // If it's a 404, we consider it already deleted
+          logger.error(`Failed to delete item ${id} with partition key ${partitionKey}`, {
+            id,
+            partitionKey,
+            containerName,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            cosmosError: error
+          });
+          throw new Error(`Failed to delete item ${id}: ${(error as Error).message}`);
         }
       }
     };

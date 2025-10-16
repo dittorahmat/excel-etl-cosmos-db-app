@@ -216,7 +216,7 @@ export function FileListTable() {
     setDeleteError(null);
     
     try {
-      // Attempt to delete the file
+      // Attempt to delete the file using the existing API which should handle all deletions
       await api.delete(`/api/query/imports/${fileToDelete.id}`);
       
       // Close the confirmation dialog and refresh the file list
