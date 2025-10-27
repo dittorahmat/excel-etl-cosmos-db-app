@@ -128,8 +128,8 @@ export const enhancedApiKeyAuth = (apiKeyRepository: ApiKeyRepository) => {
       }
 
       // Attach API key info to request
-      (req as any).apiKey = keyDetails;
-      (req as any).userId = keyDetails.userId;
+      req.apiKey = keyDetails;
+      req.userId = keyDetails.userId as string;
 
       // Log successful API key use
       await auditLogService.logApiKeyEvent({

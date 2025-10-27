@@ -2,6 +2,15 @@ import { Request, Response } from 'express';
 import { SqlParameter } from '@azure/cosmos';
 
 /**
+ * Field specification for query
+ */
+export interface FieldSpec {
+  name: string;
+  type?: string;
+  label?: string;
+}
+
+/**
  * Query parameters for the query endpoints
  */
 export interface QueryParams {
@@ -9,7 +18,7 @@ export interface QueryParams {
   limit: number;
   offset: number;
   sort?: string;
-  fields?: string;
+  fields?: string | FieldSpec[];
   continuationToken?: string;
   hasMoreResults?: boolean;
 }

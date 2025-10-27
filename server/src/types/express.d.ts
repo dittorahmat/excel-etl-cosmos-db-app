@@ -1,10 +1,13 @@
-import { TokenPayload } from '../middleware/auth';
+import type { Request } from 'express';
+import type { ApiKey } from './apiKey.js';
 
+// Extend the Express Request type
 declare global {
   namespace Express {
     interface Request {
-      user?: TokenPayload;
-      file?: Express.Multer.File;
+      apiKey?: Omit<ApiKey, 'keyHash'>;
+      userId?: string;
+      id?: string;
     }
   }
 }

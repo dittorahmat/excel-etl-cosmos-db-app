@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FileUpload } from '../components/upload/FileUpload';
 import { useToast } from '../components/ui/use-toast';
 import { ToastAction } from '../components/ui/toast';
-import { Upload as UploadIcon, FileCheck, Lock, AlertCircle } from 'lucide-react';
+import { Upload as UploadIcon, FileCheck, Lock } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { api, getAuthToken } from '../utils/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 export function UploadPage() {
   console.log('Rendering UploadPage component');
   const { toast } = useToast();
-  const { isAuthenticated, user, login } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [activeTab, setActiveTab] = useState('upload');

@@ -3,7 +3,6 @@ import { Router } from 'express';
 import express from 'express';
 import { AzureCosmosDB } from '../../../types/azure.js';
 import * as authMiddleware from '../../../middleware/auth.js';
-import { accessControlMiddleware } from '../../../middleware/access-control.middleware.js';
 
 import { QueryImportRowsHandler } from './handlers/query-import-rows.handler.js';
 import { QueryAllRowsHandler } from './handlers/query-all-rows.handler.js';

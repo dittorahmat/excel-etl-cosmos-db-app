@@ -4,11 +4,9 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
-  Upload,
   Database,
   ChevronDown,
   ChevronRight,
-  KeyRound,
 } from 'lucide-react';
 import { useState } from 'react';
 

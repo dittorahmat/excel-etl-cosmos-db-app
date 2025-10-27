@@ -69,7 +69,7 @@ export const requestId = () => {
   return (req: Request, res: Response, next: NextFunction): void => {
     // Generate a unique request ID
     const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    (req as any).id = requestId;
+    req.id = requestId;
     
     // Add request ID to response headers
     res.setHeader('X-Request-ID', requestId);

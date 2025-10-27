@@ -229,12 +229,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       
       console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Query results`, { itemsCount: items.length, total });
 
-      return res.status(200).json({
-        success: true,
-        items,
-        total,
-        hasMore: items.length < total - offset
-      });
+      return res.status(200).json(items);
     } catch (error) {
       return this.handleError(error, res, logContext);
     }

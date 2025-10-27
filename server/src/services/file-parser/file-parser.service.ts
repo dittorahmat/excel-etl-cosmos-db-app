@@ -139,7 +139,7 @@ export class FileParserService {
       
       // Return original string if date is invalid
       return dateString;
-    } catch (error) {
+    } catch {
       // Return original string if parsing fails
       return dateString;
     }
@@ -172,7 +172,7 @@ export class FileParserService {
       
       // Return original string if number is invalid
       return numericString;
-    } catch (error) {
+    } catch {
       // Return original string if parsing fails
       return numericString;
     }

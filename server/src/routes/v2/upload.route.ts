@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import multer, { MulterError } from 'multer';
+import multer, { MulterError, type FileFilterCallback } from 'multer';
 import type { Express } from 'express';
-
-// Define FileFilterCallback since it's not directly exported in multer
-type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
 
 const router = Router();
 
@@ -43,7 +40,7 @@ const storage = multer.diskStorage({
 export const fileFilter = function(
   req: Request,
   file: Express.Multer.File,
-  cb: any
+  cb: FileFilterCallback
 ): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');

@@ -5,7 +5,7 @@ import { DatabaseAccessControlService } from '../services/access-control/databas
 // Define the structure for user information
 interface User {
   email?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

@@ -101,7 +101,7 @@ export function buildCosmosQuery(params: QueryParams, importId?: string) {
   if (params.fields && Array.isArray(params.fields) && params.fields.length > 0) {
     // If specific fields are requested, select only those fields
     // params.fields is an array of objects like [{ name: 'Name', type: 'string', label: 'Name' }, ...]
-    const fieldNames = params.fields.map((field: any) => field.name).filter((name: any) => name && typeof name === 'string');
+    const fieldNames = (params.fields as Array<{ name: string }>).map((field) => field.name).filter((name) => name && typeof name === 'string');
     const fieldList = fieldNames.map((field: string) => `c["${field}"]`).join(', ');
     selectClause = `SELECT${limitClause} ${fieldList} FROM c`;
   } else if (params.fields && typeof params.fields === 'string' && params.fields.length > 0) {

@@ -14,7 +14,7 @@ interface User {
     email?: string;
     preferred_username?: string;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Apply authentication middleware
