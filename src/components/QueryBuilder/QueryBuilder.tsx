@@ -8,11 +8,24 @@ import { FilterControls } from "./FilterControls";
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "./constants";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
+interface SpecialFilters {
+  Source: string;
+  Category: string;
+  'Sub Category': string;
+  Year: string[] | number[];
+}
+
 interface QueryBuilderProps {
   fields: FieldDefinition[];
   selectedFields: string[];
   onFieldsChange: (_fields: string[]) => void;
-  onExecute: (_query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number }) => void;
+  onExecute: (_query: { 
+    fields: string[]; 
+    filters: FilterCondition[]; 
+    specialFilters?: SpecialFilters;
+    limit: number; 
+    offset: number 
+  }) => void;
   loading?: boolean;
   error?: string | null;
   className?: string;
@@ -37,6 +50,12 @@ export function QueryBuilder({
 }: QueryBuilderProps) {
   // State for filters
   const [filters, setFilters] = useState<FilterCondition[]>([]);
+  const [specialFilters, setSpecialFilters] = useState<SpecialFilters>({
+    Source: '',
+    Category: '',
+    'Sub Category': '',
+    Year: [],
+  });
   const [showFilters, setShowFilters] = useState(defaultShowFilters);
 
   // Field options for the dropdown
@@ -58,6 +77,11 @@ export function QueryBuilder({
     console.log('[QueryBuilder] Fields changed:', newFields);
     onFieldsChange(newFields);
   }, [onFieldsChange]);
+
+  // Handle special filters change
+  const handleSpecialFiltersChange = useCallback((newSpecialFilters: SpecialFilters) => {
+    setSpecialFilters(newSpecialFilters);
+  }, []);
 
   // Handle filter changes - using direct state setter in JSX now
 
@@ -92,10 +116,11 @@ export function QueryBuilder({
     onExecute({
       fields: validFields,
       filters: filters.filter(f => f.field && f.operator && f.value), // Only pass filters that are completely filled
+      specialFilters,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     });
-  }, [onExecute, selectedFields, fieldOptions, page, pageSize, filters]);
+  }, [onExecute, selectedFields, fieldOptions, specialFilters, page, pageSize, filters]);
 
   // Handle loading state
   if (fieldsLoading) {
@@ -145,6 +170,7 @@ export function QueryBuilder({
                 <FieldSelector
                   selectedFields={selectedFields}
                   onFieldsChange={handleFieldsChange}
+                  onSpecialFiltersChange={handleSpecialFiltersChange}
                   disabled={fieldsLoading}
                 />
                 {error && <div className="text-sm text-destructive">{error}</div>}

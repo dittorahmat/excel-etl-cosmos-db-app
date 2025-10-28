@@ -39,12 +39,24 @@ const QueryBuilderPage: React.FC = () => {
     setSelectedFields(newFields);
   };
 
-  const handleExecute = async (query: { fields: string[]; filters: FilterCondition[]; limit: number; offset: number }) => {
+  const handleExecute = async (query: { 
+    fields: string[]; 
+    filters: FilterCondition[]; 
+    specialFilters?: { 
+      Source: string; 
+      Category: string; 
+      'Sub Category': string; 
+      Year: string[] | number[] 
+    }; 
+    limit: number; 
+    offset: number 
+  }) => {
     try {
       // This is where you would actually execute the query
       console.log('Executing query:', query);
+      
       // For now, we'll just show an alert
-      alert('Query executed! Check the console for details.');
+      alert(`Query executed with special filters:\nSource: ${query.specialFilters?.Source || 'All'}\nCategory: ${query.specialFilters?.Category || 'All'}\nSub Category: ${query.specialFilters?.['Sub Category'] || 'All'}\nYear: ${query.specialFilters?.Year?.join(', ') || 'All'}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute query');
     }

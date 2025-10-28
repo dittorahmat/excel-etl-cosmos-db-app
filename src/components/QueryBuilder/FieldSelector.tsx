@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "../ui/button";
-import { Check, ChevronsUpDown, X as XIcon } from "lucide-react";
+import { Check, ChevronsUpDown, X as XIcon, Plus, Minus } from "lucide-react";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -12,42 +12,89 @@ import {
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Badge } from "../ui/badge";
-
+import { Checkbox } from "../ui/checkbox";
+import { api } from "@/utils/api";
 
 import { useFields } from "@/hooks/useFields";
+
+interface SpecialFilters {
+  Source: string;
+  Category: string;
+  'Sub Category': string;
+  Year: string[] | number[];
+}
 
 interface FieldSelectorProps {
   selectedFields: string[];
   onFieldsChange: (fields: string[]) => void;
+  onSpecialFiltersChange?: (filters: SpecialFilters) => void;
   disabled?: boolean;
 }
 
 export const FieldSelector = ({
   selectedFields = [],
   onFieldsChange,
+  onSpecialFiltersChange,
   disabled = false,
 }: FieldSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [distinctValues, setDistinctValues] = useState<Record<string, any[]>>({});
+  const [loadingDistinct, setLoadingDistinct] = useState(true);
+  const [errorDistinct, setErrorDistinct] = useState<string | null>(null);
+  const [selectedSpecialFields, setSelectedSpecialFields] = useState<SpecialFilters>({
+    Source: '',
+    Category: '',
+    'Sub Category': '',
+    Year: [],
+  });
   
   // Use the useFields hook to fetch fields dynamically based on all selected fields
-  const { fields, loading, error } = useFields(selectedFields);
+  const { fields, loading: fieldsLoading, error: fieldsError } = useFields(selectedFields);
+
+  // Fetch distinct values for special fields
+  useEffect(() => {
+    const fetchDistinctValues = async () => {
+      setLoadingDistinct(true);
+      setErrorDistinct(null);
+      try {
+        const response = await api.get('/api/distinct-values?fields=Source,Category,Sub Category,Year');
+        if (response.success) {
+          setDistinctValues(response.values || {});
+        } else {
+          throw new Error(response.error || 'Failed to fetch distinct values');
+        }
+      } catch (error) {
+        console.error('Error fetching distinct values:', error);
+        setErrorDistinct(error instanceof Error ? error.message : 'Unknown error');
+      } finally {
+        setLoadingDistinct(false);
+      }
+    };
+
+    fetchDistinctValues();
+  }, []);
+
+  // Filter out the special fields from the regular fields
+  const regularFields = useMemo(() => {
+    return fields.filter(field => !['Source', 'Category', 'Sub Category', 'Year'].includes(field.value));
+  }, [fields]);
 
   const filteredFields = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    if (!term) return fields;
+    if (!term) return regularFields;
     
-    return fields.filter(
+    return regularFields.filter(
       (option) =>
         option.label.toLowerCase().includes(term) ||
         option.value.toLowerCase().includes(term)
     );
-  }, [fields, searchTerm]);
+  }, [regularFields, searchTerm]);
 
   const selectedFieldLabels = useMemo(() => {
     return selectedFields
       .map((field) => {
-        const fieldDef = fields.find((f) => f.value === field);
+        const fieldDef = regularFields.find((f) => f.value === field);
         return fieldDef
           ? { value: field, label: fieldDef.label, type: fieldDef.type }
           : null;
@@ -56,7 +103,7 @@ export const FieldSelector = ({
         (field): field is { value: string; label: string; type: import("./types").FieldType } =>
           field !== null
       );
-  }, [selectedFields, fields]);
+  }, [selectedFields, regularFields]);
 
   /**
    * Handles field selection from both dropdown (no event) and chip remove (with event).
@@ -69,140 +116,271 @@ export const FieldSelector = ({
     onFieldsChange(newSelectedFields);
   };
 
+  /**
+   * Handles changes to special fields
+   */
+  const handleSpecialFieldChange = (fieldName: string, value: string | string[]) => {
+    const updatedSpecialFields = {
+      ...selectedSpecialFields,
+      [fieldName]: value
+    };
+    
+    setSelectedSpecialFields(updatedSpecialFields);
+    
+    if (onSpecialFiltersChange) {
+      onSpecialFiltersChange(updatedSpecialFields);
+    }
+  };
+
+  /**
+   * Handles checkbox changes for multi-select fields like Year
+   */
+  const handleYearCheckboxChange = (year: number | string) => {
+    const currentYears = Array.isArray(selectedSpecialFields.Year) ? selectedSpecialFields.Year : [];
+    const newYears = currentYears.includes(year)
+      ? currentYears.filter(y => y !== year)
+      : [...currentYears, year];
+    handleSpecialFieldChange('Year', newYears);
+  };
+
+  // Combined loading state
+  const loading = fieldsLoading || loadingDistinct;
+  const error = fieldsError || errorDistinct;
+
   return (
-    <div className="space-y-2 bg-background p-3 rounded-lg border border-border">
-      <div className="flex items-center justify-between">
-        <Label>Display Fields</Label>
-        <span className="text-sm text-muted-foreground">
-          {selectedFields.length} selected
-        </span>
-      </div>
-      <div className="text-xs text-muted-foreground mb-1">
-        Click on fields to select/deselect them. Fields will filter based on relationships.
-      </div>
-      {error && (
-        <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
-          Error loading fields: {error}
+    <div className="space-y-4 bg-background p-3 rounded-lg border border-border">
+      {/* Special Filters Section */}
+      <div className="space-y-3 p-3 bg-muted/20 rounded-lg border border-border">
+        <div className="flex items-center justify-between">
+          <Label>Special Filters</Label>
         </div>
-      )}
-      {loading && selectedFields.length > 0 && (
-        <div className="text-sm text-muted-foreground">
-          Updating field list based on selected fields...
-        </div>
-      )}
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <div className="w-full">
-            <div>
-              {selectedFieldLabels.length > 0 && (
-                <div className="flex flex-wrap gap-1 max-w-full mb-2">
-                  {selectedFieldLabels.map((field) => (
-                    <Badge
-                      key={field.value}
-                      variant="secondary"
-                      className="flex items-center gap-1 px-2 py-1 text-sm text-foreground"
-                    >
-                      {field.label}
-                      <button
-                        aria-label={`Remove ${field.label}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFieldSelect(field.value);
-                        }}
-                        className="rounded-full hover:bg-accent/50 p-0.5"
+        {errorDistinct && (
+          <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+            Error loading special filters: {errorDistinct}
+          </div>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Source Dropdown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Source</Label>
+            <select
+              value={selectedSpecialFields.Source}
+              onChange={(e) => handleSpecialFieldChange('Source', e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
+              disabled={loadingDistinct || disabled}
+            >
+              <option value="">All Sources</option>
+              {distinctValues.Source && distinctValues.Source.map((source, idx) => (
+                <option key={idx} value={source}>{source}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category Dropdown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Category</Label>
+            <select
+              value={selectedSpecialFields.Category}
+              onChange={(e) => handleSpecialFieldChange('Category', e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
+              disabled={loadingDistinct || disabled}
+            >
+              <option value="">All Categories</option>
+              {distinctValues.Category && distinctValues.Category.map((category, idx) => (
+                <option key={idx} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sub Category Dropdown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Sub Category</Label>
+            <select
+              value={selectedSpecialFields['Sub Category']}
+              onChange={(e) => handleSpecialFieldChange('Sub Category', e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
+              disabled={loadingDistinct || disabled}
+            >
+              <option value="">All Sub Categories</option>
+              {distinctValues['Sub Category'] && distinctValues['Sub Category'].map((subCategory, idx) => (
+                <option key={idx} value={subCategory}>{subCategory}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year Multi-Select */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Year</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-between h-auto min-h-9 py-1.5 bg-background hover:bg-accent/50 text-sm text-muted-foreground"
+                  disabled={loadingDistinct || disabled}
+                >
+                  <span className="truncate">{selectedSpecialFields.Year.length === 0 ? 'All Years' : `${selectedSpecialFields.Year.length} selected`}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0 bg-popover border-border" align="start">
+                <div className="p-2 max-h-60 overflow-y-auto">
+                  {distinctValues.Year && distinctValues.Year.map((year, idx) => (
+                    <div key={idx} className="flex items-center py-1 space-x-2 hover:bg-accent rounded px-2">
+                      <Checkbox
+                        id={`year-${year}`}
+                        checked={Array.isArray(selectedSpecialFields.Year) && selectedSpecialFields.Year.includes(year)}
+                        onCheckedChange={() => handleYearCheckboxChange(year)}
+                      />
+                      <label
+                        htmlFor={`year-${year}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                       >
-                        <XIcon className="h-3 w-3" />
-                      </button>
-                    </Badge>
+                        {year}
+                      </label>
+                    </div>
                   ))}
                 </div>
-              )}
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={isOpen}
-                className="w-full justify-between h-auto min-h-10 py-1.5 bg-background hover:bg-accent/50"
-                disabled={disabled || loading || fields.length === 0}
-                onClick={() => setIsOpen(!isOpen)}
-              >
-                <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : "text-foreground"}>
-                  {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
-                </span>
-                {loading ? (
-                  <div className="ml-2 h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                )}
-              </Button>
-            </div>
+              </PopoverContent>
+            </Popover>
           </div>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[400px] p-0 bg-popover border-border"
-          align="start"
-          tabIndex={-1}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setIsOpen(false);
-          }}
-        >
-          <Command className="rounded-lg border border-border shadow-md bg-popover">
-            <div className="px-3 pt-2">
-                <CommandInput
-                  placeholder="Search fields..."
-                  value={searchTerm}
-                  onValueChange={setSearchTerm}
-                  className="h-9 text-foreground"
-                  autoFocus={false}
-                />
+        </div>
+      </div>
+
+      {/* Regular Field Selection */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Display Fields</Label>
+          <span className="text-sm text-muted-foreground">
+            {selectedFields.length} selected
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground mb-1">
+          Click on fields to select/deselect them. Fields will filter based on relationships.
+        </div>
+        {error && (
+          <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+            Error loading fields: {error}
+          </div>
+        )}
+        {fieldsLoading && selectedFields.length > 0 && (
+          <div className="text-sm text-muted-foreground">
+            Updating field list based on selected fields...
+          </div>
+        )}
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <div className="w-full">
+              <div>
+                {selectedFieldLabels.length > 0 && (
+                  <div className="flex flex-wrap gap-1 max-w-full mb-2">
+                    {selectedFieldLabels.map((field) => (
+                      <Badge
+                        key={field.value}
+                        variant="secondary"
+                        className="flex items-center gap-1 px-2 py-1 text-sm text-foreground"
+                      >
+                        {field.label}
+                        <button
+                          aria-label={`Remove ${field.label}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFieldSelect(field.value);
+                          }}
+                          className="rounded-full hover:bg-accent/50 p-0.5"
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isOpen}
+                  className="w-full justify-between h-auto min-h-10 py-1.5 bg-background hover:bg-accent/50"
+                  disabled={disabled || loading || regularFields.length === 0}
+                  onClick={() => setIsOpen(!isOpen)}
+                >
+                  <span className={selectedFieldLabels.length === 0 ? "text-muted-foreground" : "text-foreground"}>
+                    {selectedFieldLabels.length === 0 ? 'Select fields to display...' : 'Edit selection'}
+                  </span>
+                  {fieldsLoading ? (
+                    <div className="ml-2 h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  )}
+                </Button>
+              </div>
             </div>
-              <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                {loading ? "Loading fields based on your selections..." : "No fields found."}
-              </CommandEmpty>
-            <CommandGroup className="overflow-y-auto max-h-[300px]">
-              {filteredFields.map((option) => {
-                const isSelected = selectedFields.includes(option.value);
-                return (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={() => {
-                      handleFieldSelect(option.value);
-                      // Keep the popover open to allow multiple selections
-                      // setIsOpen(false); // Commented out to keep popover open
-                    }}
-                    disabled={false}
-                    data-disabled="false"
-                    className={cn(
-                      "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
-                      "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
-                      "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
-                      "transition-colors duration-200"
-                    )}
-                  >
-                    <div
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-[400px] p-0 bg-popover border-border"
+            align="start"
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setIsOpen(false);
+            }}
+          >
+            <Command className="rounded-lg border border-border shadow-md bg-popover">
+              <div className="px-3 pt-2">
+                  <CommandInput
+                    placeholder="Search fields..."
+                    value={searchTerm}
+                    onValueChange={setSearchTerm}
+                    className="h-9 text-foreground"
+                    autoFocus={false}
+                  />
+              </div>
+                <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                  {fieldsLoading ? "Loading fields based on your selections..." : "No fields found."}
+                </CommandEmpty>
+              <CommandGroup className="overflow-y-auto max-h-[300px]">
+                {filteredFields.map((option) => {
+                  const isSelected = selectedFields.includes(option.value);
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      onSelect={() => {
+                        handleFieldSelect(option.value);
+                        // Keep the popover open to allow multiple selections
+                        // setIsOpen(false); // Commented out to keep popover open
+                      }}
+                      disabled={false}
+                      data-disabled="false"
                       className={cn(
-                        "flex h-4 w-4 items-center justify-center rounded-sm border",
-                        isSelected
-                          ? "bg-primary border-primary text-primary-foreground"
-                          : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                        "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                        "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                        "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                        "transition-colors duration-200"
                       )}
                     >
-                      {isSelected && <Check className="h-3 w-3" />}
-                    </div>
-                    <span className="font-medium text-foreground">{option.label}</span>
-                    <Badge
-                      variant="outline"
-                      className="ml-auto text-xs font-normal text-muted-foreground border-border/50"
-                    >
-                      {option.type}
-                    </Badge>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </Command>
-        </PopoverContent>
-      </Popover>
+                      <div
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-sm border",
+                          isSelected
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                        )}
+                      >
+                        {isSelected && <Check className="h-3 w-3" />}
+                      </div>
+                      <span className="font-medium text-foreground">{option.label}</span>
+                      <Badge
+                        variant="outline"
+                        className="ml-auto text-xs font-normal text-muted-foreground border-border/50"
+                      >
+                        {option.type}
+                      </Badge>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 };

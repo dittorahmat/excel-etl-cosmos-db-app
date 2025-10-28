@@ -12,6 +12,7 @@ import { createFieldsRouter } from '../routes/fields.route.js';
 import { createApiKeyRouter } from '../routes/apiKey.route.js';
 import authRoute from '../routes/auth.route.js';
 import { createQueryRouter } from '../routes/query/index.js';
+import { createDistinctValuesRouter } from '../routes/distinct-values.route.js';
 import type { AzureCosmosDB, AzureBlobStorage, CosmosClient, Database } from '../types/azure.js';
 import { env } from './env.js';
 
@@ -176,6 +177,7 @@ export function createApp(azureServices: {
   app.use('/api/v2', createV2Router(azureServices));
   app.use('/api/query', createQueryRouter(azureServices.cosmosDb));
   app.use('/api/fields', createFieldsRouter(azureServices.cosmosDb));
+  app.use('/api/distinct-values', createDistinctValuesRouter(azureServices.cosmosDb));
   app.use('/api/auth', authRoute);
   app.use('/api/keys', createApiKeyRouter(azureServices));
 

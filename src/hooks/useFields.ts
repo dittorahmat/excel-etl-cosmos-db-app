@@ -47,11 +47,16 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
 
       if (data.success) {
         // Map fields from backend format {name, type, label} to frontend format {value, label, type}
-        const resultFields = data.fields.map((field: any) => ({
+        const allFields = data.fields.map((field: any) => ({
           value: field.name,
           label: field.label,
           type: field.type
         }));
+        
+        // Filter out the special fields (Source, Category, Sub Category, Year)
+        const resultFields = allFields.filter(field => 
+          !['Source', 'Category', 'Sub Category', 'Year'].includes(field.value)
+        );
         
         // If we have multiple related fields, the backend now properly handles finding
         // files that contain ALL of the selected fields and returns the intersection
