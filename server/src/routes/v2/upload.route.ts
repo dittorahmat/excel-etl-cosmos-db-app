@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction, Express } from 'express';
 import multer, { MulterError, type FileFilterCallback } from 'multer';
-import type { Express } from 'express';
 
 const router = Router();
 

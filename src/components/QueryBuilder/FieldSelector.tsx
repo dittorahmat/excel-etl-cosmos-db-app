@@ -70,10 +70,12 @@ export const FieldSelector = ({
       setErrorDistinct(null);
       try {
         const response = await api.get('/api/distinct-values?fields=Source,Category,Sub Category,Year');
-        if (response.success) {
-          setDistinctValues(response.values || {});
+        if (response && typeof response === 'object' && 'success' in response && response.success) {
+          const typedResponse = response as { success: boolean; values: Record<string, any[]>; error?: string };
+          setDistinctValues(typedResponse.values || {});
         } else {
-          throw new Error(response.error || 'Failed to fetch distinct values');
+          const errorResponse = response as { success: boolean; error?: string };
+          throw new Error(errorResponse.error || 'Failed to fetch distinct values');
         }
       } catch (error) {
         console.error('Error fetching distinct values:', error);
@@ -136,11 +138,11 @@ export const FieldSelector = ({
   /**
    * Handles changes to special fields
    */
-  const handleSpecialFieldChange = (fieldName: string, value: string | string[]) => {
+  const handleSpecialFieldChange = (fieldName: keyof SpecialFilters, value: string | string[] | number[] | number) => {
     const updatedSpecialFields = {
       ...selectedSpecialFields,
       [fieldName]: value
-    };
+    } as SpecialFilters;
     
     setSelectedSpecialFields(updatedSpecialFields);
     
@@ -153,11 +155,11 @@ export const FieldSelector = ({
    * Handles checkbox changes for multi-select fields like Year
    */
   const handleYearCheckboxChange = (year: number | string) => {
-    const currentYears = Array.isArray(selectedSpecialFields.Year) ? selectedSpecialFields.Year : [];
-    const newYears = currentYears.includes(year)
+    const currentYears = Array.isArray(selectedSpecialFields.Year) ? selectedSpecialFields.Year as (number | string)[] : [];
+    const newYears = currentYears.some(y => y === year)
       ? currentYears.filter(y => y !== year)
-      : [...currentYears, year];
-    handleSpecialFieldChange('Year', newYears);
+      : [...currentYears, year as never];
+    handleSpecialFieldChange('Year', newYears as string[] | number[]);
   };
 
   // Combined loading state
@@ -241,11 +243,11 @@ export const FieldSelector = ({
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0 bg-popover border-border" align="start">
                 <div className="p-2 max-h-60 overflow-y-auto">
-                  {distinctValues.Year && distinctValues.Year.map((year, idx) => (
+                  {distinctValues.Year && distinctValues.Year.map((year: string | number, idx: number) => (
                     <div key={idx} className="flex items-center py-1 space-x-2 hover:bg-accent rounded px-2">
                       <Checkbox
                         id={`year-${year}`}
-                        checked={Array.isArray(selectedSpecialFields.Year) && selectedSpecialFields.Year.includes(year)}
+                        checked={Array.isArray(selectedSpecialFields.Year) && (selectedSpecialFields.Year as (string | number)[]).some(y => y === year)}
                         onCheckedChange={() => handleYearCheckboxChange(year)}
                       />
                       <label

@@ -202,9 +202,20 @@ export class IngestionService {
       try {
         parseResult = await fileParserService.parseFile(filePath, fileType, {
         transformRow: (row, rowIndex) => {
+          // Process all values in the row to replace new line characters with spaces
+          const processedRow: Record<string, unknown> = {};
+          for (const [key, value] of Object.entries(row)) {
+            if (typeof value === 'string') {
+              // Replace all new line characters (\r\n, \r, \n) with spaces
+              processedRow[key] = value.replace(/[\r\n]+/g, ' ').trim();
+            } else {
+              processedRow[key] = value;
+            }
+          }
+          
           // Add system fields to each row
           return {
-            ...row,
+            ...processedRow,
             _importId: importId,
             _rowNumber: (rowIndex + 1).toString(), // 1-based index for user-friendly reporting
             _importedAt: new Date().toISOString(),

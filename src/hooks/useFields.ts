@@ -54,7 +54,7 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
         }));
         
         // Filter out the special fields (Source, Category, Sub Category, Year)
-        const resultFields = allFields.filter(field => 
+        const resultFields = allFields.filter((field: FieldOption) => 
           !['Source', 'Category', 'Sub Category', 'Year'].includes(field.value)
         );
         
