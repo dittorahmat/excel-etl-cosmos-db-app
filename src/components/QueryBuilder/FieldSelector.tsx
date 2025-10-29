@@ -48,6 +48,17 @@ export const FieldSelector = ({
     'Sub Category': '',
     Year: [],
   });
+
+  // Initialize with special fields if they're not already selected
+  useEffect(() => {
+    const specialFields = ['Source', 'Category', 'Sub Category', 'Year'];
+    const missingSpecialFields = specialFields.filter(field => !selectedFields.includes(field));
+    
+    if (missingSpecialFields.length > 0) {
+      const updatedFields = [...selectedFields, ...missingSpecialFields];
+      onFieldsChange(updatedFields);
+    }
+  }, []); // Empty dependency array to run only once when component mounts
   
   // Use the useFields hook to fetch fields dynamically based on all selected fields
   const { fields, loading: fieldsLoading, error: fieldsError } = useFields(selectedFields);
@@ -93,6 +104,7 @@ export const FieldSelector = ({
 
   const selectedFieldLabels = useMemo(() => {
     return selectedFields
+      .filter(field => !['Source', 'Category', 'Sub Category', 'Year'].includes(field)) // Only show regular fields in the tags
       .map((field) => {
         const fieldDef = regularFields.find((f) => f.value === field);
         return fieldDef
@@ -110,6 +122,11 @@ export const FieldSelector = ({
    * Always updates state. Logs entry and exit for debugging.
    */
   const handleFieldSelect = (fieldValue: string) => {
+    // Don't allow special fields to be deselected
+    if (['Source', 'Category', 'Sub Category', 'Year'].includes(fieldValue)) {
+      return;
+    }
+    
     const newSelectedFields = selectedFields.includes(fieldValue)
       ? selectedFields.filter((value) => value !== fieldValue)
       : [...selectedFields, fieldValue];
@@ -284,6 +301,10 @@ export const FieldSelector = ({
                           aria-label={`Remove ${field.label}`}
                           onClick={(e) => {
                             e.stopPropagation();
+                            // Don't allow removal of special fields
+                            if (['Source', 'Category', 'Sub Category', 'Year'].includes(field.value)) {
+                              return;
+                            }
                             handleFieldSelect(field.value);
                           }}
                           className="rounded-full hover:bg-accent/50 p-0.5"
@@ -343,6 +364,10 @@ export const FieldSelector = ({
                       key={option.value}
                       value={option.value}
                       onSelect={() => {
+                        // Don't allow selecting special fields since they're already automatically selected
+                        if (['Source', 'Category', 'Sub Category', 'Year'].includes(option.value)) {
+                          return;
+                        }
                         handleFieldSelect(option.value);
                         // Keep the popover open to allow multiple selections
                         // setIsOpen(false); // Commented out to keep popover open

@@ -108,13 +108,17 @@ export function QueryBuilder({
       fieldOptions.some((f) => f.value === field)
     );
 
-    if (validFields.length === 0) {
+    // Always ensure special fields are included in the query
+    const specialFields = ['Source', 'Category', 'Sub Category', 'Year'];
+    const allQueryFields = [...new Set([...validFields, ...specialFields])]; // Combine and deduplicate
+
+    if (allQueryFields.length === 0) {
       console.warn("No valid fields selected for query");
       return;
     }
 
     onExecute({
-      fields: validFields,
+      fields: allQueryFields,
       filters: filters.filter(f => f.field && f.operator && f.value), // Only pass filters that are completely filled
       specialFilters,
       limit: pageSize,
