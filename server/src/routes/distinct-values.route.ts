@@ -11,7 +11,7 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
    * /api/distinct-values:
    *   get:
    *     summary: Get distinct values for specified fields
-   *     description: Returns distinct values for the requested fields from the excel-records collection
+   *     description: Returns distinct values for the requested fields from the excel-records collection, optionally filtered by other field values
    *     tags:
    *       - Distinct Values
    *     parameters:
@@ -20,6 +20,26 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
    *         schema:
    *           type: string
    *         description: Comma-separated list of field names to get distinct values for
+   *       - in: query
+   *         name: Source
+   *         schema:
+   *           type: string
+   *         description: Filter by Source value
+   *       - in: query
+   *         name: Category
+   *         schema:
+   *           type: string
+   *         description: Filter by Category value
+   *       - in: query
+   *         name: Sub Category
+   *         schema:
+   *           type: string
+   *         description: Filter by Sub Category value
+   *       - in: query
+   *         name: Year
+   *         schema:
+   *           type: string
+   *         description: Filter by Year value
    *     responses:
    *       200:
    *         description: Distinct values for the requested fields
@@ -44,7 +64,7 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
   router.get(
     '/',
     async (req: Request, res: Response) => {
-      const { fields } = req.query;
+      const { fields, ...filterParams } = req.query;
       
       if (!fields) {
         return res.status(400).json({
@@ -59,9 +79,38 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
 
       try {
         console.log('Distinct values endpoint hit - attempting to fetch distinct values from Cosmos DB');
+        console.log('Filter parameters:', filterParams);
         
         // Get the container using the container method
         const container = await cosmosDb.container('excel-records', '/_partitionKey');
+
+        // Build the base query with filters
+        let baseWhereClause = "c.documentType = 'excel-row' AND c._partitionKey != 'imports'";
+        const filterConditions: string[] = [];
+
+        // Add filter conditions for each provided filter parameter
+        for (const [filterField, filterValue] of Object.entries(filterParams)) {
+          if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
+            // Clean the filter field name to prevent injection
+            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _-]/g, '');
+            
+            // Handle multi-value filters like Year (comma-separated)
+            if (Array.isArray(filterValue)) {
+              const values = filterValue.map(v => String(v).replace(/'/g, "\\'")); // Escape single quotes
+              if (values.length > 0) {
+                filterConditions.push(`c["${cleanFilterField}"] IN (${values.map(v => `'${v}'`).join(',')})`);
+              }
+            } else {
+              const cleanFilterValue = String(filterValue).replace(/'/g, "\\'"); // Escape single quotes
+              filterConditions.push(`c["${cleanFilterField}"] = '${cleanFilterValue}'`);
+            }
+          }
+        }
+
+        // Add all filter conditions to the WHERE clause
+        if (filterConditions.length > 0) {
+          baseWhereClause += ` AND ${filterConditions.join(' AND ')}`;
+        }
 
         for (const field of fieldsArray) {
           // Clean the field name to prevent injection - ensure it's a string
@@ -70,7 +119,9 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
           
           // Use the correct Cosmos DB syntax for accessing field names with spaces
           // With array notation, which works for all field names regardless of special characters
-          const query = `SELECT DISTINCT VALUE c["${cleanField}"] FROM c WHERE c.documentType = 'excel-row' AND IS_DEFINED(c["${cleanField}"]) AND c._partitionKey != 'imports'`;
+          const query = `SELECT DISTINCT VALUE c["${cleanField}"] FROM c WHERE ${baseWhereClause} AND IS_DEFINED(c["${cleanField}"])`;
+          
+          console.log(`Executing query for field ${cleanField}:`, query);
           
           const queryResult = await container.items.query(query).fetchAll();
           const values = queryResult.resources; // The result is already the values since we used VALUE

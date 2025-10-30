@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { FieldOption } from '@/components/QueryBuilder/types';
 
+interface SpecialFilters {
+  Source?: string;
+  Category?: string;
+  'Sub Category'?: string;
+  Year?: (string | number)[];
+}
+
 interface UseFieldsResult {
   fields: FieldOption[];
   loading: boolean;
@@ -11,16 +18,24 @@ interface UseFieldsResult {
 /**
  * Custom hook for fetching fields with caching and relationship support
  * @param relatedTo - Optional array of field names to filter related fields
+ * @param specialFilters - Optional special filter values to filter fields by
  */
-export const useFields = (relatedTo?: string[]): UseFieldsResult => {
+export const useFields = (relatedTo?: string[], specialFilters?: SpecialFilters): UseFieldsResult => {
   const [fields, setFields] = useState<FieldOption[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [cache, setCache] = useState<Record<string, FieldOption[]>>({});
 
-  const fetchFields = useCallback(async (relatedFields?: string[]) => {
-    // Create cache key
-    const cacheKey = relatedFields?.join(',') || 'all';
+  const fetchFields = useCallback(async (relatedFields?: string[], filters?: SpecialFilters) => {
+    // Create cache key that includes both related fields and special filters
+    const cacheKeyParts = [];
+    if (relatedFields && relatedFields.length > 0) {
+      cacheKeyParts.push(relatedFields.join(','));
+    }
+    if (filters) {
+      cacheKeyParts.push(JSON.stringify(filters));
+    }
+    const cacheKey = cacheKeyParts.length > 0 ? cacheKeyParts.join('|') : 'all';
     
     // Check cache first
     if (cache[cacheKey]) {
@@ -33,13 +48,32 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
 
     try {
       let url = '/api/fields';
+      const queryParams: string[] = [];
       
-      // For incremental filtering, we send ALL selected fields to the backend
-      // The backend will now return fields from files containing ALL of these fields
+      // Add relatedTo parameters if provided
       if (relatedFields && relatedFields.length > 0) {
-        // Create query parameters for all related fields
-        const queryParams = relatedFields.map(field => `relatedTo=${encodeURIComponent(field)}`).join('&');
-        url = `/api/fields?${queryParams}`;
+        queryParams.push(...relatedFields.map(field => `relatedTo=${encodeURIComponent(field)}`));
+      }
+      
+      // Add special filter parameters if provided
+      if (filters) {
+        if (filters.Source) {
+          queryParams.push(`Source=${encodeURIComponent(filters.Source)}`);
+        }
+        if (filters.Category) {
+          queryParams.push(`Category=${encodeURIComponent(filters.Category)}`);
+        }
+        if (filters['Sub Category']) {
+          queryParams.push(`Sub Category=${encodeURIComponent(filters['Sub Category'])}`);
+        }
+        if (filters.Year && Array.isArray(filters.Year) && filters.Year.length > 0) {
+          queryParams.push(`Year=${encodeURIComponent(filters.Year.join(','))}`);
+        }
+      }
+      
+      // Combine all query parameters
+      if (queryParams.length > 0) {
+        url = `${url}?${queryParams.join('&')}`;
       }
         
       const response = await fetch(url);
@@ -83,12 +117,12 @@ export const useFields = (relatedTo?: string[]): UseFieldsResult => {
   }, [cache]);
 
   const refresh = useCallback(() => {
-    fetchFields(relatedTo);
-  }, [fetchFields, relatedTo]);
+    fetchFields(relatedTo, specialFilters);
+  }, [fetchFields, relatedTo, specialFilters]);
 
   useEffect(() => {
-    fetchFields(relatedTo);
-  }, [fetchFields, relatedTo]);
+    fetchFields(relatedTo, specialFilters);
+  }, [fetchFields, relatedTo, specialFilters]);
 
   return { fields, loading, error, refresh };
 };

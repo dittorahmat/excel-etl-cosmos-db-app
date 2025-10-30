@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "../ui/button";
-import { Check, ChevronsUpDown, X as XIcon, Plus, Minus } from "lucide-react";
+import { Check, ChevronsUpDown, X as XIcon } from "lucide-react";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -40,7 +40,9 @@ export const FieldSelector = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [distinctValues, setDistinctValues] = useState<Record<string, any[]>>({});
+  const [filteredValues, setFilteredValues] = useState<Record<string, any[]>>({});
   const [loadingDistinct, setLoadingDistinct] = useState(true);
+  const [loadingFiltered, setLoadingFiltered] = useState(false);
   const [errorDistinct, setErrorDistinct] = useState<string | null>(null);
   const [selectedSpecialFields, setSelectedSpecialFields] = useState<SpecialFilters>({
     Source: '',
@@ -60,10 +62,10 @@ export const FieldSelector = ({
     }
   }, []); // Empty dependency array to run only once when component mounts
   
-  // Use the useFields hook to fetch fields dynamically based on all selected fields
-  const { fields, loading: fieldsLoading, error: fieldsError } = useFields(selectedFields);
+  // Use the useFields hook to fetch fields dynamically based on selected fields and special filters
+  const { fields, loading: fieldsLoading, error: fieldsError } = useFields(selectedFields, selectedSpecialFields);
 
-  // Fetch distinct values for special fields
+  // Fetch distinct values for special fields (base values)
   useEffect(() => {
     const fetchDistinctValues = async () => {
       setLoadingDistinct(true);
@@ -73,6 +75,9 @@ export const FieldSelector = ({
         if (response && typeof response === 'object' && 'success' in response && response.success) {
           const typedResponse = response as { success: boolean; values: Record<string, any[]>; error?: string };
           setDistinctValues(typedResponse.values || {});
+          
+          // Initialize filtered values with the base values
+          setFilteredValues(typedResponse.values || {});
         } else {
           const errorResponse = response as { success: boolean; error?: string };
           throw new Error(errorResponse.error || 'Failed to fetch distinct values');
@@ -87,6 +92,91 @@ export const FieldSelector = ({
 
     fetchDistinctValues();
   }, []);
+
+  // Fetch filtered values when special filters change
+  useEffect(() => {
+    const fetchFilteredValues = async () => {
+      if (loadingDistinct) return; // Wait for base values to load first
+      
+      setLoadingFiltered(true);
+      try {
+        // Build the query string with current special filter selections following cascade hierarchy
+        const params = new URLSearchParams();
+        params.append('fields', 'Source,Category,Sub Category,Year');
+        
+        // Add filters in cascade order - if Source is selected, include it
+        if (selectedSpecialFields.Source) {
+          params.append('Source', selectedSpecialFields.Source);
+        }
+        
+        // Only include Category filter if Source is selected
+        if (selectedSpecialFields.Category && selectedSpecialFields.Source) {
+          params.append('Category', selectedSpecialFields.Category);
+        }
+        
+        // Only include Sub Category filter if both Source and Category are selected
+        if (selectedSpecialFields['Sub Category'] && selectedSpecialFields.Category && selectedSpecialFields.Source) {
+          params.append('Sub Category', selectedSpecialFields['Sub Category']);
+        }
+        
+        // Only include Year filters if all previous filters are selected
+        if (Array.isArray(selectedSpecialFields.Year) && selectedSpecialFields.Year.length > 0 && 
+            selectedSpecialFields['Sub Category'] && selectedSpecialFields.Category && selectedSpecialFields.Source) {
+          params.append('Year', selectedSpecialFields.Year.join(','));
+        }
+
+        const response = await api.get(`/api/distinct-values?${params.toString()}`);
+        if (response && typeof response === 'object' && 'success' in response && response.success) {
+          const typedResponse = response as { success: boolean; values: Record<string, any[]>; error?: string };
+          
+          // Update filtered values according to cascade hierarchy
+          setFilteredValues(prevFiltered => {
+            const newFilteredValues = { ...prevFiltered };
+            
+            // Update only the relevant special fields based on cascade hierarchy
+            // Source is always available as base value set
+            if (selectedSpecialFields.Source) {
+              newFilteredValues.Source = typedResponse.values['Source'] || [];
+            } else {
+              newFilteredValues.Source = distinctValues.Source || [];
+            }
+            
+            // Category is filtered if Source is selected
+            if (selectedSpecialFields.Source && typedResponse.values['Category']) {
+              newFilteredValues.Category = typedResponse.values['Category'] || [];
+            } else {
+              newFilteredValues.Category = distinctValues.Category || [];
+            }
+            
+            // Sub Category is filtered if both Source and Category are selected
+            if (selectedSpecialFields.Category && typedResponse.values['Sub Category']) {
+              newFilteredValues['Sub Category'] = typedResponse.values['Sub Category'] || [];
+            } else {
+              newFilteredValues['Sub Category'] = distinctValues['Sub Category'] || [];
+            }
+            
+            // Year is filtered if all previous filters are selected
+            if (selectedSpecialFields['Sub Category'] && typedResponse.values['Year']) {
+              newFilteredValues.Year = typedResponse.values['Year'] || [];
+            } else {
+              newFilteredValues.Year = distinctValues.Year || [];
+            }
+            
+            return newFilteredValues;
+          });
+        } else {
+          const errorResponse = response as { success: boolean; error?: string };
+          throw new Error(errorResponse.error || 'Failed to fetch filtered distinct values');
+        }
+      } catch (error) {
+        console.error('Error fetching filtered distinct values:', error);
+      } finally {
+        setLoadingFiltered(false);
+      }
+    };
+
+    fetchFilteredValues();
+  }, [selectedSpecialFields, loadingDistinct]);
 
   // Filter out the special fields from the regular fields
   const regularFields = useMemo(() => {
@@ -139,10 +229,48 @@ export const FieldSelector = ({
    * Handles changes to special fields
    */
   const handleSpecialFieldChange = (fieldName: keyof SpecialFilters, value: string | string[] | number[] | number) => {
-    const updatedSpecialFields = {
-      ...selectedSpecialFields,
-      [fieldName]: value
-    } as SpecialFilters;
+    const updatedSpecialFields = { ...selectedSpecialFields };
+    
+    // Set the new value
+    updatedSpecialFields[fieldName] = value as any;
+    
+    // Reset dependent fields based on the hierarchy: Source -> Category -> Sub Category -> Year
+    if (fieldName === 'Source') {
+      if (!value) {
+        // If Source is being cleared, clear all dependent fields
+        updatedSpecialFields.Category = '';
+        updatedSpecialFields['Sub Category'] = '';
+        updatedSpecialFields.Year = [];
+      } else {
+        // When Source changes to a new value, reset Category, Sub Category, and Year
+        updatedSpecialFields.Category = '';
+        updatedSpecialFields['Sub Category'] = '';
+        updatedSpecialFields.Year = [];
+      }
+    } else if (fieldName === 'Category') {
+      if (!value) {
+        // If Category is being cleared, clear all dependent fields (Sub Category and Year)
+        updatedSpecialFields['Sub Category'] = '';
+        updatedSpecialFields.Year = [];
+      } else {
+        // When Category changes to a new value, reset Sub Category and Year (only if Source is set)
+        if (updatedSpecialFields.Source) {
+          updatedSpecialFields['Sub Category'] = '';
+          updatedSpecialFields.Year = [];
+        }
+      }
+    } else if (fieldName === 'Sub Category') {
+      if (!value) {
+        // If Sub Category is being cleared, clear Year
+        updatedSpecialFields.Year = [];
+      } else {
+        // When Sub Category changes to a new value, reset Year (only if Source and Category are set)
+        if (updatedSpecialFields.Source && updatedSpecialFields.Category) {
+          updatedSpecialFields.Year = [];
+        }
+      }
+    }
+    // Note: When Year changes, we don't reset anything since it's the last in the hierarchy
     
     setSelectedSpecialFields(updatedSpecialFields);
     
@@ -163,7 +291,7 @@ export const FieldSelector = ({
   };
 
   // Combined loading state
-  const loading = fieldsLoading || loadingDistinct;
+  const loading = fieldsLoading || loadingDistinct || loadingFiltered;
   const error = fieldsError || errorDistinct;
 
   return (
@@ -186,10 +314,10 @@ export const FieldSelector = ({
               value={selectedSpecialFields.Source}
               onChange={(e) => handleSpecialFieldChange('Source', e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
-              disabled={loadingDistinct || disabled}
+              disabled={loadingDistinct || loadingFiltered || disabled}
             >
               <option value="">All Sources</option>
-              {distinctValues.Source && distinctValues.Source.map((source, idx) => (
+              {(filteredValues.Source || distinctValues.Source || []).map((source, idx) => (
                 <option key={idx} value={source}>{source}</option>
               ))}
             </select>
@@ -202,10 +330,10 @@ export const FieldSelector = ({
               value={selectedSpecialFields.Category}
               onChange={(e) => handleSpecialFieldChange('Category', e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
-              disabled={loadingDistinct || disabled}
+              disabled={loadingDistinct || loadingFiltered || disabled}
             >
               <option value="">All Categories</option>
-              {distinctValues.Category && distinctValues.Category.map((category, idx) => (
+              {(filteredValues.Category || distinctValues.Category || []).map((category, idx) => (
                 <option key={idx} value={category}>{category}</option>
               ))}
             </select>
@@ -218,10 +346,10 @@ export const FieldSelector = ({
               value={selectedSpecialFields['Sub Category']}
               onChange={(e) => handleSpecialFieldChange('Sub Category', e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
-              disabled={loadingDistinct || disabled}
+              disabled={loadingDistinct || loadingFiltered || disabled}
             >
               <option value="">All Sub Categories</option>
-              {distinctValues['Sub Category'] && distinctValues['Sub Category'].map((subCategory, idx) => (
+              {(filteredValues['Sub Category'] || distinctValues['Sub Category'] || []).map((subCategory, idx) => (
                 <option key={idx} value={subCategory}>{subCategory}</option>
               ))}
             </select>
@@ -235,7 +363,7 @@ export const FieldSelector = ({
                 <Button
                   variant="outline"
                   className="w-full justify-between h-auto min-h-9 py-1.5 bg-background hover:bg-accent/50 text-sm text-muted-foreground"
-                  disabled={loadingDistinct || disabled}
+                  disabled={loadingDistinct || loadingFiltered || disabled}
                 >
                   <span className="truncate">{selectedSpecialFields.Year.length === 0 ? 'All Years' : `${selectedSpecialFields.Year.length} selected`}</span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -243,7 +371,7 @@ export const FieldSelector = ({
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0 bg-popover border-border" align="start">
                 <div className="p-2 max-h-60 overflow-y-auto">
-                  {distinctValues.Year && distinctValues.Year.map((year: string | number, idx: number) => (
+                  {(filteredValues.Year || distinctValues.Year || []).map((year: string | number, idx: number) => (
                     <div key={idx} className="flex items-center py-1 space-x-2 hover:bg-accent rounded px-2">
                       <Checkbox
                         id={`year-${year}`}
@@ -274,16 +402,16 @@ export const FieldSelector = ({
           </span>
         </div>
         <div className="text-xs text-muted-foreground mb-1">
-          Click on fields to select/deselect them. Fields will filter based on relationships.
+          Select special filters to narrow field options. Fields will filter based on selected values.
         </div>
         {error && (
           <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
             Error loading fields: {error}
           </div>
         )}
-        {fieldsLoading && selectedFields.length > 0 && (
+        {(fieldsLoading || loadingFiltered) && (
           <div className="text-sm text-muted-foreground">
-            Updating field list based on selected fields...
+            {loadingFiltered ? "Updating options based on selected filters..." : "Updating field list based on selections..."}
           </div>
         )}
         <Popover open={isOpen} onOpenChange={setIsOpen}>
