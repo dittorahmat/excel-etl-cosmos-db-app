@@ -114,12 +114,12 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">IESR Database App</h1>
+
 
       <div className="grid gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="query">Query Builder & Results</TabsTrigger>
+            <TabsTrigger value="query"></TabsTrigger>
           </TabsList>
 
           <TabsContent value="query" className="space-y-4">

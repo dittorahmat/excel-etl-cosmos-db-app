@@ -49,7 +49,7 @@ export const Sidebar = () => {
     <aside className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col">
       <div className="h-16 flex items-center justify-center border-b dark:border-gray-700 p-2">
         <img 
-          src="/images/iesr-logo.png" 
+          src="/images/iesr-logo-new.png" 
           alt="IESR Logo" 
           className="h-12 w-auto object-contain"
         />
