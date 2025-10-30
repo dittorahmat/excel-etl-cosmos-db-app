@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BaseQueryHandler } from './base.handler.js';
 import { AzureCosmosDB } from '../../../../types/azure.js';
 import { FilterCondition } from '@common/types/filter-condition.js';
+import { JoinProcessor } from '../utils/join-processor.js';
 
 /**
  * Handler for querying exactly Name, Email, Phone fields, mimicking the Cosmos DB query:
@@ -47,6 +48,8 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
       
       
       const { fields, filters: rawFilters, limit: rawLimit, offset: rawOffset } = req.body;
+      // JOIN is now mandatory (always enabled)
+      const enableJoin = true;
 
       let filters: FilterCondition[] = [];
       if (rawFilters) {
@@ -64,6 +67,7 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         fields,
         limit,
         offset,
+        enableJoin: true, // JOIN is now mandatory
         fieldsType: Array.isArray(fields) ? 'array' : typeof fields,
         fieldsLength: Array.isArray(fields) ? fields.length : 'not an array',
         bodyKeys: Object.keys(req.body)
@@ -107,8 +111,13 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
       // Build field selections and conditions with proper parameterization
       const fieldSelections = fields.map(field => `c["${field}"]`).join(', ');
       
-      // Create parameters for each field in the WHERE clause
-      const fieldConditions = fields.map(field => `IS_DEFINED(c["${field}"])`).join(' AND ');
+      // For JOIN functionality, we only require special filter fields to be defined
+      // This allows us to find all records that match the key combinations regardless of which specific data fields they have
+      const specialFilterFields = ['Source', 'Category', 'Sub Category', 'Year'];
+      const fieldConditions = specialFilterFields
+        .filter(field => fields.includes(field))
+        .map(field => `IS_DEFINED(c["${field}"])`)
+        .join(' AND ') || 'c.documentType = @documentType';
 
       // Build filter conditions
       const filterConditions = filters.map((filter, index) => {
@@ -171,6 +180,23 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         ]
       };
 
+      // For JOIN functionality, we need to get all matching records without the limit
+      let joinQuery = query;
+      if (enableJoin) {
+        joinQuery = {
+          query: `
+            SELECT ${fieldSelections}
+            FROM c 
+            WHERE ${whereClause}
+              AND c.documentType = @documentType
+          `,
+          parameters: [
+            { name: '@documentType', value: 'excel-row' },
+            ...filterParameters
+          ]
+        };
+      }
+
       // Get total count with the same field conditions
       const countQuery = {
         query: `
@@ -186,8 +212,9 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
       };
 
       log('Executing Cosmos DB data query', { 
-        query: query.query, 
-        parameters: query.parameters
+        query: joinQuery.query, 
+        parameters: joinQuery.parameters,
+        enableJoin
       });
 
       log('Executing Cosmos DB count query', { 
@@ -199,7 +226,7 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
       let itemsResponse, countResponse;
       try {
         [itemsResponse, countResponse] = await Promise.all([
-          container.items.query(query).fetchAll(),
+          container.items.query(joinQuery).fetchAll(),
           container.items.query(countQuery).fetchAll()
         ]);
         
@@ -222,22 +249,35 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
             
         log('Error executing Cosmos DB queries', { 
           error: errorInfo,
-          query: query.query,
-          parameters: query.parameters
+          query: joinQuery.query,
+          parameters: joinQuery.parameters
         });
         throw error; // Re-throw to be caught by the outer try-catch
       }
 
-      const items = itemsResponse?.resources || [];
+      let items = itemsResponse?.resources || [];
       const total = countResponse?.resources?.[0] || 0;
       
-      log('Query results', { itemsCount: items.length, total });
+      // Apply JOIN processing if enabled
+      if (enableJoin && items.length > 0) {
+        log('Applying JOIN processing to items', { originalCount: items.length });
+        const specialFilterFields = ['Source', 'Category', 'Sub Category', 'Year'];
+        items = JoinProcessor.joinRecords(items, specialFilterFields);
+        log('JOIN processing completed', { joinedCount: items.length });
+      }
+
+      // Apply offset and limit to the results after JOIN processing
+      const startOffset = Math.min(offset, items.length);
+      const endOffset = Math.min(offset + limit, items.length);
+      const pagedItems = items.slice(startOffset, endOffset);
+      
+      log('Query results', { itemsCount: pagedItems.length, total, enableJoin });
 
       return res.status(200).json({
         success: true,
-        items,
-        total,
-        hasMore: items.length < total - offset
+        items: pagedItems,
+        total: items.length, // Use the actual joined/processed count
+        hasMore: endOffset < items.length
       });
     } catch (error) {
       return this.handleError(error, res, logContext);

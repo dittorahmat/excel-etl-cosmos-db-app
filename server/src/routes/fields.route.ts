@@ -147,43 +147,76 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         
         if (hasSpecialFilters) {
           console.log(`Fetching fields with special filters:`, filterParams);
+          console.log(`Base WHERE clause:`, baseWhereClause);
           
           // If special filters are provided, get the actual field names from the filtered records
           // Instead of looking at the imports collection, we query the excel-records directly
           try {
-            // Query for sample records to extract property names
-            // We'll get the first few records to extract all possible field names
-            const sampleQuery = `SELECT TOP 100 * FROM c WHERE ${baseWhereClause}`;
+            // First, get a count to understand the scope
+            const countQuery = `SELECT VALUE COUNT(1) FROM c WHERE ${baseWhereClause}`;
+            const countResult = await container.items.query(countQuery).fetchAll();
+            const totalRecords = countResult.resources[0] || 0;
+            console.log(`Total records matching filters: ${totalRecords}`);
             
-            const sampleResult = await container.items.query(sampleQuery).fetchAll();
-            const sampleRecords = sampleResult.resources;
-            
-            if (sampleRecords.length === 0) {
-              // If no records match the filters, return empty result
-              console.log(`No records found matching special filters:`, filterParams);
-              return res.status(200).json({
-                success: true,
-                fields: []
-              });
-            }
-            
-            // Extract all unique property names from the sample records (excluding system fields)
-            const allPropertyNames = new Set<string>();
+            // Query for records to extract property names
+            // Use continuation to get more records if needed, but be mindful of performance
+            let allPropertyNames = new Set<string>();
             const systemFields = ['id', 'fileName', '_rid', '_self', '_etag', '_attachments', '_ts', 'documentType', '_partitionKey', '_importId'];
             
-            sampleRecords.forEach(record => {
-              Object.keys(record).forEach(key => {
-                // Skip system fields and any field that starts with underscore (metadata)
-                if (!systemFields.includes(key) && !key.startsWith('_')) {
-                  allPropertyNames.add(key);
-                }
-              });
+            // Use iterator to get all records (with pagination if needed) up to a reasonable limit
+            const queryIterator = container.items.query(`SELECT * FROM c WHERE ${baseWhereClause}`, {
+              maxItemCount: 100 // Process in batches of 100
             });
+            
+            let recordCount = 0;
+            let hasAppendField = false;
+            
+            // Iterate through all result pages
+            while (queryIterator.hasMoreResults()) {
+              const page = await queryIterator.fetchNext();
+              const pageRecords = page.resources;
+              
+              if (pageRecords.length === 0) {
+                break; // No more records
+              }
+              
+              // Process each record in the page
+              for (const record of pageRecords) {
+                recordCount++;
+                
+                // Extract all property names from this record (excluding system fields)
+                Object.keys(record).forEach(key => {
+                  // Skip system fields and any field that starts with underscore (metadata)
+                  if (!systemFields.includes(key) && !key.startsWith('_')) {
+                    allPropertyNames.add(key);
+                    if (key === 'Append') {
+                      hasAppendField = true;
+                      console.log(`Found 'Append' field in record #${recordCount}`);
+                    }
+                  }
+                });
+                
+                // Add a reasonable limit to prevent excessive processing
+                if (recordCount >= 1000) { // Reasonable upper limit
+                  console.log(`Reached processing limit of 1000 records, stopping early`);
+                  break;
+                }
+              }
+              
+              if (recordCount >= 1000) {
+                break;
+              }
+            }
+            
+            console.log(`Processed ${recordCount} records, found ${allPropertyNames.size} unique field names`);
+            console.log(`'Append' field found: ${hasAppendField ? 'YES' : 'NO'}`);
+            console.log(`All extracted property names before filtering:`, Array.from(allPropertyNames));
             
             // Remove special filter fields since they're handled separately
             const specialFilterFields = ['Source', 'Category', 'Sub Category', 'Year'];
             const uniqueHeaders = Array.from(allPropertyNames).filter(name => !specialFilterFields.includes(name));
             
+            console.log(`Final fields after removing special filter fields:`, uniqueHeaders);
             console.log(`Fetched ${uniqueHeaders.length} fields from filtered records with special filters in ${Date.now() - startTime}ms`);
             
             return res.status(200).json({
