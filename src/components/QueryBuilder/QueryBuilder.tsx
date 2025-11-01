@@ -2,43 +2,16 @@ import { useState, useCallback, useMemo } from "react";
 import { Button } from "../ui/button";
 import { Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FieldDefinition, FieldOption, FilterCondition } from "./types";
-import { FieldSelector } from "./FieldSelector";
+import { FieldDefinition, FieldOption, FilterCondition, QueryBuilderProps, SpecialFilters } from "./types";
+import { FileSelector } from "./FileSelector";
 import { FilterControls } from "./FilterControls";
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "./constants";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
-interface SpecialFilters {
-  Source: string;
-  Category: string;
-  'Sub Category': string;
-  Year: string[] | number[];
-}
-
-interface QueryBuilderProps {
-  fields: FieldDefinition[];
-  selectedFields: string[];
-  onFieldsChange: (_fields: string[]) => void;
-  onExecute: (_query: { 
-    fields: string[]; 
-    filters: FilterCondition[]; 
-    specialFilters?: SpecialFilters;
-    limit: number; 
-    offset: number 
-  }) => void;
-  loading?: boolean;
-  error?: string | null;
-  className?: string;
-  defaultShowFilters?: boolean;
-  page?: number;
-  pageSize?: number;
-  fieldsLoading?: boolean;
-}
-
 export function QueryBuilder({
   fields = [],
-  selectedFields = [],
-  onFieldsChange,
+  selectedFile = '',
+  onFileChange,
   onExecute,
   loading = false,
   error,
@@ -55,6 +28,7 @@ export function QueryBuilder({
     Category: '',
     'Sub Category': '',
     Year: [],
+    FileId: selectedFile,
   });
   const [showFilters, setShowFilters] = useState(defaultShowFilters);
 
@@ -72,16 +46,20 @@ export function QueryBuilder({
     }));
   }, [fields]);
 
-  // Handle fields change
-  const handleFieldsChange = useCallback((newFields: string[]) => {
-    console.log('[QueryBuilder] Fields changed:', newFields);
-    onFieldsChange(newFields);
-  }, [onFieldsChange]);
+  // Handle file change
+  const handleFileChange = useCallback((fileId: string) => {
+    console.log('[QueryBuilder] File changed:', fileId);
+    onFileChange(fileId);
+  }, [onFileChange]);
 
   // Handle special filters change
   const handleSpecialFiltersChange = useCallback((newSpecialFilters: SpecialFilters) => {
     setSpecialFilters(newSpecialFilters);
-  }, []);
+    // Update the file selection when special filters change
+    if (newSpecialFilters.FileId !== specialFilters.FileId) {
+      onFileChange(newSpecialFilters.FileId || '');
+    }
+  }, [onFileChange, specialFilters.FileId]);
 
   // Handle filter changes - using direct state setter in JSX now
 
@@ -103,28 +81,26 @@ export function QueryBuilder({
 
   // Handle execute button click
   const handleExecuteClick = useCallback(() => {
-    // Ensure we have valid fields to query
-    const validFields = selectedFields.filter((field) =>
-      fieldOptions.some((f) => f.value === field)
-    );
+    // For file-based queries, we get all fields from the file
+    const allQueryFields = ['Source', 'Category', 'Sub Category', 'Year']; // These will be included by default in the file query
 
-    // Always ensure special fields are included in the query
-    const specialFields = ['Source', 'Category', 'Sub Category', 'Year'];
-    const allQueryFields = [...new Set([...validFields, ...specialFields])]; // Combine and deduplicate
-
-    if (allQueryFields.length === 0) {
-      console.warn("No valid fields selected for query");
+    // Only proceed if we have a selected file
+    if (!specialFilters.FileId) {
+      console.warn("No file selected for query");
       return;
     }
 
     onExecute({
-      fields: allQueryFields,
+      fields: allQueryFields, // This parameter is kept for compatibility but will be ignored in file-based queries
       filters: filters.filter(f => f.field && f.operator && f.value), // Only pass filters that are completely filled
-      specialFilters,
+      specialFilters: {
+        ...specialFilters,
+        FileId: specialFilters.FileId // Include the file ID in special filters
+      },
       limit: pageSize,
       offset: (page - 1) * pageSize,
     });
-  }, [onExecute, selectedFields, fieldOptions, specialFilters, page, pageSize, filters]);
+  }, [onExecute, specialFilters, filters, page, pageSize]);
 
   // Handle loading state
   if (fieldsLoading) {
@@ -143,22 +119,6 @@ export function QueryBuilder({
     );
   }
 
-  // Handle no fields case
-  if (fieldOptions.length === 0) {
-    return (
-      <Card className={cn("w-full", className)}>
-        <CardHeader>
-          <CardTitle></CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="p-4 text-center text-muted-foreground">
-            No fields available to query.
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   // Main render
   return (
     <Card className={cn("w-full", className)}>
@@ -169,11 +129,11 @@ export function QueryBuilder({
         <div className="space-y-4">
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
-              {/* Field Selection */}
+              {/* File Selection */}
               <div className="flex-1 space-y-2">
-                <FieldSelector
-                  selectedFields={selectedFields}
-                  onFieldsChange={handleFieldsChange}
+                <FileSelector
+                  selectedFile={selectedFile}
+                  onFileChange={handleFileChange}
                   onSpecialFiltersChange={handleSpecialFiltersChange}
                   disabled={fieldsLoading}
                 />
@@ -215,7 +175,7 @@ export function QueryBuilder({
             {/* Execute Button */}
             <Button
               onClick={handleExecuteClick}
-              disabled={loading || selectedFields.length === 0}
+              disabled={loading || !selectedFile}
             >
               {loading ? (
                 <>

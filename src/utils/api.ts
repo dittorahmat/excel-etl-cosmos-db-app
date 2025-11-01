@@ -518,11 +518,25 @@ export const authFetch = async <T = unknown>(
       
       // Request was successful, parse and return the response
       try {
-        const data = await response.json();
-        return data as T;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          return data as T;
+        } else {
+          // If response is not JSON, check if it's HTML (likely an error page)
+          const text = await response.text();
+          if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+            throw new Error('Server returned an HTML error page instead of JSON. This indicates a server-side error.');
+          } else {
+            // Try to parse as JSON anyway
+            const data = JSON.parse(text);
+            return data as T;
+          }
+        }
       } catch (parseError) {
-        console.error('[API] Error parsing JSON response:', parseError);
-        lastError = new Error('Failed to parse server response');
+        console.error('[API] Error parsing response:', parseError);
+        const errorMessage = parseError instanceof Error ? parseError.message : 'Failed to parse server response';
+        lastError = new Error(`Server error: ${errorMessage}`);
         continue;
       }
     } catch (error) {

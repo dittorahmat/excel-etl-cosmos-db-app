@@ -152,6 +152,48 @@ export class EnhancedCosmosDBService {
   }
 
   /**
+   * Get a reference to a Cosmos DB container
+   * @param containerName - The name of the container
+   * @param partitionKey - The partition key path
+   * @returns Promise<AzureContainer> - A promise that resolves to the container
+   */
+  async container(containerName: string, partitionKey: string): Promise<any> {
+    try {
+      // First, check if it's one of our predefined containers
+      if (this.containers.has(containerName)) {
+        return this.getContainer(containerName);
+      }
+
+      // If not predefined, try to access an existing container directly
+      logger.info(`Accessing existing container: ${containerName}`);
+      try {
+        const container = this.database.container(containerName);
+        // Test if container exists by reading its properties (this will throw if it doesn't exist)
+        await container.read();
+        logger.info(`Successfully accessed existing container: ${containerName}`);
+        return container;
+      } catch (readError) {
+        logger.info(`Container ${containerName} does not exist, attempting to create with partitionKey: ${partitionKey}`);
+        // Container doesn't exist, so create it
+        const containerDefinition: ContainerDefinition = {
+          id: containerName,
+          partitionKey: { 
+            paths: [partitionKey],
+            version: 2
+          }
+        };
+        
+        const { container } = await this.database.containers.createIfNotExists(containerDefinition);
+        logger.info(`Successfully created container: ${containerName}`);
+        return container;
+      }
+    } catch (error) {
+      logger.error(`Error getting/creating container ${containerName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new import metadata record
    */
   async createImport(importMetadata: Omit<ImportMetadata, 'id' | 'createdAt' | 'documentType' | '_partitionKey'>): Promise<ItemResponse<ImportMetadata>> {

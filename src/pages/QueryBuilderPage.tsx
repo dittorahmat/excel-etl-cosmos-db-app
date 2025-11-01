@@ -5,7 +5,7 @@ import { FieldDefinition, FilterCondition } from '../components/QueryBuilder/typ
 
 const QueryBuilderPage: React.FC = () => {
   const [fields, setFields] = useState<FieldDefinition[]>([]);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string>('');
   const [fieldsLoading, setFieldsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,8 +35,8 @@ const QueryBuilderPage: React.FC = () => {
     fetchFields();
   }, []);
 
-  const handleFieldsChange = (newFields: string[]) => {
-    setSelectedFields(newFields);
+  const handleFileChange = (fileId: string) => {
+    setSelectedFile(fileId);
   };
 
   const handleExecute = async (query: { 
@@ -46,7 +46,8 @@ const QueryBuilderPage: React.FC = () => {
       Source: string; 
       Category: string; 
       'Sub Category': string; 
-      Year: string[] | number[] 
+      Year: string[] | number[]; 
+      FileId?: string;
     }; 
     limit: number; 
     offset: number 
@@ -56,7 +57,7 @@ const QueryBuilderPage: React.FC = () => {
       console.log('Executing query:', query);
       
       // For now, we'll just show an alert
-      alert(`Query executed with special filters:\nSource: ${query.specialFilters?.Source || 'All'}\nCategory: ${query.specialFilters?.Category || 'All'}\nSub Category: ${query.specialFilters?.['Sub Category'] || 'All'}\nYear: ${query.specialFilters?.Year?.join(', ') || 'All'}`);
+      alert(`Query executed with special filters:\nSource: ${query.specialFilters?.Source || 'All'}\nCategory: ${query.specialFilters?.Category || 'All'}\nSub Category: ${query.specialFilters?.['Sub Category'] || 'All'}\nYear: ${query.specialFilters?.Year?.join(', ') || 'All'}\nFileId: ${query.specialFilters?.FileId || 'None'}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute query');
     }
@@ -67,8 +68,8 @@ const QueryBuilderPage: React.FC = () => {
       <h1 className="text-2xl font-bold mb-4">API Query Builder</h1>
       <QueryBuilder
         fields={fields}
-        selectedFields={selectedFields}
-        onFieldsChange={handleFieldsChange}
+        selectedFile={selectedFile}
+        onFileChange={handleFileChange}
         onExecute={handleExecute}
         fieldsLoading={fieldsLoading}
         error={error}

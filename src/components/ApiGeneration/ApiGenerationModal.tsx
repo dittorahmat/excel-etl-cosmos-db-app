@@ -1,4 +1,4 @@
-import { FilterCondition } from '../QueryBuilder/types';
+import { FilterCondition, SpecialFilters } from '../QueryBuilder/types';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { ApiGenerationContent } from './ApiGenerationContent';
 interface ApiGenerationModalProps {
   selectedFields: string[];
   filters: FilterCondition[];
+  specialFilters?: SpecialFilters;
   baseUrl?: string;
   trigger?: React.ReactNode;
   isOpen?: boolean;
@@ -22,6 +23,7 @@ interface ApiGenerationModalProps {
 export function ApiGenerationModal({ 
   selectedFields, 
   filters, 
+  specialFilters,
   baseUrl,
   trigger,
   isOpen,
@@ -39,6 +41,7 @@ export function ApiGenerationModal({
         <ApiGenerationContent 
           selectedFields={selectedFields} 
           filters={filters} 
+          specialFilters={specialFilters}
           baseUrl={baseUrl} 
         />
         <div className="flex justify-end">

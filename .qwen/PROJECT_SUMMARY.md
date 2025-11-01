@@ -1,32 +1,39 @@
 # Project Summary
 
 ## Overall Goal
-Update the FieldSelector component to exclude 4 specific fields (Source, Category, Sub Category, Year) from the main dropdown while creating separate filter controls for these fields and automatically including them in query results by default.
+Implement a file-based query system that replaces the current field-based approach with cascading filters (Source → Category → Sub Category → File Selection → Year) and fix rate limiting/authentication issues that prevent proper file selection and query execution.
 
 ## Key Knowledge
-- The FieldSelector component needs enhancement to handle special fields differently
-- 4 special fields (Source, Category, Sub Category, Year) should be excluded from the main dropdown
-- These special fields should have separate filter controls with distinct values from Cosmos DB
-- The special fields should be automatically selected by default and appear in query results
-- Need to create an API endpoint `/api/distinct-values` to fetch distinct values for specified fields
-- The plan involves updating the FieldSelector component, useFields hook, query building logic, and results display
+- Technology stack: React frontend with TypeScript, Node.js/Express backend with Cosmos DB
+- Authentication: Azure AD with MSAL for production, dummy auth for development
+- File-based query flow: Source → Category → Sub Category → File Selection → Year
+- Backend endpoints: 
+  - `/api/query/file` - Execute file-based queries
+  - `/api/query/file-get` - GET endpoint for API links
+  - `/api/distinct-file-values` - Get distinct values for cascading filters
+  - `/api/query/files-by-filters` - Get files matching filter criteria
+- Rate limiting: Previously causing 429 errors during cascading filter operations
+- Authentication issues: 401 errors on `/api/query/file` endpoint
 
 ## Recent Actions
-- Updated FIELDSELECTOR_UPDATE_PLAN.md with enhanced plan that includes automatic selection of special fields
-- The plan now includes requirement that special fields are automatically selected by default and will appear in the data after Execute Query
-- Plan maintains functionality for users to filter these special fields using dedicated controls
+1. [DONE] Fixed syntax error in `useDashboardData.ts` that was preventing builds
+2. [DONE] Implemented FileSelector component with cascading filter functionality
+3. [DONE] Updated backend API endpoints for file-based queries
+4. [DONE] Added request debouncing and cancellation to prevent rate limiting
+5. [DONE] Fixed backend query issues where `c._partitionKey` was used instead of `c._importId`
+6. [DONE] Implemented proper authentication headers for all API calls
+7. [DONE] Updated rate limiting configuration to be more lenient for development
+8. [DONE] Fixed Year dropdown population by correcting Cosmos DB field references
 
 ## Current Plan
-1. [DONE] Update FIELDSELECTOR_UPDATE_PLAN.md with the enhanced plan that includes automatic selection of special fields
-2. [TODO] Create API endpoint `/api/distinct-values` to fetch distinct values for specified fields
-3. [TODO] Update FieldSelector component to include separate dropdown components for special fields
-4. [TODO] Modify the existing field selection logic to exclude the 4 special fields from the main dropdown
-5. [TODO] Automatically add the 4 special fields to the selected fields list by default
-6. [TODO] Update the useFields hook to exclude the 4 special fields from the returned field list
-7. [TODO] Update query building logic to include special field filters and ensure special fields are always in SELECT clause
-8. [TODO] Update results display to ensure special fields are always present in query results
+1. [IN PROGRESS] Testing the complete file-based query flow with all cascading filters
+2. [TODO] Verify query execution works correctly with selected file and filters
+3. [TODO] Ensure API generation works with file-based parameters
+4. [TODO] Validate data display in DashboardPage with file-based results
+5. [TODO] Test export functionality with file-based data
+6. [TODO] Document the complete implementation for future reference
 
 ---
 
 ## Summary Metadata
-**Update time**: 2025-10-28T22:07:43.783Z 
+**Update time**: 2025-11-01T08:38:30.246Z 

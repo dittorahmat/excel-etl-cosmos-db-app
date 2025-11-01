@@ -32,13 +32,14 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     loading,
     error,
     fieldDefinitions,
-    selectedFields,
+    selectedFile, // Changed from selectedFields to selectedFile
     fieldsLoading,
     sortField,
     sortDirection,
     currentFilters, // Get current filters from the hook
+    specialFilters, // Get special filters from the hook
     handleExecuteQuery,
-    handleFieldsChange,
+    handleFileChange, // Changed from handleFieldsChange to handleFileChange
     handleSort,
   } = useDashboardData();
 
@@ -136,8 +137,8 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                 ) : fieldDefinitions.length > 0 ? (
                   <QueryBuilder
                     fields={fieldDefinitions}
-                    selectedFields={selectedFields}
-                    onFieldsChange={handleFieldsChange}
+                    selectedFile={selectedFile} // Changed prop name
+                    onFileChange={handleFileChange} // Changed prop name
                     onExecute={handleExecuteQuery}
                     loading={loading}
                     defaultShowFilters={false}
@@ -173,9 +174,10 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                     {/* Export and API Buttons */}
                     <div className="flex justify-end mb-4 space-x-2">
                       <ApiGenerationModal
-                        selectedFields={selectedFields}
+                        selectedFields={queryResult.fields || []} // Use the fields from the query result
                         filters={currentFilters || []} // Using current filters from the hook
-                        baseUrl="/api/query/rows-get"
+                        specialFilters={specialFilters} // Pass special filters
+                        baseUrl="/api/query/file-get" // Changed to use file-based API
                         isOpen={isApiModalOpen}
                         onOpenChange={setIsApiModalOpen}
                         trigger={

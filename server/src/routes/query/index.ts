@@ -13,6 +13,8 @@ import { QueryRowsExactHandler } from '../v2/query/handlers/query-rows-exact.han
 import { QueryRowsGetHandler } from '../v2/query/handlers/query-rows-get.handler.js';
 import { DeleteImportHandler } from '../v2/query/handlers/delete-import.handler.js';
 
+import { createFileQueryRouter } from './file.route.js';
+
 
 export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
   const router = Router();
@@ -116,6 +118,10 @@ export function createQueryRouter(cosmosDb: AzureCosmosDB): Router {
       deleteImportHandler.handle.bind(deleteImportHandler)
     );
   }
+
+  // Add file-based query routes
+  const fileQueryRouter = createFileQueryRouter(cosmosDb);
+  router.use(fileQueryRouter);
 
   return router;
 }

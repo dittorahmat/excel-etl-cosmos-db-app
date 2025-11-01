@@ -2,19 +2,21 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Copy } from 'lucide-react';
 import { Label } from '../ui/label';
-import { FilterCondition } from '../QueryBuilder/types';
+import { FilterCondition, SpecialFilters } from '../QueryBuilder/types';
 import { useAuth } from '../../auth/AuthContext';
 
 interface ApiGenerationContentProps {
-  selectedFields: string[];
+  selectedFields: string[]; // This is now used to determine available fields in the result
   filters: FilterCondition[];
+  specialFilters?: SpecialFilters;
   baseUrl?: string;
 }
 
 export function ApiGenerationContent({
   selectedFields,
   filters,
-  baseUrl = '/api/query/rows-get'
+  specialFilters,
+  baseUrl = '/api/query/file-get'
 }: ApiGenerationContentProps) {
   const [generatedUrl, setGeneratedUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -33,26 +35,37 @@ export function ApiGenerationContent({
       }
       const tokenValue = token;
 
-      const body = {
-        fields: selectedFields,
-        filters: filters.filter(f => f.field && f.operator && f.value),
-        // limit: 10,  // Commented out - may be needed in the future
-        // offset: 0, // Commented out - may be needed in the future
-      };
-
       // Using the GET endpoint with query parameters
       const fullUrl = `${window.location.origin}${baseUrl}`;
 
       // Build query parameters
       const queryParams = new URLSearchParams();
-      queryParams.append('fields', selectedFields.join(','));
-
-      if (body.filters.length > 0) {
-        queryParams.append('filters', JSON.stringify(body.filters));
+      
+      // Add file ID and special filters
+      if (specialFilters?.FileId) {
+        queryParams.append('fileId', specialFilters.FileId);
+      }
+      
+      if (specialFilters?.Source) {
+        queryParams.append('Source', specialFilters.Source);
+      }
+      
+      if (specialFilters?.Category) {
+        queryParams.append('Category', specialFilters.Category);
+      }
+      
+      if (specialFilters?.['Sub Category']) {
+        queryParams.append('Sub Category', specialFilters['Sub Category']);
+      }
+      
+      if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
+        queryParams.append('Year', specialFilters.Year.join(','));
       }
 
-      // queryParams.append('limit', body.limit.toString());  // Commented out - may be needed in the future
-      // queryParams.append('offset', body.offset.toString()); // Commented out - may be needed in the future
+      if (filters.length > 0) {
+        queryParams.append('filters', JSON.stringify(filters.filter(f => f.field && f.operator && f.value)));
+      }
+
       // Add the token as a query parameter instead of in headers
       queryParams.append('token', tokenValue);
 
@@ -63,27 +76,37 @@ export function ApiGenerationContent({
       console.error('Error generating API URL with real token:', error);
       console.log('Using fallback URL with placeholder token.');
 
-      // Fallback to URL with placeholder token
-      const body = {
-        fields: selectedFields,
-        filters: filters.filter(f => f.field && f.operator && f.value),
-        // limit: 10,  // Commented out - may be needed in the future
-        // offset: 0, // Commented out - may be needed in the future
-      };
-
       // Using the GET endpoint with query parameters
       const fullUrl = `${window.location.origin}${baseUrl}`;
 
       // Build query parameters
       const queryParams = new URLSearchParams();
-      queryParams.append('fields', selectedFields.join(','));
-
-      if (body.filters.length > 0) {
-        queryParams.append('filters', JSON.stringify(body.filters));
+      
+      // Add file ID and special filters
+      if (specialFilters?.FileId) {
+        queryParams.append('fileId', specialFilters.FileId);
+      }
+      
+      if (specialFilters?.Source) {
+        queryParams.append('Source', specialFilters.Source);
+      }
+      
+      if (specialFilters?.Category) {
+        queryParams.append('Category', specialFilters.Category);
+      }
+      
+      if (specialFilters?.['Sub Category']) {
+        queryParams.append('Sub Category', specialFilters['Sub Category']);
+      }
+      
+      if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
+        queryParams.append('Year', specialFilters.Year.join(','));
       }
 
-      // queryParams.append('limit', body.limit.toString());  // Commented out - may be needed in the future
-      // queryParams.append('offset', body.offset.toString()); // Commented out - may be needed in the future
+      if (filters.length > 0) {
+        queryParams.append('filters', JSON.stringify(filters.filter(f => f.field && f.operator && f.value)));
+      }
+
       // Add placeholder token as a query parameter
       queryParams.append('token', 'YOUR_ACTUAL_TOKEN');
 
@@ -93,7 +116,7 @@ export function ApiGenerationContent({
     } finally {
       setLoading(false);
     }
-  }, [selectedFields, filters, baseUrl, getAccessToken]);
+  }, [specialFilters, filters, baseUrl, getAccessToken]);
 
   // Handle copy URL
   const handleCopyUrl = useCallback(() => {
@@ -109,14 +132,14 @@ export function ApiGenerationContent({
     generateApiUrl();
   }, [generateApiUrl]);
 
-  // Generate URL when fields or filters change
+  // Generate URL when fields, filters or special filters change
   useEffect(() => {
     // Since generateApiUrl is now async, we need to handle it properly
     const generate = async () => {
       await generateApiUrl();
     };
     generate();
-  }, [selectedFields, filters, generateApiUrl]);
+  }, [selectedFields, filters, specialFilters, generateApiUrl]);
 
   return (
     <div className="space-y-4">

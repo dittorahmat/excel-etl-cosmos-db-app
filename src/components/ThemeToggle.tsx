@@ -2,35 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon } from 'lucide-react';
+import { Moon } from 'lucide-react'; // Only import Moon icon since we're always in dark mode
 import { Button } from './ui/button';
 
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme(); // We don't need the current theme since we're always in dark mode
 
-  // useEffect only runs on the client, so now we can safely show the UI
+  // Set theme to dark on mount and whenever component is rendered
   useEffect(() => {
     setMounted(true);
-  }, []);
+    setTheme('dark'); // Force dark mode
+  }, [setTheme]);
 
   if (!mounted) {
     return null;
   }
 
+  // Always show dark mode icon without toggle functionality
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+      disabled // Disable the button since there's no toggling functionality
       className="ml-2"
-      aria-label="Toggle theme"
+      aria-label="Dark mode enabled"
     >
-      {theme === 'light' ? (
-        <Moon className="h-5 w-5" />
-      ) : (
-        <Sun className="h-5 w-5" />
-      )}
+      <Moon className="h-5 w-5" /> {/* Always show the moon icon for dark mode */}
     </Button>
   );
 }

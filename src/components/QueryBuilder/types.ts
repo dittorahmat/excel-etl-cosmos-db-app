@@ -26,9 +26,15 @@ export interface FilterCondition {
 
 export interface QueryBuilderProps {
   fields: FieldDefinition[];
-  selectedFields: string[];
-  onFieldsChange: (fields: string[]) => void;
-  onExecute: (query: { fields: string[]; limit: number; offset: number }) => void;
+  selectedFile: string;
+  onFileChange: (fileId: string) => void;
+  onExecute: (query: { 
+    fields: string[]; 
+    filters: FilterCondition[]; 
+    specialFilters?: SpecialFilters;
+    limit: number; 
+    offset: number 
+  }) => void;
   loading?: boolean;
   error?: string | null;
   className?: string;
@@ -36,6 +42,14 @@ export interface QueryBuilderProps {
   page?: number;
   pageSize?: number;
   fieldsLoading?: boolean;
+}
+
+export interface SpecialFilters {
+  Source: string;
+  Category: string;
+  'Sub Category': string;
+  Year: string[] | number[];
+  FileId?: string;
 }
 
 export interface FieldOption {
