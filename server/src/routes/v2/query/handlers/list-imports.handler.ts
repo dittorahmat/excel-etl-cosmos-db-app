@@ -107,7 +107,7 @@ export class ListImportsHandler extends BaseQueryHandler {
       // Execute the optimized Cosmos DB query
       const querySpec = {
         query: `
-          SELECT c.id, c.fileName, c.processedAt, c.blobUrl, c.totalRows, c.fileSize
+          SELECT c.id, c.fileName, c.processedAt, c.processedByName, c.blobUrl, c.totalRows, c.fileSize
           FROM c 
           WHERE IS_DEFINED(c.id) 
             AND IS_DEFINED(c.fileName) 

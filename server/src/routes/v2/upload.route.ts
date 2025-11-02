@@ -158,11 +158,36 @@ const createErrorResponse = (status: number, error: string, message: string) => 
 async function uploadHandler(req: Request, res: Response) {
   const startTime = Date.now();
   const requestId = req.id?.toString() || `req_${uuidv4()}`;
+  
+  // Get user information from authentication or request body
   const userId = req.user?.oid || 'anonymous';
+  let uploadedByUserInfo: { name: string; email: string; id: string } | undefined;
+  
+  // Check if uploadedBy information is provided in the request body
+  if (req.body && typeof req.body.uploadedBy === 'string') {
+    try {
+      uploadedByUserInfo = JSON.parse(req.body.uploadedBy);
+    } catch (parseError) {
+      logger.warn('Failed to parse uploadedBy JSON', { 
+        requestId, 
+        userId,
+        uploadedBy: req.body.uploadedBy,
+        error: parseError instanceof Error ? parseError.message : 'Unknown error'
+      });
+    }
+  }
+  
+  // Use the uploadedBy user info if available, otherwise fall back to authenticated user
+  const effectiveUserId = uploadedByUserInfo?.id || userId;
+  const effectiveUserName = uploadedByUserInfo?.name || 'Anonymous User';
+  const effectiveUserEmail = uploadedByUserInfo?.email || 'anonymous@example.com';
   
   logger.info('Upload handler started', { 
     requestId, 
-    userId,
+    userId: effectiveUserId,
+    userName: effectiveUserName,
+    userEmail: effectiveUserEmail,
+    hasUploadedByInfo: !!uploadedByUserInfo,
     hasFile: !!req.file,
     fileInfo: req.file ? {
       originalname: req.file.originalname,
@@ -260,7 +285,9 @@ async function uploadHandler(req: Request, res: Response) {
       filePath,
       fileName,
       fileType,
-      userId
+      effectiveUserId, // Use the effective user ID
+      effectiveUserName, // Pass the user name
+      effectiveUserEmail // Pass the user email
     ).catch(error => {
       logger.error('Error in ingestionService.startImport', {
         requestId,

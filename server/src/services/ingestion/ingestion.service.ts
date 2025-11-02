@@ -65,7 +65,9 @@ export class IngestionService {
     filePath: string,
     fileName: string,
     fileType: string,
-    userId: string
+    userId: string,
+    userName?: string,
+    userEmail?: string
   ): Promise<ImportMetadata> {
     const importId = `import_${uuidv4()}`;
     const importStartTime = new Date();
@@ -76,6 +78,8 @@ export class IngestionService {
       fileType,
       filePath,
       userId,
+      userName: userName || 'Unknown User',
+      userEmail: userEmail || 'unknown@example.com',
       timestamp: importStartTime.toISOString()
     });
 
@@ -110,6 +114,8 @@ export class IngestionService {
       status: 'processing',
       processedAt: importStartTime.toISOString(),
       processedBy: userId,
+      processedByName: userName || 'Unknown User',
+      processedByEmail: userEmail || 'unknown@example.com',
       totalRows: 0,
       validRows: 0,
       errorRows: 0,
@@ -131,6 +137,8 @@ export class IngestionService {
       fileName,
       fileType,
       userId,
+      userName,
+      userEmail,
       fileBuffer,
       importMetadata,
       cosmosDb
@@ -153,6 +161,8 @@ export class IngestionService {
     fileName: string,
     fileType: string,
     userId: string,
+    userName: string | undefined,
+    userEmail: string | undefined,
     fileBuffer: Buffer,
     importMetadata: ImportMetadata,
     cosmosDb: AzureCosmosDB
@@ -346,7 +356,7 @@ export class IngestionService {
   }
 
   /**
-   * Save rows to Cosmos DB in batches
+   * Save rows to Cosmos DB in batches with improved error handling and retry logic
    */
   private async saveRows(rows: RowData[], cosmosDb: AzureCosmosDB): Promise<void> {
     if (rows.length === 0) {
@@ -355,6 +365,8 @@ export class IngestionService {
     }
 
     const BATCH_SIZE = INGESTION_CONSTANTS.BATCH_SIZE; // Cosmos DB batch limit
+    const MAX_RETRIES = 3; // Maximum number of retries for failed operations
+    const BASE_DELAY = 1000; // Base delay for exponential backoff in milliseconds
     const importId = rows[0]?._importId;
 
     if (!importId) {
@@ -373,118 +385,188 @@ export class IngestionService {
       firstRowKeys: rows[0] ? Object.keys(rows[0]) : []
     });
 
+    let totalSuccess = 0;
+    let totalFailed = 0;
+    const failedRows: { rowIndex: number; row: RowData; error: string }[] = [];
+
     try {
       // Process rows in batches
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
         
-        // Execute batch operations
-        const results = await Promise.allSettled(
-          batch.map(async (row) => {
-            const record = {
-              ...row,
-              // Use a composite ID to ensure uniqueness
-              id: `row_${row._importId}_${row._rowNumber}`,
-              _partitionKey: `import_${row._importId}`, // Match the import's partition key
-              _rowId: row._rowNumber, // Store row number for easier querying
-              documentType: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW, // Add document type for easier querying
-            };
+        this.logger.info(`Processing batch ${batchNumber} of ${totalBatches}`, {
+          importId,
+          batchNumber,
+          totalBatches,
+          batchSize: batch.length,
+          progress: `${((i + BATCH_SIZE) / rows.length * 100).toFixed(1)}%`
+        });
+
+        // Process each row in the batch with individual retry logic
+        const batchResults = await Promise.all(
+          batch.map(async (row, rowIndexInBatch) => {
+            const globalRowIndex = i + rowIndexInBatch;
             
-            // Log the row being processed
-            const rowLogData = {
-              rowId: record.id,
-              partitionKey: record._partitionKey,
-              importId: row._importId,
-              rowNumber: row._rowNumber,
-              keys: Object.keys(record)
-            };
-            this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId}`, rowLogData);
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+              try {
+                const record = {
+                  ...row,
+                  // Use a composite ID to ensure uniqueness
+                  id: `row_${row._importId}_${row._rowNumber}`,
+                  _partitionKey: `import_${row._importId}`, // Match the import's partition key
+                  _rowId: row._rowNumber, // Store row number for easier querying
+                  documentType: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW, // Add document type for easier querying
+                };
+                
+                // Log the row being processed
+                const rowLogData = {
+                  rowId: record.id,
+                  partitionKey: record._partitionKey,
+                  importId: row._importId,
+                  rowNumber: row._rowNumber,
+                  keys: Object.keys(record)
+                };
+                this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId} (attempt ${attempt})`, rowLogData);
+                
+                // Execute the upsert operation using the wrapper
+                const result = await cosmosDbWrapper.upsertRecordWithLogging(
+                  cosmosDb,
+                  record,
+                  this.dataContainerName,
+                  `upsert row ${row._rowNumber} for import ${row._importId}`,
+                  this.logger
+                );
+                
+                this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
+                  rowId: record.id,
+                  statusCode: result.statusCode,
+                  etag: result.etag
+                });
+                
+                return { success: true, result, rowIndex: globalRowIndex, row };
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                
+                // Log the failure
+                this.logger.warn(`Failed to upsert row ${row._rowNumber} (attempt ${attempt} of ${MAX_RETRIES})`, {
+                  importId,
+                  rowIndex: globalRowIndex,
+                  rowNumber: row._rowNumber,
+                  attempt,
+                  maxRetries: MAX_RETRIES,
+                  error: errorMessage,
+                  stack: error instanceof Error ? error.stack : undefined
+                });
+                
+                // If this is the last attempt, add to failed rows
+                if (attempt === MAX_RETRIES) {
+                  failedRows.push({ 
+                    rowIndex: globalRowIndex, 
+                    row, 
+                    error: errorMessage 
+                  });
+                  return { success: false, error: errorMessage, rowIndex: globalRowIndex, row };
+                }
+                
+                // Exponential backoff before retry
+                const delay = BASE_DELAY * Math.pow(2, attempt - 1) + Math.random() * 1000;
+                this.logger.debug(`Waiting ${delay}ms before retry ${attempt + 1}`, {
+                  importId,
+                  rowIndex: globalRowIndex,
+                  rowNumber: row._rowNumber,
+                  delay,
+                  attempt: attempt + 1
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
+            }
             
-            // Execute the upsert operation using the wrapper
-            const result = await cosmosDbWrapper.upsertRecordWithLogging(
-              cosmosDb,
-              record,
-              this.dataContainerName,
-              `upsert row ${row._rowNumber} for import ${row._importId}`,
-              this.logger
-            );
-            
-            this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
-              rowId: record.id,
-              statusCode: result.statusCode,
-              etag: result.etag
-            });
-            
-            return result;
+            // This should never be reached, but just in case
+            return { success: false, error: 'Max retries exceeded', rowIndex: globalRowIndex, row };
           })
         );
 
-        // Log any failed operations
-        const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
-        if (failed.length > 0) {
-          const errorDetails = failed.map((f, idx) => {
-            const errorInfo = f.reason instanceof Error 
-              ? {
-                  message: f.reason.message,
-                  stack: f.reason.stack,
-                  name: f.reason.name,
-                  code: (f.reason as Error & { code?: string }).code
-                }
-              : { message: String(f.reason) };
-            
-            return {
-              index: idx,
-              error: errorInfo
-            };
-          });
-          
-          this.logger.error(`Failed to save ${failed.length} rows in batch ${i / BATCH_SIZE + 1}`, {
-            importId,
-            batchIndex: i / BATCH_SIZE + 1,
-            totalBatches: Math.ceil(rows.length / BATCH_SIZE),
-            failedCount: failed.length,
-            successCount: results.length - failed.length,
-            errors: errorDetails,
-            sampleError: errorDetails[0] // Include first error as sample
-          });
-          
-          throw new Error(`Failed to save ${failed.length} rows in batch ${i / BATCH_SIZE + 1}: ${errorDetails[0]?.error?.message || 'Unknown error'}`);
-        }
-
-        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
-      const batchEnd = Math.min(i + BATCH_SIZE, rows.length);
-      
-      this.logger.info(`Processed batch ${batchNumber} of ${totalBatches}`, {
-        importId,
-        batchNumber,
-        totalBatches,
-        batchStart: i + 1,
-        batchEnd,
-        batchSize: batch.length,
-        totalRows: rows.length,
-        success: batch.length - failed.length,
-        failed: failed.length,
-        progress: `${((i + BATCH_SIZE) / rows.length * 100).toFixed(1)}%`
-      });
-      
-      // Log memory usage for large imports
-      if (rows.length > 1000) {
-        const used = process.memoryUsage();
-        this.logger.debug(`Memory usage after batch ${batchNumber}`, {
+        // Count successes and failures in this batch
+        const batchSuccess = batchResults.filter(r => r.success).length;
+        const batchFailed = batchResults.filter(r => !r.success).length;
+        
+        totalSuccess += batchSuccess;
+        totalFailed += batchFailed;
+        
+        this.logger.info(`Completed batch ${batchNumber} of ${totalBatches}`, {
           importId,
-          rss: `${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB`,
-          heapTotal: `${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB`,
-          heapUsed: `${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB`,
-          external: used.external ? `${Math.round(used.external / 1024 / 1024 * 100) / 100} MB` : 'N/A'
+          batchNumber,
+          totalBatches,
+          batchSize: batch.length,
+          success: batchSuccess,
+          failed: batchFailed,
+          totalSuccess,
+          totalFailed,
+          progress: `${Math.min(100, ((i + BATCH_SIZE) / rows.length * 100)).toFixed(1)}%`
         });
+
+        // Log memory usage for large imports
+        if (rows.length > 1000) {
+          const used = process.memoryUsage();
+          this.logger.debug(`Memory usage after batch ${batchNumber}`, {
+            importId,
+            rss: `${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB`,
+            heapTotal: `${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB`,
+            heapUsed: `${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB`,
+            external: used.external ? `${Math.round(used.external / 1024 / 1024 * 100) / 100} MB` : 'N/A'
+          });
+        }
       }
+
+      // Log final results
+      this.logger.info(`Finished saving rows for import ${importId}`, {
+        importId,
+        totalRows: rows.length,
+        totalSuccess,
+        totalFailed,
+        successRate: `${((totalSuccess / rows.length) * 100).toFixed(2)}%`,
+        failedRows: failedRows.length > 0 ? failedRows.map(f => ({
+          rowIndex: f.rowIndex,
+          rowNumber: f.row._rowNumber,
+          error: f.error
+        })).slice(0, 10) : [] // Only show first 10 failed rows to avoid log spam
+      });
+
+      // If we have too many failures, throw an error
+      if (totalFailed > rows.length * 0.5) { // If more than 50% failed
+        const error = new Error(`Critical failure: ${totalFailed} out of ${rows.length} rows failed to save (${((totalFailed / rows.length) * 100).toFixed(2)}% failure rate)`);
+        this.logger.error('High failure rate detected, aborting import', {
+          importId,
+          totalRows: rows.length,
+          totalFailed,
+          failureRate: ((totalFailed / rows.length) * 100).toFixed(2) + '%',
+          error: error.message
+        });
+        throw error;
+      } else if (totalFailed > 0) {
+        // Log warnings for individual failures but continue
+        this.logger.warn(`${totalFailed} rows failed to save but continuing with import`, {
+          importId,
+          totalRows: rows.length,
+          totalFailed,
+          failureRate: ((totalFailed / rows.length) * 100).toFixed(2) + '%'
+        });
       }
     } catch (error) {
       this.logger.error('Failed to save rows to Cosmos DB', {
         importId: rows[0]?._importId,
-        error,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        totalRows: rows.length,
+        totalSuccess,
+        totalFailed,
+        failedRowsDetails: failedRows.length > 0 ? failedRows.slice(0, 5) : [] // First 5 failed rows
       });
+      
+      // Re-throw the error to be handled by the caller
       throw new Error(`Failed to save rows: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

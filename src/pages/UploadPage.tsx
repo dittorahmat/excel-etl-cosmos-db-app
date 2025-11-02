@@ -64,13 +64,18 @@ export function UploadPage() {
     }
   };
 
-  const handleFileUpload = async (file: File): Promise<{ data?: { rowCount?: number }, count?: number }> => {
+  const handleFileUpload = async (file: File, userInfo?: { name: string; email: string; id: string }): Promise<{ data?: { rowCount?: number }, count?: number }> => {
     setIsUploading(true);
     setUploadProgress(0);
 
     try {
       const formData = new FormData();
       formData.append('file', file);
+      
+      // Add user information if available
+      if (userInfo) {
+        formData.append('uploadedBy', JSON.stringify(userInfo));
+      }
 
       // Check if authentication is enabled and get token if needed
       // Use the same logic as other parts of the application

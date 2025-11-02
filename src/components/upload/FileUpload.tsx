@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
 import { Button } from '../ui/button';
 import { Upload as UploadIcon, FileText, X } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext';
 
 interface ProgressProps {
   value: number;
@@ -19,7 +20,7 @@ const Progress = ({ value, className = '' }: ProgressProps) => (
 
 type FileUploadProps = {
   /** Callback function when a file is uploaded */
-  onUpload: (file: File) => Promise<{ data?: { rowCount?: number }, count?: number }>;
+  onUpload: (file: File, userInfo?: { name: string; email: string; id: string }) => Promise<{ data?: { rowCount?: number }, count?: number }>;
   /** Array of accepted file types (e.g., ['.xlsx', '.csv']) */
   accept?: string[];
   /** Maximum file size in bytes */
@@ -48,6 +49,7 @@ export function FileUpload({
 }: FileUploadProps): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]) => {
@@ -94,12 +96,24 @@ export function FileUpload({
     disabled: isUploading
   });
 
+  const getUserInfo = useCallback(() => {
+    if (!isAuthenticated || !user) {
+      return undefined;
+    }
+
+    return {
+      name: user.name || 'Unknown User',
+      email: user.username || 'unknown@example.com',
+      id: user.localAccountId || user.homeAccountId || 'anonymous'
+    };
+  }, [user, isAuthenticated]);
+
   const handleUpload = async () => {
     if (!file) return;
     
     try {
-      
-      await onUpload(file);
+      const userInfo = getUserInfo();
+      await onUpload(file, userInfo);
       setFile(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload file');
@@ -150,6 +164,11 @@ export function FileUpload({
             <p className="text-xs text-muted-foreground">
               {(file.size / 1024 / 1024).toFixed(2)} MB
             </p>
+            {isAuthenticated && user && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Uploaded by: {user.name || user.username || 'Current User'}
+              </p>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -190,6 +209,11 @@ export function FileUpload({
           <p className="text-xs text-muted-foreground mt-2">
             Supported formats: {accept.join(', ')} (max {maxSize / 1024 / 1024}MB)
           </p>
+          {isAuthenticated && user && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Will be uploaded by: {user.name || user.username || 'Current User'}
+            </p>
+          )}
         </div>
       )}
       

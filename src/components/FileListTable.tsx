@@ -24,6 +24,9 @@ interface ImportMetadata {
   createdAt?: string;
   updatedAt?: string;
   processedAt: string;
+  processedBy?: string;
+  processedByName?: string;
+  processedByEmail?: string;
   error?: string;
   blobUrl?: string;
   [key: string]: unknown;
@@ -38,6 +41,7 @@ interface FileData {
   size: number;
   mimeType: string;
   uploadedAt: string;
+  uploadedBy?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   recordCount: number;
   processedCount: number;
@@ -100,7 +104,8 @@ export function FileListTable() {
       setFilteredFiles(files);
     } else {
       const filtered = files.filter(file => 
-        file.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+        file.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (file.uploadedBy && file.uploadedBy.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
       );
       setFilteredFiles(filtered);
     }
@@ -145,6 +150,7 @@ export function FileListTable() {
           size: item.fileSize || 0,
           mimeType: item.mimeType || 'application/octet-stream',
           uploadedAt: item.processedAt || item.createdAt || new Date().toISOString(),
+          uploadedBy: item.processedByName || item.processedBy || 'Unknown User',
           status: item.status || 'completed',
           recordCount: item.rowCount || item.totalRows || 0,
           processedCount: item.validRows || 0,
@@ -264,7 +270,7 @@ export function FileListTable() {
           </div>
           <input
             type="text"
-            placeholder="Search files..."
+            placeholder="Search files by name or uploader..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -337,13 +343,14 @@ export function FileListTable() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded By</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading && filteredFiles.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                <td colSpan={6} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                   <div className="flex items-center justify-center space-x-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Loading files...</span>
@@ -352,7 +359,7 @@ export function FileListTable() {
               </tr>
             ) : filteredFiles.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid="no-files-message">
+                <td colSpan={6} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid="no-files-message">
                   {debouncedSearchTerm ? 'No files match your search.' : 'No files uploaded yet.'}
                 </td>
               </tr>
@@ -393,6 +400,9 @@ export function FileListTable() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(file.uploadedAt)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {file.uploadedBy || 'Unknown User'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button

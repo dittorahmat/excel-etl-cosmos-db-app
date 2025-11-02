@@ -15,7 +15,9 @@ export const processQueueItem = async (item: QueueItem): Promise<void> => {
       item.filePath,
       item.fileName,
       item.fileType,
-      item.userId
+      item.userId,
+      item.userName,
+      item.userEmail
     );
     
     logger.info('Queue item processed successfully', {

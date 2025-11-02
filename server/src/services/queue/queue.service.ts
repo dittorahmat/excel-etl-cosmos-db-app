@@ -8,6 +8,8 @@ export interface QueueItem {
   fileName: string;
   fileType: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: Date;
   startedAt?: Date;

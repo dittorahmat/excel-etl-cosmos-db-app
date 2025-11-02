@@ -25,6 +25,8 @@ export interface ImportMetadata extends CosmosDocument {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   processedAt?: string;
   processedBy: string;
+  processedByName?: string;
+  processedByEmail?: string;
   totalRows: number;
   validRows: number;
   errorRows: number;
