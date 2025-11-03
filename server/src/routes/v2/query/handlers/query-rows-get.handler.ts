@@ -160,7 +160,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       const whereClause = [fieldConditions, filterConditions].filter(Boolean).join(' AND ');
       
       // Build the exact query with dynamic fields
-      let query = {
+      const query = {
         query: `
           SELECT ${fieldSelections}
           FROM c 

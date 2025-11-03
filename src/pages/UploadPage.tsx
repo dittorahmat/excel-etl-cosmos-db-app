@@ -10,10 +10,205 @@ import { FileListTable } from '../components/FileListTable';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 
 export function UploadPage() {
   console.log('Rendering UploadPage component');
   const { toast } = useToast();
+  
+  // Function to validate the required columns in an uploaded file
+  const validateFileHeaders = (file: File): Promise<{ isValid: boolean; missingHeaders?: string[]; error?: string }> => {
+    return new Promise((resolve, reject) => {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension === 'csv') {
+        // For CSV files, use text reader
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const csvText = e.target?.result as string;
+            const workbook = XLSX.read(csvText, { 
+              type: 'string',
+              cellDates: true,
+              dateNF: 'yyyy-mm-dd'
+            });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            if (!firstSheetName) {
+              toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: 'No worksheets found in the CSV file',
+                open: true,
+                onOpenChange: () => {}
+              });
+              resolve({ isValid: false, error: 'No worksheets found in the CSV file' });
+              return;
+            }
+            
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+              header: 1,
+              raw: true,
+              defval: '',
+              blankrows: false,
+            });
+            
+            if (jsonData.length === 0) {
+              toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: 'No data found in the CSV file',
+                open: true,
+                onOpenChange: () => {}
+              });
+              resolve({ isValid: false, error: 'No data found in the CSV file' });
+              return;
+            }
+            
+            // Extract headers (first row)
+            const headers = jsonData[0] as string[];
+            
+            // Required headers for FileSelector
+            const requiredHeaders = ['Source', 'Category', 'Sub Category', 'Year'];
+            
+            // Check if all required headers exist in the file
+            const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+            
+            if (missingHeaders.length > 0) {
+              toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: `Missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
+                open: true,
+                onOpenChange: () => {}
+              });
+              resolve({ isValid: false, missingHeaders, error: `Missing required columns: ${missingHeaders.join(', ')}` });
+            } else {
+              resolve({ isValid: true });
+            }
+          } catch (error) {
+            console.error('Error validating CSV file:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Validation Error',
+              description: 'Failed to validate the CSV file. Please ensure it is a valid CSV file.',
+              open: true,
+              onOpenChange: () => {}
+            });
+            resolve({ isValid: false, error: 'Failed to validate the CSV file. Please ensure it is a valid CSV file.' });
+          }
+        };
+        
+        reader.onerror = () => {
+          toast({
+            variant: 'destructive',
+            title: 'Validation Error',
+            description: 'Failed to read the CSV file. Please try another file.',
+            open: true,
+            onOpenChange: () => {}
+          });
+          reject(new Error('Failed to read the CSV file. Please try another file.'));
+        };
+        
+        reader.readAsText(file);
+      } else {
+        // For Excel files, use ArrayBuffer reader
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { 
+              type: 'array',
+              cellDates: true,
+              dateNF: 'yyyy-mm-dd'
+            });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            if (!firstSheetName) {
+              toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: 'No worksheets found in the Excel file',
+                open: true,
+                onOpenChange: () => {}
+              });
+              resolve({ isValid: false, error: 'No worksheets found in the Excel file' });
+              return;
+            }
+            
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+              header: 1,
+              raw: true,
+              defval: '',
+              blankrows: false,
+            });
+            
+            if (jsonData.length === 0) {
+              toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: 'No data found in the Excel file',
+                open: true,
+                onOpenChange: () => {}
+              });
+              resolve({ isValid: false, error: 'No data found in the Excel file' });
+              return;
+            }
+            
+            // Extract headers (first row)
+            const headers = jsonData[0] as string[];
+            
+            // Required headers for FileSelector
+            const requiredHeaders = ['Source', 'Category', 'Sub Category', 'Year'];
+            
+            // Check if all required headers exist in the file
+            const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+            
+            if (missingHeaders.length > 0) {
+              toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: `Missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
+                open: true,
+                onOpenChange: () => {}
+              });
+              resolve({ isValid: false, missingHeaders, error: `Missing required columns: ${missingHeaders.join(', ')}` });
+            } else {
+              resolve({ isValid: true });
+            }
+          } catch (error) {
+            console.error('Error validating Excel file:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Validation Error',
+              description: 'Failed to validate the Excel file. Please ensure it is a valid Excel file.',
+              open: true,
+              onOpenChange: () => {}
+            });
+            resolve({ isValid: false, error: 'Failed to validate the Excel file. Please ensure it is a valid Excel file.' });
+          }
+        };
+        
+        reader.onerror = () => {
+          toast({
+            variant: 'destructive',
+            title: 'Validation Error',
+            description: 'Failed to read the Excel file. Please try another file.',
+            open: true,
+            onOpenChange: () => {}
+          });
+          reject(new Error('Failed to read the Excel file. Please try another file.'));
+        };
+        
+        // Read file as ArrayBuffer for binary parsing
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  };
   const { isAuthenticated, login } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -65,6 +260,14 @@ export function UploadPage() {
   };
 
   const handleFileUpload = async (file: File, userInfo?: { name: string; email: string; id: string }): Promise<{ data?: { rowCount?: number }, count?: number }> => {
+    // First, validate the file to ensure it has the required columns
+    const validationResult = await validateFileHeaders(file);
+    if (!validationResult.isValid) {
+      // Validation already shows specific error message in toast, throw error with specific details
+      const errorMessage = validationResult.error || 'File validation failed';
+      throw new Error(errorMessage);
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -180,13 +383,20 @@ export function UploadPage() {
         errorMessage = String(error.message);
       }
 
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: errorMessage,
-        open: true,
-        onOpenChange: () => {}
-      });
+      // Show upload error if it's not a validation error (validation errors show their own toast)
+      if (!errorMessage.includes('Missing required columns') && 
+          !errorMessage.includes('No worksheets found') && 
+          !errorMessage.includes('No data found') && 
+          !errorMessage.includes('Failed to validate') && 
+          !errorMessage.includes('Failed to read')) {
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: errorMessage,
+          open: true,
+          onOpenChange: () => {}
+        });
+      }
 
       setIsUploading(false);
       setUploadProgress(0);

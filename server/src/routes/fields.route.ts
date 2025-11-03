@@ -160,7 +160,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             
             // Query for records to extract property names
             // Use continuation to get more records if needed, but be mindful of performance
-            let allPropertyNames = new Set<string>();
+            const allPropertyNames = new Set<string>();
             const systemFields = ['id', 'fileName', '_rid', '_self', '_etag', '_attachments', '_ts', 'documentType', '_partitionKey', '_importId'];
             
             // Use iterator to get all records (with pagination if needed) up to a reasonable limit

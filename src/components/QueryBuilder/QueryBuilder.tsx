@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Button } from "../ui/button";
 import { Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FieldDefinition, FieldOption, FilterCondition, QueryBuilderProps, SpecialFilters } from "./types";
+import { FieldOption, FilterCondition, QueryBuilderProps, SpecialFilters } from "./types";
 import { FileSelector } from "./FileSelector";
 import { FilterControls } from "./FilterControls";
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "./constants";

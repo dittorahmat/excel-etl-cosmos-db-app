@@ -140,7 +140,7 @@ const uploadOptions = {
   },
 };
 
-// @ts-ignore due to type incompatibility with older versions of @types/multer for the fileFilter callback
+// @ts-expect-error due to type incompatibility with older versions of @types/multer for the fileFilter callback
 const upload = multer(uploadOptions);
 
 

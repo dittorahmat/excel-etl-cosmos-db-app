@@ -173,7 +173,7 @@ export class EnhancedCosmosDBService {
         logger.info(`Successfully accessed existing container: ${containerName}`);
         return container;
       } catch (readError) {
-        logger.info(`Container ${containerName} does not exist, attempting to create with partitionKey: ${partitionKey}`);
+        logger.info(`Container ${containerName} does not exist (${readError instanceof Error ? readError.message : 'error occurred'}), attempting to create with partitionKey: ${partitionKey}`);
         // Container doesn't exist, so create it
         const containerDefinition: ContainerDefinition = {
           id: containerName,
