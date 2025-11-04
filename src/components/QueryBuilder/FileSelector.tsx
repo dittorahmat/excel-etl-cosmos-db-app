@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "../ui/button";
-import { ChevronsUpDown, X as XIcon, Search } from "lucide-react";
+import { Check, ChevronsUpDown, X as XIcon, Search } from "lucide-react";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -8,6 +8,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
+  CommandItem,
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Badge } from "../ui/badge";
@@ -85,9 +86,9 @@ export const FileSelector = ({
       source: selectedSpecialFields.Source,
       category: selectedSpecialFields.Category,
       subCategory: selectedSpecialFields['Sub Category'],
-      searchTerm: fileSearchTerm
+      searchTerm: '' // Don't pass search term to backend - handle search on frontend
     });
-  }, [selectedSpecialFields.Source, selectedSpecialFields.Category, selectedSpecialFields['Sub Category'], fileSearchTerm, fetchFilesWithDebounce]);
+  }, [selectedSpecialFields.Source, selectedSpecialFields.Category, selectedSpecialFields['Sub Category'], fetchFilesWithDebounce]);
 
   // Fetch filtered values when FileId changes (for Year)
   useEffect(() => {
@@ -210,6 +211,19 @@ export const FileSelector = ({
     }));
   }, [files]);
 
+  // Filter file options based on search term (frontend search)
+  const filteredFileOptions = useMemo(() => {
+    if (!fileSearchTerm) {
+      return fileOptions;
+    }
+    
+    const term = fileSearchTerm.toLowerCase();
+    return fileOptions.filter(option =>
+      option.label.toLowerCase().includes(term) ||
+      option.fileName.toLowerCase().includes(term)
+    );
+  }, [fileOptions, fileSearchTerm]);
+
   return (
     <div className="space-y-4 bg-background p-3 rounded-lg border border-border">
       {/* Special Filters Section */}
@@ -309,35 +323,39 @@ export const FileSelector = ({
                         </div>
                       </div>
                       <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                        {loading ? "Loading files..." : "No files found."}
+                        {loading ? "Loading files..." : filteredFileOptions.length === 0 ? "No files found." : "No matching files found."}
                       </CommandEmpty>
                       <CommandGroup className="overflow-y-auto max-h-[300px]">
-                        {fileOptions.map((file) => {
+                        {filteredFileOptions.map((file) => {
                           const isSelected = selectedSpecialFields.FileId === file.value;
                           return (
-                            <div
+                            <CommandItem
                               key={file.value}
-                              onClick={() => {
+                              value={file.value}
+                              onSelect={() => {
                                 console.log(`[FileSelector] File clicked: ${file.value}`);
                                 handleSpecialFieldChange('FileId', file.value);
                                 setIsOpen(false);
                               }}
-                              className="cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground"
+                              className={cn(
+                                "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                                "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                                "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                                "transition-colors duration-200"
+                              )}
                             >
-                              <div className="flex items-center">
-                                <div
-                                  className={cn(
-                                    "flex h-4 w-4 items-center justify-center rounded-full border mr-2",
-                                    isSelected
-                                      ? "bg-primary border-primary"
-                                      : "border-muted-foreground/30 dark:border-muted-foreground/50"
-                                  )}
-                                >
-                                  {isSelected && <div className="h-2 w-2 bg-primary-foreground rounded-full" />}
-                                </div>
-                                <span className="font-medium text-foreground">{file.label}</span>
+                              <div
+                                className={cn(
+                                  "flex h-4 w-4 items-center justify-center rounded-sm border",
+                                  isSelected
+                                    ? "bg-primary border-primary text-primary-foreground"
+                                    : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                                )}
+                              >
+                                {isSelected && <Check className="h-3 w-3" />}
                               </div>
-                            </div>
+                              <span className="font-medium text-foreground">{file.label}</span>
+                            </CommandItem>
                           );
                         })}
                       </CommandGroup>

@@ -45,7 +45,7 @@ const uploadOptions = {
     req: Request,
     file: Express.Multer.File,
     callback: (error: Error | null, acceptFile: boolean) => void
-  ) => {
+  ): void => {
     // Log the incoming file details for debugging
     console.log('=== File Upload Debug ===');
     console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
@@ -140,8 +140,7 @@ const uploadOptions = {
   },
 };
 
-// @ts-expect-error due to type incompatibility with older versions of @types/multer for the fileFilter callback
-const upload = multer(uploadOptions);
+const upload = multer(uploadOptions as import('multer').Options);
 
 
 
