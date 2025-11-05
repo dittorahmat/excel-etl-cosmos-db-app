@@ -1,6 +1,6 @@
 type FileUploadProps = {
-    /** Callback function when a file is uploaded */
-    onUpload: (file: File) => Promise<{
+    /** Callback function when files are uploaded */
+    onUpload: (files: File[]) => Promise<{
         data?: {
             rowCount?: number;
         };

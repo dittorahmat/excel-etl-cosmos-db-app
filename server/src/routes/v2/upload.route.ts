@@ -136,7 +136,7 @@ const uploadOptions = {
   },
   limits: {
     fileSize: MAX_FILE_SIZE_MB * 1024 * 1024, // Convert MB to bytes
-    files: 1, // Limit to single file upload
+    files: 10, // Allow up to 10 files in a single request
   },
 };
 
@@ -152,7 +152,7 @@ const createErrorResponse = (status: number, error: string, message: string) => 
 });
 
 /**
- * Upload and process a file
+ * Upload and process multiple files
  */
 async function uploadHandler(req: Request, res: Response) {
   const startTime = Date.now();
@@ -181,172 +181,239 @@ async function uploadHandler(req: Request, res: Response) {
   const effectiveUserName = uploadedByUserInfo?.name || 'Anonymous User';
   const effectiveUserEmail = uploadedByUserInfo?.email || 'anonymous@example.com';
   
+  // Cast req.files to be an array of Express.Multer.File
+  const files = req.files as Express.Multer.File[] || [];
+  
   logger.info('Upload handler started', { 
     requestId, 
     userId: effectiveUserId,
     userName: effectiveUserName,
     userEmail: effectiveUserEmail,
     hasUploadedByInfo: !!uploadedByUserInfo,
-    hasFile: !!req.file,
-    fileInfo: req.file ? {
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      encoding: req.file.encoding,
-      fieldname: req.file.fieldname
-    } : undefined
+    fileCount: files.length,
+    files: files.map(f => ({
+      originalname: f.originalname,
+      mimetype: f.mimetype,
+      size: f.size,
+      encoding: f.encoding,
+      fieldname: f.fieldname
+    }))
   });
   
-  // Check if file exists
-  if (!req.file) {
-    logger.error('No file uploaded', { 
+  // Check if any files exist
+  if (!files || files.length === 0) {
+    logger.error('No files uploaded', { 
       requestId, 
       userId,
       headers: req.headers,
       body: req.body
     });
     return res.status(400).json(
-      createErrorResponse(400, 'No file uploaded', 'Please upload a file')
-    );
-  }
-
-  const { path: filePath, originalname: fileName, mimetype: originalMimeType } = req.file;
-  const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
-  
-  // Enhanced MIME type detection
-  let detectedMimeType = originalMimeType;
-  
-  // If MIME type is generic, try to detect based on file extension
-  if (['application/octet-stream', 'application/vnd.ms-office', 'application/zip'].includes(originalMimeType) && fileExt) {
-    const extensionToMime: Record<string, string> = {
-      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'xls': 'application/vnd.ms-excel',
-      'xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
-      'csv': 'text/csv',
-      'txt': 'text/plain'
-    };
-    
-    if (fileExt && fileExt in extensionToMime) {
-      detectedMimeType = extensionToMime[fileExt] as string;
-      logger.debug('Detected MIME type from extension', { 
-        requestId, 
-        originalMimeType, 
-        detectedMimeType, 
-        fileExt 
-      });
-    }
-  }
-
-  const fileType = detectedMimeType;
-
-  // Log the upload attempt with detailed file information
-  logger.info('File upload started', {
-    requestId,
-    fileName,
-    originalMimeType,
-    detectedMimeType,
-    fileExt,
-    userId,
-  });
-
-  // Validate the file type
-  const allowedMimeTypes = [
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-    'application/vnd.ms-excel', // .xls
-    'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
-    'text/csv',
-    'application/csv',
-    'text/x-csv'
-  ];
-
-  if (!allowedMimeTypes.includes(detectedMimeType)) {
-    const errorMsg = `Unsupported file type: ${detectedMimeType}. Allowed types: ${allowedMimeTypes.join(', ')}`;
-    logger.error(errorMsg, { requestId, fileName, detectedMimeType, fileExt });
-    // Clean up the uploaded file
-    await fs.unlink(filePath).catch(err => logger.error('Failed to delete temp file', { filePath, error: err }));
-    return res.status(400).json(
-      createErrorResponse(400, 'Unsupported file type', errorMsg)
+      createErrorResponse(400, 'No files uploaded', 'Please upload at least one file')
     );
   }
 
   try {
-    // Process the file using the ingestion service
-    logger.info('Starting file import with ingestion service', {
-      requestId,
-      filePath,
-      fileName,
-      fileType,
-      fileSize: req.file.size,
-      userId
-    });
-    
-    const importMetadata = await ingestionService.startImport(
-      filePath,
-      fileName,
-      fileType,
-      effectiveUserId, // Use the effective user ID
-      effectiveUserName, // Pass the user name
-      effectiveUserEmail // Pass the user email
-    ).catch(error => {
-      logger.error('Error in ingestionService.startImport', {
+    // Process each file individually
+    const results: Array<{
+      success: boolean;
+      importId: string;
+      fileName: string;
+      totalRows: number;
+      validRows: number;
+      errorRows: number;
+      errors?: Array<{ row: number; error: string; rawData?: unknown }>;
+    }> = [];
+    const errors: Array<{ fileName: string; error: string }> = [];
+
+    for (const file of files) {
+      const { path: filePath, originalname: fileName, mimetype: originalMimeType } = file;
+      const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+      
+      // Enhanced MIME type detection
+      let detectedMimeType = originalMimeType;
+      
+      // If MIME type is generic, try to detect based on file extension
+      if (['application/octet-stream', 'application/vnd.ms-office', 'application/zip'].includes(originalMimeType) && fileExt) {
+        const extensionToMime: Record<string, string> = {
+          'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'xls': 'application/vnd.ms-excel',
+          'xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
+          'csv': 'text/csv',
+          'txt': 'text/plain'
+        };
+        
+        if (fileExt && fileExt in extensionToMime) {
+          detectedMimeType = extensionToMime[fileExt] as string;
+          logger.debug('Detected MIME type from extension', { 
+            requestId, 
+            originalMimeType, 
+            detectedMimeType, 
+            fileExt 
+          });
+        }
+      }
+
+      // Validate the file type
+      const allowedMimeTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
+        'text/csv',
+        'application/csv',
+        'text/x-csv'
+      ];
+
+      if (!allowedMimeTypes.includes(detectedMimeType)) {
+        const errorMsg = `Unsupported file type: ${detectedMimeType}. Allowed types: ${allowedMimeTypes.join(', ')}`;
+        logger.error(errorMsg, { requestId, fileName, detectedMimeType, fileExt });
+        // Clean up the uploaded file
+        await fs.unlink(filePath).catch(err => logger.error('Failed to delete temp file', { filePath, error: err }));
+        
+        errors.push({
+          fileName,
+          error: errorMsg
+        });
+        
+        continue; // Skip processing this file
+      }
+
+      try {
+        // Process the file using the ingestion service
+        logger.info('Starting file import with ingestion service', {
+          requestId,
+          fileName,
+          filePath,
+          fileType: detectedMimeType,
+          fileSize: file.size,
+          userId
+        });
+        
+        const importMetadata = await ingestionService.startImport(
+          filePath,
+          fileName,
+          detectedMimeType,
+          effectiveUserId, // Use the effective user ID
+          effectiveUserName, // Pass the user name
+          effectiveUserEmail // Pass the user email
+        );
+
+        logger.info('File import completed successfully', {
+          requestId,
+          fileName,
+          importId: importMetadata.id,
+          duration: Date.now() - startTime,
+          rowsProcessed: importMetadata.totalRows
+        });
+
+        results.push({
+          success: true,
+          importId: importMetadata.id,
+          fileName,
+          totalRows: importMetadata.totalRows,
+          validRows: importMetadata.validRows,
+          errorRows: importMetadata.errorRows,
+          errors: importMetadata.errors,
+        });
+      } catch (fileError) {
+        const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error';
+        const errorStack = fileError instanceof Error ? fileError.stack : undefined;
+        
+        logger.error('File import failed', {
+          requestId,
+          fileName,
+          error: errorMessage,
+          stack: errorStack,
+          duration: Date.now() - startTime,
+          fileExists: await fs.access(filePath).then(() => true).catch(() => false),
+          fileSize: file.size,
+          fileType: file.mimetype,
+          originalFileName: file.originalname,
+          errorDetails: fileError instanceof Error ? 
+            Object.getOwnPropertyNames(fileError).reduce<Record<string, unknown>>((acc, key) => {
+              const errorRecord = fileError as unknown as Record<string, unknown>;
+              return {
+                ...acc,
+                [key]: errorRecord[key]
+              };
+            }, {}) : 'No error details'
+        });
+        
+        errors.push({
+          fileName,
+          error: `Failed to process file: ${errorMessage}`
+        });
+        
+        // Clean up the failed file
+        await fs.unlink(filePath).catch(err => logger.error('Failed to delete temp file after error', { filePath, error: err }));
+      }
+    }
+
+    // Prepare response based on results
+    const totalFiles = files.length;
+    const successfulUploads = results.length;
+    const failedUploads = errors.length;
+
+    if (successfulUploads > 0) {
+      // At least one file was processed successfully
+      logger.info('Batch upload completed with partial success', {
         requestId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        totalFiles,
+        successfulUploads,
+        failedUploads,
+        duration: Date.now() - startTime
       });
-      throw error; // Re-throw to be caught by the outer try-catch
-    });
-    
-    logger.info('File import completed successfully', {
-      requestId,
-      importId: importMetadata.id,
-      fileName,
-      duration: Date.now() - startTime,
-      rowsProcessed: importMetadata.totalRows
-    });
 
-    // Log successful import
-    logger.info('File import completed', {
-      requestId,
-      importId: importMetadata.id,
-      fileName,
-      duration: Date.now() - startTime,
-      rowsProcessed: importMetadata.totalRows,
-      validRows: importMetadata.validRows,
-      errorRows: importMetadata.errorRows,
-    });
+      return res.status(200).json({
+        success: true,
+        message: `Processed ${successfulUploads} of ${totalFiles} files successfully`,
+        totalFiles,
+        successfulUploads,
+        failedUploads,
+        results,
+        errors: failedUploads > 0 ? errors : undefined
+      });
+    } else if (failedUploads > 0) {
+      // All files failed to process
+      logger.error('Batch upload failed', {
+        requestId,
+        totalFiles,
+        failedUploads,
+        duration: Date.now() - startTime
+      });
 
-    // Return success response
-    return res.status(200).json({
-      success: true,
-      message: 'File processed successfully',
-      importId: importMetadata.id,
-      fileName,
-      totalRows: importMetadata.totalRows,
-      validRows: importMetadata.validRows,
-      errorRows: importMetadata.errorRows,
-      errors: importMetadata.errors,
-    });
+      return res.status(400).json({
+        success: false,
+        message: 'All files failed to process',
+        totalFiles,
+        successfulUploads,
+        failedUploads,
+        errors
+      });
+    } else {
+      // No files were processed (edge case)
+      return res.status(500).json(
+        createErrorResponse(
+          500,
+          'Upload processing error',
+          'No files were processed due to an unexpected error'
+        )
+      );
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
     
-    // Log detailed error information
-    logger.error('File import failed', {
+    logger.error('Batch upload handler failed', {
       requestId,
-      fileName,
       error: errorMessage,
       stack: errorStack,
       duration: Date.now() - startTime,
-      fileExists: await fs.access(filePath).then(() => true).catch(() => false),
-      fileSize: req.file?.size,
-      fileType: req.file?.mimetype,
-      originalFileName: req.file?.originalname,
+      totalFiles: files.length,
       headers: req.headers,
       body: req.body ? JSON.stringify(req.body).substring(0, 500) + '...' : 'No body',
       errorDetails: error instanceof Error ? 
         Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
-          // Use type assertion to access the property in a type-safe way
-          // First cast to unknown, then to the target type to ensure type safety
           const errorRecord = error as unknown as Record<string, unknown>;
           return {
             ...acc,
@@ -355,12 +422,16 @@ async function uploadHandler(req: Request, res: Response) {
         }, {}) : 'No error details'
     });
 
-    // Return error response
+    // Clean up all uploaded files in case of error
+    for (const file of files) {
+      await fs.unlink(file.path).catch(err => logger.error('Failed to delete temp file after error', { filePath: file.path, error: err }));
+    }
+
     return res.status(500).json(
       createErrorResponse(
         500,
-        'File processing failed',
-        `Failed to process file: ${errorMessage}`
+        'Upload processing failed',
+        `Failed to process upload: ${errorMessage}`
       )
     );
   }
@@ -375,7 +446,7 @@ if (authRequired) {
     '/',
     authMiddleware.authenticateToken,
     accessControlMiddleware,
-    upload.single('file'),
+    upload.array('files', 10), // Accept up to 10 files
     uploadHandler
   );
 } else {
@@ -383,7 +454,7 @@ if (authRequired) {
   router.post(
     '/',
     accessControlMiddleware,
-    upload.single('file'),
+    upload.array('files', 10), // Accept up to 10 files
     uploadHandler
   );
 }
@@ -409,7 +480,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     }
     if ((multerError as any).code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json(
-        createErrorResponse(400, 'Too many files', 'Only one file can be uploaded at a time')
+        createErrorResponse(400, 'Too many files', 'Maximum of 10 files can be uploaded at a time')
       );
     }
   }

@@ -39,11 +39,11 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: 'No worksheets found in the CSV file',
+                description: `No worksheets found in the CSV file: ${file.name}`,
                 open: true,
                 onOpenChange: () => {}
               });
-              resolve({ isValid: false, error: 'No worksheets found in the CSV file' });
+              resolve({ isValid: false, error: `No worksheets found in the CSV file: ${file.name}` });
               return;
             }
             
@@ -59,11 +59,11 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: 'No data found in the CSV file',
+                description: `No data found in the CSV file: ${file.name}`,
                 open: true,
                 onOpenChange: () => {}
               });
-              resolve({ isValid: false, error: 'No data found in the CSV file' });
+              resolve({ isValid: false, error: `No data found in the CSV file: ${file.name}` });
               return;
             }
             
@@ -80,11 +80,11 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: `Missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
+                description: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
                 open: true,
                 onOpenChange: () => {}
               });
-              resolve({ isValid: false, missingHeaders, error: `Missing required columns: ${missingHeaders.join(', ')}` });
+              resolve({ isValid: false, missingHeaders, error: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}` });
             } else {
               resolve({ isValid: true });
             }
@@ -93,11 +93,11 @@ export function UploadPage() {
             toast({
               variant: 'destructive',
               title: 'Validation Error',
-              description: 'Failed to validate the CSV file. Please ensure it is a valid CSV file.',
+              description: `Failed to validate the CSV file: ${file.name}. Please ensure it is a valid CSV file.`,
               open: true,
               onOpenChange: () => {}
             });
-            resolve({ isValid: false, error: 'Failed to validate the CSV file. Please ensure it is a valid CSV file.' });
+            resolve({ isValid: false, error: `Failed to validate the CSV file: ${file.name}. Please ensure it is a valid CSV file.` });
           }
         };
         
@@ -105,11 +105,11 @@ export function UploadPage() {
           toast({
             variant: 'destructive',
             title: 'Validation Error',
-            description: 'Failed to read the CSV file. Please try another file.',
+            description: `Failed to read the CSV file: ${file.name}. Please try another file.`,
             open: true,
             onOpenChange: () => {}
           });
-          reject(new Error('Failed to read the CSV file. Please try another file.'));
+          reject(new Error(`Failed to read the CSV file: ${file.name}. Please try another file.`));
         };
         
         reader.readAsText(file);
@@ -131,11 +131,11 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: 'No worksheets found in the Excel file',
+                description: `No worksheets found in the Excel file: ${file.name}`,
                 open: true,
                 onOpenChange: () => {}
               });
-              resolve({ isValid: false, error: 'No worksheets found in the Excel file' });
+              resolve({ isValid: false, error: `No worksheets found in the Excel file: ${file.name}` });
               return;
             }
             
@@ -151,11 +151,11 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: 'No data found in the Excel file',
+                description: `No data found in the Excel file: ${file.name}`,
                 open: true,
                 onOpenChange: () => {}
               });
-              resolve({ isValid: false, error: 'No data found in the Excel file' });
+              resolve({ isValid: false, error: `No data found in the Excel file: ${file.name}` });
               return;
             }
             
@@ -172,11 +172,11 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: `Missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
+                description: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
                 open: true,
                 onOpenChange: () => {}
               });
-              resolve({ isValid: false, missingHeaders, error: `Missing required columns: ${missingHeaders.join(', ')}` });
+              resolve({ isValid: false, missingHeaders, error: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}` });
             } else {
               resolve({ isValid: true });
             }
@@ -185,11 +185,11 @@ export function UploadPage() {
             toast({
               variant: 'destructive',
               title: 'Validation Error',
-              description: 'Failed to validate the Excel file. Please ensure it is a valid Excel file.',
+              description: `Failed to validate the Excel file: ${file.name}. Please ensure it is a valid Excel file.`,
               open: true,
               onOpenChange: () => {}
             });
-            resolve({ isValid: false, error: 'Failed to validate the Excel file. Please ensure it is a valid Excel file.' });
+            resolve({ isValid: false, error: `Failed to validate the Excel file: ${file.name}. Please ensure it is a valid Excel file.` });
           }
         };
         
@@ -197,11 +197,11 @@ export function UploadPage() {
           toast({
             variant: 'destructive',
             title: 'Validation Error',
-            description: 'Failed to read the Excel file. Please try another file.',
+            description: `Failed to read the Excel file: ${file.name}. Please try another file.`,
             open: true,
             onOpenChange: () => {}
           });
-          reject(new Error('Failed to read the Excel file. Please try another file.'));
+          reject(new Error(`Failed to read the Excel file: ${file.name}. Please try another file.`));
         };
         
         // Read file as ArrayBuffer for binary parsing
@@ -259,13 +259,15 @@ export function UploadPage() {
     }
   };
 
-  const handleFileUpload = async (file: File, userInfo?: { name: string; email: string; id: string }): Promise<{ data?: { rowCount?: number }, count?: number }> => {
-    // First, validate the file to ensure it has the required columns
-    const validationResult = await validateFileHeaders(file);
-    if (!validationResult.isValid) {
-      // Validation already shows specific error message in toast, throw error with specific details
-      const errorMessage = validationResult.error || 'File validation failed';
-      throw new Error(errorMessage);
+  const handleFileUpload = async (files: File[], userInfo?: { name: string; email: string; id: string }): Promise<{ data?: { rowCount?: number }, count?: number }> => {
+    // Validate all files before uploading
+    for (const file of files) {
+      const validationResult = await validateFileHeaders(file);
+      if (!validationResult.isValid) {
+        // Validation already shows specific error message in toast, throw error with specific details
+        const errorMessage = validationResult.error || 'File validation failed';
+        throw new Error(errorMessage);
+      }
     }
 
     setIsUploading(true);
@@ -273,7 +275,10 @@ export function UploadPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      // Append all files to the formData with the 'files' field name to match the backend
+      files.forEach(file => {
+        formData.append('files', file);
+      });
       
       // Add user information if available
       if (userInfo) {
@@ -297,22 +302,46 @@ export function UploadPage() {
         message?: string;
         importId?: string;
         fileName?: string;
+        totalFiles?: number;
+        successfulUploads?: number;
+        failedUploads?: number;
         totalRows?: number;
         rowCount?: number;
         validRows?: number;
         errorRows?: number;
-        errors?: Array<{ row: number; error: string }>;
+        results?: Array<{
+          success: boolean;
+          importId?: string;
+          fileName: string;
+          totalRows?: number;
+          validRows?: number;
+          errorRows?: number;
+          errors?: Array<{ row: number; error: string }>;
+        }>;
+        errors?: Array<{ fileName: string; error: string }>;
         // Axios wraps the response in a data property
         data?: {
           success: boolean;
           message: string;
           importId?: string;
           fileName?: string;
+          totalFiles?: number;
+          successfulUploads?: number;
+          failedUploads?: number;
           totalRows?: number;
           rowCount?: number;
           validRows?: number;
           errorRows?: number;
-          errors?: Array<{ row: number; error: string }>;
+          results?: Array<{
+            success: boolean;
+            importId?: string;
+            fileName: string;
+            totalRows?: number;
+            validRows?: number;
+            errorRows?: number;
+            errors?: Array<{ row: number; error: string }>;
+          }>;
+          errors?: Array<{ fileName: string; error: string }>;
         };
       }
 
@@ -344,24 +373,57 @@ export function UploadPage() {
         throw new Error(responseData.message || 'Upload failed');
       }
 
-      // If we got here, consider it a success
-      const rowCount = responseData.totalRows || responseData.rowCount || 0;
-      const message = responseData.message || `Successfully uploaded ${file.name}`;
+      // Calculate total rows processed
+      let totalRowCount = 0;
+      if (responseData.totalRows) {
+        totalRowCount = responseData.totalRows;
+      } else if (responseData.results) {
+        totalRowCount = responseData.results.reduce((sum, result) => sum + (result.totalRows || 0), 0);
+      }
 
-      toast({
-        title: 'Upload Successful',
-        description: `${message}${rowCount ? ` Processed ${rowCount} rows.` : ''}`,
-        action: (
-          <ToastAction altText="View" onClick={() => {
-            // Navigate to the dashboard to see the uploaded file
-            window.location.href = '/';
-          }}>
-            View Files
-          </ToastAction>
-        ),
-        open: true,
-        onOpenChange: () => {}
-      });
+      // Show appropriate toast based on the response
+      if (responseData.successfulUploads && responseData.failedUploads && responseData.failedUploads > 0) {
+        // Partial success - some files were uploaded, some failed
+        toast({
+          title: 'Upload Partially Successful',
+          description: `Successfully processed ${responseData.successfulUploads} of ${responseData.totalFiles} files. ${responseData.failedUploads} failed.`,
+          action: (
+            <ToastAction altText="View" onClick={() => {
+              // Navigate to the dashboard to see the uploaded files
+              window.location.href = '/';
+            }}>
+              View Files
+            </ToastAction>
+          ),
+          open: true,
+          onOpenChange: () => {}
+        });
+      } else if (responseData.successfulUploads && responseData.successfulUploads > 0) {
+        // All files were uploaded successfully
+        toast({
+          title: 'Upload Successful',
+          description: `${responseData.message || `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`}${totalRowCount ? ` Processed ${totalRowCount} rows total.` : ''}`,
+          action: (
+            <ToastAction altText="View" onClick={() => {
+              // Navigate to the dashboard to see the uploaded files
+              window.location.href = '/';
+            }}>
+              View Files
+            </ToastAction>
+          ),
+          open: true,
+          onOpenChange: () => {}
+        });
+      } else {
+        // No files were uploaded successfully
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: 'No files were processed successfully',
+          open: true,
+          onOpenChange: () => {}
+        });
+      }
 
       // Reset form
       setUploadProgress(100);
@@ -370,11 +432,11 @@ export function UploadPage() {
         setUploadProgress(0);
       }, 1000);
 
-      return { data: { rowCount }, count: rowCount };
+      return { data: { rowCount: totalRowCount }, count: totalRowCount };
     } catch (error) {
       console.error('Upload error:', error);
 
-      let errorMessage = 'Failed to upload file. Please try again.';
+      let errorMessage = 'Failed to upload files. Please try again.';
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'string') {

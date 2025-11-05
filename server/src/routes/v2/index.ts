@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { uploadRouterV2 } from './upload.route.queue.js';
+import { uploadRouterV2 } from './upload.route.js';
 import { createQueryRouter } from './query/index.js';
 import { AzureBlobStorage, AzureCosmosDB, Database, CosmosClient } from '../../types/azure.js';
 import { importRouterV2 } from './import.route.js';

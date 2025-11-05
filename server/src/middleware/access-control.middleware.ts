@@ -1,32 +1,69 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import { DatabaseAccessControlService } from '../services/access-control/database-access-control.service.js';
 
-// Define the structure for user information
-interface User {
+// Define the user type
+interface AuthenticatedUser {
   email?: string;
+  emails?: string[];  // Some providers use array of emails
+  upn?: string;       // Azure AD often uses upn (User Principal Name)
+  preferred_username?: string;  // Common in OAuth providers
+  name?: string;
+  oid?: string;
   [key: string]: unknown;
+}
+
+// Extend the Express Request type to include the user property
+interface AuthRequest extends Request {
+  user?: AuthenticatedUser;
+}
+
+/**
+ * Helper function to extract email from user object
+ * Azure AD tokens may have email in different fields
+ */
+function extractEmailFromUser(user: AuthenticatedUser | undefined): string | null {
+  if (!user) {
+    return null;
+  }
+
+  // Try different possible email fields
+  return user.email || 
+         (user.emails && user.emails.length > 0 ? user.emails[0] : null) ||
+         user.upn || 
+         user.preferred_username || 
+         null;
 }
 
 /**
  * Access control middleware to check if the user is authorized to access a resource
  */
-export async function accessControlMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function accessControlMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    // Get the user from the token (assuming authentication already happened)
-    const user = await getUserFromToken(req.headers.authorization);
+    // Get the user from req.user that was set by the authentication middleware
+    const user = req.user;
     
-    if (!user) {
+    // Extract email from user object, checking different possible fields
+    const userEmail = extractEmailFromUser(user);
+    
+    if (!user || !userEmail) {
+      console.log('Access control: No user or user email found on request object', {
+        hasUser: !!user,
+        userEmail: userEmail,
+        userHasEmail: !!user?.email,
+        userHasUpn: !!user?.upn,
+        userHasPreferredUsername: !!user?.preferred_username,
+        userHasEmails: !!(user?.emails && user.emails.length > 0)
+      });
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     // Check if the user is authorized using the DatabaseAccessControlService
-    const isAuthorized = await DatabaseAccessControlService.isUserAuthorized(user.email);
+    const isAuthorized = await DatabaseAccessControlService.isUserAuthorized(userEmail);
     
     if (!isAuthorized) {
       // Log the access attempt for security monitoring
       console.log('Access control check failed', {
-        userEmail: user.email,
+        userEmail: userEmail,
         resource: req.path,
         authorized: isAuthorized,
         timestamp: new Date().toISOString()
@@ -41,32 +78,5 @@ export async function accessControlMiddleware(req: Request, res: Response, next:
   } catch (error) {
     console.error('Error in access control middleware:', error);
     return res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-/**
- * Extract user information from authentication token
- */
-async function getUserFromToken(authorizationHeader?: string): Promise<User | null> {
-  if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authorizationHeader.substring(7);
-
-  try {
-    // If using Azure AD or similar, we would validate the token against the issuer
-    // For now, we'll implement a basic JWT validation
-    
-    // If using custom auth, we may need to validate the token differently
-    // This is a simplified example - real implementation would use proper validation
-    const decoded = jwt.decode(token);
-    if (decoded && typeof decoded === 'object') {
-      return decoded as User;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    return null;
   }
 }
