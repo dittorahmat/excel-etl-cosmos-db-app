@@ -78,8 +78,13 @@ export function FileListTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null); // For single file deletion
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false); // For bulk deletion
   const [showConfirmDelete, setShowConfirmDelete] = useState<FileData | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [isSelectingMultiple, setIsSelectingMultiple] = useState(false);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
@@ -240,10 +245,83 @@ export function FileListTable() {
   };
 
   /**
+   * Toggle multi-select mode
+   */
+  const toggleMultiSelect = () => {
+    setIsSelectingMultiple(!isSelectingMultiple);
+    setSelectedFiles([]);
+    setSelectAllChecked(false);
+  };
+
+  /**
+   * Handle selection of a single file
+   */
+  const handleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => {
+      if (prev.includes(fileId)) {
+        return prev.filter(id => id !== fileId);
+      } else {
+        return [...prev, fileId];
+      }
+    });
+    setSelectAllChecked(false);
+  };
+
+  /**
+   * Handle selection of all files
+   */
+  const handleSelectAll = () => {
+    if (selectAllChecked) {
+      setSelectedFiles([]);
+    } else {
+      // Select all currently filtered files
+      setSelectedFiles(filteredFiles.map(file => file.id));
+    }
+    setSelectAllChecked(!selectAllChecked);
+  };
+
+  /**
    * Cancel delete operation - close confirmation dialog
    */
   const cancelDelete = () => {
     setShowConfirmDelete(null);
+  };
+
+  /**
+   * Cancel bulk delete operation
+   */
+  const cancelBulkDelete = () => {
+    setShowBulkDeleteConfirm(false);
+  };
+
+  /**
+   * Confirm and execute bulk file deletion
+   */
+  const confirmBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      // Delete all selected files
+      const deletePromises = selectedFiles.map(fileId => 
+        api.delete(`/api/query/imports/${fileId}`)
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Close the confirmation dialog and refresh the file list
+      setShowBulkDeleteConfirm(false);
+      setSelectedFiles([]);
+      setSelectAllChecked(false);
+      await fetchFiles();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete some files. Please try again.');
+      setShowBulkDeleteConfirm(false);
+      await fetchFiles();
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   // ========================================================================
@@ -262,8 +340,31 @@ export function FileListTable() {
 
   return (
     <div className="w-full">
-      {/* Search Bar */}
-      <div className="mb-4">
+      {/* Header with multi-select controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+        <div className="flex items-center space-x-4">
+          {!isSelectingMultiple ? (
+            <button
+              onClick={toggleMultiSelect}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Select Multiple
+            </button>
+          ) : (
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={toggleMultiSelect}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <span className="text-sm text-gray-700">
+                {selectedFiles.length} of {filteredFiles.length} selected
+              </span>
+            </div>
+          )}
+        </div>
+        
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-gray-400" />
@@ -334,11 +435,57 @@ export function FileListTable() {
         </div>
       )}
 
+      {/* Bulk delete confirmation dialog */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Bulk Delete</h3>
+            <p className="text-gray-500 mb-4">
+              Are you sure you want to delete {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''}? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelBulkDelete}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                disabled={isBulkDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBulkDelete}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                disabled={isBulkDeleting}
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Selected'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Files table */}
       <div className="rounded-md border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              {isSelectingMultiple && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectAllChecked}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
@@ -365,7 +512,20 @@ export function FileListTable() {
               </tr>
             ) : (
               filteredFiles.map((file) => (
-                <tr key={file.id} className="hover:bg-gray-50">
+                <tr 
+                  key={file.id} 
+                  className={`hover:bg-gray-50 ${selectedFiles.includes(file.id) ? 'bg-blue-50' : ''}`}
+                >
+                  {isSelectingMultiple && (
+                    <td className="px-6 py-4 whitespace-nowrap w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.includes(file.id)}
+                        onChange={() => handleFileSelection(file.id)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <FileText className="h-5 w-5 text-gray-400 mr-2" />
@@ -405,15 +565,21 @@ export function FileListTable() {
                     {file.uploadedBy || 'Unknown User'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button
-                      onClick={() => handleDelete(file)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Delete file"
-                      disabled={isDeleting !== null}
-                      data-testid={`delete-button-${file.id}`}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                    {isSelectingMultiple ? (
+                      <div className="flex justify-center">
+                        <span className="text-gray-400">-</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleDelete(file)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete file"
+                        disabled={isDeleting !== null}
+                        data-testid={`delete-button-${file.id}`}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -421,6 +587,27 @@ export function FileListTable() {
           </tbody>
         </table>
       </div>
+
+      {/* Bulk delete action buttons when in multi-select mode and files are selected */}
+      {isSelectingMultiple && selectedFiles.length > 0 && (
+        <div className="mt-4 flex justify-end space-x-3">
+          <button
+            onClick={() => {
+              setSelectedFiles([]);
+              setSelectAllChecked(false);
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            Clear Selection
+          </button>
+          <button
+            onClick={() => setShowBulkDeleteConfirm(true)}
+            className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Delete Selected ({selectedFiles.length})
+          </button>
+        </div>
+      )}
 
       {/* Pagination controls */}
       {!debouncedSearchTerm && totalPages > 1 && (
