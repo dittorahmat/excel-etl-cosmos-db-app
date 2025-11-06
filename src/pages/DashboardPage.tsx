@@ -11,6 +11,7 @@ import { ApiGenerationModal } from '../components/ApiGeneration';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { formatDateAlt as formatDate } from '../utils/formatters';
+import { api } from '../utils/api';
 
 // Import libraries for export functionality
 import * as XLSX from 'xlsx';
@@ -30,7 +31,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const {
     queryResult,
     loading,
-    error,
+    error: queryError,
     fieldDefinitions,
     selectedFile, // Changed from selectedFields to selectedFile
     fieldsLoading,
@@ -42,70 +43,170 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     handleFileChange, // Changed from handleFieldsChange to handleFileChange
     handleSort,
   } = useDashboardData();
+  
+  // Local state for export errors
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState('query');
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
 
-  // Export to CSV function
-  const exportToCSV = (data: any[], fields: string[]) => {
-    // Create header row
-    const headers = fields.join(',');
+  // Export to CSV function with fresh API call
+  const exportToCSV = async () => {
+    try {
+      // Build query parameters for export - get all records without pagination
+      const queryParams = new URLSearchParams();
+      
+      // Add the file ID and special filters to query parameters
+      if (selectedFile) {
+        queryParams.append('fileId', selectedFile);
+      }
+      
+      if (specialFilters?.Source) {
+        queryParams.append('Source', specialFilters.Source);
+      }
+      
+      if (specialFilters?.Category) {
+        queryParams.append('Category', specialFilters.Category);
+      }
+      
+      if (specialFilters?.['Sub Category']) {
+        queryParams.append('Sub Category', specialFilters['Sub Category']);
+      }
+      
+      if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
+        queryParams.append('Year', specialFilters.Year.join(','));
+      }
 
-    // Create data rows
-    const rows = data.map(item => {
-      return fields.map(field => {
-        const value = item[field];
-        // Handle special formatting for dates
-        const formattedValue = typeof value === 'string' && value.includes('T')
-          ? formatDate(value)
-          : String(value || '');
+      // Add current filters to query parameters
+      if (currentFilters && currentFilters.length > 0) {
+        queryParams.append('filters', JSON.stringify(currentFilters));
+      }
 
-        // Escape quotes and wrap in quotes if needed
-        if (typeof formattedValue === 'string' && (formattedValue.includes(',') || formattedValue.includes('"') || formattedValue.includes('\n'))) {
-          return `"${formattedValue.replace(/"/g, '""')}"`;
-        }
-        return formattedValue;
-      }).join(',');
-    });
+      // Use the file-based endpoint to get all data for export
+      const url = `/api/query/file?${queryParams.toString()}`;
+      
+      const allData = await api.get<Record<string, unknown>[]>(url);
+      
+      if (!Array.isArray(allData) || allData.length === 0) {
+        console.warn('No data received from export API call');
+        return;
+      }
 
-    // Combine headers and rows
-    const csvContent = [headers, ...rows].join('\n');
+      // Extract fields from the first record if available
+      const fields = allData.length > 0 ? Object.keys(allData[0]) : [];
 
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `query-results-${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Create header row
+      const headers = fields.join(',');
+
+      // Create data rows
+      const rows = allData.map(item => {
+        return fields.map(field => {
+          const value = item[field];
+          // Handle special formatting for dates
+          const formattedValue = typeof value === 'string' && value.includes('T')
+            ? formatDate(value)
+            : String(value || '');
+
+          // Escape quotes and wrap in quotes if needed
+          if (typeof formattedValue === 'string' && (formattedValue.includes(',') || formattedValue.includes('"') || formattedValue.includes('\n'))) {
+            return `"${formattedValue.replace(/"/g, '""')}"`;
+          }
+          return formattedValue;
+        }).join(',');
+      });
+
+      // Combine headers and rows
+      const csvContent = [headers, ...rows].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const urlBlob = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', urlBlob);
+      link.setAttribute('download', `query-results-${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Revoke the object URL to free up memory
+      URL.revokeObjectURL(urlBlob);
+    } catch (error) {
+      console.error('Error during CSV export:', error);
+      setExportError('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
   };
 
-  // Export to Excel function
-  const exportToExcel = (data: any[], fields: string[]) => {
-    // Format data for Excel
-    const formattedData = data.map(item => {
-      const formattedItem: Record<string, any> = {};
-      fields.forEach(field => {
-        const value = item[field];
-        formattedItem[field] = typeof value === 'string' && value.includes('T')
-          ? formatDate(value)
-          : value;
+  // Export to Excel function with fresh API call
+  const exportToExcel = async () => {
+    try {
+      // Build query parameters for export - get all records without pagination
+      const queryParams = new URLSearchParams();
+      
+      // Add the file ID and special filters to query parameters
+      if (selectedFile) {
+        queryParams.append('fileId', selectedFile);
+      }
+      
+      if (specialFilters?.Source) {
+        queryParams.append('Source', specialFilters.Source);
+      }
+      
+      if (specialFilters?.Category) {
+        queryParams.append('Category', specialFilters.Category);
+      }
+      
+      if (specialFilters?.['Sub Category']) {
+        queryParams.append('Sub Category', specialFilters['Sub Category']);
+      }
+      
+      if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
+        queryParams.append('Year', specialFilters.Year.join(','));
+      }
+
+      // Add current filters to query parameters
+      if (currentFilters && currentFilters.length > 0) {
+        queryParams.append('filters', JSON.stringify(currentFilters));
+      }
+
+      // Use the file-based endpoint to get all data for export
+      const url = `/api/query/file?${queryParams.toString()}`;
+      
+      const allData = await api.get<Record<string, unknown>[]>(url);
+      
+      if (!Array.isArray(allData) || allData.length === 0) {
+        console.warn('No data received from export API call');
+        return;
+      }
+
+      // Extract fields from the first record if available
+      const fields = allData.length > 0 ? Object.keys(allData[0]) : [];
+
+      // Format data for Excel
+      const formattedData = allData.map(item => {
+        const formattedItem: Record<string, unknown> = {};
+        fields.forEach(field => {
+          const value = item[field];
+          formattedItem[field] = typeof value === 'string' && value.includes('T')
+            ? formatDate(value)
+            : value;
+        });
+        return formattedItem;
       });
-      return formattedItem;
-    });
 
-    // Create worksheet
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
 
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
 
-    // Export to file
-    XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      // Export to file
+      XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      console.error('Error during Excel export:', error);
+      setExportError('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
   };
 
   if (!isAuthenticated) {
@@ -158,10 +259,10 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                 <CardTitle>Query Results</CardTitle>
               </CardHeader>
               <CardContent>
-                {error && (
+                {(queryError || exportError) && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                     <strong className="font-bold">Error: </strong>
-                    <span className="block sm:inline">{error}</span>
+                    <span className="block sm:inline">{queryError || exportError}</span>
                   </div>
                 )}
 
@@ -191,7 +292,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                         }
                       />
                       <Button
-                        onClick={() => exportToCSV(queryResult.items, queryResult.fields)}
+                        onClick={exportToCSV}
                         variant="outline"
                         size="sm"
                         className="flex items-center"
@@ -200,7 +301,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                         Export CSV
                       </Button>
                       <Button
-                        onClick={() => exportToExcel(queryResult.items, queryResult.fields)}
+                        onClick={exportToExcel}
                         variant="outline"
                         size="sm"
                         className="flex items-center"

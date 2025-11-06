@@ -603,7 +603,6 @@ export function UploadPage() {
                   isUploading={isUploading}
                 />
                 <p className="text-sm text-gray-500 mt-4 text-center">
-                  Debug: isUploading={isUploading ? 'true' : 'false'}, progress={uploadProgress}%
                 </p>
               </div>
             </Card>
@@ -655,6 +654,10 @@ export function UploadPage() {
                   <li className="flex items-start">
                     <span className="mr-2">•</span>
                     <span>Maximum file size: 10MB</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Required Columns: Source, Category, Sub Category, Year</span>
                   </li>
                 </ul>
               </Card>
