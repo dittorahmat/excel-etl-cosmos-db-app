@@ -52,6 +52,6 @@ echo "Checking application status..."
 docker-compose ps
 
 echo "Deployment completed!"
-echo "The application should be accessible at https://iesr.indonesiacentral.cloudapp.azure.com"
+echo "The application should be accessible at https://iesr.southeastasia.cloudapp.azure.com"
 echo "For zero-downtime deployments, use: ./improved-zero-downtime-deploy.sh"
 echo "Check logs with: docker-compose logs -f"

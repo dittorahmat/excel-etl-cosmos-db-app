@@ -29,5 +29,5 @@ fi
 
 echo ""
 echo "The certificate is now issued by Let's Encrypt, which means browsers"
-echo "will trust it when accessing https://iesr.indonesiacentral.cloudapp.azure.com"
+echo "will trust it when accessing https://iesr.southeastasia.cloudapp.azure.com"
 echo "The browser warning should no longer appear."

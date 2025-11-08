@@ -89,5 +89,5 @@ docker image prune -f --filter "until=24h"
 docker system prune -f --filter "until=24h"
 
 echo "Zero-downtime deployment completed successfully!"
-echo "The application should be accessible at https://iesr.indonesiacentral.cloudapp.azure.com"
+echo "The application should be accessible at https://iesr.southeastasia.cloudapp.azure.com"
 echo "Check logs with: docker-compose logs -f"

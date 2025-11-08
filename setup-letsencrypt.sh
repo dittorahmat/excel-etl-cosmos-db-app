@@ -14,7 +14,7 @@ fi
 echo "This script will help you obtain a Let's Encrypt certificate for production use."
 echo "Before proceeding, please ensure that:"
 echo "1. Port 80 is accessible from the internet (firewall rules)"
-echo "2. The domain iesr.indonesiacentral.cloudapp.azure.com points to this server's IP"
+echo "2. The domain iesr.southeastasia.cloudapp.azure.com points to this server's IP"
 echo "3. You have a valid email address for Let's Encrypt notifications"
 
 echo ""
@@ -36,21 +36,21 @@ if [[ ! "$EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
 fi
 
 # Check if we already have a certificate
-if [ -f "/etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem" ]; then
+if [ -f "/etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem" ]; then
     echo "Certificate already exists. Checking if it needs renewal..."
     sudo certbot renew --dry-run
     if [ $? -eq 0 ]; then
         echo "Certificate is valid and does not need renewal."
         # Copy the existing certificate to our application directory
         echo "Copying existing certificate to application directory..."
-        sudo mkdir -p /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-        sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-        sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
+        sudo mkdir -p /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+        sudo cp /etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+        sudo cp /etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
         
         # Fix permissions
-        sudo chown -R iesr:iesr /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-        chmod 644 /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem
-        chmod 600 /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem
+        sudo chown -R iesr:iesr /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+        chmod 644 /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem
+        chmod 600 /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem
         
         echo "Existing certificate copied successfully!"
         echo "You can now restart nginx with: docker-compose -p excel-etl-cosmos-db-app restart nginx"
@@ -98,36 +98,36 @@ elif command -v netstat &> /dev/null; then
 fi
 
 # Obtain certificate using standalone mode (temporary web server)
-echo "Obtaining certificate for iesr.indonesiacentral.cloudapp.azure.com..."
-sudo certbot certonly --standalone -d iesr.indonesiacentral.cloudapp.azure.com --non-interactive --agree-tos --email "$EMAIL"
+echo "Obtaining certificate for iesr.southeastasia.cloudapp.azure.com..."
+sudo certbot certonly --standalone -d iesr.southeastasia.cloudapp.azure.com --non-interactive --agree-tos --email "$EMAIL"
 
 # Check if certificate was obtained successfully
-if [ -f "/etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem" ]; then
+if [ -f "/etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem" ]; then
     echo "Certificate obtained successfully!"
     
     # Copy certificates to our application directory
     echo "Copying certificates to application directory..."
-    sudo mkdir -p /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-    sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-    sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
+    sudo mkdir -p /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+    sudo cp /etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+    sudo cp /etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
     
     # Fix permissions
-    sudo chown -R iesr:iesr /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-    chmod 644 /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem
-    chmod 600 /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem
+    sudo chown -R iesr:iesr /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+    chmod 644 /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem
+    chmod 600 /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem
     
     echo "Certificates copied successfully!"
     echo ""
     echo "To complete the setup:"
     echo "1. Restart nginx: docker-compose -p excel-etl-cosmos-db-app restart nginx"
-    echo "2. Test HTTPS access to https://iesr.indonesiacentral.cloudapp.azure.com"
+    echo "2. Test HTTPS access to https://iesr.southeastasia.cloudapp.azure.com"
     echo ""
     echo "For automatic certificate renewal, add this to your crontab:"
     echo "0 12 * * * /home/iesr/excel-etl-cosmos-db-app/renew-letsencrypt.sh"
 else
     echo "ERROR: Failed to obtain certificate."
     echo "Please check that:"
-    echo "1. The domain iesr.indonesiacentral.cloudapp.azure.com points to this server's IP"
+    echo "1. The domain iesr.southeastasia.cloudapp.azure.com points to this server's IP"
     echo "2. Port 80 is accessible from the internet"
     echo "3. No firewall is blocking the connection"
     exit 1

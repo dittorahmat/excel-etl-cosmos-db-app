@@ -12,8 +12,8 @@ services:
       - ENABLE_HTTPS=false  # Nginx will handle HTTPS termination
       - PORT=3000
     volumes:
-      - ./logs:/app/LogFiles
-      - ./logs:/app/server/LogFiles
+      - ./logs:/app/logs
+      - ./logs:/app/server/logs
     restart: unless-stopped
     networks:
       - app-network
@@ -23,21 +23,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      replicas: 1
-      update_config:
-        parallelism: 1
-        delay: 10s
-        failure_action: rollback
-        monitor: 60s
-        max_failure_ratio: 0.3
-      rollback_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+    # Set memory limits to prevent container from being killed due to memory exhaustion
+    mem_limit: 1g
+    mem_reservation: 512m
 
   nginx:
     image: nginx:alpine
@@ -48,32 +36,21 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/ssl:ro
       - ./logs:/var/log/nginx
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - excel-to-cosmos
     restart: unless-stopped
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "-k", "https://localhost"]
+      test: ["CMD", "service", "nginx", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      replicas: 1
-      update_config:
-        parallelism: 1
-        delay: 10s
-        failure_action: rollback
-        monitor: 60s
-        max_failure_ratio: 0.3
-      rollback_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+    # Set memory limits for nginx container
+    mem_limit: 256m
+    mem_reservation: 128m
 
 networks:
   app-network:

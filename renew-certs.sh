@@ -12,20 +12,20 @@ sudo certbot renew --quiet
 echo "Certificates renewed successfully or not yet due for renewal!"
 
 # Copy certificates to our application directory
-if sudo test -f "/etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem"; then
+if sudo test -f "/etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem"; then
     echo "Copying certificates to application directory..."
-    sudo mkdir -p /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-    sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-    sudo cp /etc/letsencrypt/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
+    sudo mkdir -p /home/iesr/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+    sudo cp /etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem /home/iesr/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+    sudo cp /etc/letsencrypt/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem /home/iesr/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
     
     # Fix permissions
-    sudo chown -R iesr:iesr /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/
-    chmod 644 /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem
-    chmod 600 /opt/excel-etl-cosmos-db-app/certs/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem
+    sudo chown -R iesr:iesr /home/iesr/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/
+    chmod 644 /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem
+    chmod 600 /opt/excel-etl-cosmos-db-app/certs/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem
     
     # Reload nginx to use new certificates
     echo "Reloading nginx to use certificates..."
-    cd /opt/excel-etl-cosmos-db-app && docker-compose exec nginx nginx -s reload 2>/dev/null || echo "Nginx reload failed, will restart nginx..." && docker-compose restart nginx
+    cd /home/iesr/excel-etl-cosmos-db-app && docker-compose exec nginx nginx -s reload 2>/dev/null || echo "Nginx reload failed, will restart nginx..." && docker-compose restart nginx
     
     echo "Nginx updated with certificates!"
 else

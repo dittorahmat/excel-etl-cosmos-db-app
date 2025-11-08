@@ -12,7 +12,7 @@ Let's Encrypt provides free, trusted SSL/TLS certificates that are recognized by
 
 ## Prerequisites
 
-1. The domain `iesr.indonesiacentral.cloudapp.azure.com` must point to this server's IP address
+1. The domain `iesr.southeastasia.cloudapp.azure.com` must point to this server's IP address
 2. Port 80 must be accessible from the internet (for certificate validation)
 3. Port 443 must be accessible from the internet (for HTTPS access)
 
@@ -66,7 +66,7 @@ If you get an error that port 80 is in use:
 3. Start nginx after setup: `docker-compose -p excel-etl-cosmos-db-app start nginx`
 
 ### Domain Not Pointing to Server
-Ensure that `iesr.indonesiacentral.cloudapp.azure.com` resolves to this server's public IP address.
+Ensure that `iesr.southeastasia.cloudapp.azure.com` resolves to this server's public IP address.
 
 ### Firewall Issues
 Check that your firewall rules allow inbound connections on ports 80 and 443.
@@ -74,6 +74,6 @@ Check that your firewall rules allow inbound connections on ports 80 and 443.
 ## Verification
 
 After setup, you should be able to access the application at:
-https://iesr.indonesiacentral.cloudapp.azure.com
+https://iesr.southeastasia.cloudapp.azure.com
 
 The browser should show a secure connection without any warnings.

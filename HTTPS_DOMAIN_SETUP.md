@@ -28,7 +28,7 @@ docker run --rm -it \
   -v $(pwd)/certs:/etc/letsencrypt \
   certbot/certbot certonly \
   --standalone \
-  -d iesr.indonesiacentral.cloudapp.azure.com \
+  -d iesr.southeastasia.cloudapp.azure.com \
   --email your-email@example.com \
   --agree-tos \
   --no-eff-email
@@ -38,8 +38,8 @@ docker run --rm -it \
 Modify your nginx.conf to point to the Let's Encrypt certificates:
 ```nginx
 # In the HTTPS server block, update these lines:
-ssl_certificate /etc/nginx/ssl/live/iesr.indonesiacentral.cloudapp.azure.com/fullchain.pem;
-ssl_certificate_key /etc/nginx/ssl/live/iesr.indonesiacentral.cloudapp.azure.com/privkey.pem;
+ssl_certificate /etc/nginx/ssl/live/iesr.southeastasia.cloudapp.azure.com/fullchain.pem;
+ssl_certificate_key /etc/nginx/ssl/live/iesr.southeastasia.cloudapp.azure.com/privkey.pem;
 ```
 
 ### 4. Start your application
@@ -60,7 +60,7 @@ services:
     volumes:
       - ./certs:/etc/letsencrypt
       - ./webroot:/var/www/certbot
-    command: certonly --webroot --webroot-path=/var/www/certbot --email your-email@example.com --agree-tos --no-eff-email -d iesr.indonesiacentral.cloudapp.azure.com
+    command: certonly --webroot --webroot-path=/var/www/certbot --email your-email@example.com --agree-tos --no-eff-email -d iesr.southeastasia.cloudapp.azure.com
 ```
 
 ### 2. Update nginx.conf to support webroot challenge
