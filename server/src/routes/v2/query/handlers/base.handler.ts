@@ -237,14 +237,17 @@ export abstract class BaseQueryHandler {
         parameters: querySpec.parameters
       });
       
-      const result = await container.items.query(querySpec).fetchAll();
+      // Use iterator instead of fetchAll to avoid loading all results into memory
+      const queryIterator = container.items.query(querySpec);
+      const result = await queryIterator.fetchNext();
+      
       logger.debug('Query result', {
-        resourceCount: result.resources.length,
-        hasResults: result.resources.length > 0,
-        firstResult: result.resources[0]
+        resourceCount: result.resources ? result.resources.length : 0,
+        hasResults: result.resources && result.resources.length > 0,
+        firstResult: result.resources && result.resources.length > 0 ? result.resources[0] : undefined
       });
       
-      return result.resources[0] as number || 0;
+      return result.resources && result.resources.length > 0 ? result.resources[0] as number : 0;
     } catch (error) {
       logger.error('Error in getTotalCount', {
         error: error instanceof Error ? error.message : 'Unknown error',

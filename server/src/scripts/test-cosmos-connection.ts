@@ -53,7 +53,11 @@ async function runTest() {
     });
     
     try {
-      const { resources: databases } = await client.databases.readAll().fetchAll();
+      // Use iterator instead of fetchAll to avoid loading all results into memory
+      const queryIterator = client.databases.readAll();
+      const result = await queryIterator.fetchNext();
+      const databases = result.resources || [];
+      
       console.log(`✅ Successfully connected to Cosmos DB. Found ${databases.length} databases.`);
       console.log('Available databases:', databases.map((db: { id: string }) => db.id).join(', '));
     } catch (error: unknown) {

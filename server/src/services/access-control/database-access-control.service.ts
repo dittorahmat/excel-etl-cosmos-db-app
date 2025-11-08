@@ -68,12 +68,29 @@ export class DatabaseAccessControlService {
       };
       
       // Add timeout handling - use Promise.race properly
-      const queryPromise = container.items.query<AuthorizationConfig>(querySpec).fetchAll();
+      // Use iterator instead of fetchAll to avoid loading all results into memory
+      const queryIterator = container.items.query<AuthorizationConfig>(querySpec);
       
       // Create timeout promise that rejects when time expires
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Cosmos DB query timeout')), 10000) // 10 second timeout
       );
+      
+      // Execute query with timeout protection using iterator
+      const queryPromise = new Promise(async (resolve, reject) => {
+        try {
+          const resources = [];
+          while (queryIterator.hasMoreResults()) {
+            const page = await queryIterator.fetchNext();
+            if (page.resources) {
+              resources.push(...page.resources);
+            }
+          }
+          resolve({ resources });
+        } catch (error) {
+          reject(error);
+        }
+      });
       
       // Wait for either the query to complete or the timeout
       const result = await Promise.race([queryPromise, timeoutPromise]);

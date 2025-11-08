@@ -45,7 +45,10 @@ async function checkAuthorizationDocument() {
       ]
     };
     
-    const { resources } = await container.items.query(querySpec).fetchAll();
+    // Use iterator instead of fetchAll to avoid loading all results into memory
+    const queryIterator = container.items.query(querySpec);
+    const result = await queryIterator.fetchNext();
+    const resources = result.resources || [];
     
     if (resources.length > 0) {
       console.log('Found authorization configuration document:');

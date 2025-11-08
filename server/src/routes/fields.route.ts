@@ -154,8 +154,10 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           try {
             // First, get a count to understand the scope
             const countQuery = `SELECT VALUE COUNT(1) FROM c WHERE ${baseWhereClause}`;
-            const countResult = await container.items.query(countQuery).fetchAll();
-            const totalRecords = countResult.resources[0] || 0;
+            // Use iterator instead of fetchAll to avoid loading all results into memory
+            const queryIterator = container.items.query(countQuery);
+            const countResult = await queryIterator.fetchNext();
+            const totalRecords = countResult.resources && countResult.resources.length > 0 ? countResult.resources[0] : 0;
             console.log(`Total records matching filters: ${totalRecords}`);
             
             // Query for records to extract property names
@@ -235,8 +237,15 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             try {
               const filesQuery = `SELECT DISTINCT c.fileName FROM c WHERE ${baseWhereClause}`;
               
-              const filesResult = await container.items.query(filesQuery).fetchAll();
-              const fileNames = filesResult.resources.map(resource => resource.fileName).filter(Boolean);
+              const queryIterator = container.items.query(filesQuery);
+              const fileNames = [];
+              
+              while (queryIterator.hasMoreResults()) {
+                const result = await queryIterator.fetchNext();
+                if (result.resources) {
+                  fileNames.push(...result.resources.map(resource => resource.fileName).filter(Boolean));
+                }
+              }
               
               if (fileNames.length === 0) {
                 // If no files match the filters, return empty result
@@ -262,8 +271,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
                 parameters
               });
               
-              const importsResult = await importsQuery.fetchAll();
-              const headers = importsResult.resources || [];
+              // Use iterator instead of fetchAll to avoid loading all results into memory
+              const headers = [];
+              while (importsQuery.hasMoreResults()) {
+                const result = await importsQuery.fetchNext();
+                if (result.resources) {
+                  headers.push(...result.resources);
+                }
+              }
               const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
               
               console.log(`Fetched ${uniqueHeaders.length} fields from ${fileNames.length} files with special filters (fallback) in ${Date.now() - startTime}ms`);
@@ -305,10 +320,16 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               const relatedFieldQuery = container.items.query({
                 query: "SELECT c.fileName FROM c WHERE c._partitionKey = 'imports' AND ARRAY_CONTAINS(c.headers, @fieldName)",
                 parameters: [{ name: '@fieldName', value: fieldName }]
-              } as import('@azure/cosmos').SqlQuerySpec);
+              });
               
-              const relatedFieldResult = await relatedFieldQuery.fetchAll();
-              const fileNames = relatedFieldResult.resources.map(resource => resource.fileName);
+              // Use iterator instead of fetchAll to avoid loading all results into memory
+              const fileNames = [];
+              while (relatedFieldQuery.hasMoreResults()) {
+                const result = await relatedFieldQuery.fetchNext();
+                if (result.resources) {
+                  fileNames.push(...result.resources.map(resource => resource.fileName));
+                }
+              }
               
               if (i === 0) {
                 // For the first field, initialize the commonFileNames
@@ -331,8 +352,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
                 query: "SELECT c.headers FROM c WHERE c._partitionKey = 'imports'",
               });
               
-              const allFieldsResult = await allFieldsQuery.fetchAll();
-              const headers = allFieldsResult.resources || [];
+              // Use iterator instead of fetchAll to avoid loading all results into memory
+              const headers = [];
+              while (allFieldsQuery.hasMoreResults()) {
+                const result = await allFieldsQuery.fetchNext();
+                if (result.resources) {
+                  headers.push(...result.resources);
+                }
+              }
               const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
               
               return res.status(200).json({
@@ -365,8 +392,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               parameters
             });
             
-            const filteredResult = await filteredQuery.fetchAll();
-            const headers = filteredResult.resources || [];
+            // Use iterator instead of fetchAll to avoid loading all results into memory
+            const headers = [];
+            while (filteredQuery.hasMoreResults()) {
+              const result = await filteredQuery.fetchNext();
+              if (result.resources) {
+                headers.push(...result.resources);
+              }
+            }
             const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
             
             console.log(`Fetched ${uniqueHeaders.length} related fields from ${commonFileNames.length} files in ${Date.now() - startTime}ms`);
@@ -393,28 +426,41 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           }
         } else {
           // Default behavior - fetch all fields
-          // Try to get fields from Cosmos DB with a timeout
-          const fieldsPromise = container.items
+          // Use iterator instead of fetchAll to avoid loading all results into memory
+          const queryIterator = container.items
             .query({
               query: "SELECT c.headers FROM c WHERE c._partitionKey = 'imports'",
-            })
-            .fetchAll();
+            });
             
           // Set a timeout for the database query
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Database query timed out')), 5000)
           );
           
-          // Race the query against the timeout
-          const result = await Promise.race([fieldsPromise, timeoutPromise]);
+          // Execute query with timeout protection using iterator
+          let headers = [];
+          try {
+            const queryPromise = new Promise(async (resolve, reject) => {
+              try {
+                while (queryIterator.hasMoreResults()) {
+                  const page = await queryIterator.fetchNext();
+                  if (page.resources) {
+                    headers.push(...page.resources);
+                  }
+                }
+                resolve(headers);
+              } catch (error) {
+                reject(error);
+              }
+            });
+            
+            const result = await Promise.race([queryPromise, timeoutPromise]);
+            headers = result as any[];
+          } catch (timeoutError) {
+            console.error('Database query timed out or failed:', timeoutError);
+            headers = [];
+          }
           
-          // Type the Cosmos DB response
-          interface CosmosFieldResult {
-            resources: Array<{ headers: string[] }>;
-          };
-          
-          console.log('Raw Cosmos DB query result:', result);
-          const headers = (result as CosmosFieldResult)?.resources || [];
           const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
           console.log(`Fetched ${uniqueHeaders.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
           console.log('Unique headers extracted:', uniqueHeaders);

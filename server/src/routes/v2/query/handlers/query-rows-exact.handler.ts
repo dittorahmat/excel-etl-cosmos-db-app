@@ -222,13 +222,25 @@ export class QueryRowsExactHandler extends BaseQueryHandler {
         parameters: countQuery.parameters
       });
 
-      // Execute both queries in parallel
+      // Execute both queries using iterators to avoid loading all results into memory
       let itemsResponse, countResponse;
       try {
-        [itemsResponse, countResponse] = await Promise.all([
-          container.items.query(joinQuery).fetchAll(),
-          container.items.query(countQuery).fetchAll()
-        ]);
+        const itemsIterator = container.items.query(joinQuery);
+        
+        // Process items query with iterator
+        const itemsResources = [];
+        while (itemsIterator.hasMoreResults()) {
+          const response = await itemsIterator.fetchNext();
+          if (response.resources) {
+            itemsResources.push(...response.resources);
+          }
+        }
+        itemsResponse = { resources: itemsResources };
+        
+        // Process count query with iterator
+        const countIterator = container.items.query(countQuery);
+        const countResult = await countIterator.fetchNext();
+        countResponse = { resources: [countResult?.resources?.[0]] };
         
         log('Cosmos DB queries executed successfully', {
           itemsCount: itemsResponse?.resources?.length,

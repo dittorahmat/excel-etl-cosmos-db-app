@@ -173,37 +173,50 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         }
 
         // Build the query to get all fields (without specifying particular fields to get all)
-        const query = `SELECT * FROM c WHERE ${baseWhereClause}`;
+        // Adjust the query to incorporate limit and offset as part of the query for server-side pagination
+        let query = `SELECT * FROM c WHERE ${baseWhereClause}`;
+        
+        // Add ORDER BY to make pagination consistent
+        query += ' ORDER BY c._ts';
+        
+        // Add OFFSET and LIMIT to the query for server-side pagination
+        if (offset !== undefined) {
+          query += ` OFFSET ${parseInt(String(offset), 10)} `;
+        }
+        
+        if (limit !== undefined) {
+          query += ` LIMIT ${parseInt(String(limit), 10)} `;
+        } else if (offset !== undefined) {
+          // If we have an offset but no limit, use a default limit
+          query += ' LIMIT 100 ';
+        }
         
         console.log(`Executing file query:`, query);
         
-        const queryResult = await container.items.query(query).fetchAll();
-        const items = queryResult.resources;
-
-        console.log(`File query returned ${items.length} records`);
-
-        // Filter out all Cosmos DB metadata fields
-        const filteredItems = items.map(item => {
-          const filteredItem: Record<string, any> = {};
-          for (const [key, value] of Object.entries(item)) {
-            // Skip all Cosmos DB system properties and metadata
-            if (!key.startsWith('_') && 
-                key !== 'id' && 
-                key !== 'documentType') {
-              filteredItem[key] = value;
+        // Use iterator instead of fetchAll to avoid loading all results into memory
+        const queryIterator = container.items.query(query);
+        const items = [];
+        
+        while (queryIterator.hasMoreResults()) {
+          const response = await queryIterator.fetchNext();
+          if (response.resources) {
+            for (const item of response.resources) {
+              // Filter out Cosmos DB metadata fields
+              const filteredItem: Record<string, any> = {};
+              for (const [key, value] of Object.entries(item)) {
+                // Skip all Cosmos DB system properties and metadata
+                if (!key.startsWith('_') && 
+                    key !== 'id' && 
+                    key !== 'documentType') {
+                  filteredItem[key] = value;
+                }
+              }
+              items.push(filteredItem);
             }
           }
-          return filteredItem;
-        });
-
-        // Apply limit and offset for pagination if provided
-        let paginatedItems = filteredItems;
-        if (limit !== undefined || offset !== undefined) {
-          const limitNum = limit ? parseInt(String(limit), 10) : filteredItems.length;
-          const offsetNum = offset ? parseInt(String(offset), 10) : 0;
-          paginatedItems = filteredItems.slice(offsetNum, offsetNum + limitNum);
-          console.log(`Applied pagination - limit: ${limitNum}, offset: ${offsetNum}, returning ${paginatedItems.length} records`);
         }
+
+        console.log(`File query returned ${items.length} records`);
 
         return res.status(200).json(paginatedItems);
       } catch (error) {
@@ -385,37 +398,50 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         }
 
         // Build the query to get all fields (without specifying particular fields to get all)
-        const query = `SELECT * FROM c WHERE ${baseWhereClause}`;
+        // Adjust the query to incorporate limit and offset as part of the query for server-side pagination
+        let query = `SELECT * FROM c WHERE ${baseWhereClause}`;
+        
+        // Add ORDER BY to make pagination consistent
+        query += ' ORDER BY c._ts';
+        
+        // Add OFFSET and LIMIT to the query for server-side pagination
+        if (offset !== undefined) {
+          query += ` OFFSET ${parseInt(String(offset), 10)} `;
+        }
+        
+        if (limit !== undefined) {
+          query += ` LIMIT ${parseInt(String(limit), 10)} `;
+        } else if (offset !== undefined) {
+          // If we have an offset but no limit, use a default limit
+          query += ' LIMIT 100 ';
+        }
         
         console.log(`Executing file query GET:`, query);
         
-        const queryResult = await container.items.query(query).fetchAll();
-        const items = queryResult.resources;
-
-        console.log(`File query GET returned ${items.length} records`);
-
-        // Filter out all Cosmos DB metadata fields
-        const filteredItems = items.map(item => {
-          const filteredItem: Record<string, any> = {};
-          for (const [key, value] of Object.entries(item)) {
-            // Skip all Cosmos DB system properties and metadata
-            if (!key.startsWith('_') && 
-                key !== 'id' && 
-                key !== 'documentType') {
-              filteredItem[key] = value;
+        // Use iterator instead of fetchAll to avoid loading all results into memory
+        const queryIterator = container.items.query(query);
+        const items = [];
+        
+        while (queryIterator.hasMoreResults()) {
+          const response = await queryIterator.fetchNext();
+          if (response.resources) {
+            for (const item of response.resources) {
+              // Filter out Cosmos DB metadata fields
+              const filteredItem: Record<string, any> = {};
+              for (const [key, value] of Object.entries(item)) {
+                // Skip all Cosmos DB system properties and metadata
+                if (!key.startsWith('_') && 
+                    key !== 'id' && 
+                    key !== 'documentType') {
+                  filteredItem[key] = value;
+                }
+              }
+              items.push(filteredItem);
             }
           }
-          return filteredItem;
-        });
-
-        // Apply limit and offset for pagination if provided
-        let paginatedItems = filteredItems;
-        if (limit !== undefined || offset !== undefined) {
-          const limitNum = limit ? parseInt(String(limit), 10) : filteredItems.length;
-          const offsetNum = offset ? parseInt(String(offset), 10) : 0;
-          paginatedItems = filteredItems.slice(offsetNum, offsetNum + limitNum);
-          console.log(`Applied pagination - limit: ${limitNum}, offset: ${offsetNum}, returning ${paginatedItems.length} records`);
         }
+
+        console.log(`File query GET returned ${items.length} records`);
 
         return res.status(200).json(paginatedItems);
       } catch (error) {
@@ -615,9 +641,17 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           
           console.log(`Executing query for field ${cleanField}:`, query);
           
-          const queryResult = await container.items.query(query).fetchAll();
-          const values = queryResult.resources; // The result is already the values since we used VALUE
+          // Use iterator instead of fetchAll to avoid loading all results into memory
+          const queryIterator = container.items.query(query);
+          const values = [];
           
+          while (queryIterator.hasMoreResults()) {
+            const response = await queryIterator.fetchNext();
+            if (response.resources) {
+              values.push(...response.resources);
+            }
+          }
+
           // Filter out null, undefined, and empty string values
           distinctValues[cleanField] = values.filter(value => 
             value !== null && 
@@ -788,8 +822,18 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         
         console.log('Import ID query:', importIdQuery);
         
-        const importIdResult = await container.items.query(importIdQuery).fetchAll();
-        const matchingImportIds = importIdResult.resources
+        // Use iterator instead of fetchAll to avoid loading all results into memory
+        const queryIterator = container.items.query(importIdQuery);
+        const values = [];
+        
+        while (queryIterator.hasMoreResults()) {
+          const response = await queryIterator.fetchNext();
+          if (response.resources) {
+            values.push(...response.resources);
+          }
+        }
+        
+        const matchingImportIds = values
           .map((r: any) => r._importId)
           .filter((id: any) => id) as string[];
 
@@ -833,8 +877,16 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log('Imports query:', importsQuery);
 
-        const importsResult = await importContainer.items.query(importsQuery).fetchAll();
-        const importItems = importsResult.resources;
+        // Use iterator instead of fetchAll to avoid loading all results into memory
+        const queryIterator = importContainer.items.query(importsQuery);
+        const importItems = [];
+        
+        while (queryIterator.hasMoreResults()) {
+          const response = await queryIterator.fetchNext();
+          if (response.resources) {
+            importItems.push(...response.resources);
+          }
+        }
 
         console.log(`Found ${importItems.length} import records matching the IDs`);
 

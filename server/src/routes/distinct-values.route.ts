@@ -123,8 +123,16 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
           
           console.log(`Executing query for field ${cleanField}:`, query);
           
-          const queryResult = await container.items.query(query).fetchAll();
-          const values = queryResult.resources; // The result is already the values since we used VALUE
+          // Use iterator instead of fetchAll to avoid loading all results into memory
+          const queryIterator = container.items.query(query);
+          const values = [];
+          
+          while (queryIterator.hasMoreResults()) {
+            const result = await queryIterator.fetchNext();
+            if (result.resources) {
+              values.push(...result.resources);
+            }
+          }
           
           // Filter out null, undefined, and empty string values
           distinctValues[cleanField] = values.filter(value => 

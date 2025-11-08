@@ -206,7 +206,16 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
             parameters: parameters as SqlParameter[]
           };
             
-          const { resources } = await container.items.query<T>(querySpec).fetchAll();
+          // Use iterator instead of fetchAll to avoid loading all results into memory
+          const queryIterator = container.items.query<T>(querySpec);
+          const resources = [];
+          
+          while (queryIterator.hasMoreResults()) {
+            const result = await queryIterator.fetchNext();
+            if (result.resources) {
+              resources.push(...result.resources);
+            }
+          }
           return resources;
         } catch (error) {
           logger.error(`Failed to execute query:`, { query, error });
@@ -323,8 +332,10 @@ export async function testCosmosConnection() {
     // Get the container reference
     const container = database.container(containerResponse.container.id);
     
-    // Test query to verify the connection
-    const { resources } = await container.items.query('SELECT 1').fetchAll();
+    // Use iterator instead of fetchAll to avoid loading all results into memory
+    const queryIterator = container.items.query('SELECT 1');
+    const result = await queryIterator.fetchNext();
+    const resources = result.resources || [];
     
     return {
       success: true,

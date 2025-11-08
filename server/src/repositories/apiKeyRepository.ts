@@ -61,7 +61,10 @@ export class ApiKeyRepository {
         parameters: [{ name: '@hashedKey', value: hashedKey }]
       };
 
-      const { resources } = await container.items.query(querySpec).fetchAll();
+      // Use iterator instead of fetchAll to avoid loading all results into memory
+      const queryIterator = container.items.query(querySpec);
+      const result = await queryIterator.fetchNext();
+      const resources = result.resources || [];
 
       // Check if key exists
       if (!resources || resources.length === 0) {
@@ -231,12 +234,20 @@ export class ApiKeyRepository {
     const container = await this.getContainer();
 
     try {
-      const { resources } = await container.items
+      // Use iterator instead of fetchAll to avoid loading all results into memory
+      const queryIterator = container.items
         .query<ApiKey>({
           query: 'SELECT * FROM c WHERE c.userId = @userId',
           parameters: [{ name: '@userId', value: userId }]
-        })
-        .fetchAll();
+        });
+      const resources = [];
+      
+      while (queryIterator.hasMoreResults()) {
+        const result = await queryIterator.fetchNext();
+        if (result.resources) {
+          resources.push(...result.resources);
+        }
+      }
 
       // Don't return the key hash
       const keys = resources.map(({ keyHash: _keyHash, ...rest }) => rest as Omit<ApiKey, 'keyHash'>);

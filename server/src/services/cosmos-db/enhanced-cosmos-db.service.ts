@@ -275,7 +275,16 @@ export class EnhancedCosmosDBService {
     );
     
     const querySpec: SqlQuerySpec = { query, parameters };
-    const { resources } = await container.items.query<ImportMetadata>(querySpec).fetchAll();
+    // Use iterator instead of fetchAll to avoid loading all results into memory
+    const queryIterator = container.items.query<ImportMetadata>(querySpec);
+    const items = [];
+    
+    while (queryIterator.hasMoreResults()) {
+      const result = await queryIterator.fetchNext();
+      if (result.resources) {
+        items.push(...result.resources);
+      }
+    }
     
     // Get total count
     const countQuery = 'SELECT VALUE COUNT(1) FROM c WHERE c.documentType = @documentType' + 
@@ -289,10 +298,12 @@ export class EnhancedCosmosDBService {
       query: countQuery, 
       parameters: countParameters 
     };
-    const countResult = await container.items.query(countQuerySpec).fetchAll();
-    const total = countResult.resources[0] || 0;
+    // Use iterator for count query as well
+    const countIterator = container.items.query(countQuerySpec);
+    const countResult = await countIterator.fetchNext();
+    const total = countResult.resources && countResult.resources.length > 0 ? countResult.resources[0] : 0;
     
-    return { items: resources, total };
+    return { items, total };
   }
 
   /**
@@ -351,7 +362,16 @@ export class EnhancedCosmosDBService {
     ];
     
     const querySpec: SqlQuerySpec = { query, parameters };
-    const { resources } = await container.items.query<DataRow>(querySpec).fetchAll();
+    // Use iterator instead of fetchAll to avoid loading all results into memory
+    const queryIterator = container.items.query<DataRow>(querySpec);
+    const items = [];
+    
+    while (queryIterator.hasMoreResults()) {
+      const result = await queryIterator.fetchNext();
+      if (result.resources) {
+        items.push(...result.resources);
+      }
+    }
     
     // Get total count
     const countQuery = 'SELECT VALUE COUNT(1) FROM c WHERE c.documentType = @documentType AND c.importId = @importId';
@@ -361,10 +381,12 @@ export class EnhancedCosmosDBService {
     ];
     
     const countQuerySpec: SqlQuerySpec = { query: countQuery, parameters: countParameters };
-    const countResult = await container.items.query(countQuerySpec).fetchAll();
-    const total = countResult.resources[0] || 0;
+    // Use iterator for count query as well
+    const countIterator = container.items.query(countQuerySpec);
+    const countResult = await countIterator.fetchNext();
+    const total = countResult.resources && countResult.resources.length > 0 ? countResult.resources[0] : 0;
     
-    return { items: resources, total };
+    return { items, total };
   }
 
   /**
@@ -396,7 +418,10 @@ export class EnhancedCosmosDBService {
     ];
     
     const querySpec: SqlQuerySpec = { query, parameters };
-    const { resources } = await container.items.query<ApiKey>(querySpec).fetchAll();
+    // Use iterator instead of fetchAll to avoid loading all results into memory
+    const queryIterator = container.items.query<ApiKey>(querySpec);
+    const result = await queryIterator.fetchNext();
+    const resources = result.resources || [];
     
     return resources[0];
   }
@@ -457,7 +482,16 @@ export class EnhancedCosmosDBService {
     ];
     
     const querySpec: SqlQuerySpec = { query, parameters };
-    const { resources } = await container.items.query<AuditLog>(querySpec).fetchAll();
+    // Use iterator instead of fetchAll to avoid loading all results into memory
+    const queryIterator = container.items.query<AuditLog>(querySpec);
+    const items = [];
+    
+    while (queryIterator.hasMoreResults()) {
+      const result = await queryIterator.fetchNext();
+      if (result.resources) {
+        items.push(...result.resources);
+      }
+    }
     
     // Get total count
     const countQuery = 'SELECT VALUE COUNT(1) FROM c WHERE c.documentType = @documentType AND c.userId = @userId';
@@ -467,10 +501,12 @@ export class EnhancedCosmosDBService {
     ];
     
     const countQuerySpec: SqlQuerySpec = { query: countQuery, parameters: countParameters };
-    const countResult = await container.items.query(countQuerySpec).fetchAll();
-    const total = countResult.resources[0] || 0;
+    // Use iterator for count query as well
+    const countIterator = container.items.query(countQuerySpec);
+    const countResult = await countIterator.fetchNext();
+    const total = countResult.resources && countResult.resources.length > 0 ? countResult.resources[0] : 0;
     
-    return { items: resources, total };
+    return { items, total };
   }
 }
 
