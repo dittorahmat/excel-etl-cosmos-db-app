@@ -11,13 +11,16 @@ export const LoginPage: React.FC = () => {
         <div className="flex min-h-screen bg-background px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md space-y-8 absolute top-4 left-4">
                 <div>
-                    <img src={iesrLogo} alt="IESR Logo" className="h-12 w-24" />
+                    <img src={iesrLogo} alt="IESR Logo" className="h-20 w-40" />
                 </div>
             </div>
-            <div className="w-full max-w-md mx-auto flex items-center justify-center">
+            <div className="w-full max-w-md mx-auto flex items-start justify-center pt-12">
                 <div className="w-full">
-                    <div className="text-center">
-                        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-foreground">
+                    <div className="text-center mb-8">
+                        <h2 
+                            className="mt-2 text-center font-bold tracking-tight text-foreground"
+                            style={{ fontFamily: 'Calibri', fontSize: '54px' }}
+                        >
                             IESR Database
                         </h2>
                     </div>
@@ -39,6 +42,11 @@ export const LoginPage: React.FC = () => {
                         </CardContent>
                     </Card>
                 </div>
+            </div>
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                <p className="text-center text-sm text-muted-foreground">
+                    Accelerating Low Carbon Energy Transition
+                </p>
             </div>
         </div>
     );

@@ -51,7 +51,7 @@ export const Sidebar = () => {
         <img 
           src="/images/iesr-logo-new.png" 
           alt="IESR Logo" 
-          className="h-12 w-auto object-contain"
+          className="h-20 w-auto object-contain"
         />
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">

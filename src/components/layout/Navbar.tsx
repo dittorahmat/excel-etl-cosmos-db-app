@@ -36,7 +36,7 @@ export const Navbar = () => {
       <div className="flex-1 h-20 overflow-hidden">
         <Link to="/" className="h-full flex items-center w-full">
           <img 
-            src="/images/iesr-header.jpeg" 
+            src="/images/iesr-header-new.jpg" 
             alt="IESR Header" 
             className="h-full w-full max-w-full object-cover"
             style={{ objectPosition: 'left center' }}

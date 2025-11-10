@@ -220,9 +220,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
       <div className="grid gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="query"></TabsTrigger>
-          </TabsList>
 
           <TabsContent value="query" className="space-y-4">
             <Card>
