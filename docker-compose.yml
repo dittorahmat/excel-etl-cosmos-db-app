@@ -43,7 +43,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "service", "nginx", "status"]
+      test: ["CMD", "nginx", "-t"]
       interval: 30s
       timeout: 10s
       retries: 3

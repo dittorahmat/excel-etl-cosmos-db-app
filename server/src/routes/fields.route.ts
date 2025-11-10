@@ -155,8 +155,8 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             // First, get a count to understand the scope
             const countQuery = `SELECT VALUE COUNT(1) FROM c WHERE ${baseWhereClause}`;
             // Use iterator instead of fetchAll to avoid loading all results into memory
-            const queryIterator = container.items.query(countQuery);
-            const countResult = await queryIterator.fetchNext();
+            const countQueryIterator = container.items.query(countQuery);
+            const countResult = await countQueryIterator.fetchNext();
             const totalRecords = countResult.resources && countResult.resources.length > 0 ? countResult.resources[0] : 0;
             console.log(`Total records matching filters: ${totalRecords}`);
             
@@ -238,12 +238,12 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               const filesQuery = `SELECT DISTINCT c.fileName FROM c WHERE ${baseWhereClause}`;
               
               const queryIterator = container.items.query(filesQuery);
-              const fileNames = [];
+              const fileNames: any[] = [];
               
               while (queryIterator.hasMoreResults()) {
                 const result = await queryIterator.fetchNext();
                 if (result.resources) {
-                  fileNames.push(...result.resources.map(resource => resource.fileName).filter(Boolean));
+                  fileNames.push(...result.resources.map((resource: any) => resource.fileName).filter(Boolean));
                 }
               }
               
@@ -272,14 +272,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               });
               
               // Use iterator instead of fetchAll to avoid loading all results into memory
-              const headers = [];
+              const headers: any[] = [];
               while (importsQuery.hasMoreResults()) {
                 const result = await importsQuery.fetchNext();
                 if (result.resources) {
                   headers.push(...result.resources);
                 }
               }
-              const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
+              const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers || []))];
               
               console.log(`Fetched ${uniqueHeaders.length} fields from ${fileNames.length} files with special filters (fallback) in ${Date.now() - startTime}ms`);
               
@@ -319,15 +319,15 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               const fieldName = relatedToStrings[i];
               const relatedFieldQuery = container.items.query({
                 query: "SELECT c.fileName FROM c WHERE c._partitionKey = 'imports' AND ARRAY_CONTAINS(c.headers, @fieldName)",
-                parameters: [{ name: '@fieldName', value: fieldName }]
+                parameters: [{ name: '@fieldName', value: String(fieldName || '') }]
               });
               
               // Use iterator instead of fetchAll to avoid loading all results into memory
-              const fileNames = [];
+              const fileNames: any[] = [];
               while (relatedFieldQuery.hasMoreResults()) {
                 const result = await relatedFieldQuery.fetchNext();
                 if (result.resources) {
-                  fileNames.push(...result.resources.map(resource => resource.fileName));
+                  fileNames.push(...result.resources.map((resource: any) => resource.fileName));
                 }
               }
               
@@ -353,14 +353,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               });
               
               // Use iterator instead of fetchAll to avoid loading all results into memory
-              const headers = [];
+              const headers: any[] = [];
               while (allFieldsQuery.hasMoreResults()) {
                 const result = await allFieldsQuery.fetchNext();
                 if (result.resources) {
                   headers.push(...result.resources);
                 }
               }
-              const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
+              const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers || []))];
               
               return res.status(200).json({
                 success: true,
@@ -393,14 +393,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             });
             
             // Use iterator instead of fetchAll to avoid loading all results into memory
-            const headers = [];
+            const headers: any[] = [];
             while (filteredQuery.hasMoreResults()) {
               const result = await filteredQuery.fetchNext();
               if (result.resources) {
                 headers.push(...result.resources);
               }
             }
-            const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
+            const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers || []))];
             
             console.log(`Fetched ${uniqueHeaders.length} related fields from ${commonFileNames.length} files in ${Date.now() - startTime}ms`);
             
@@ -427,7 +427,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         } else {
           // Default behavior - fetch all fields
           // Use iterator instead of fetchAll to avoid loading all results into memory
-          const queryIterator = container.items
+          const fieldsQueryIterator = container.items
             .query({
               query: "SELECT c.headers FROM c WHERE c._partitionKey = 'imports'",
             });
@@ -438,12 +438,12 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           );
           
           // Execute query with timeout protection using iterator
-          let headers = [];
+          let headers: Array<{ headers: string[] }> = [];
           try {
             const queryPromise = new Promise(async (resolve, reject) => {
               try {
-                while (queryIterator.hasMoreResults()) {
-                  const page = await queryIterator.fetchNext();
+                while (fieldsQueryIterator.hasMoreResults()) {
+                  const page = await fieldsQueryIterator.fetchNext();
                   if (page.resources) {
                     headers.push(...page.resources);
                   }

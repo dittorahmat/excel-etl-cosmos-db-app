@@ -208,7 +208,7 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
             
           // Use iterator instead of fetchAll to avoid loading all results into memory
           const queryIterator = container.items.query<T>(querySpec);
-          const resources = [];
+          const resources: T[] = [];
           
           while (queryIterator.hasMoreResults()) {
             const result = await queryIterator.fetchNext();

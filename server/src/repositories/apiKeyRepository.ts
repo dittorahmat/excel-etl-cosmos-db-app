@@ -62,9 +62,9 @@ export class ApiKeyRepository {
       };
 
       // Use iterator instead of fetchAll to avoid loading all results into memory
-      const queryIterator = container.items.query(querySpec);
+      const queryIterator = container.items.query<ApiKey>(querySpec);
       const result = await queryIterator.fetchNext();
-      const resources = result.resources || [];
+      const resources: any[] = result.resources || [];
 
       // Check if key exists
       if (!resources || resources.length === 0) {
@@ -240,7 +240,7 @@ export class ApiKeyRepository {
           query: 'SELECT * FROM c WHERE c.userId = @userId',
           parameters: [{ name: '@userId', value: userId }]
         });
-      const resources = [];
+      const resources: ApiKey[] = [];
       
       while (queryIterator.hasMoreResults()) {
         const result = await queryIterator.fetchNext();

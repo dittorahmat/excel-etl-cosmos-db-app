@@ -79,7 +79,7 @@ export class DatabaseAccessControlService {
       // Execute query with timeout protection using iterator
       const queryPromise = new Promise(async (resolve, reject) => {
         try {
-          const resources = [];
+          const resources: AuthorizationConfig[] = [];
           while (queryIterator.hasMoreResults()) {
             const page = await queryIterator.fetchNext();
             if (page.resources) {

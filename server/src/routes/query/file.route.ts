@@ -195,7 +195,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         
         // Use iterator instead of fetchAll to avoid loading all results into memory
         const queryIterator = container.items.query(query);
-        const items = [];
+        const items: any[] = [];
         
         while (queryIterator.hasMoreResults()) {
           const response = await queryIterator.fetchNext();
@@ -218,7 +218,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log(`File query returned ${items.length} records`);
 
-        return res.status(200).json(paginatedItems);
+        return res.status(200).json(items);
       } catch (error) {
         console.error('Error fetching data from Cosmos DB for file query:', error);
         
@@ -420,7 +420,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         
         // Use iterator instead of fetchAll to avoid loading all results into memory
         const queryIterator = container.items.query(query);
-        const items = [];
+        const items: any[] = [];
         
         while (queryIterator.hasMoreResults()) {
           const response = await queryIterator.fetchNext();
@@ -443,7 +443,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log(`File query GET returned ${items.length} records`);
 
-        return res.status(200).json(paginatedItems);
+        return res.status(200).json(items);
       } catch (error) {
         console.error('Error fetching data from Cosmos DB for file query GET:', error);
         
@@ -643,7 +643,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           
           // Use iterator instead of fetchAll to avoid loading all results into memory
           const queryIterator = container.items.query(query);
-          const values = [];
+          const values: any[] = [];
           
           while (queryIterator.hasMoreResults()) {
             const response = await queryIterator.fetchNext();
@@ -653,7 +653,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           }
 
           // Filter out null, undefined, and empty string values
-          distinctValues[cleanField] = values.filter(value => 
+          distinctValues[cleanField] = values.filter((value: any) => 
             value !== null && 
             value !== undefined && 
             (typeof value === 'string' ? value.trim() !== '' : true)
@@ -823,11 +823,11 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         console.log('Import ID query:', importIdQuery);
         
         // Use iterator instead of fetchAll to avoid loading all results into memory
-        const queryIterator = container.items.query(importIdQuery);
-        const values = [];
+        const importIdQueryIterator = container.items.query(importIdQuery);
+        const values: any[] = [];
         
-        while (queryIterator.hasMoreResults()) {
-          const response = await queryIterator.fetchNext();
+        while (importIdQueryIterator.hasMoreResults()) {
+          const response = await importIdQueryIterator.fetchNext();
           if (response.resources) {
             values.push(...response.resources);
           }
@@ -878,11 +878,11 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         console.log('Imports query:', importsQuery);
 
         // Use iterator instead of fetchAll to avoid loading all results into memory
-        const queryIterator = importContainer.items.query(importsQuery);
-        const importItems = [];
+        const importQueryIterator = importContainer.items.query(importsQuery);
+        const importItems: any[] = [];
         
-        while (queryIterator.hasMoreResults()) {
-          const response = await queryIterator.fetchNext();
+        while (importQueryIterator.hasMoreResults()) {
+          const response = await importQueryIterator.fetchNext();
           if (response.resources) {
             importItems.push(...response.resources);
           }

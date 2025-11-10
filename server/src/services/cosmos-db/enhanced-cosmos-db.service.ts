@@ -277,7 +277,7 @@ export class EnhancedCosmosDBService {
     const querySpec: SqlQuerySpec = { query, parameters };
     // Use iterator instead of fetchAll to avoid loading all results into memory
     const queryIterator = container.items.query<ImportMetadata>(querySpec);
-    const items = [];
+    const items: ImportMetadata[] = [];
     
     while (queryIterator.hasMoreResults()) {
       const result = await queryIterator.fetchNext();
@@ -364,7 +364,7 @@ export class EnhancedCosmosDBService {
     const querySpec: SqlQuerySpec = { query, parameters };
     // Use iterator instead of fetchAll to avoid loading all results into memory
     const queryIterator = container.items.query<DataRow>(querySpec);
-    const items = [];
+    const items: DataRow[] = [];
     
     while (queryIterator.hasMoreResults()) {
       const result = await queryIterator.fetchNext();
@@ -421,7 +421,7 @@ export class EnhancedCosmosDBService {
     // Use iterator instead of fetchAll to avoid loading all results into memory
     const queryIterator = container.items.query<ApiKey>(querySpec);
     const result = await queryIterator.fetchNext();
-    const resources = result.resources || [];
+    const resources: ApiKey[] = result.resources || [];
     
     return resources[0];
   }
@@ -484,7 +484,7 @@ export class EnhancedCosmosDBService {
     const querySpec: SqlQuerySpec = { query, parameters };
     // Use iterator instead of fetchAll to avoid loading all results into memory
     const queryIterator = container.items.query<AuditLog>(querySpec);
-    const items = [];
+    const items: AuditLog[] = [];
     
     while (queryIterator.hasMoreResults()) {
       const result = await queryIterator.fetchNext();

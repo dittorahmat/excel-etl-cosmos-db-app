@@ -125,7 +125,7 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
           
           // Use iterator instead of fetchAll to avoid loading all results into memory
           const queryIterator = container.items.query(query);
-          const values = [];
+          const values: any[] = [];
           
           while (queryIterator.hasMoreResults()) {
             const result = await queryIterator.fetchNext();
