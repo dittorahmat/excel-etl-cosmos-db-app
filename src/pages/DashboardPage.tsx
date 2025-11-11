@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { Loader2, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsContent } from '../components/ui/tabs';
 import { QueryBuilder } from '../components/QueryBuilder/QueryBuilder';
 import { Button } from '../components/ui/button';
 import { ApiGenerationModal } from '../components/ApiGeneration';

@@ -439,7 +439,7 @@ export function FileListTable() {
       {showBulkDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Bulk Delete</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Delete Selected Files</h3>
             <p className="text-gray-500 mb-4">
               Are you sure you want to delete {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''}? 
               This action cannot be undone.

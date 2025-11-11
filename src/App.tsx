@@ -6,6 +6,7 @@ import { useAuth } from './auth/useAuth';
 import { AuthWrapper } from './auth/AuthWrapper';
 import { MainLayout } from './components/layout/MainLayout';
 import { Loader2 } from 'lucide-react';
+import { Toaster } from './components/ui/toaster';
 
 // Debugging React version and environment
 console.log('React version:', React.version);
@@ -146,6 +147,7 @@ const App = () => {
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <AuthWrapper>
         <AppContent />
+        <Toaster />
       </AuthWrapper>
     </ThemeProvider>
   );

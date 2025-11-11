@@ -17,6 +17,9 @@ export const MainLayout = ({ children }: MainLayoutProps): JSX.Element => {
           <main className="flex-1 p-4 overflow-y-auto bg-background">
             {children}
           </main>
+          <footer className="py-4 px-6 text-center text-sm text-muted-foreground border-t">
+            Accelerating Low Carbon Energy Transition
+          </footer>
         </div>
       </div>
     </ErrorBoundary>

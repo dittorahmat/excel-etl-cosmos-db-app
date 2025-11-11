@@ -80,7 +80,7 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
+                description: `*** CRITICAL ERROR: File '${file.name}' is MISSING REQUIRED COLUMNS: [${missingHeaders.join(', ')}] *** Please ensure your file contains these REQUIRED COLUMNS: [${requiredHeaders.join(', ')}]`,
                 open: true,
                 onOpenChange: () => {}
               });
@@ -172,7 +172,7 @@ export function UploadPage() {
               toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}. Files must contain the following columns: ${requiredHeaders.join(', ')}`,
+                description: `*** CRITICAL ERROR: File '${file.name}' is MISSING REQUIRED COLUMNS: [${missingHeaders.join(', ')}] *** Please ensure your file contains these REQUIRED COLUMNS: [${requiredHeaders.join(', ')}]`,
                 open: true,
                 onOpenChange: () => {}
               });
@@ -401,8 +401,8 @@ export function UploadPage() {
       } else if (responseData.successfulUploads && responseData.successfulUploads > 0) {
         // All files were uploaded successfully
         toast({
-          title: 'Upload Successful',
-          description: `${responseData.message || `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`}${totalRowCount ? ` Processed ${totalRowCount} rows total.` : ''}`,
+          title: 'SUCCESS: Upload Completed',
+          description: <><strong>{responseData.message || `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`}</strong>{totalRowCount ? <><br /><em>Processed {totalRowCount} rows total.</em></> : ''}</>,
           action: (
             <ToastAction altText="View" onClick={() => {
               // Navigate to the dashboard to see the uploaded files

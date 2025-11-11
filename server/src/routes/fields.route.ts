@@ -440,18 +440,20 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           // Execute query with timeout protection using iterator
           let headers: Array<{ headers: string[] }> = [];
           try {
-            const queryPromise = new Promise(async (resolve, reject) => {
-              try {
-                while (fieldsQueryIterator.hasMoreResults()) {
-                  const page = await fieldsQueryIterator.fetchNext();
-                  if (page.resources) {
-                    headers.push(...page.resources);
+            const queryPromise = new Promise((resolve, reject) => {
+              (async () => {
+                try {
+                  while (fieldsQueryIterator.hasMoreResults()) {
+                    const page = await fieldsQueryIterator.fetchNext();
+                    if (page.resources) {
+                      headers.push(...page.resources);
+                    }
                   }
+                  resolve(headers);
+                } catch (error) {
+                  reject(error);
                 }
-                resolve(headers);
-              } catch (error) {
-                reject(error);
-              }
+              })();
             });
             
             const result = await Promise.race([queryPromise, timeoutPromise]);
