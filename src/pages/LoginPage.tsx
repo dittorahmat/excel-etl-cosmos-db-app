@@ -14,17 +14,17 @@ export const LoginPage: React.FC = () => {
                     <img src={iesrLogo} alt="IESR Logo" className="h-20 w-40" />
                 </div>
             </div>
-            <div className="w-full max-w-md mx-auto flex items-start justify-center pt-16">
+            <div className="w-full max-w-md mx-auto flex items-center justify-center pt-16">
                 <div className="w-full">
                     <div className="text-center mb-8">
-                        <h2 
+                        <h2
                             className="mt-2 text-center font-bold tracking-tight text-foreground"
                             style={{ fontFamily: 'Calibri', fontSize: '54px' }}
                         >
                             IESR Database
                         </h2>
                     </div>
-                    <Card className="w-full">
+                    <Card className="w-full max-w-sm mx-auto">
                         <CardContent className="p-6">
                             <div className="space-y-6">
                                 <Button

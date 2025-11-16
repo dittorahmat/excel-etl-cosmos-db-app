@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { FileUpload } from '../components/upload/FileUpload';
-import { useToast } from '../components/ui/use-toast';
-import { ToastAction } from '../components/ui/toast';
 import { Upload as UploadIcon, FileCheck, Lock } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { api, getAuthToken } from '../utils/api';
@@ -14,39 +12,32 @@ import * as XLSX from 'xlsx';
 
 export function UploadPage() {
   console.log('Rendering UploadPage component');
-  const { toast } = useToast();
-  
+
   // Function to validate the required columns in an uploaded file
   const validateFileHeaders = (file: File): Promise<{ isValid: boolean; missingHeaders?: string[]; error?: string }> => {
     return new Promise((resolve, reject) => {
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
-      
+
       if (fileExtension === 'csv') {
         // For CSV files, use text reader
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
           try {
             const csvText = e.target?.result as string;
-            const workbook = XLSX.read(csvText, { 
+            const workbook = XLSX.read(csvText, {
               type: 'string',
               cellDates: true,
               dateNF: 'yyyy-mm-dd'
             });
-            
+
             const firstSheetName = workbook.SheetNames[0];
             if (!firstSheetName) {
-              toast({
-                variant: 'destructive',
-                title: 'Validation Error',
-                description: `No worksheets found in the CSV file: ${file.name}`,
-                open: true,
-                onOpenChange: () => {}
-              });
+              console.error(`No worksheets found in the CSV file: ${file.name}`);
               resolve({ isValid: false, error: `No worksheets found in the CSV file: ${file.name}` });
               return;
             }
-            
+
             const worksheet = workbook.Sheets[firstSheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, {
               header: 1,
@@ -54,91 +45,60 @@ export function UploadPage() {
               defval: '',
               blankrows: false,
             });
-            
+
             if (jsonData.length === 0) {
-              toast({
-                variant: 'destructive',
-                title: 'Validation Error',
-                description: `No data found in the CSV file: ${file.name}`,
-                open: true,
-                onOpenChange: () => {}
-              });
+              console.error(`No data found in the CSV file: ${file.name}`);
               resolve({ isValid: false, error: `No data found in the CSV file: ${file.name}` });
               return;
             }
-            
+
             // Extract headers (first row)
             const headers = jsonData[0] as string[];
-            
+
             // Required headers for FileSelector
             const requiredHeaders = ['Source', 'Category', 'Sub Category', 'Year'];
-            
+
             // Check if all required headers exist in the file
             const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-            
+
             if (missingHeaders.length > 0) {
-              toast({
-                variant: 'destructive',
-                title: 'Validation Error',
-                description: `*** CRITICAL ERROR: File '${file.name}' is MISSING REQUIRED COLUMNS: [${missingHeaders.join(', ')}] *** Please ensure your file contains these REQUIRED COLUMNS: [${requiredHeaders.join(', ')}]`,
-                open: true,
-                onOpenChange: () => {}
-              });
+              console.error(`File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}`);
               resolve({ isValid: false, missingHeaders, error: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}` });
             } else {
               resolve({ isValid: true });
             }
           } catch (error) {
             console.error('Error validating CSV file:', error);
-            toast({
-              variant: 'destructive',
-              title: 'Validation Error',
-              description: `Failed to validate the CSV file: ${file.name}. Please ensure it is a valid CSV file.`,
-              open: true,
-              onOpenChange: () => {}
-            });
             resolve({ isValid: false, error: `Failed to validate the CSV file: ${file.name}. Please ensure it is a valid CSV file.` });
           }
         };
-        
+
         reader.onerror = () => {
-          toast({
-            variant: 'destructive',
-            title: 'Validation Error',
-            description: `Failed to read the CSV file: ${file.name}. Please try another file.`,
-            open: true,
-            onOpenChange: () => {}
-          });
+          console.error(`Failed to read the CSV file: ${file.name}. Please try another file.`);
           reject(new Error(`Failed to read the CSV file: ${file.name}. Please try another file.`));
         };
-        
+
         reader.readAsText(file);
       } else {
         // For Excel files, use ArrayBuffer reader
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
           try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { 
+            const workbook = XLSX.read(data, {
               type: 'array',
               cellDates: true,
               dateNF: 'yyyy-mm-dd'
             });
-            
+
             const firstSheetName = workbook.SheetNames[0];
             if (!firstSheetName) {
-              toast({
-                variant: 'destructive',
-                title: 'Validation Error',
-                description: `No worksheets found in the Excel file: ${file.name}`,
-                open: true,
-                onOpenChange: () => {}
-              });
+              console.error(`No worksheets found in the Excel file: ${file.name}`);
               resolve({ isValid: false, error: `No worksheets found in the Excel file: ${file.name}` });
               return;
             }
-            
+
             const worksheet = workbook.Sheets[firstSheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, {
               header: 1,
@@ -146,64 +106,39 @@ export function UploadPage() {
               defval: '',
               blankrows: false,
             });
-            
+
             if (jsonData.length === 0) {
-              toast({
-                variant: 'destructive',
-                title: 'Validation Error',
-                description: `No data found in the Excel file: ${file.name}`,
-                open: true,
-                onOpenChange: () => {}
-              });
+              console.error(`No data found in the Excel file: ${file.name}`);
               resolve({ isValid: false, error: `No data found in the Excel file: ${file.name}` });
               return;
             }
-            
+
             // Extract headers (first row)
             const headers = jsonData[0] as string[];
-            
+
             // Required headers for FileSelector
             const requiredHeaders = ['Source', 'Category', 'Sub Category', 'Year'];
-            
+
             // Check if all required headers exist in the file
             const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-            
+
             if (missingHeaders.length > 0) {
-              toast({
-                variant: 'destructive',
-                title: 'Validation Error',
-                description: `*** CRITICAL ERROR: File '${file.name}' is MISSING REQUIRED COLUMNS: [${missingHeaders.join(', ')}] *** Please ensure your file contains these REQUIRED COLUMNS: [${requiredHeaders.join(', ')}]`,
-                open: true,
-                onOpenChange: () => {}
-              });
+              console.error(`File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}`);
               resolve({ isValid: false, missingHeaders, error: `File '${file.name}' is missing required columns: ${missingHeaders.join(', ')}` });
             } else {
               resolve({ isValid: true });
             }
           } catch (error) {
             console.error('Error validating Excel file:', error);
-            toast({
-              variant: 'destructive',
-              title: 'Validation Error',
-              description: `Failed to validate the Excel file: ${file.name}. Please ensure it is a valid Excel file.`,
-              open: true,
-              onOpenChange: () => {}
-            });
             resolve({ isValid: false, error: `Failed to validate the Excel file: ${file.name}. Please ensure it is a valid Excel file.` });
           }
         };
-        
+
         reader.onerror = () => {
-          toast({
-            variant: 'destructive',
-            title: 'Validation Error',
-            description: `Failed to read the Excel file: ${file.name}. Please try another file.`,
-            open: true,
-            onOpenChange: () => {}
-          });
+          console.error(`Failed to read the Excel file: ${file.name}. Please try another file.`);
           reject(new Error(`Failed to read the Excel file: ${file.name}. Please try another file.`));
         };
-        
+
         // Read file as ArrayBuffer for binary parsing
         reader.readAsArrayBuffer(file);
       }
@@ -216,6 +151,7 @@ export function UploadPage() {
   const [checkingAuthorization, setCheckingAuthorization] = useState(false);
   const [authorized, setAuthorized] = useState<boolean | null>(null); // null = not checked yet
   const [error, setError] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
   const navigate = useNavigate();
 
   // Check authorization when user is authenticated
@@ -260,12 +196,15 @@ export function UploadPage() {
   };
 
   const handleFileUpload = async (files: File[], userInfo?: { name: string; email: string; id: string }): Promise<{ data?: { rowCount?: number }, count?: number }> => {
+    // Clear any previous messages
+    setUploadMessage(null);
+
     // Validate all files before uploading
     for (const file of files) {
       const validationResult = await validateFileHeaders(file);
       if (!validationResult.isValid) {
-        // Validation already shows specific error message in toast, throw error with specific details
         const errorMessage = validationResult.error || 'File validation failed';
+        setUploadMessage({ message: errorMessage, type: 'error' });
         throw new Error(errorMessage);
       }
     }
@@ -279,7 +218,7 @@ export function UploadPage() {
       files.forEach(file => {
         formData.append('files', file);
       });
-      
+
       // Add user information if available
       if (userInfo) {
         formData.append('uploadedBy', JSON.stringify(userInfo));
@@ -381,47 +320,28 @@ export function UploadPage() {
         totalRowCount = responseData.results.reduce((sum, result) => sum + (result.totalRows || 0), 0);
       }
 
-      // Show appropriate toast based on the response
+      // Set appropriate message based on the response
       if (responseData.successfulUploads && responseData.failedUploads && responseData.failedUploads > 0) {
         // Partial success - some files were uploaded, some failed
-        toast({
-          title: 'Upload Partially Successful',
-          description: `Successfully processed ${responseData.successfulUploads} of ${responseData.totalFiles} files. ${responseData.failedUploads} failed.`,
-          action: (
-            <ToastAction altText="View" onClick={() => {
-              // Navigate to the dashboard to see the uploaded files
-              window.location.href = '/';
-            }}>
-              View Files
-            </ToastAction>
-          ),
-          open: true,
-          onOpenChange: () => {}
+        setUploadMessage({
+          message: `Successfully processed ${responseData.successfulUploads} of ${responseData.totalFiles} files. ${responseData.failedUploads} failed.`,
+          type: 'warning'
         });
       } else if (responseData.successfulUploads && responseData.successfulUploads > 0) {
         // All files were uploaded successfully
-        toast({
-          title: 'SUCCESS: Upload Completed',
-          description: <><strong>{responseData.message || `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`}</strong>{totalRowCount ? <><br /><em>Processed {totalRowCount} rows total.</em></> : ''}</>,
-          action: (
-            <ToastAction altText="View" onClick={() => {
-              // Navigate to the dashboard to see the uploaded files
-              window.location.href = '/';
-            }}>
-              View Files
-            </ToastAction>
-          ),
-          open: true,
-          onOpenChange: () => {}
+        let message = `${responseData.message || `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`}`;
+        if (totalRowCount) {
+          message += `\nProcessed ${totalRowCount} rows total.`;
+        }
+        setUploadMessage({
+          message: message,
+          type: 'success'
         });
       } else {
         // No files were uploaded successfully
-        toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: 'No files were processed successfully',
-          open: true,
-          onOpenChange: () => {}
+        setUploadMessage({
+          message: 'No files were processed successfully',
+          type: 'error'
         });
       }
 
@@ -446,18 +366,12 @@ export function UploadPage() {
       }
 
       // Show upload error if it's not a validation error (validation errors show their own toast)
-      if (!errorMessage.includes('Missing required columns') && 
-          !errorMessage.includes('No worksheets found') && 
-          !errorMessage.includes('No data found') && 
-          !errorMessage.includes('Failed to validate') && 
+      if (!errorMessage.includes('Missing required columns') &&
+          !errorMessage.includes('No worksheets found') &&
+          !errorMessage.includes('No data found') &&
+          !errorMessage.includes('Failed to validate') &&
           !errorMessage.includes('Failed to read')) {
-        toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: errorMessage,
-          open: true,
-          onOpenChange: () => {}
-        });
+        setUploadMessage({ message: errorMessage, type: 'error' });
       }
 
       setIsUploading(false);
@@ -602,6 +516,50 @@ export function UploadPage() {
                   progress={uploadProgress}
                   isUploading={isUploading}
                 />
+                {/* Display upload messages */}
+                {uploadMessage && (
+                  <div className={`mt-4 p-4 rounded-md ${
+                    uploadMessage.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
+                    uploadMessage.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' :
+                    uploadMessage.type === 'warning' ? 'bg-yellow-100 border border-yellow-400 text-yellow-700' :
+                    'bg-blue-100 border border-blue-400 text-blue-700'
+                  }`}>
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        {uploadMessage.type === 'success' && (
+                          <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {uploadMessage.type === 'error' && (
+                          <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {uploadMessage.type === 'warning' && (
+                          <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {uploadMessage.type === 'info' && (
+                          <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="ml-3 flex-1">
+                        <p className="text-sm">
+                          <span className="font-medium">
+                            {uploadMessage.type === 'success' && 'Success'}
+                            {uploadMessage.type === 'error' && 'Error'}
+                            {uploadMessage.type === 'warning' && 'Warning'}
+                            {uploadMessage.type === 'info' && 'Info'}
+                          </span>: {uploadMessage.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 mt-4 text-center">
                 </p>
               </div>
