@@ -47,11 +47,11 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col">
-      <div className="h-16 flex items-center justify-center border-b dark:border-gray-700 p-2">
+      <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-2">
         <img
           src="/images/iesr-logo-new.png"
           alt="IESR Logo"
-          className="h-20 w-auto object-contain"
+          className="h-full w-auto object-contain"
         />
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">
