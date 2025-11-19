@@ -57,7 +57,7 @@
 -   Careful planning of Cosmos DB partitioning keys is crucial for performance and cost.
 -   Excel parsing can be complex due to varied user inputs; robust validation is key.
 -   Applied global `bg-background` and `text-foreground` classes directly to the `<body>` tag in `index.html`.
--   **UI Fix**: Refined vertical alignment on landing page by adding bottom padding (`pb-20`) to shift content up by ~40px.
+-   **UI Fix**: Refined vertical alignment on landing page by increasing bottom padding to `pb-[80px]` (approx 80px total) to shift content further up.
 -   Resolved `Cannot find module` errors by deleting `node_modules` and `package-lock.json` and reinstalling dependencies.
 -   **Vite's chunking and script injection behavior can be complex; explicit control over vendor chunking and loading order is sometimes necessary.**
 -   **Environment variable loading in Node.js applications can be tricky, especially with different execution contexts (e.g., `npm run` vs. direct `node` commands). Direct injection or robust `dotenv` configuration is key.**

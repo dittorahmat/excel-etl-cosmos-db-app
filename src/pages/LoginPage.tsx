@@ -14,7 +14,7 @@ export const LoginPage: React.FC = () => {
                     <img src={iesrLogo} alt="IESR Logo" className="h-20 w-40" />
                 </div>
             </div>
-            <div className="w-full max-w-md mx-auto flex items-center justify-center pb-10">
+            <div className="w-full max-w-md mx-auto flex items-center justify-center pb-[80px]">
                 <div className="w-full">
                     <div className="text-center mb-8">
                         <h2

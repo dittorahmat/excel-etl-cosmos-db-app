@@ -112,7 +112,7 @@
 ## Known Issues
 -   Authentication is temporarily disabled due to Azure AD permission issues with personal Microsoft accounts in the test environment.
 -   Excel parsing is currently rudimentary and needs significant enhancement.
--   No robust error handling or retry mechanisms-   **UI Improvements**: Refined vertical alignment on landing page (shifted content up).
+-   No robust error handling or retry mechanisms-   **UI Improvements**: Refined vertical alignment on landing page (shifted content up by 80px total).
 -   **Build Success**: Successfully ran `npm run build` (client and server) with no errors.
 -   The Vite build configuration has been corrected to properly bundle vendor dependencies, resolving the `useLayoutEffect` error.
 -   **The frontend is currently unable to retrieve data from the backend.**
