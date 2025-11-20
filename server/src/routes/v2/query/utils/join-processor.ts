@@ -3,6 +3,10 @@ import { logger } from '../../../../utils/logger.js';
 /**
  * Groups records by special filter values and joins them by combining fields from different import IDs
  */
+interface ExcelRecord {
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 export class JoinProcessor {
   /**
    * Combines records that have matching special filter values across different import IDs
@@ -11,9 +15,9 @@ export class JoinProcessor {
    * @returns Merged records with combined fields from different import IDs
    */
   public static joinRecords(
-    records: Record<string, any>[],
+    records: ExcelRecord[],
     specialFilterFields: string[] = ['Source', 'Category', 'Sub Category', 'Year']
-  ): Record<string, any>[] {
+  ): ExcelRecord[] {
     if (!Array.isArray(records) || records.length === 0) {
       return [];
     }
@@ -31,7 +35,7 @@ export class JoinProcessor {
     });
 
     // Process each group to combine records from different import IDs
-    const joinedRecords: Record<string, any>[] = [];
+    const joinedRecords: ExcelRecord[] = [];
     
     for (const [groupKey, groupRecords] of Object.entries(groupedRecords)) {
       if (!groupRecords || groupRecords.length === 0) continue; // Skip empty groups
@@ -65,10 +69,10 @@ export class JoinProcessor {
    * Groups records by their special filter values (which spans across different import IDs)
    */
   private static groupBySpecialFilters(
-    records: Record<string, any>[],
+    records: ExcelRecord[],
     specialFilterFields: string[]
-  ): Record<string, Record<string, any>[]> {
-    const groups: Record<string, Record<string, any>[]> = {};
+  ): Record<string, ExcelRecord[]> {
+    const groups: Record<string, ExcelRecord[]> = {};
 
     for (const record of records) {
       // Create a key based on special filter values (not import ID)
@@ -87,7 +91,7 @@ export class JoinProcessor {
   /**
    * Creates a unique key from special filter values only (ignoring import ID differences)
    */
-  private static createGroupKey(record: Record<string, any>, specialFilterFields: string[]): string {
+  private static createGroupKey(record: ExcelRecord, specialFilterFields: string[]): string {
     // Create a consistent key based only on special filter values
     const values: string[] = [];
     
@@ -114,15 +118,15 @@ export class JoinProcessor {
    * Joins multiple records in a group (from different import IDs) into a single record with all fields
    */
   private static joinGroupRecords(
-    records: Record<string, any>[],
+    records: ExcelRecord[],
     specialFilterFields: string[]
-  ): Record<string, any> {
+  ): ExcelRecord {
     if (records.length === 0) {
       return {};
     }
 
     // Start with an empty result object
-    const result: Record<string, any> = {};
+    const result: ExcelRecord = {};
 
     // Collect all unique field names across all records in the group
     const allFieldNames = new Set<string>();
@@ -149,7 +153,7 @@ export class JoinProcessor {
       } else {
         // For regular fields, combine values from different import IDs
         // If multiple records have a value for the same field, take the first non-null one
-        let combinedValue: any = null;
+        let combinedValue: string | number | boolean | null = null;
         let hasValue = false;
 
         for (const record of records) {

@@ -223,7 +223,7 @@ afterAll(() => {
 // Suppress expected error logs in tests
 beforeEach(() => {
   // Suppress React 18 act() warnings
-  vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {
+  vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
     // Ignore React 18 act() warnings
     if (typeof args[0] === 'string' && args[0].includes('act(...)')) {
       return;
@@ -232,7 +232,7 @@ beforeEach(() => {
   });
   
   // Suppress React 18 deprecation warnings
-  vi.spyOn(console, 'warn').mockImplementation((...args: any[]) => {
+  vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
     // Ignore React 18 deprecation warnings
     if (typeof args[0] === 'string' && 
         (args[0].includes('ReactDOM.render') || 

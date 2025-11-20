@@ -3,7 +3,7 @@ import { vi, beforeAll, afterAll } from 'vitest';
 // Suppress act() warnings globally
 const originalError = console.error;
 beforeAll(() => {
-  vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {
+  vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
     if (typeof args[0] === 'string' &&
         /Warning: An update to .* inside a test was not wrapped in act/.test(args[0])) {
       return;

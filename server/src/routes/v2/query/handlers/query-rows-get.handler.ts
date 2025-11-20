@@ -4,6 +4,11 @@ import { AzureCosmosDB } from '../../../../types/azure.js';
 import { FilterCondition } from '@common/types/filter-condition.js';
 import { JoinProcessor } from '../utils/join-processor.js';
 
+// Define types for internal use
+interface ExcelRecord {
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 /**
  * Handler for querying exactly Name, Email, Phone fields, mimicking the Cosmos DB query:
  * SELECT c.Name, c.Email, c.Phone FROM c WHERE IS_DEFINED(c.Name) AND IS_DEFINED(c.Email) AND IS_DEFINED(c.Phone) AND c.documentType = 'excel-row'
@@ -219,12 +224,12 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       });
 
       // Execute both queries in parallel using iterators to avoid loading all results into memory
-      let itemsResponse: any, countResponse: any;
+      let itemsResponse: { resources?: ExcelRecord[] } | undefined, countResponse: { resources?: ExcelRecord[] } | undefined;
       try {
         const itemsIterator = container.items.query(joinQuery);
-        
+
         // Process items query with iterator
-        const itemsResources: any[] = [];
+        const itemsResources: ExcelRecord[] = [];
         while (itemsIterator.hasMoreResults()) {
           const response = await itemsIterator.fetchNext();
           if (response.resources) {

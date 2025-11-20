@@ -14,7 +14,7 @@ export class CosmosDbWrapper {
     record: T,
     containerName: string,
     operationName: string,
-    logger: { debug: (msg: string, meta?: any) => void; error: (msg: string, meta?: any) => void }
+    logger: { debug: (msg: string, meta?: Record<string, unknown>) => void; error: (msg: string, meta?: Record<string, unknown>) => void }
   ): Promise<AzureItemResponse<T>> {
     try {
       logger.debug(`Upserting record for ${operationName}`, {
@@ -58,7 +58,7 @@ export class CosmosDbWrapper {
     partitionKey: string,
     containerName: string,
     operationName: string,
-    logger: { debug: (msg: string, meta?: any) => void; error: (msg: string, meta?: any) => void }
+    logger: { debug: (msg: string, meta?: Record<string, unknown>) => void; error: (msg: string, meta?: Record<string, unknown>) => void }
   ): Promise<void> {
     try {
       logger.debug(`Deleting record for ${operationName}`, {

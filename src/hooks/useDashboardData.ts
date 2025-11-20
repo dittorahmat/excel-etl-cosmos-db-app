@@ -39,7 +39,7 @@ interface SpecialFilters {
   Source: string;
   Category: string;
   'Sub Category': string;
-  Year: string[] | number[];
+  Year?: string[] | number[];
   FileId?: string;
 }
 
@@ -77,7 +77,7 @@ export const useDashboardData = () => {
     Source: '',
     Category: '',
     'Sub Category': '',
-    Year: [],
+    Year: undefined,
     FileId: selectedFile,
   });
 
@@ -346,12 +346,12 @@ export const useDashboardData = () => {
       
       // Note: We are not passing filters here, as sorting should re-fetch without filters.
       // The executeQuery function will use the current selectedFile and filters from its closure.
-      executeQuery({ 
+      executeQuery({
         fields: [], // Not used in file-based queries
-        filters: [], 
-        specialFilters: { Source: '', Category: '', 'Sub Category': '', Year: [], FileId: selectedFile } as SpecialFilters,
-        limit: queryResult.pageSize, 
-        offset: (queryResult.page - 1) * queryResult.pageSize 
+        filters: [],
+        specialFilters: { Source: '', Category: '', 'Sub Category': '', Year: undefined, FileId: selectedFile } as SpecialFilters,
+        limit: queryResult.pageSize,
+        offset: (queryResult.page - 1) * queryResult.pageSize
       });
       
       return field;

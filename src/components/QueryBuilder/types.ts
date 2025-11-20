@@ -48,7 +48,7 @@ export interface SpecialFilters {
   Source: string;
   Category: string;
   'Sub Category': string;
-  Year: string[] | number[];
+  Year?: string[] | number[];
   FileId?: string;
 }
 

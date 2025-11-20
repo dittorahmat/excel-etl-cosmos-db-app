@@ -11,14 +11,14 @@ interface RequestOptions {
 
 interface DistinctValuesResult {
   success: boolean;
-  values: Record<string, any[]>;
+  values: Record<string, (string | number | boolean)[]>;
   error?: string;
 }
 
 interface FileImportsResult {
   success: boolean;
   data: {
-    items: any[];
+    items: Record<string, unknown>[];
     total: number;
     page: number;
     pageSize: number;
@@ -31,9 +31,9 @@ interface FileImportsResult {
  * Custom hook for managing API requests with debouncing and cancellation
  */
 export const useDebouncedApi = () => {
-  const [distinctValues, setDistinctValues] = useState<Record<string, any[]>>({});
-  const [filteredValues, setFilteredValues] = useState<Record<string, any[]>>({});
-  const [files, setFiles] = useState<any[]>([]);
+  const [distinctValues, setDistinctValues] = useState<Record<string, (string | number | boolean)[]>>({});
+  const [filteredValues, setFilteredValues] = useState<Record<string, (string | number | boolean)[]>>({});
+  const [files, setFiles] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   

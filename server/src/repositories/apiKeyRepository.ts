@@ -64,7 +64,7 @@ export class ApiKeyRepository {
       // Use iterator instead of fetchAll to avoid loading all results into memory
       const queryIterator = container.items.query<ApiKey>(querySpec);
       const result = await queryIterator.fetchNext();
-      const resources: any[] = result.resources || [];
+      const resources: ApiKey[] = result.resources || [];
 
       // Check if key exists
       if (!resources || resources.length === 0) {

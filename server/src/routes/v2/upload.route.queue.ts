@@ -3,6 +3,8 @@ import type { Request, Response, NextFunction } from 'express';
 import multer, { MulterError } from 'multer';
 import type { Express } from 'express';
 
+import type { ImportMetadata } from '../../services/ingestion/ingestion.service.js';
+
 
 const router = Router();
 
@@ -39,7 +41,8 @@ const storage = multer.diskStorage({
 export const fileFilter = function(
   req: Request,
   file: Express.Multer.File,
-  cb: any
+  // Note: Using Function type to prevent specific multer callback type conflicts
+  cb: Function
 ): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');
@@ -121,9 +124,14 @@ export const fileFilter = function(
       fieldname: file.fieldname
     });
 
-    const fileTypeError = new Error(
+    interface FileTypeError extends Error {
+      name: string;
+      code: string;
+    }
+
+    const fileTypeError: FileTypeError = new Error(
       `Unsupported file type: ${file.mimetype}. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.`
-    ) as any;
+    ) as FileTypeError;
     fileTypeError.name = 'FileTypeError';
     fileTypeError.code = 'INVALID_FILE_TYPE';
     cb(null, false); // Pass null as the error and false to reject the file
@@ -384,10 +392,10 @@ router.get('/queue/:id', async (req: Request, res: Response) => {
       error: 'Queue item not found'
     });
   }
-  
+
   // If the item is completed, also get the import metadata
-  let importMetadata: any = null;
-  
+  let importMetadata: ImportMetadata | null = null;
+
   if (item.status === 'completed') {
       try {
         // Import the ingestion service dynamically to avoid circular dependencies
@@ -414,7 +422,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   // Handle multer errors
   if (err instanceof MulterError) {
     const multerError = err;
-    if ((multerError as any).code === 'LIMIT_FILE_SIZE') {
+    if ((multerError as MulterError & { code: string }).code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json(
         createErrorResponse(
           413,
@@ -423,7 +431,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
         )
       );
     }
-    if ((multerError as any).code === 'LIMIT_FILE_COUNT') {
+    if ((multerError as MulterError & { code: string }).code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json(
         createErrorResponse(400, 'Too many files', 'Only one file can be uploaded at a time')
       );

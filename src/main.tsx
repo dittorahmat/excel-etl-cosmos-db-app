@@ -21,11 +21,25 @@ declare global {
   }
 }
 
+// Extend the Window interface to include custom properties
+declare global {
+  interface Window {
+    __APP_CONFIG__?: {
+      VITE_AUTH_ENABLED?: string | boolean;
+      AUTH_ENABLED?: string | boolean;
+    };
+    ENV?: {
+      VITE_AUTH_ENABLED?: string | boolean;
+      AUTH_ENABLED?: string | boolean;
+    };
+  }
+}
+
 // Wait for app initialization to complete before rendering
 function renderApp() {
   // Check if authentication is disabled
-  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || window.__APP_CONFIG__?.AUTH_ENABLED;
 
   // Check if auth is explicitly enabled in any of the possible sources
   const authExplicitlyEnabled = 

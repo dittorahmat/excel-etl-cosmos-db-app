@@ -80,8 +80,14 @@ export const useFields = (relatedTo?: string[], specialFilters?: SpecialFilters)
       const data = await response.json();
 
       if (data.success) {
+        interface BackendField {
+          name: string;
+          type: string;
+          label?: string;
+        }
+
         // Map fields from backend format {name, type, label} to frontend format {value, label, type}
-        const allFields = data.fields.map((field: any) => ({
+        const allFields = data.fields.map((field: BackendField) => ({
           value: field.name,
           label: field.label,
           type: field.type

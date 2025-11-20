@@ -47,7 +47,8 @@ const createMockMsalInstance = () => {
   };
   
   // Create a mock event dispatcher
-  const eventCallbacks: Record<string, (...args: any[]) => void> = {};
+  type EventCallback = (message: unknown) => void; // Using 'unknown' to be more type-safe
+  const eventCallbacks: Record<string, EventCallback> = {};
   
   // Return the mock MSAL instance
   return {
@@ -101,7 +102,7 @@ const createMockMsalInstance = () => {
     },
     
     // Event handling
-    addEventCallback: (callback: (...args: any[]) => void) => {
+    addEventCallback: (callback: EventCallback) => {
       console.log('Mock: addEventCallback called');
       const callbackId = `callback-${Date.now()}`;
       eventCallbacks[callbackId] = callback;
@@ -174,8 +175,8 @@ const createRealMsalInstance = () => {
     });
 
     const isDevelopment = import.meta.env.DEV;
-    const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-    const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+    const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
+    const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || window.__APP_CONFIG__?.AUTH_ENABLED;
 
     // Check if auth is explicitly enabled in any of the possible sources
     const authExplicitlyEnabled = 
@@ -259,7 +260,7 @@ export const msalInstance: PublicClientApplication = new Proxy({} as PublicClien
     if (!defaultInstance) {
       defaultInstance = createRealMsalInstance();
     }
-    return (defaultInstance as any)[prop];
+    return (defaultInstance as { [key: string]: unknown })[prop as string];
   }
 });
 

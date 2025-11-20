@@ -75,7 +75,7 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
 
       // Convert fields to an array - handle both string and array cases
       const fieldsArray = Array.isArray(fields) ? fields : String(fields).split(',');
-      const distinctValues: Record<string, any[]> = {};
+      const distinctValues: Record<string, (string | number | boolean)[]> = {};
 
       try {
         console.log('Distinct values endpoint hit - attempting to fetch distinct values from Cosmos DB');
@@ -125,7 +125,7 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
           
           // Use iterator instead of fetchAll to avoid loading all results into memory
           const queryIterator = container.items.query(query);
-          const values: any[] = [];
+          const values: (string | number | boolean)[] = [];
           
           while (queryIterator.hasMoreResults()) {
             const result = await queryIterator.fetchNext();
@@ -148,7 +148,10 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
                 const numValue = Number(value);
                 return isNaN(numValue) ? value : numValue;
               })
-              .filter(value => !isNaN(value));
+              .filter(value => {
+                const numValue = Number(value);
+                return !isNaN(numValue);
+              });
           }
         }
 

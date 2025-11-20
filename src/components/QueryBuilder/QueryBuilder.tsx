@@ -27,7 +27,7 @@ export function QueryBuilder({
     Source: '',
     Category: '',
     'Sub Category': '',
-    Year: [],
+    Year: undefined as string[] | number[] | undefined,
     FileId: selectedFile,
   });
   const [showFilters, setShowFilters] = useState(defaultShowFilters);
@@ -82,7 +82,7 @@ export function QueryBuilder({
   // Handle execute button click
   const handleExecuteClick = useCallback(() => {
     // For file-based queries, we get all fields from the file
-    const allQueryFields = ['Source', 'Category', 'Sub Category', 'Year']; // These will be included by default in the file query
+    const allQueryFields = ['Source', 'Category', 'Sub Category']; // These will be included by default in the file query (Year is no longer mandatory)
 
     // Only proceed if we have a selected file
     if (!specialFilters.FileId) {

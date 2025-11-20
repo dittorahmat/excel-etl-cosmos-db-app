@@ -39,25 +39,25 @@ const QueryBuilderPage: React.FC = () => {
     setSelectedFile(fileId);
   };
 
-  const handleExecute = async (query: { 
-    fields: string[]; 
-    filters: FilterCondition[]; 
-    specialFilters?: { 
-      Source: string; 
-      Category: string; 
-      'Sub Category': string; 
-      Year: string[] | number[]; 
+  const handleExecute = async (query: {
+    fields: string[];
+    filters: FilterCondition[];
+    specialFilters?: {
+      Source: string;
+      Category: string;
+      'Sub Category': string;
+      Year?: string[] | number[];
       FileId?: string;
-    }; 
-    limit: number; 
-    offset: number 
+    };
+    limit: number;
+    offset: number
   }) => {
     try {
       // This is where you would actually execute the query
       console.log('Executing query:', query);
-      
+
       // For now, we'll just show an alert
-      alert(`Query executed with special filters:\nSource: ${query.specialFilters?.Source || 'All'}\nCategory: ${query.specialFilters?.Category || 'All'}\nSub Category: ${query.specialFilters?.['Sub Category'] || 'All'}\nYear: ${query.specialFilters?.Year?.join(', ') || 'All'}\nFileId: ${query.specialFilters?.FileId || 'None'}`);
+      alert(`Query executed with special filters:\nSource: ${query.specialFilters?.Source || 'All'}\nCategory: ${query.specialFilters?.Category || 'All'}\nSub Category: ${query.specialFilters?.['Sub Category'] || 'All'}\nYear: ${query.specialFilters?.Year && Array.isArray(query.specialFilters?.Year) ? query.specialFilters.Year.join(', ') : 'All'}\nFileId: ${query.specialFilters?.FileId || 'None'}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute query');
     }

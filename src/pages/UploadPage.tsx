@@ -56,7 +56,7 @@ export function UploadPage() {
             const headers = jsonData[0] as string[];
 
             // Required headers for FileSelector
-            const requiredHeaders = ['Source', 'Category', 'Sub Category', 'Year'];
+            const requiredHeaders = ['Source', 'Category', 'Sub Category'];
 
             // Check if all required headers exist in the file
             const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
@@ -117,7 +117,7 @@ export function UploadPage() {
             const headers = jsonData[0] as string[];
 
             // Required headers for FileSelector
-            const requiredHeaders = ['Source', 'Category', 'Sub Category', 'Year'];
+            const requiredHeaders = ['Source', 'Category', 'Sub Category'];
 
             // Check if all required headers exist in the file
             const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
@@ -615,7 +615,7 @@ export function UploadPage() {
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">•</span>
-                    <span>Required Columns: Source, Category, Sub Category, Year</span>
+                    <span>Required Columns: Source, Category, Sub Category</span>
                   </li>
                 </ul>
               </Card>

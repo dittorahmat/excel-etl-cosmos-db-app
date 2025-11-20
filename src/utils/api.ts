@@ -6,19 +6,35 @@ import {
 import { getMsalInstance } from '../auth/msalInstance';
 import { getApiConfig } from '../auth/authConfig';
 
+// Extend the Window interface to include custom properties
+declare global {
+  interface Window {
+    __APP_CONFIG__?: {
+      VITE_AUTH_ENABLED?: string | boolean;
+      AUTH_ENABLED?: string | boolean;
+    };
+    ENV?: {
+      VITE_AUTH_ENABLED?: string | boolean;
+      AUTH_ENABLED?: string | boolean;
+    };
+    USE_DUMMY_AUTH?: boolean;
+    FORCE_DUMMY_AUTH?: boolean;
+  }
+}
+
 // Check if authentication is enabled
 const isDevelopment = import.meta.env.DEV;
-const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
-                          windowEnvViteAuthEnabled !== 'false' && 
+const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
+const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' &&
+                          windowEnvViteAuthEnabled !== 'false' &&
                           windowEnvViteAuthEnabled !== false;
 const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
 const authEnabled = isViteAuthEnabled && isServerAuthEnabled;
-                   
-const useDummyAuth = !authEnabled || isDevelopment || 
-                     window.USE_DUMMY_AUTH === true || 
-                     window.FORCE_DUMMY_AUTH === true || 
-                     windowEnvViteAuthEnabled === 'false' || 
+
+const useDummyAuth = !authEnabled || isDevelopment ||
+                     window.USE_DUMMY_AUTH === true ||
+                     window.FORCE_DUMMY_AUTH === true ||
+                     windowEnvViteAuthEnabled === 'false' ||
                      windowEnvViteAuthEnabled === false;
 
 let msalInitialized = false;
@@ -60,9 +76,9 @@ const getCacheKey = (account: AccountInfo): string => {
 
 export const getAuthToken = async (forceRefresh = false): Promise<string | null> => {
   // If auth is disabled, return null immediately
-  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-  const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' && 
-                           windowEnvViteAuthEnabled !== 'false' && 
+  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' &&
+                           windowEnvViteAuthEnabled !== 'false' &&
                            windowEnvViteAuthEnabled !== false;
   const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
   const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
@@ -319,8 +335,8 @@ export const authFetch = async <T = unknown>(
 
   // Only try to get a token if auth is explicitly enabled
   // Check if authentication is enabled based on environment variables
-  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || (window as any).__APP_CONFIG__?.VITE_AUTH_ENABLED;
-  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || (window as any).__APP_CONFIG__?.AUTH_ENABLED;
+  const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
+  const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || window.__APP_CONFIG__?.AUTH_ENABLED;
   
   // Check if auth is explicitly enabled in any of the possible sources
   const authExplicitlyEnabled = 

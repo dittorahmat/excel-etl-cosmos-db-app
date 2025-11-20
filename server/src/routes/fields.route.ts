@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
+// Define types for internal use
+interface ImportRecord {
+  headers?: string[];
+}
 
 import { AzureCosmosDB } from '../types/azure.js';
 
@@ -238,12 +242,16 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               const filesQuery = `SELECT DISTINCT c.fileName FROM c WHERE ${baseWhereClause}`;
               
               const queryIterator = container.items.query(filesQuery);
-              const fileNames: any[] = [];
-              
+              interface CosmosResource {
+                fileName?: string;
+              }
+
+              const fileNames: string[] = [];
+
               while (queryIterator.hasMoreResults()) {
                 const result = await queryIterator.fetchNext();
                 if (result.resources) {
-                  fileNames.push(...result.resources.map((resource: any) => resource.fileName).filter(Boolean));
+                  fileNames.push(...result.resources.map((resource: CosmosResource) => resource.fileName).filter(Boolean) as string[]);
                 }
               }
               
@@ -272,14 +280,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               });
               
               // Use iterator instead of fetchAll to avoid loading all results into memory
-              const headers: any[] = [];
+              const headers: ImportRecord[] = [];
               while (importsQuery.hasMoreResults()) {
                 const result = await importsQuery.fetchNext();
                 if (result.resources) {
                   headers.push(...result.resources);
                 }
               }
-              const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers || []))];
+              const uniqueHeaders = [...new Set(headers.flatMap((h: ImportRecord) => h.headers || []))];
               
               console.log(`Fetched ${uniqueHeaders.length} fields from ${fileNames.length} files with special filters (fallback) in ${Date.now() - startTime}ms`);
               
@@ -322,12 +330,16 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
                 parameters: [{ name: '@fieldName', value: String(fieldName || '') }]
               });
               
+              interface ImportResource {
+                fileName?: string;
+              }
+
               // Use iterator instead of fetchAll to avoid loading all results into memory
-              const fileNames: any[] = [];
+              const fileNames: string[] = [];
               while (relatedFieldQuery.hasMoreResults()) {
                 const result = await relatedFieldQuery.fetchNext();
                 if (result.resources) {
-                  fileNames.push(...result.resources.map((resource: any) => resource.fileName));
+                  fileNames.push(...result.resources.map((resource: ImportResource) => resource.fileName).filter(Boolean) as string[]);
                 }
               }
               
@@ -353,14 +365,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               });
               
               // Use iterator instead of fetchAll to avoid loading all results into memory
-              const headers: any[] = [];
+              const headers: ImportRecord[] = [];
               while (allFieldsQuery.hasMoreResults()) {
                 const result = await allFieldsQuery.fetchNext();
                 if (result.resources) {
                   headers.push(...result.resources);
                 }
               }
-              const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers || []))];
+              const uniqueHeaders = [...new Set(headers.flatMap((h: ImportRecord) => h.headers || []))];
               
               return res.status(200).json({
                 success: true,
@@ -393,14 +405,14 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             });
             
             // Use iterator instead of fetchAll to avoid loading all results into memory
-            const headers: any[] = [];
+            const headers: ImportRecord[] = [];
             while (filteredQuery.hasMoreResults()) {
               const result = await filteredQuery.fetchNext();
               if (result.resources) {
                 headers.push(...result.resources);
               }
             }
-            const uniqueHeaders = [...new Set(headers.flatMap((h: any) => h.headers || []))];
+            const uniqueHeaders = [...new Set(headers.flatMap((h: ImportRecord) => h.headers || []))];
             
             console.log(`Fetched ${uniqueHeaders.length} related fields from ${commonFileNames.length} files in ${Date.now() - startTime}ms`);
             
@@ -438,7 +450,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           );
           
           // Execute query with timeout protection using iterator
-          let headers: Array<{ headers: string[] }> = [];
+          let headers: ImportRecord[] = [];
           try {
             const queryPromise = new Promise((resolve, reject) => {
               (async () => {
@@ -457,7 +469,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             });
             
             const result = await Promise.race([queryPromise, timeoutPromise]);
-            headers = result as any[];
+            headers = result as ImportRecord[];
           } catch (timeoutError) {
             console.error('Database query timed out or failed:', timeoutError);
             headers = [];

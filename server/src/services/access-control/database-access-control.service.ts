@@ -11,7 +11,7 @@ interface AuthorizationConfig {
   createdAt: string;
   updatedAt: string;
   lastModifiedBy: string;
-  [key: string]: any; // Allow additional properties
+  [key: string]: string | string[] | number | boolean | undefined; // Allow additional properties
 }
 
 // Cache for authorized users with timestamp

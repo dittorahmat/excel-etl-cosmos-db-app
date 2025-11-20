@@ -21,7 +21,7 @@ interface SpecialFilters {
   Source: string;
   Category: string;
   'Sub Category': string;
-  Year: string[] | number[];
+  Year?: string[] | number[];
 }
 
 interface FieldSelectorProps {
@@ -39,8 +39,8 @@ export const FieldSelector = ({
 }: FieldSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [distinctValues, setDistinctValues] = useState<Record<string, any[]>>({});
-  const [filteredValues, setFilteredValues] = useState<Record<string, any[]>>({});
+  const [distinctValues, setDistinctValues] = useState<Record<string, (string | number | boolean)[]>>({});
+  const [filteredValues, setFilteredValues] = useState<Record<string, (string | number | boolean)[]>>({});
   const [loadingDistinct, setLoadingDistinct] = useState(true);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
   const [errorDistinct, setErrorDistinct] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export const FieldSelector = ({
     Source: '',
     Category: '',
     'Sub Category': '',
-    Year: [],
+    Year: undefined,
   });
 
   // Initialize with special fields if they're not already selected
@@ -73,9 +73,9 @@ export const FieldSelector = ({
       try {
         const response = await api.get('/api/distinct-values?fields=Source,Category,Sub Category,Year');
         if (response && typeof response === 'object' && 'success' in response && response.success) {
-          const typedResponse = response as { success: boolean; values: Record<string, any[]>; error?: string };
+          const typedResponse = response as { success: boolean; values: Record<string, (string | number | boolean)[]>; error?: string };
           setDistinctValues(typedResponse.values || {});
-          
+
           // Initialize filtered values with the base values
           setFilteredValues(typedResponse.values || {});
         } else {
@@ -127,8 +127,8 @@ export const FieldSelector = ({
 
         const response = await api.get(`/api/distinct-values?${params.toString()}`);
         if (response && typeof response === 'object' && 'success' in response && response.success) {
-          const typedResponse = response as { success: boolean; values: Record<string, any[]>; error?: string };
-          
+          const typedResponse = response as { success: boolean; values: Record<string, (string | number | boolean)[]>; error?: string };
+
           // Update filtered values according to cascade hierarchy
           setFilteredValues(prevFiltered => {
             const newFilteredValues = { ...prevFiltered };
@@ -228,11 +228,11 @@ export const FieldSelector = ({
   /**
    * Handles changes to special fields
    */
-  const handleSpecialFieldChange = (fieldName: keyof SpecialFilters, value: string | string[] | number[] | number) => {
+  const handleSpecialFieldChange = (fieldName: keyof SpecialFilters, value: string | string[] | number[] | number | undefined) => {
     const updatedSpecialFields = { ...selectedSpecialFields };
     
     // Set the new value
-    updatedSpecialFields[fieldName] = value as any;
+    updatedSpecialFields[fieldName] = value;
     
     // Reset dependent fields based on the hierarchy: Source -> Category -> Sub Category -> Year
     if (fieldName === 'Source') {
@@ -240,33 +240,33 @@ export const FieldSelector = ({
         // If Source is being cleared, clear all dependent fields
         updatedSpecialFields.Category = '';
         updatedSpecialFields['Sub Category'] = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       } else {
         // When Source changes to a new value, reset Category, Sub Category, and Year
         updatedSpecialFields.Category = '';
         updatedSpecialFields['Sub Category'] = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       }
     } else if (fieldName === 'Category') {
       if (!value) {
         // If Category is being cleared, clear all dependent fields (Sub Category and Year)
         updatedSpecialFields['Sub Category'] = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       } else {
         // When Category changes to a new value, reset Sub Category and Year (only if Source is set)
         if (updatedSpecialFields.Source) {
           updatedSpecialFields['Sub Category'] = '';
-          updatedSpecialFields.Year = [];
+          updatedSpecialFields.Year = undefined;
         }
       }
     } else if (fieldName === 'Sub Category') {
       if (!value) {
         // If Sub Category is being cleared, clear Year
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       } else {
         // When Sub Category changes to a new value, reset Year (only if Source and Category are set)
         if (updatedSpecialFields.Source && updatedSpecialFields.Category) {
-          updatedSpecialFields.Year = [];
+          updatedSpecialFields.Year = undefined;
         }
       }
     }
@@ -283,11 +283,23 @@ export const FieldSelector = ({
    * Handles checkbox changes for multi-select fields like Year
    */
   const handleYearCheckboxChange = (year: number | string) => {
-    const currentYears = Array.isArray(selectedSpecialFields.Year) ? selectedSpecialFields.Year as (number | string)[] : [];
+    const currentYears = Array.isArray(selectedSpecialFields.Year) ? selectedSpecialFields.Year as (string | number)[] : [];
     const newYears = currentYears.some(y => y === year)
       ? currentYears.filter(y => y !== year)
-      : [...currentYears, year as never];
-    handleSpecialFieldChange('Year', newYears as string[] | number[]);
+      : [...currentYears, year];
+
+    // Determine the type of the array and return appropriate type
+    if (newYears.length === 0) {
+      handleSpecialFieldChange('Year', undefined);
+    } else if (typeof year === 'number') {
+      // If the year is a number, ensure we have only numbers in the array
+      const numberYears = newYears.filter((y): y is number => typeof y === 'number');
+      handleSpecialFieldChange('Year', numberYears.length > 0 ? numberYears : undefined);
+    } else {
+      // If the year is a string, ensure we have only strings in the array
+      const stringYears = newYears.filter((y): y is string => typeof y === 'string');
+      handleSpecialFieldChange('Year', stringYears.length > 0 ? stringYears : undefined);
+    }
   };
 
   // Combined loading state
@@ -365,7 +377,7 @@ export const FieldSelector = ({
                   className="w-full justify-between h-auto min-h-9 py-1.5 bg-background hover:bg-accent/50 text-sm text-muted-foreground"
                   disabled={loadingDistinct || loadingFiltered || disabled}
                 >
-                  <span className="truncate">{selectedSpecialFields.Year.length === 0 ? 'All Years' : `${selectedSpecialFields.Year.length} selected`}</span>
+                  <span className="truncate">{(!selectedSpecialFields.Year || selectedSpecialFields.Year.length === 0) ? 'All Years' : `${selectedSpecialFields.Year.length} selected`}</span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>

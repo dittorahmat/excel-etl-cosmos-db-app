@@ -126,9 +126,14 @@ const uploadOptions = {
         fieldname: file.fieldname
       });
 
-      const fileTypeError = new Error(
+      interface FileTypeError extends Error {
+        name: string;
+        code: string;
+      }
+
+      const fileTypeError: FileTypeError = new Error(
         `Unsupported file type: ${file.mimetype}. Only Excel (.xlsx, .xls, .xlsm) and CSV files are allowed.`
-      ) as any;
+      ) as FileTypeError;
       fileTypeError.name = 'FileTypeError';
       fileTypeError.code = 'INVALID_FILE_TYPE';
       callback(null, false); // Pass null as the error and false to reject the file
@@ -469,7 +474,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   // Handle multer errors
   if (err instanceof MulterError) {
     const multerError = err;
-    if ((multerError as any).code === 'LIMIT_FILE_SIZE') {
+    if ((multerError as MulterError & { code: string }).code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json(
         createErrorResponse(
           413,
@@ -478,7 +483,7 @@ router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
         )
       );
     }
-    if ((multerError as any).code === 'LIMIT_FILE_COUNT') {
+    if ((multerError as MulterError & { code: string }).code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json(
         createErrorResponse(400, 'Too many files', 'Maximum of 10 files can be uploaded at a time')
       );

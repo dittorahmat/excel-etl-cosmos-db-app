@@ -11,7 +11,7 @@ interface FileOption {
   value: string;
   label: string;
   fileName: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface UseFileFieldsResult {
@@ -89,9 +89,16 @@ export const useFileFields = (specialFilters?: SpecialFilters, searchTerm?: stri
       const response = await fetch(url);
       const data = await response.json();
 
+      interface ImportItem {
+        id?: string;
+        _importId?: string;
+        fileName?: string;
+        [key: string]: unknown;
+      }
+
       if (data.success && data.data && Array.isArray(data.data.items)) {
         // Map imports from backend format to frontend format {value, label, fileName}
-        const fileOptions: FileOption[] = data.data.items.map((item: any) => ({
+        const fileOptions: FileOption[] = data.data.items.map((item: ImportItem) => ({
           value: item.id || item._importId || '',
           label: item.fileName || 'Untitled',
           fileName: item.fileName || 'Untitled',

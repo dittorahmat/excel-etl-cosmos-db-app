@@ -4,6 +4,11 @@ import type { Request, Response } from 'express';
 import { AzureCosmosDB } from '../../types/azure.js';
 import * as authMiddleware from '../../middleware/auth.js';
 
+// Define types for internal use
+interface ExcelRecord {
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
   const router = Router();
 
@@ -192,23 +197,23 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         }
         
         console.log(`Executing file query:`, query);
-        
+
         // Use iterator instead of fetchAll to avoid loading all results into memory
         const queryIterator = container.items.query(query);
-        const items: any[] = [];
-        
+        const items: ExcelRecord[] = [];
+
         while (queryIterator.hasMoreResults()) {
           const response = await queryIterator.fetchNext();
           if (response.resources) {
             for (const item of response.resources) {
               // Filter out Cosmos DB metadata fields
-              const filteredItem: Record<string, any> = {};
+              const filteredItem: ExcelRecord = {};
               for (const [key, value] of Object.entries(item)) {
                 // Skip all Cosmos DB system properties and metadata
                 if (!key.startsWith('_') && 
                     key !== 'id' && 
                     key !== 'documentType') {
-                  filteredItem[key] = value;
+                  filteredItem[key] = value as string | number | boolean | null | undefined;
                 }
               }
               items.push(filteredItem);
@@ -417,23 +422,23 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         }
         
         console.log(`Executing file query GET:`, query);
-        
+
         // Use iterator instead of fetchAll to avoid loading all results into memory
         const queryIterator = container.items.query(query);
-        const items: any[] = [];
-        
+        const items: ExcelRecord[] = [];
+
         while (queryIterator.hasMoreResults()) {
           const response = await queryIterator.fetchNext();
           if (response.resources) {
             for (const item of response.resources) {
               // Filter out Cosmos DB metadata fields
-              const filteredItem: Record<string, any> = {};
+              const filteredItem: ExcelRecord = {};
               for (const [key, value] of Object.entries(item)) {
                 // Skip all Cosmos DB system properties and metadata
                 if (!key.startsWith('_') && 
                     key !== 'id' && 
                     key !== 'documentType') {
-                  filteredItem[key] = value;
+                  filteredItem[key] = value as string | number | boolean | null | undefined;
                 }
               }
               items.push(filteredItem);
@@ -530,7 +535,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
       // Convert fields to an array - handle both string and array cases
       const fieldsArray = Array.isArray(fields) ? fields : String(fields).split(',');
-      const distinctValues: Record<string, any[]> = {};
+      const distinctValues: Record<string, (string | number | boolean)[]> = {};
 
       try {
         console.log('Distinct file values endpoint hit - attempting to fetch distinct values from Cosmos DB');
@@ -643,8 +648,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           
           // Use iterator instead of fetchAll to avoid loading all results into memory
           const queryIterator = container.items.query(query);
-          const values: any[] = [];
-          
+          const values: (string | number | boolean)[] = [];
+
           while (queryIterator.hasMoreResults()) {
             const response = await queryIterator.fetchNext();
             if (response.resources) {
@@ -653,7 +658,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           }
 
           // Filter out null, undefined, and empty string values
-          distinctValues[cleanField] = values.filter((value: any) => 
+          distinctValues[cleanField] = values.filter((value: string | number | boolean) =>
             value !== null && 
             value !== undefined && 
             (typeof value === 'string' ? value.trim() !== '' : true)
@@ -666,7 +671,10 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                 const numValue = Number(value);
                 return isNaN(numValue) ? value : numValue;
               })
-              .filter(value => !isNaN(value));
+              .filter(value => {
+                const numValue = Number(value);
+                return !isNaN(numValue);
+              });
           }
         }
 
@@ -824,8 +832,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         
         // Use iterator instead of fetchAll to avoid loading all results into memory
         const importIdQueryIterator = container.items.query(importIdQuery);
-        const values: any[] = [];
-        
+        const values: ExcelRecord[] = [];
+
         while (importIdQueryIterator.hasMoreResults()) {
           const response = await importIdQueryIterator.fetchNext();
           if (response.resources) {
@@ -834,8 +842,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         }
         
         const matchingImportIds = values
-          .map((r: any) => r._importId)
-          .filter((id: any) => id) as string[];
+          .map((r: ExcelRecord) => r._importId)
+          .filter((id): id is string => typeof id === 'string' && id != null) as string[];
 
         console.log(`Found ${matchingImportIds.length} unique import IDs matching filters`);
 
@@ -879,8 +887,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         // Use iterator instead of fetchAll to avoid loading all results into memory
         const importQueryIterator = importContainer.items.query(importsQuery);
-        const importItems: any[] = [];
-        
+        const importItems: ExcelRecord[] = [];
+
         while (importQueryIterator.hasMoreResults()) {
           const response = await importQueryIterator.fetchNext();
           if (response.resources) {

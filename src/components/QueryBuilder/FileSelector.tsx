@@ -19,7 +19,7 @@ interface SpecialFilters {
   Source: string;
   Category: string;
   'Sub Category': string;
-  Year: string[] | number[];
+  Year?: string[] | number[];
   FileId?: string;
 }
 
@@ -55,7 +55,7 @@ export const FileSelector = ({
     Source: '',
     Category: '',
     'Sub Category': '',
-    Year: [],
+    Year: undefined,
     FileId: selectedFile,
   });
 
@@ -108,11 +108,11 @@ export const FileSelector = ({
   /**
    * Handles changes to special fields
    */
-  const handleSpecialFieldChange = useCallback((fieldName: keyof SpecialFilters, value: string | string[] | number[] | number) => {
+  const handleSpecialFieldChange = useCallback((fieldName: keyof SpecialFilters, value: string | string[] | number[] | number | undefined) => {
     const updatedSpecialFields = { ...selectedSpecialFields };
     
     // Set the new value
-    updatedSpecialFields[fieldName] = value as any;
+    updatedSpecialFields[fieldName] = value;
     
     // Reset dependent fields based on the hierarchy: Source -> Category -> Sub Category -> File -> Year
     if (fieldName === 'Source') {
@@ -121,51 +121,51 @@ export const FileSelector = ({
         updatedSpecialFields.Category = '';
         updatedSpecialFields['Sub Category'] = '';
         updatedSpecialFields.FileId = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       } else {
         // When Source changes to a new value, reset Category, Sub Category, File and Year
         updatedSpecialFields.Category = '';
         updatedSpecialFields['Sub Category'] = '';
         updatedSpecialFields.FileId = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       }
     } else if (fieldName === 'Category') {
       if (!value) {
         // If Category is being cleared, clear all dependent fields (Sub Category, File and Year)
         updatedSpecialFields['Sub Category'] = '';
         updatedSpecialFields.FileId = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       } else {
         // When Category changes to a new value, reset Sub Category, File and Year (only if Source is set)
         if (updatedSpecialFields.Source) {
           updatedSpecialFields['Sub Category'] = '';
           updatedSpecialFields.FileId = '';
-          updatedSpecialFields.Year = [];
+          updatedSpecialFields.Year = undefined;
         }
       }
     } else if (fieldName === 'Sub Category') {
       if (!value) {
         // If Sub Category is being cleared, clear File and Year
         updatedSpecialFields.FileId = '';
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       } else {
         // When Sub Category changes to a new value, reset File and Year (only if Source and Category are set)
         if (updatedSpecialFields.Source && updatedSpecialFields.Category) {
           updatedSpecialFields.FileId = '';
-          updatedSpecialFields.Year = [];
+          updatedSpecialFields.Year = undefined;
         }
       }
     } else if (fieldName === 'FileId') {
       // When FileId changes, reset Year (only if all previous filters are set)
       if (updatedSpecialFields.Source && updatedSpecialFields.Category && updatedSpecialFields['Sub Category']) {
-        updatedSpecialFields.Year = [];
+        updatedSpecialFields.Year = undefined;
       }
       // Update the file selection in the parent component
       onFileChange(value as string);
     } else if (fieldName === 'Year') {
       // When Year changes, we don't reset anything since it's the last in the hierarchy
       // Just update the Year values
-      updatedSpecialFields.Year = value as string[] | number[];
+      updatedSpecialFields.Year = value as string[] | number[] | undefined;
     }
     // Note: When Year changes, we don't reset anything since it's the last in the hierarchy
     
@@ -184,11 +184,19 @@ export const FileSelector = ({
     const newYears = currentYears.some(y => y === year)
       ? currentYears.filter(y => y !== year)
       : [...currentYears, year];
-    // Ensure array contains only numbers if year is a number, or only strings if year is a string
-    const typedNewYears: string[] | number[] = typeof year === 'number' 
-      ? newYears.filter((y): y is number => typeof y === 'number')
-      : newYears.filter((y): y is string => typeof y === 'string');
-    handleSpecialFieldChange('Year', typedNewYears);
+
+    // Determine the type of the array and return appropriate type
+    if (newYears.length === 0) {
+      handleSpecialFieldChange('Year', undefined);
+    } else if (typeof year === 'number') {
+      // If the year is a number, ensure we have only numbers in the array
+      const numberYears = newYears.filter((y): y is number => typeof y === 'number');
+      handleSpecialFieldChange('Year', numberYears.length > 0 ? numberYears : undefined);
+    } else {
+      // If the year is a string, ensure we have only strings in the array
+      const stringYears = newYears.filter((y): y is string => typeof y === 'string');
+      handleSpecialFieldChange('Year', stringYears.length > 0 ? stringYears : undefined);
+    }
   };
 
   // Get selected file label
@@ -203,7 +211,14 @@ export const FileSelector = ({
   // Convert files to FileOption format
   const fileOptions = useMemo(() => {
     console.log('[FileSelector] fileOptions useMemo, files:', files);
-    return files.map((item: any) => ({
+    interface FileItem {
+      id?: string;
+      _importId?: string;
+      fileName?: string;
+      [key: string]: unknown;
+    }
+
+    return files.map((item: FileItem) => ({
       value: item.id || item._importId || '',
       label: item.fileName || 'Untitled',
       fileName: item.fileName || 'Untitled',
@@ -377,7 +392,9 @@ export const FileSelector = ({
                     className="w-full justify-between h-auto min-h-9 py-1.5 bg-background hover:bg-accent/50 text-sm text-muted-foreground"
                     disabled={loading || disabled || !selectedSpecialFields.FileId}
                   >
-                    <span className="truncate">{selectedSpecialFields.Year.length === 0 ? 'All Years' : `${selectedSpecialFields.Year.length} selected`}</span>
+                    <span className="truncate">
+                      {(!selectedSpecialFields.Year || selectedSpecialFields.Year.length === 0) ? 'All Years' : `${selectedSpecialFields.Year.length} selected`}
+                    </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>

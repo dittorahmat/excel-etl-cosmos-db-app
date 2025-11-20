@@ -1,6 +1,7 @@
-import { 
-  CosmosClient, 
+import {
+  CosmosClient,
   Container,
+  Database,
   ItemResponse,
   SqlQuerySpec,
   type CosmosClientOptions,
@@ -23,7 +24,7 @@ import type {
  */
 export class EnhancedCosmosDBService {
   private cosmosClient: CosmosClient;
-  private database: any; // Will be initialized in init()
+  private database!: Database; // Will be initialized in init()
   private containers: Map<string, Container> = new Map();
 
   constructor() {
@@ -157,7 +158,7 @@ export class EnhancedCosmosDBService {
    * @param partitionKey - The partition key path
    * @returns Promise<AzureContainer> - A promise that resolves to the container
    */
-  async container(containerName: string, partitionKey: string): Promise<any> {
+  async container(containerName: string, partitionKey: string): Promise<Container> {
     try {
       // First, check if it's one of our predefined containers
       if (this.containers.has(containerName)) {
@@ -314,15 +315,15 @@ export class EnhancedCosmosDBService {
     
     const batch: DataRow[] = rows.map(row => {
       const baseRow: DataRow = {
-        id: `row_${(row as any).importId}_${(row as any).rowNumber}`,
-        _partitionKey: (row as any).importId,
+        id: `row_${row.importId as string}_${row.rowNumber as number}`,
+        _partitionKey: row.importId as string,
         createdAt: new Date().toISOString(),
         documentType: 'data',
-        importId: (row as any).importId,
-        rowNumber: (row as any).rowNumber,
-        importedAt: (row as any).importedAt || new Date().toISOString(),
-        importedBy: (row as any).importedBy || 'system',
-        ...(row as any)
+        importId: row.importId as string,
+        rowNumber: row.rowNumber as number,
+        importedAt: (row.importedAt as string) || new Date().toISOString(),
+        importedBy: (row.importedBy as string) || 'system',
+        ...row
       };
       return baseRow;
     });

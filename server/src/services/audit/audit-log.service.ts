@@ -1,5 +1,6 @@
 import { enhancedCosmosDBService } from '../cosmos-db/enhanced-cosmos-db.service.js';
 import { logger } from '../../utils/logger.js';
+import type { AuditLog } from '../../types/cosmos-models.js';
 
 /**
  * Security audit logging service
@@ -123,7 +124,7 @@ class AuditLogService {
   async getUserAuditLogs(userId: string, options: {
     limit?: number;
     offset?: number;
-  } = {}): Promise<{ items: any[]; total: number }> {
+  } = {}): Promise<{ items: AuditLog[]; total: number }> {
     try {
       return await enhancedCosmosDBService.queryAuditLogsByUser(userId, options);
     } catch (error) {
@@ -138,7 +139,7 @@ class AuditLogService {
   async getResourceAuditLogs(resourceId: string, _options: {
     limit?: number;
     offset?: number;
-  } = {}): Promise<{ items: any[]; total: number }> {
+  } = {}): Promise<{ items: AuditLog[]; total: number }> {
     try {
       // This would require a different query implementation in the Cosmos DB service
       // For now, we'll just return an empty result
