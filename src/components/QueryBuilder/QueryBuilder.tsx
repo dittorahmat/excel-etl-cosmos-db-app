@@ -1,15 +1,16 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "../ui/button";
 import { Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FieldOption, FilterCondition, QueryBuilderProps, SpecialFilters } from "./types";
+import { FilterCondition, QueryBuilderProps, SpecialFilters } from "./types";
 import { FileSelector } from "./FileSelector";
 import { FilterControls } from "./FilterControls";
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "./constants";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { useFields } from "@/hooks/useFields";
 
 export function QueryBuilder({
-  fields = [],
+  fields: _fields = [], // Kept for backward compatibility but not used directly (dynamic fields used instead)
   selectedFile = '',
   onFileChange,
   onExecute,
@@ -32,19 +33,13 @@ export function QueryBuilder({
   });
   const [showFilters, setShowFilters] = useState(defaultShowFilters);
 
-  // Field options for the dropdown
-  const fieldOptions = useMemo<FieldOption[]>(() => {
-    if (!fields || !Array.isArray(fields)) {
-      console.warn("Invalid fields prop:", fields);
-      return [];
-    }
-
-    return fields.map((field) => ({
-      value: field.name,
-      label: field.label || field.name,
-      type: field.type,
-    }));
-  }, [fields]);
+  // Use the useFields hook with special filters to get dynamic fields based on selected file
+  const { fields: dynamicFields, loading: dynamicFieldsLoading, error: fieldsError } = useFields(undefined, {
+    Source: specialFilters.Source,
+    Category: specialFilters.Category,
+    'Sub Category': specialFilters['Sub Category'],
+    Year: specialFilters.Year
+  });
 
   // Handle file change
   const handleFileChange = useCallback((fileId: string) => {
@@ -103,7 +98,7 @@ export function QueryBuilder({
   }, [onExecute, specialFilters, filters, page, pageSize]);
 
   // Handle loading state
-  if (fieldsLoading) {
+  if (fieldsLoading || dynamicFieldsLoading) {
     return (
       <Card className={cn("w-full", className)}>
         <CardHeader>
@@ -138,6 +133,7 @@ export function QueryBuilder({
                   disabled={fieldsLoading}
                 />
                 {error && <div className="text-sm text-destructive">{error}</div>}
+                {fieldsError && <div className="text-sm text-destructive">Fields Error: {fieldsError}</div>}
               </div>
 
               {/* Show Filters Button */}
@@ -159,7 +155,7 @@ export function QueryBuilder({
             {showFilters && (
               <div className="space-y-2">
                 <FilterControls
-                  fields={fieldOptions}
+                  fields={dynamicFields}
                   filters={filters}
                   onFiltersChange={(newFilters) => setFilters(newFilters)}
                   onAddFilter={handleAddFilter}
