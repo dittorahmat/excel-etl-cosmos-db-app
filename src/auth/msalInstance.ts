@@ -260,7 +260,7 @@ export const msalInstance: PublicClientApplication = new Proxy({} as PublicClien
     if (!defaultInstance) {
       defaultInstance = createRealMsalInstance();
     }
-    return (defaultInstance as { [key: string]: unknown })[prop as string];
+    return (defaultInstance as unknown as { [key: string]: unknown })[prop as string];
   }
 });
 

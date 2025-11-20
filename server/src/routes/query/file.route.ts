@@ -103,18 +103,18 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         const importIdClauses = possibleImportIds.map((_, i) => `c._partitionKey = '${possibleImportIds[i]}'`);
         filterConditions.push(`(${importIdClauses.join(' OR ')})`);
 
-        // Add filter conditions for each provided filter parameter (Source, Category, Sub Category, Year)
-        // Exclude limit and offset from filter parameters
+        // First, handle regular filter parameters (Source, Category, Sub Category, Year)
+        // Exclude limit, offset, and filters from these parameters
         for (const [filterField, filterValue] of Object.entries(filterParams)) {
-          if (filterField === 'fileId' || filterField === 'limit' || filterField === 'offset') continue; // Skip the fileId, limit, and offset parameters since we already handled them
+          if (['fileId', 'limit', 'offset', 'filters'].includes(filterField)) continue; // Skip these parameters since we handle them separately
 
           if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
-            // Clean the filter field name to prevent injection
-            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _-]/g, '');
-            
+            // Clean the filter field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _/-]/g, '');
+
             // Check if this is a numeric field (like Year)
             const isNumericField = cleanFilterField.toLowerCase().includes('year');
-            
+
             // Handle multi-value filters like Year (comma-separated)
             if (Array.isArray(filterValue)) {
               if (isNumericField) {
@@ -169,6 +169,67 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                 filterConditions.push(`c["${cleanFilterField}"] = '${cleanFilterValue}'`);
               }
             }
+          }
+        }
+
+        // Now process the filters parameter, which should be a JSON string containing additional filter conditions
+        if (filterParams.filters) {
+          try {
+            // Parse the filters JSON string
+            const filtersString = String(filterParams.filters);
+            const filtersArray = JSON.parse(filtersString) as Array<{field: string, operator: string, value: string, value2?: string}>;
+
+            // Add each filter from the array to the query conditions
+            for (const filter of filtersArray) {
+              if (filter.field && filter.operator && filter.value !== undefined) {
+                // Clean field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+                const cleanField = String(filter.field).replace(/[^a-zA-Z0-9 _/-]/g, '');
+
+                // Apply the operator and value
+                switch (filter.operator) {
+                  case '=':
+                  case '==':
+                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '!=':
+                  case '<>':
+                    filterConditions.push(`c["${cleanField}"] != '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '>':
+                    filterConditions.push(`c["${cleanField}"] > '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '>=':
+                    filterConditions.push(`c["${cleanField}"] >= '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '<':
+                    filterConditions.push(`c["${cleanField}"] < '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '<=':
+                    filterConditions.push(`c["${cleanField}"] <= '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case 'like':
+                  case 'contains':
+                    // Use LIKE operator for string containment (partial match)
+                    filterConditions.push(`CONTAINS(c["${cleanField}"], '${filter.value.replace(/'/g, "\\'")}')`);
+                    break;
+                  case 'between':
+                    if (filter.value2 !== undefined) {
+                      const cleanValue2 = String(filter.value2).replace(/'/g, "\\'");
+                      filterConditions.push(`c["${cleanField}"] BETWEEN '${filter.value.replace(/'/g, "\\'")}' AND '${cleanValue2}'`);
+                    } else {
+                      console.warn(`'between' operator requires value2 for field ${cleanField}`);
+                    }
+                    break;
+                  default:
+                    // Treat unknown operators as equality
+                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                }
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing filters parameter:', parseError);
+            // Continue without filters if parsing fails
           }
         }
 
@@ -328,18 +389,18 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         const importIdClauses = possibleImportIds.map((_, i) => `c._partitionKey = '${possibleImportIds[i]}'`);
         filterConditions.push(`(${importIdClauses.join(' OR ')})`);
 
-        // Add filter conditions for each provided filter parameter (Source, Category, Sub Category, Year)
-        // Exclude limit and offset from filter parameters
+        // First, handle regular filter parameters (Source, Category, Sub Category, Year)
+        // Exclude token, limit, offset, and filters from these parameters
         for (const [filterField, filterValue] of Object.entries(filterParams)) {
-          if (['fileId', 'token', 'limit', 'offset'].includes(filterField)) continue; // Skip the fileId, token, limit, and offset parameters
+          if (['fileId', 'token', 'limit', 'offset', 'filters'].includes(filterField)) continue; // Skip these parameters since we handle them separately
 
           if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
-            // Clean the filter field name to prevent injection
-            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _-]/g, '');
-            
+            // Clean the filter field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _/-]/g, '');
+
             // Check if this is a numeric field (like Year)
             const isNumericField = cleanFilterField.toLowerCase().includes('year');
-            
+
             // Handle multi-value filters like Year (comma-separated)
             if (Array.isArray(filterValue)) {
               if (isNumericField) {
@@ -394,6 +455,67 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                 filterConditions.push(`c["${cleanFilterField}"] = '${cleanFilterValue}'`);
               }
             }
+          }
+        }
+
+        // Now process the filters parameter, which should be a JSON string containing additional filter conditions
+        if (filterParams.filters) {
+          try {
+            // Parse the filters JSON string
+            const filtersString = String(filterParams.filters);
+            const filtersArray = JSON.parse(filtersString) as Array<{field: string, operator: string, value: string, value2?: string}>;
+
+            // Add each filter from the array to the query conditions
+            for (const filter of filtersArray) {
+              if (filter.field && filter.operator && filter.value !== undefined) {
+                // Clean field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+                const cleanField = String(filter.field).replace(/[^a-zA-Z0-9 _/-]/g, '');
+
+                // Apply the operator and value
+                switch (filter.operator) {
+                  case '=':
+                  case '==':
+                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '!=':
+                  case '<>':
+                    filterConditions.push(`c["${cleanField}"] != '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '>':
+                    filterConditions.push(`c["${cleanField}"] > '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '>=':
+                    filterConditions.push(`c["${cleanField}"] >= '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '<':
+                    filterConditions.push(`c["${cleanField}"] < '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case '<=':
+                    filterConditions.push(`c["${cleanField}"] <= '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                  case 'like':
+                  case 'contains':
+                    // Use LIKE operator for string containment (partial match)
+                    filterConditions.push(`CONTAINS(c["${cleanField}"], '${filter.value.replace(/'/g, "\\'")}')`);
+                    break;
+                  case 'between':
+                    if (filter.value2 !== undefined) {
+                      const cleanValue2 = String(filter.value2).replace(/'/g, "\\'");
+                      filterConditions.push(`c["${cleanField}"] BETWEEN '${filter.value.replace(/'/g, "\\'")}' AND '${cleanValue2}'`);
+                    } else {
+                      console.warn(`'between' operator requires value2 for field ${cleanField}`);
+                    }
+                    break;
+                  default:
+                    // Treat unknown operators as equality
+                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    break;
+                }
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing filters parameter:', parseError);
+            // Continue without filters if parsing fails
           }
         }
 
@@ -567,9 +689,9 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           if (['fields', 'fileId'].includes(filterField)) continue; // Skip fields and fileId parameters
 
           if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
-            // Clean the filter field name to prevent injection
-            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _-]/g, '');
-            
+            // Clean the filter field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+            const cleanFilterField = String(filterField).replace(/[^a-zA-Z0-9 _/-]/g, '');
+
             // Check if this is a numeric field (like Year)
             const isNumericField = cleanFilterField.toLowerCase().includes('year');
             

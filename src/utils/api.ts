@@ -26,8 +26,8 @@ declare global {
 const isDevelopment = import.meta.env.DEV;
 const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
 const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' &&
-                          windowEnvViteAuthEnabled !== 'false' &&
-                          windowEnvViteAuthEnabled !== false;
+                          (windowEnvViteAuthEnabled !== 'false' &&
+                           (typeof windowEnvViteAuthEnabled !== 'boolean' || (windowEnvViteAuthEnabled as boolean) !== false));
 const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
 const authEnabled = isViteAuthEnabled && isServerAuthEnabled;
 
@@ -35,7 +35,7 @@ const useDummyAuth = !authEnabled || isDevelopment ||
                      window.USE_DUMMY_AUTH === true ||
                      window.FORCE_DUMMY_AUTH === true ||
                      windowEnvViteAuthEnabled === 'false' ||
-                     windowEnvViteAuthEnabled === false;
+                     (typeof windowEnvViteAuthEnabled === 'boolean' && windowEnvViteAuthEnabled === false);
 
 let msalInitialized = false;
 
@@ -78,8 +78,8 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
   // If auth is disabled, return null immediately
   const windowEnvViteAuthEnabled = window.ENV?.VITE_AUTH_ENABLED || window.__APP_CONFIG__?.VITE_AUTH_ENABLED;
   const isViteAuthEnabled = import.meta.env.VITE_AUTH_ENABLED !== 'false' &&
-                           windowEnvViteAuthEnabled !== 'false' &&
-                           windowEnvViteAuthEnabled !== false;
+                           (windowEnvViteAuthEnabled !== 'false' &&
+                            (typeof windowEnvViteAuthEnabled !== 'boolean' || (windowEnvViteAuthEnabled as boolean) !== false));
   const isServerAuthEnabled = import.meta.env.AUTH_ENABLED !== 'false';
   const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
   
@@ -89,11 +89,11 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
   }
   
   // If using dummy auth, return a mock token
-  const useDummyAuth = !isAuthEnabled || isDevelopment || 
-                       window.USE_DUMMY_AUTH === true || 
-                       window.FORCE_DUMMY_AUTH === true || 
-                       windowEnvViteAuthEnabled === 'false' || 
-                       windowEnvViteAuthEnabled === false;
+  const useDummyAuth = !isAuthEnabled || isDevelopment ||
+                       window.USE_DUMMY_AUTH === true ||
+                       window.FORCE_DUMMY_AUTH === true ||
+                       windowEnvViteAuthEnabled === 'false' ||
+                       (typeof windowEnvViteAuthEnabled === 'boolean' && windowEnvViteAuthEnabled === false);
                        
   if (useDummyAuth) {
     console.log('[API] Using dummy authentication, returning mock token');
@@ -339,22 +339,22 @@ export const authFetch = async <T = unknown>(
   const windowEnvAuthEnabled = window.ENV?.AUTH_ENABLED || window.__APP_CONFIG__?.AUTH_ENABLED;
   
   // Check if auth is explicitly enabled in any of the possible sources
-  const authExplicitlyEnabled = 
-    import.meta.env.VITE_AUTH_ENABLED === 'true' || 
+  const authExplicitlyEnabled =
+    import.meta.env.VITE_AUTH_ENABLED === 'true' ||
     import.meta.env.AUTH_ENABLED === 'true' ||
-    windowEnvViteAuthEnabled === 'true' || 
+    windowEnvViteAuthEnabled === 'true' ||
     windowEnvAuthEnabled === 'true' ||
-    windowEnvViteAuthEnabled === true || 
-    windowEnvAuthEnabled === true;
+    (windowEnvViteAuthEnabled !== undefined && windowEnvViteAuthEnabled === true) ||
+    (windowEnvAuthEnabled !== undefined && windowEnvAuthEnabled === true);
 
   // Check if auth is explicitly disabled
-  const authExplicitlyDisabled = 
-    import.meta.env.VITE_AUTH_ENABLED === 'false' || 
+  const authExplicitlyDisabled =
+    import.meta.env.VITE_AUTH_ENABLED === 'false' ||
     import.meta.env.AUTH_ENABLED === 'false' ||
-    windowEnvViteAuthEnabled === 'false' || 
+    windowEnvViteAuthEnabled === 'false' ||
     windowEnvAuthEnabled === 'false' ||
-    windowEnvViteAuthEnabled === false || 
-    windowEnvAuthEnabled === false;
+    (windowEnvViteAuthEnabled !== undefined && windowEnvViteAuthEnabled === false) ||
+    (windowEnvAuthEnabled !== undefined && windowEnvAuthEnabled === false);
   
   const isDevelopment = import.meta.env.DEV;
   

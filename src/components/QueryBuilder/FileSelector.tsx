@@ -110,9 +110,19 @@ export const FileSelector = ({
    */
   const handleSpecialFieldChange = useCallback((fieldName: keyof SpecialFilters, value: string | string[] | number[] | number | undefined) => {
     const updatedSpecialFields = { ...selectedSpecialFields };
-    
-    // Set the new value
-    updatedSpecialFields[fieldName] = value;
+
+    // Set the new value - properly typed assignment
+    if (fieldName === 'Source') {
+      updatedSpecialFields.Source = value as string;
+    } else if (fieldName === 'Category') {
+      updatedSpecialFields.Category = value as string;
+    } else if (fieldName === 'Sub Category') {
+      updatedSpecialFields['Sub Category'] = value as string;
+    } else if (fieldName === 'FileId') {
+      updatedSpecialFields.FileId = value as string;
+    } else if (fieldName === 'Year') {
+      updatedSpecialFields.Year = value as string[] | number[] | undefined;
+    }
     
     // Reset dependent fields based on the hierarchy: Source -> Category -> Sub Category -> File -> Year
     if (fieldName === 'Source') {
@@ -206,7 +216,7 @@ export const FileSelector = ({
       return fileId === selectedSpecialFields.FileId;
     });
     return file?.fileName || 'Select a file';
-  }, [files, selectedSpecialFields.FileId]);
+  }, [files, selectedSpecialFields.FileId]) as string;
 
   // Convert files to FileOption format
   const fileOptions = useMemo(() => {
@@ -264,7 +274,7 @@ export const FileSelector = ({
                 disabled={loading || disabled}
               >
                 <option value="">All Sources</option>
-                {(filteredValues.Source || distinctValues.Source || []).map((source, idx) => (
+                {((filteredValues.Source || distinctValues.Source || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((source, idx) => (
                   <option key={idx} value={source}>{source}</option>
                 ))}
               </select>
@@ -280,7 +290,7 @@ export const FileSelector = ({
                 disabled={loading || disabled}
               >
                 <option value="">All Categories</option>
-                {(filteredValues.Category || distinctValues.Category || []).map((category, idx) => (
+                {((filteredValues.Category || distinctValues.Category || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((category, idx) => (
                   <option key={idx} value={category}>{category}</option>
                 ))}
               </select>
@@ -296,7 +306,7 @@ export const FileSelector = ({
                 disabled={loading || disabled}
               >
                 <option value="">All Sub Categories</option>
-                {(filteredValues['Sub Category'] || distinctValues['Sub Category'] || []).map((subCategory, idx) => (
+                {((filteredValues['Sub Category'] || distinctValues['Sub Category'] || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((subCategory, idx) => (
                   <option key={idx} value={subCategory}>{subCategory}</option>
                 ))}
               </select>
@@ -400,7 +410,7 @@ export const FileSelector = ({
                 </PopoverTrigger>
                 <PopoverContent className="w-[200px] p-0 bg-popover border-border" align="start">
                   <div className="p-2 max-h-60 overflow-y-auto">
-                    {(filteredValues.Year || []).map((year: string | number, idx: number) => (
+                    {((filteredValues.Year || []) as (string | number)[]).filter((year): year is string | number => typeof year !== 'boolean').map((year, idx) => (
                       <div key={idx} className="flex items-center py-1 space-x-2 hover:bg-accent rounded px-2">
                         <Checkbox
                           id={`year-${year}`}

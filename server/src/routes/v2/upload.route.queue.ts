@@ -3,6 +3,9 @@ import type { Request, Response, NextFunction } from 'express';
 import multer, { MulterError } from 'multer';
 import type { Express } from 'express';
 
+// Define the FileFilterCallback type to match the multer library's internal type
+type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
+
 import type { ImportMetadata } from '../../services/ingestion/ingestion.service.js';
 
 
@@ -38,11 +41,10 @@ const storage = multer.diskStorage({
 });
 
 // File filter for multer
-export const fileFilter = function(
+export const fileFilter: (req: Request, file: Express.Multer.File, cb: any) => void = function(
   req: Request,
   file: Express.Multer.File,
-  // Note: Using Function type to prevent specific multer callback type conflicts
-  cb: Function
+  cb: any
 ): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');

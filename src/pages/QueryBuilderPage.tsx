@@ -53,13 +53,48 @@ const QueryBuilderPage: React.FC = () => {
     offset: number
   }) => {
     try {
-      // This is where you would actually execute the query
-      console.log('Executing query:', query);
+      // Build query parameters
+      const queryParams = new URLSearchParams();
 
-      // For now, we'll just show an alert
-      alert(`Query executed with special filters:\nSource: ${query.specialFilters?.Source || 'All'}\nCategory: ${query.specialFilters?.Category || 'All'}\nSub Category: ${query.specialFilters?.['Sub Category'] || 'All'}\nYear: ${query.specialFilters?.Year && Array.isArray(query.specialFilters?.Year) ? query.specialFilters.Year.join(', ') : 'All'}\nFileId: ${query.specialFilters?.FileId || 'None'}`);
+      // Add file ID if available
+      if (query.specialFilters?.FileId) {
+        queryParams.append('fileId', query.specialFilters.FileId);
+      }
+
+      // Add special filters
+      if (query.specialFilters?.Source) {
+        queryParams.append('Source', query.specialFilters.Source);
+      }
+      if (query.specialFilters?.Category) {
+        queryParams.append('Category', query.specialFilters.Category);
+      }
+      if (query.specialFilters?.['Sub Category']) {
+        queryParams.append('Sub Category', query.specialFilters['Sub Category']);
+      }
+      if (query.specialFilters?.Year && Array.isArray(query.specialFilters.Year) && query.specialFilters.Year.length > 0) {
+        queryParams.append('Year', query.specialFilters.Year.join(','));
+      }
+
+      // Add filters as JSON string if there are any
+      if (query.filters && query.filters.length > 0) {
+        queryParams.append('filters', JSON.stringify(query.filters));
+      }
+
+      // Add pagination
+      queryParams.append('limit', query.limit.toString());
+      queryParams.append('offset', query.offset.toString());
+
+      // Use the file-based endpoint to execute the query
+      const url = `/api/query/file?${queryParams.toString()}`;
+      const result = await api.get<Record<string, unknown>[]>(url);
+
+      console.log('Query results:', result);
+
+      // For now, we'll show the count of records in an alert
+      alert(`Query executed successfully! Found ${result.length} records.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute query');
+      alert(`Error executing query: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 

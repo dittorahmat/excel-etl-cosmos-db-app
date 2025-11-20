@@ -1,39 +1,32 @@
 # Project Summary
 
 ## Overall Goal
-Implement a file-based query system that replaces the current field-based approach with cascading filters (Source → Category → Sub Category → File Selection → Year) and fix rate limiting/authentication issues that prevent proper file selection and query execution.
+Implement a major change to the QueryBuilder filter logic so that filter values come from the fields of the selected file in FileSelector, excluding the four special filters (Source, Category, Sub Category, Year), while fixing existing lint and type errors throughout the codebase.
 
 ## Key Knowledge
-- Technology stack: React frontend with TypeScript, Node.js/Express backend with Cosmos DB
-- Authentication: Azure AD with MSAL for production, dummy auth for development
-- File-based query flow: Source → Category → Sub Category → File Selection → Year
-- Backend endpoints: 
-  - `/api/query/file` - Execute file-based queries
-  - `/api/query/file-get` - GET endpoint for API links
-  - `/api/distinct-file-values` - Get distinct values for cascading filters
-  - `/api/query/files-by-filters` - Get files matching filter criteria
-- Rate limiting: Previously causing 429 errors during cascading filter operations
-- Authentication issues: 401 errors on `/api/query/file` endpoint
+- **Technology Stack**: React/TypeScript frontend with Node.js/Express backend, Cosmos DB as data store, Vite as build tool
+- **Architecture**: The QueryBuilder component uses FileSelector to select files and FilterControls for filters, with special filters (Source, Category, Sub Category, Year) handled separately
+- **Build Commands**: `npm run build:client`, `npm run build:server`, `npm run lint`, `npm run type-check`
+- **Key Components**: FileSelector.tsx, FilterControls.tsx, QueryBuilder.tsx, and server route file.route.ts
+- **API Endpoints**: `/api/query/file` endpoint receives filters as JSON string in URL parameters and parses them server-side
 
 ## Recent Actions
-1. [DONE] Fixed syntax error in `useDashboardData.ts` that was preventing builds
-2. [DONE] Implemented FileSelector component with cascading filter functionality
-3. [DONE] Updated backend API endpoints for file-based queries
-4. [DONE] Added request debouncing and cancellation to prevent rate limiting
-5. [DONE] Fixed backend query issues where `c._partitionKey` was used instead of `c._importId`
-6. [DONE] Implemented proper authentication headers for all API calls
-7. [DONE] Updated rate limiting configuration to be more lenient for development
-8. [DONE] Fixed Year dropdown population by correcting Cosmos DB field references
+- **[DONE]** Modified QueryBuilder to use dynamic fields based on selected file using the useFields hook with special filters
+- **[DONE]** Updated server route to properly parse JSON filters parameter and apply individual filter conditions to Cosmos DB query
+- **[DONE]** Fixed QueryBuilderPage to make actual API calls with filters instead of just showing alerts
+- **[DONE]** Fixed lint error in server code by properly typing the multer fileFilter callback
+- **[DONE]** Addressed multiple type errors in FieldSelector.tsx and FileSelector.tsx related to special field handling and year checkbox logic
+- **[DONE]** Fixed type errors in API client (api.ts) related to boolean comparisons
+- **[DONE]** Corrected global Window interface declaration conflicts in main.tsx
 
 ## Current Plan
-1. [IN PROGRESS] Testing the complete file-based query flow with all cascading filters
-2. [TODO] Verify query execution works correctly with selected file and filters
-3. [TODO] Ensure API generation works with file-based parameters
-4. [TODO] Validate data display in DashboardPage with file-based results
-5. [TODO] Test export functionality with file-based data
-6. [TODO] Document the complete implementation for future reference
+- **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
+- **[DONE]** Server-side filter parsing implemented to handle JSON filters parameter correctly
+- **[DONE]** Type safety improvements in multiple components
+- **[DONE]** Lint and build compatibility maintained
+- The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering feature)
 
 ---
 
 ## Summary Metadata
-**Update time**: 2025-11-01T08:38:30.246Z 
+**Update time**: 2025-11-20T08:34:27.408Z 

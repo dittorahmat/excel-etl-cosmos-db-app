@@ -8,7 +8,10 @@ import './App.css';
 declare global {
   interface Window {
     isAuthenticated?: boolean;
-    ENV?: Record<string, string>;
+    ENV?: {
+      VITE_AUTH_ENABLED?: string | boolean;
+      AUTH_ENABLED?: string | boolean;
+    };
     APP_CONFIG?: {
       auth?: {
         useDummyAuth?: boolean;
@@ -18,17 +21,7 @@ declare global {
     FORCE_DUMMY_AUTH?: boolean;
     SKIP_MSAL_INIT?: boolean;
     authEnabled?: boolean;
-  }
-}
-
-// Extend the Window interface to include custom properties
-declare global {
-  interface Window {
     __APP_CONFIG__?: {
-      VITE_AUTH_ENABLED?: string | boolean;
-      AUTH_ENABLED?: string | boolean;
-    };
-    ENV?: {
       VITE_AUTH_ENABLED?: string | boolean;
       AUTH_ENABLED?: string | boolean;
     };
