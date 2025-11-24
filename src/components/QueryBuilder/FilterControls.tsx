@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Button } from "../ui/button";
 import { Plus, X, Check } from "lucide-react";
 import { Label } from "../ui/label";
@@ -32,14 +32,14 @@ interface FilterControlsProps {
   defaultShowFilters?: boolean;
 }
 
-export function FilterControls({
+const FilterControlsComponent = ({
   fields = [],
   filters = [],
   onFiltersChange,
   onAddFilter,
   onRemoveFilter,
   defaultShowFilters = false,
-}: FilterControlsProps) {
+}: FilterControlsProps) => {
   const [showFilters, setShowFilters] = useState(defaultShowFilters);
   const [filterSearchTerm, setFilterSearchTerm] = useState<Record<string, string>>({});
   const [openFilterPopovers, setOpenFilterPopovers] = useState<Record<string, boolean>>({});
@@ -381,4 +381,5 @@ export function FilterControls({
   );
 }
 
-export default FilterControls;
+export { FilterControlsComponent as FilterControls };
+export default memo(FilterControlsComponent);

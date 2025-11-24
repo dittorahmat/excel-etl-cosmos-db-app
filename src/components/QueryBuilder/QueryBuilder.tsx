@@ -49,12 +49,14 @@ export function QueryBuilder({
 
   // Handle special filters change
   const handleSpecialFiltersChange = useCallback((newSpecialFilters: SpecialFilters) => {
-    setSpecialFilters(newSpecialFilters);
-    // Update the file selection when special filters change
-    if (newSpecialFilters.FileId !== specialFilters.FileId) {
-      onFileChange(newSpecialFilters.FileId || '');
-    }
-  }, [onFileChange, specialFilters.FileId]);
+    setSpecialFilters(prevSpecialFilters => {
+      // Update the file selection when special filters change
+      if (newSpecialFilters.FileId !== prevSpecialFilters.FileId) {
+        onFileChange(newSpecialFilters.FileId || '');
+      }
+      return newSpecialFilters;
+    });
+  }, [onFileChange]);
 
   // Handle filter changes - using direct state setter in JSX now
 
@@ -97,8 +99,10 @@ export function QueryBuilder({
     });
   }, [onExecute, specialFilters, filters, page, pageSize]);
 
-  // Handle loading state
-  if (fieldsLoading || dynamicFieldsLoading) {
+  // Show loading state only during initial load when no fields are available yet
+  // After initial load, the useFields hook maintains previous fields while loading new ones,
+  // so we don't need to show a full loading state during special filter changes
+  if ((fieldsLoading || dynamicFieldsLoading) && dynamicFields.length === 0) {
     return (
       <Card className={cn("w-full", className)}>
         <CardHeader>
