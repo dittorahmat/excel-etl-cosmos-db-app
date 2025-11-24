@@ -41,3 +41,25 @@ export const formatDateAlt = (dateString: string) => {
   const date = new Date(dateString);
   return date.toLocaleDateString();
 };
+
+/**
+ * Check if a string is a valid date
+ * @param dateString String to check
+ * @returns True if the string represents a valid date, false otherwise
+ */
+export const isValidDateString = (dateString: string): boolean => {
+  if (typeof dateString !== 'string' || dateString.length === 0) {
+    return false;
+  }
+
+  // Create a date object from the string
+  const date = new Date(dateString);
+
+  // Check if it's a valid date
+  // date.getTime() returns NaN for invalid dates
+  // Also check that the date string itself is not "Invalid Date"
+  return !isNaN(date.getTime())
+    && dateString !== 'Invalid Date'
+    // Also verify that the date is not a result of parsing invalid strings
+    && date.toString() !== 'Invalid Date';
+};

@@ -27,6 +27,15 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Fixed lint, type-check and build errors by resolving FileFilterCallback type conflicts in upload.route.queue.ts
 - **[NEW]** Updated type definitions in fields.route.ts to properly use Cosmos Container type
 - **[NEW]** Improved field type detection logic with proper TypeScript types in ingestion.service.ts
+- **[NEW]** Enhanced useFields hook with cache-while-fetching strategy to maintain previous fields while loading new ones
+- **[NEW]** Updated QueryBuilder loading condition to prevent disruptive loading states during cascading filter changes
+- **[NEW]** Added React.memo to FilterControls to prevent unnecessary re-renders
+- **[NEW]** Fixed closure issue in QueryBuilder handleSpecialFiltersChange callback using functional updates
+- **[NEW]** Removed complex field preservation logic that was causing React error #310 while maintaining core functionality
+- **[NEW]** Added isValidDateString utility function to properly validate dates in formatters.ts
+- **[NEW]** Fixed incorrect date formatting in DashboardPage that was causing "Unit" field to show "Invalid Date"
+- **[NEW]** Updated date detection logic in DashboardPage to use proper validation instead of simple "T" character check
+- **[NEW]** Applied correct date formatting logic to table display and export functions (CSV/Excel)
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -34,9 +43,7 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Type safety improvements in multiple components
 - **[DONE]** Lint and build compatibility maintained
 - **[DONE]** Field type detection implemented during import process to show appropriate operators in UI
+- **[DONE]** Cascading filter performance improved with cache-while-fetching strategy
+- **[DONE]** React error #310 resolved by simplifying field handling logic
+- **[DONE]** Date formatting issue resolved by implementing proper date validation in DashboardPage
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering feature)
-
----
-
-## Summary Metadata
-**Update time**: 2025-11-21T12:00:00.000Z

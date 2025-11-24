@@ -10,7 +10,7 @@ import { ApiGenerationModal } from '../components/ApiGeneration';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { formatDateAlt as formatDate } from '../utils/formatters';
+import { formatDateAlt as formatDate, isValidDateString } from '../utils/formatters';
 import { api } from '../utils/api';
 
 // Import libraries for export functionality
@@ -103,7 +103,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         return fields.map(field => {
           const value = item[field];
           // Handle special formatting for dates
-          const formattedValue = typeof value === 'string' && value.includes('T')
+          const formattedValue = typeof value === 'string' && isValidDateString(value)
             ? formatDate(value)
             : String(value || '');
 
@@ -187,7 +187,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         const formattedItem: Record<string, unknown> = {};
         fields.forEach(field => {
           const value = item[field];
-          formattedItem[field] = typeof value === 'string' && value.includes('T')
+          formattedItem[field] = typeof value === 'string' && isValidDateString(value)
             ? formatDate(value)
             : value;
         });
@@ -334,7 +334,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                             <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
                               {queryResult.fields.map((field) => (
                                 <TableCell key={`${index}-${field}`}>
-                                  {typeof item[field] === 'string' && String(item[field]).includes('T')
+                                  {typeof item[field] === 'string' && isValidDateString(String(item[field]))
                                     ? formatDate(String(item[field]))
                                     : String(item[field] || '')}
                                 </TableCell>
