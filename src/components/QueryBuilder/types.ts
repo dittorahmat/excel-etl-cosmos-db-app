@@ -20,8 +20,8 @@ export interface FilterCondition {
   id: string;
   field: string;
   operator: string;
-  value: string;
-  value2?: string;
+  value: string | number | boolean;
+  value2?: string | number | boolean;
 }
 
 export interface QueryBuilderProps {

@@ -177,7 +177,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           try {
             // Parse the filters JSON string
             const filtersString = String(filterParams.filters);
-            const filtersArray = JSON.parse(filtersString) as Array<{field: string, operator: string, value: string, value2?: string}>;
+            const filtersArray = JSON.parse(filtersString) as Array<{field: string, operator: string, value: string | number | boolean, value2?: string | number | boolean}>;
 
             // Add each filter from the array to the query conditions
             for (const filter of filtersArray) {
@@ -185,44 +185,51 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                 // Clean field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
                 const cleanField = String(filter.field).replace(/[^a-zA-Z0-9 _/-]/g, '');
 
+                // Determine if value is numeric to decide whether to quote it
+                const isNumericValue = typeof filter.value === 'number';
+                const isSecondValueNumeric = typeof filter.value2 === 'number';
+
+                // Safely convert values to string for injection protection if they are strings
+                const safeValue = isNumericValue ? filter.value : String(filter.value).replace(/'/g, "\\'");
+                const safeValue2 = filter.value2 !== undefined ? (isSecondValueNumeric ? filter.value2 : String(filter.value2).replace(/'/g, "\\'")) : undefined;
+
                 // Apply the operator and value
                 switch (filter.operator) {
                   case '=':
                   case '==':
-                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] = ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '!=':
                   case '<>':
-                    filterConditions.push(`c["${cleanField}"] != '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] != ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '>':
-                    filterConditions.push(`c["${cleanField}"] > '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] > ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '>=':
-                    filterConditions.push(`c["${cleanField}"] >= '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] >= ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '<':
-                    filterConditions.push(`c["${cleanField}"] < '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] < ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '<=':
-                    filterConditions.push(`c["${cleanField}"] <= '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] <= ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case 'like':
                   case 'contains':
-                    // Use LIKE operator for string containment (partial match)
-                    filterConditions.push(`CONTAINS(c["${cleanField}"], '${filter.value.replace(/'/g, "\\'")}')`);
+                    // Use LIKE operator for string containment (partial match) - only for string values
+                    filterConditions.push(`CONTAINS(c["${cleanField}"], '${safeValue}')`);
                     break;
                   case 'between':
-                    if (filter.value2 !== undefined) {
-                      const cleanValue2 = String(filter.value2).replace(/'/g, "\\'");
-                      filterConditions.push(`c["${cleanField}"] BETWEEN '${filter.value.replace(/'/g, "\\'")}' AND '${cleanValue2}'`);
+                    if (filter.value2 !== undefined && safeValue2 !== undefined) {
+                      filterConditions.push(`c["${cleanField}"] BETWEEN ${isNumericValue ? safeValue : `'${safeValue}'`} AND ${isSecondValueNumeric ? safeValue2 : `'${safeValue2}'`}`);
                     } else {
                       console.warn(`'between' operator requires value2 for field ${cleanField}`);
                     }
                     break;
                   default:
                     // Treat unknown operators as equality
-                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] = ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                 }
               }
@@ -463,7 +470,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           try {
             // Parse the filters JSON string
             const filtersString = String(filterParams.filters);
-            const filtersArray = JSON.parse(filtersString) as Array<{field: string, operator: string, value: string, value2?: string}>;
+            const filtersArray = JSON.parse(filtersString) as Array<{field: string, operator: string, value: string | number | boolean, value2?: string | number | boolean}>;
 
             // Add each filter from the array to the query conditions
             for (const filter of filtersArray) {
@@ -471,44 +478,51 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                 // Clean field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
                 const cleanField = String(filter.field).replace(/[^a-zA-Z0-9 _/-]/g, '');
 
+                // Determine if value is numeric to decide whether to quote it
+                const isNumericValue = typeof filter.value === 'number';
+                const isSecondValueNumeric = typeof filter.value2 === 'number';
+
+                // Safely convert values to string for injection protection if they are strings
+                const safeValue = isNumericValue ? filter.value : String(filter.value).replace(/'/g, "\\'");
+                const safeValue2 = filter.value2 !== undefined ? (isSecondValueNumeric ? filter.value2 : String(filter.value2).replace(/'/g, "\\'")) : undefined;
+
                 // Apply the operator and value
                 switch (filter.operator) {
                   case '=':
                   case '==':
-                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] = ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '!=':
                   case '<>':
-                    filterConditions.push(`c["${cleanField}"] != '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] != ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '>':
-                    filterConditions.push(`c["${cleanField}"] > '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] > ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '>=':
-                    filterConditions.push(`c["${cleanField}"] >= '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] >= ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '<':
-                    filterConditions.push(`c["${cleanField}"] < '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] < ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case '<=':
-                    filterConditions.push(`c["${cleanField}"] <= '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] <= ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                   case 'like':
                   case 'contains':
-                    // Use LIKE operator for string containment (partial match)
-                    filterConditions.push(`CONTAINS(c["${cleanField}"], '${filter.value.replace(/'/g, "\\'")}')`);
+                    // Use LIKE operator for string containment (partial match) - only for string values
+                    filterConditions.push(`CONTAINS(c["${cleanField}"], '${safeValue}')`);
                     break;
                   case 'between':
-                    if (filter.value2 !== undefined) {
-                      const cleanValue2 = String(filter.value2).replace(/'/g, "\\'");
-                      filterConditions.push(`c["${cleanField}"] BETWEEN '${filter.value.replace(/'/g, "\\'")}' AND '${cleanValue2}'`);
+                    if (filter.value2 !== undefined && safeValue2 !== undefined) {
+                      filterConditions.push(`c["${cleanField}"] BETWEEN ${isNumericValue ? safeValue : `'${safeValue}'`} AND ${isSecondValueNumeric ? safeValue2 : `'${safeValue2}'`}`);
                     } else {
                       console.warn(`'between' operator requires value2 for field ${cleanField}`);
                     }
                     break;
                   default:
                     // Treat unknown operators as equality
-                    filterConditions.push(`c["${cleanField}"] = '${filter.value.replace(/'/g, "\\'")}'`);
+                    filterConditions.push(`c["${cleanField}"] = ${isNumericValue ? safeValue : `'${safeValue}'`}`);
                     break;
                 }
               }

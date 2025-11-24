@@ -49,7 +49,48 @@ export function FilterControls({
     return field?.type || "string";
   };
 
+  const convertValueByType = (value: string, fieldType: FieldType): string | number | boolean => {
+    if (!value) return value;
+
+    switch (fieldType) {
+      case 'number': {
+        const numValue = Number(value);
+        return isNaN(numValue) ? value : numValue;
+      }
+      case 'boolean': {
+        if (value.toLowerCase() === 'true') return true;
+        if (value.toLowerCase() === 'false') return false;
+        return value;
+      }
+      default:
+        return value;
+    }
+  };
+
   const handleFilterChange = (id: string, updates: Partial<FilterCondition>) => {
+    // Convert value types when necessary
+    if (updates.value !== undefined && typeof updates.value === 'string' && updates.field) {
+      const fieldType = getFieldType(updates.field);
+      updates.value = convertValueByType(updates.value, fieldType);
+    } else if (updates.value !== undefined && typeof updates.value === 'string' && filters.find(f => f.id === id)?.field) {
+      const existingField = filters.find(f => f.id === id)?.field;
+      if (existingField) {
+        const fieldType = getFieldType(existingField);
+        updates.value = convertValueByType(updates.value, fieldType);
+      }
+    }
+
+    if (updates.value2 !== undefined && typeof updates.value2 === 'string' && updates.field) {
+      const fieldType = getFieldType(updates.field);
+      updates.value2 = convertValueByType(updates.value2, fieldType);
+    } else if (updates.value2 !== undefined && typeof updates.value2 === 'string' && filters.find(f => f.id === id)?.field) {
+      const existingField = filters.find(f => f.id === id)?.field;
+      if (existingField) {
+        const fieldType = getFieldType(existingField);
+        updates.value2 = convertValueByType(updates.value2, fieldType);
+      }
+    }
+
     onFiltersChange(
       filters.map((filter) =>
         filter.id === id ? { ...filter, ...updates } : filter
@@ -277,7 +318,7 @@ export function FilterControls({
                             placeholder={
                               needsSecondValue ? "First value" : "Value"
                             }
-                            value={filter.value || ""}
+                            value={filter.value !== undefined ? String(filter.value) : ""}
                             onChange={(e) =>
                               handleFilterChange(filter.id, {
                                 value: e.target.value,
@@ -298,7 +339,7 @@ export function FilterControls({
                         <input
                           type={inputType}
                           placeholder="Second value"
-                          value={filter.value2 || ""}
+                          value={filter.value2 !== undefined ? String(filter.value2) : ""}
                           onChange={(e) =>
                             handleFilterChange(filter.id, {
                               value2: e.target.value,
