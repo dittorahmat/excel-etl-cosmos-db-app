@@ -8,6 +8,61 @@ interface ImportRecord {
 
 import { AzureCosmosDB } from '../types/azure.js';
 
+import type { Container } from '@azure/cosmos';
+
+// Function to get field types from import metadata
+async function getFieldTypesFromMetadata(container: Container, fileNames?: string[]): Promise<Record<string, string>> {
+  try {
+    let query;
+    let parameters: Array<{ name: string; value: string | number | boolean | null }> = [];
+
+    if (fileNames && fileNames.length > 0) {
+      // If specific file names are provided, get field types from those specific imports
+      const fileNamePlaceholders = fileNames.map((_, index) => `@fileName${index}`).join(', ');
+      query = `SELECT c.fieldTypes FROM c WHERE c._partitionKey = 'imports' AND c.fileName IN (${fileNamePlaceholders})`;
+
+      parameters = fileNames.map((fileName, index) => ({
+        name: `@fileName${index}`,
+        value: fileName
+      }));
+    } else {
+      // Otherwise, get field types from all imports
+      query = `SELECT c.fieldTypes FROM c WHERE c._partitionKey = 'imports'`;
+    }
+
+    const queryIterator = container.items.query({ query, parameters });
+
+    interface ImportResource {
+      fieldTypes?: Array<{ name: string; type: string }>;
+    }
+
+    const imports: ImportResource[] = [];
+    while (queryIterator.hasMoreResults()) {
+      const result = await queryIterator.fetchNext();
+      if (result.resources) {
+        imports.push(...result.resources);
+      }
+    }
+
+    // Merge field types from all imports, with later entries taking precedence
+    const fieldTypes: Record<string, string> = {};
+    for (const imp of imports) {
+      if (imp.fieldTypes) {
+        for (const field of imp.fieldTypes) {
+          fieldTypes[field.name] = field.type;
+        }
+      }
+    }
+
+    console.log('Retrieved field types from metadata:', fieldTypes);
+    return fieldTypes;
+  } catch (error) {
+    console.error('Error retrieving field types from metadata:', error);
+    // If retrieval fails, return an empty object (will default to string)
+    return {};
+  }
+}
+
 export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
   const router = Router();
 
@@ -224,13 +279,16 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             
             console.log(`Final fields after removing special filter fields:`, uniqueHeaders);
             console.log(`Fetched ${uniqueHeaders.length} fields from filtered records with special filters in ${Date.now() - startTime}ms`);
-            
+
+            // Get field types from import metadata for files that match the filters
+            const fieldTypes = await getFieldTypesFromMetadata(container);
+
             return res.status(200).json({
               success: true,
               fields: uniqueHeaders.map(name => ({
                 name,
-                type: 'string',
-                label: name.split('_').map((word: string) => 
+                type: fieldTypes[name] || 'string',
+                label: name.split('_').map((word: string) =>
                   word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ')
               }))
@@ -288,15 +346,18 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
                 }
               }
               const uniqueHeaders = [...new Set(headers.flatMap((h: ImportRecord) => h.headers || []))];
-              
+
               console.log(`Fetched ${uniqueHeaders.length} fields from ${fileNames.length} files with special filters (fallback) in ${Date.now() - startTime}ms`);
-              
+
+              // Get field types from import metadata for the specific files
+              const fieldTypes = await getFieldTypesFromMetadata(container, fileNames);
+
               return res.status(200).json({
                 success: true,
                 fields: uniqueHeaders.map(name => ({
                   name,
-                  type: 'string',
-                  label: name.split('_').map((word: string) => 
+                  type: fieldTypes[name] || 'string',
+                  label: name.split('_').map((word: string) =>
                     word.charAt(0).toUpperCase() + word.slice(1)
                   ).join(' ')
                 }))
@@ -373,13 +434,16 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
                 }
               }
               const uniqueHeaders = [...new Set(headers.flatMap((h: ImportRecord) => h.headers || []))];
-              
+
+              // Get field types from import metadata (since we don't know specific files, get all)
+              const fieldTypes = await getFieldTypesFromMetadata(container);
+
               return res.status(200).json({
                 success: true,
                 fields: uniqueHeaders.map(name => ({
                   name,
-                  type: 'string',
-                  label: name.split('_').map((word: string) => 
+                  type: fieldTypes[name] || 'string',
+                  label: name.split('_').map((word: string) =>
                     word.charAt(0).toUpperCase() + word.slice(1)
                   ).join(' ')
                 }))
@@ -415,13 +479,16 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             const uniqueHeaders = [...new Set(headers.flatMap((h: ImportRecord) => h.headers || []))];
             
             console.log(`Fetched ${uniqueHeaders.length} related fields from ${commonFileNames.length} files in ${Date.now() - startTime}ms`);
-            
+
+            // Get field types from import metadata for the common files
+            const fieldTypes = await getFieldTypesFromMetadata(container, commonFileNames);
+
             return res.status(200).json({
               success: true,
               fields: uniqueHeaders.map(name => ({
                 name,
-                type: 'string',
-                label: name.split('_').map((word: string) => 
+                type: fieldTypes[name] || 'string',
+                label: name.split('_').map((word: string) =>
                   word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ')
               }))
@@ -478,14 +545,17 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           const uniqueHeaders = [...new Set(headers.flatMap(h => h.headers || []))];
           console.log(`Fetched ${uniqueHeaders.length} fields from Cosmos DB in ${Date.now() - startTime}ms`);
           console.log('Unique headers extracted:', uniqueHeaders);
-          
-          // Return the fields from Cosmos DB
+
+          // Get field types from import metadata
+          const fieldTypes = await getFieldTypesFromMetadata(container);
+
+          // Return the fields from Cosmos DB with their types from metadata
           res.status(200).json({
             success: true,
             fields: uniqueHeaders.map(name => ({
               name,
-              type: 'string',
-              label: name.split('_').map((word: string) => 
+              type: fieldTypes[name] || 'string',
+              label: name.split('_').map((word: string) =>
                 word.charAt(0).toUpperCase() + word.slice(1)
               ).join(' ')
             }))
@@ -494,7 +564,7 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
         
       } catch (error) {
         console.error('Error fetching fields from Cosmos DB, falling back to static data:', error);
-        
+
         // Fallback to static data if there's an error
         return res.status(200).json({
           success: true,

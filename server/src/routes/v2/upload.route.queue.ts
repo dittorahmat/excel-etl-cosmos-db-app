@@ -3,9 +3,6 @@ import type { Request, Response, NextFunction } from 'express';
 import multer, { MulterError } from 'multer';
 import type { Express } from 'express';
 
-// Define the FileFilterCallback type to match the multer library's internal type
-type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
-
 import type { ImportMetadata } from '../../services/ingestion/ingestion.service.js';
 
 
@@ -41,10 +38,10 @@ const storage = multer.diskStorage({
 });
 
 // File filter for multer
-export const fileFilter: (req: Request, file: Express.Multer.File, cb: any) => void = function(
+export const fileFilter = function(
   req: Request,
   file: Express.Multer.File,
-  cb: any
+  callback: any
 ): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');
@@ -117,7 +114,7 @@ export const fileFilter: (req: Request, file: Express.Multer.File, cb: any) => v
   
   if (isMimeTypeAllowed || isExtensionAllowed) {
     console.log('File type accepted:', file.mimetype);
-    cb(null, true);
+    callback(null, true);
   } else {
     console.log('File type rejected. Allowed types:', allowedMimeTypes);
     console.log('File details on rejection:', {
@@ -136,7 +133,7 @@ export const fileFilter: (req: Request, file: Express.Multer.File, cb: any) => v
     ) as FileTypeError;
     fileTypeError.name = 'FileTypeError';
     fileTypeError.code = 'INVALID_FILE_TYPE';
-    cb(null, false); // Pass null as the error and false to reject the file
+    callback(null, false); // Pass null as the error and false to reject the file
   }
 };
 

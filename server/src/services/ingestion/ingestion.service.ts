@@ -10,6 +10,104 @@ import { cosmosDbWrapper } from './cosmos-db-wrapper.js';
 import { INGESTION_CONSTANTS } from './constants.js';
 
 /**
+ * Field type definition for schema detection
+ */
+export interface FieldTypeInfo {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+}
+
+/**
+ * Detects the data type of each field in the parsed rows
+ */
+function detectFieldTypes(rows: Record<string, unknown>[], headers: string[]): FieldTypeInfo[] {
+  if (rows.length === 0) {
+    // If no rows, return all fields as string type
+    return headers.map(header => ({ name: header, type: 'string' }));
+  }
+
+  const fieldTypes: Record<string, string> = {};
+
+  for (const header of headers) {
+    // Collect all values for this header across all rows (excluding undefined/null values)
+    const values = rows.map(row => row[header]).filter(value => value !== undefined && value !== null);
+
+    if (values.length === 0) {
+      // If no values found for this field, default to string
+      fieldTypes[header] = 'string';
+      continue;
+    }
+
+    // Determine the most common type among the values
+    const typeCounts: Record<string, number> = {};
+
+    for (const value of values) {
+      let type: string;
+
+      // Determine type based on value
+      if (typeof value === 'number') {
+        // Check if it's an integer or a float by checking if it has decimal places
+        type = Number.isInteger(value) ? 'number' : 'number'; // Both are treated as 'number' for consistency
+      } else if (typeof value === 'string') {
+        // Try to parse as number if it looks like one
+        if (!isNaN(Number(value)) && !isNaN(parseFloat(value)) && value.trim() !== '') {
+          // Check if it's an integer or float when parsed
+          const numValue = Number(value);
+          type = Number.isInteger(numValue) ? 'number' : 'number';
+        } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+          type = 'boolean';
+        } else if (value.match(/^\d{4}-\d{2}-\d{2}$/) || value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+          // Basic date format check (YYYY-MM-DD or ISO format)
+          type = 'date';
+        } else {
+          type = 'string';
+        }
+      } else if (typeof value === 'boolean') {
+        type = 'boolean';
+      } else if (Array.isArray(value)) {
+        type = 'array';
+      } else if (typeof value === 'object') {
+        type = 'object';
+      } else {
+        type = 'string';
+      }
+
+      // Only add to typeCounts if the type is one of our expected types
+      if (['string', 'number', 'boolean', 'date', 'array', 'object'].includes(type)) {
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+      }
+    }
+
+    // Find the most common type for this field
+    let dominantType: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object' = 'string';
+    let maxCount = 0;
+
+    // Object.entries loses type information, so we need to verify the types
+    for (const [type, count] of Object.entries(typeCounts)) {
+      if (count > maxCount) {
+        // Prioritize 'number' over 'string' if counts are equal
+        if (count > maxCount || (count === maxCount && type === 'number' && dominantType === 'string')) {
+          if (['string', 'number', 'boolean', 'date', 'array', 'object'].includes(type)) {
+            maxCount = count;
+            dominantType = type as 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+          }
+        }
+      }
+    }
+
+    fieldTypes[header] = dominantType;
+  }
+
+  return headers.map(header => {
+    const type = fieldTypes[header] || 'string';
+    return {
+      name: header,
+      type: type as 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object'
+    };
+  });
+}
+
+/**
  * Extended CosmosRecord with required fields for import metadata
  */
 export interface ImportMetadata extends CosmosRecord {
@@ -24,6 +122,7 @@ export interface ImportMetadata extends CosmosRecord {
   validRows: number;
   errorRows: number;
   headers: string[];
+  fieldTypes?: FieldTypeInfo[]; // Added field types for schema detection
   errors?: Array<{
     row: number;
     error: string;
@@ -252,8 +351,12 @@ export class IngestionService {
         headers: parseResult.headers
       });
 
+      // Detect field types from the parsed data
+      const fieldTypes = detectFieldTypes(parseResult.rows, parseResult.headers);
+
       // Update metadata with parse results
       importMetadata.headers = parseResult.headers;
+      importMetadata.fieldTypes = fieldTypes;
       importMetadata.totalRows = parseResult.totalRows;
       importMetadata.validRows = parseResult.validRows;
       importMetadata.errorRows = parseResult.errors.length;
