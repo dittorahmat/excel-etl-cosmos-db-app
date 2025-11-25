@@ -1,6 +1,5 @@
 import express, { type Request, type Response, type NextFunction, type Express } from 'express';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -143,7 +142,9 @@ export function createApp(azureServices: {
     res.json({ message: 'This is a public endpoint' });
   });
 
-  // Rate limiting configuration
+  // Rate limiting configuration - COMMENTED OUT
+  // To re-enable rate limiting, uncomment the following code block:
+  /*
   const apiRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes in production
     max: 100, // Limit each IP to 100 requests per windowMs
@@ -172,6 +173,7 @@ export function createApp(azureServices: {
     }
     return apiRateLimit(req, res, next);
   });
+  */
 
   // API routes - all prefixed with /api to match frontend expectations
   app.use('/api/v2', createV2Router(azureServices));

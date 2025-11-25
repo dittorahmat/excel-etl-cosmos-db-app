@@ -5,7 +5,7 @@ import { body, param } from 'express-validator';
 import { ApiKeyRepository } from '../repositories/apiKeyRepository.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import * as authMiddleware from '../middleware/auth.js';
-import { authRateLimiter } from '../middleware/rateLimit.js';
+// import { authRateLimiter } from '../middleware/rateLimit.js'; // Rate limiting commented out
 
 import type { AzureCosmosDB, AzureBlobStorage } from '../types/azure.js';
 import type { CreateApiKeyRequest, RevokeApiKeyParams } from '../types/apiKey.js';
@@ -33,8 +33,9 @@ export function createApiKeyRouter(azureServices: { cosmosDb: AzureCosmosDB; blo
     });
   }
   
-  // Apply rate limiting to all API key routes
-  router.use(authRateLimiter);
+  // Apply rate limiting to all API key routes - COMMENTED OUT
+  // To re-enable rate limiting, uncomment the following line:
+  // router.use(authRateLimiter);
 
   
 
