@@ -42,6 +42,10 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Disabled rate limiting by commenting out rateLimit middleware in server/src/config/app.ts and server/src/routes/apiKey.route.ts with explanatory notes for future re-enablement
 - **[NEW]** Removed unused rateLimit import from server/src/config/app.ts after disabling rate limiting
 - **[NEW]** Verified that lint, type-check, and build processes pass successfully after rate limiting changes
+- **[NEW]** Fixed field sanitization issue in distinct-values endpoints to preserve special characters like forward slashes in field names
+- **[NEW]** Updated regex in server/src/routes/distinct-values.route.ts from `/[^a-zA-Z0-9 _-]/g` to `/[^a-zA-Z0-9 _/-]/g` to preserve forward slashes in field names like "PLN Operational Unit/Province"
+- **[NEW]** Updated regex in server/src/routes/query/file.route.ts to maintain consistent field sanitization that preserves special characters
+- **[NEW]** Verified that lint, type-check, and build processes pass successfully after field sanitization fixes
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -54,4 +58,5 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Date formatting issue resolved by implementing proper date validation in DashboardPage
 - **[DONE]** Multi-select checkbox functionality fixed for 'in'/'notIn' operators by replacing CommandItem with regular div elements
 - **[DONE]** Rate limiting successfully disabled with preserved functionality for future re-enablement
+- **[DONE]** Field sanitization fixed to preserve special characters like forward slashes in field names
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering feature)

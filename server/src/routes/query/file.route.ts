@@ -830,7 +830,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         for (const field of fieldsArray) {
           // Clean the field name to prevent injection - ensure it's a string
           const fieldStr = typeof field === 'string' ? field : String(field);
-          const cleanField = fieldStr.replace(/[^a-zA-Z0-9 _-]/g, '');
+          const cleanField = fieldStr.replace(/[^a-zA-Z0-9 _/-]/g, '');
           
           // Use the correct Cosmos DB syntax for accessing field names with spaces
           // With array notation, which works for all field names regardless of special characters
