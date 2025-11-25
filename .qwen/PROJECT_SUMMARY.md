@@ -36,6 +36,9 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Fixed incorrect date formatting in DashboardPage that was causing "Unit" field to show "Invalid Date"
 - **[NEW]** Updated date detection logic in DashboardPage to use proper validation instead of simple "T" character check
 - **[NEW]** Applied correct date formatting logic to table display and export functions (CSV/Excel)
+- **[NEW]** Updated Navbar banner header image from iesr-header-new.jpg to iesr-header-cityscape.jpg
+- **[NEW]** Fixed multi-select checkbox issue in FilterControls by replacing CommandItem with div elements to resolve conflicts between CommandItem selection behavior and Checkbox state management
+- **[NEW]** Ensured proper checkbox functionality for 'in'/'notIn' operators in QueryBuilder filter controls
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -46,4 +49,5 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Cascading filter performance improved with cache-while-fetching strategy
 - **[DONE]** React error #310 resolved by simplifying field handling logic
 - **[DONE]** Date formatting issue resolved by implementing proper date validation in DashboardPage
+- **[DONE]** Multi-select checkbox functionality fixed for 'in'/'notIn' operators by replacing CommandItem with regular div elements
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering feature)

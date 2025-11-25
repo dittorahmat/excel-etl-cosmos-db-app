@@ -41,7 +41,7 @@ const storage = multer.diskStorage({
 export const fileFilter = function(
   req: Request,
   file: Express.Multer.File,
-  callback: any
+  callback: Parameters<NonNullable<import('multer').Options['fileFilter']>>[2]
 ): void {
   // Log the incoming file details for debugging
   console.log('=== File Upload Debug ===');

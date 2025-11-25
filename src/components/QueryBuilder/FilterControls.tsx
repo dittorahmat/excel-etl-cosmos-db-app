@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Checkbox } from "../ui/checkbox";
 import { ChevronsUpDown } from "lucide-react";
-import { FieldOption, FilterCondition, FieldType } from "./types";
+import { FieldOption, FilterCondition, FieldType, SpecialFilters } from "./types";
 import { OPERATORS_BY_TYPE } from "./constants";
 import { api } from "@/utils/api";
 
@@ -32,7 +33,7 @@ interface FilterControlsProps {
   onRemoveFilter: (id: string) => void;
   defaultShowFilters?: boolean;
   selectedFile?: string;
-  specialFilters?: Record<string, any>;
+  specialFilters?: SpecialFilters;
 }
 
 const FilterControlsComponent = ({
@@ -211,7 +212,15 @@ const FilterControlsComponent = ({
       }
 
       const url = `/api/query/distinct-file-values?${queryParams.toString()}`;
-      const response: any = await api.get(url);
+
+      // Define the response type for the distinct file values API
+      type DistinctValuesResponse = {
+        success: boolean;
+        values: Record<string, (string | number | boolean)[]>;
+        error?: string;
+      };
+
+      const response: DistinctValuesResponse = await api.get(url);
 
       if (response && typeof response === 'object' && response.success && response.values) {
         // Handle response based on the API structure
@@ -219,9 +228,9 @@ const FilterControlsComponent = ({
         let uniqueValues: string[] = [];
 
         if (Array.isArray(response.values)) {
-          uniqueValues = response.values.filter((v: any) => v !== null && v !== undefined).map(String);
+          uniqueValues = response.values.filter((v: string | number | boolean) => v !== null && v !== undefined).map(String);
         } else if (typeof response.values === 'object' && response.values[field]) {
-          uniqueValues = response.values[field].filter((v: any) => v !== null && v !== undefined).map(String);
+          uniqueValues = response.values[field].filter((v: string | number | boolean) => v !== null && v !== undefined).map(String);
         }
 
         setFieldUniqueValues(prev => ({
@@ -508,34 +517,33 @@ const FilterControlsComponent = ({
                                     {(fieldUniqueValues[filter.field || ''] || []).map((value) => {
                                       const isSelected = multiSelectValues[filter.id]?.includes(value) || false;
                                       return (
-                                        <CommandItem
+                                        <div
                                           key={value}
-                                          onSelect={() => {
-                                            const currentValues = multiSelectValues[filter.id] || [];
-                                            let newValues: string[];
-
-                                            if (isSelected) {
-                                              newValues = currentValues.filter(v => v !== value);
-                                            } else {
-                                              newValues = [...currentValues, value];
-                                            }
-
-                                            handleMultiSelectChange(filter.id, filter.field!, newValues);
-                                          }}
-                                          className="cursor-pointer px-3 py-2 text-sm flex items-center gap-2"
+                                          className="px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent rounded-sm"
                                         >
-                                          <div
-                                            className={cn(
-                                              "flex h-4 w-4 items-center justify-center rounded-sm border",
-                                              isSelected
-                                                ? "bg-primary border-primary text-primary-foreground"
-                                                : "border-muted-foreground/30"
-                                            )}
+                                          <Checkbox
+                                            id={`filter-${filter.id}-value-${value}`}
+                                            checked={isSelected}
+                                            onCheckedChange={() => {
+                                              const currentValues = multiSelectValues[filter.id] || [];
+                                              let newValues: string[];
+
+                                              if (isSelected) {
+                                                newValues = currentValues.filter(v => v !== value);
+                                              } else {
+                                                newValues = [...currentValues, value];
+                                              }
+
+                                              handleMultiSelectChange(filter.id, filter.field!, newValues);
+                                            }}
+                                          />
+                                          <label
+                                            htmlFor={`filter-${filter.id}-value-${value}`}
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                                           >
-                                            {isSelected && <Check className="h-3 w-3" />}
-                                          </div>
-                                          <span className="font-medium">{value}</span>
-                                        </CommandItem>
+                                            {value}
+                                          </label>
+                                        </div>
                                       );
                                     })}
                                   </CommandGroup>
