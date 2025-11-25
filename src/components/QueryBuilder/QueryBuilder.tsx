@@ -165,6 +165,8 @@ export function QueryBuilder({
                   onAddFilter={handleAddFilter}
                   onRemoveFilter={handleRemoveFilter}
                   defaultShowFilters={true}
+                  selectedFile={selectedFile}
+                  specialFilters={specialFilters}
                 />
               </div>
             )}

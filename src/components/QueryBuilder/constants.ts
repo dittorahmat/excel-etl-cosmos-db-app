@@ -4,6 +4,8 @@ export const OPERATORS_BY_TYPE: Record<string, Operator[]> = {
   string: [
     { value: "=", label: "equals", inputType: "text" },
     { value: "!=", label: "not equals", inputType: "text" },
+    { value: "in", label: "in", inputType: "text" },
+    { value: "notIn", label: "not in", inputType: "text" },
     { value: "contains", label: "contains", inputType: "text" },
     { value: "!contains", label: "not contains", inputType: "text" },
     { value: "startsWith", label: "starts with", inputType: "text" },

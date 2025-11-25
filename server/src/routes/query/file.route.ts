@@ -220,6 +220,34 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                     // Use LIKE operator for string containment (partial match) - only for string values
                     filterConditions.push(`CONTAINS(c["${cleanField}"], '${safeValue}')`);
                     break;
+                  case 'in':
+                    // Handle 'in' operator for multiple values
+                    // If safeValue is comma-separated, split it and create an IN clause
+                    if (typeof safeValue === 'string' && safeValue.includes(',')) {
+                      const values = safeValue.split(',').map(v => v.trim());
+                      if (values.length > 0) {
+                        const inValues = values.map(v => `'${v}'`).join(',');
+                        filterConditions.push(`c["${cleanField}"] IN (${inValues})`);
+                      }
+                    } else {
+                      // If it's a single value, just do an equality check
+                      filterConditions.push(`c["${cleanField}"] = '${safeValue}'`);
+                    }
+                    break;
+                  case 'notIn':
+                    // Handle 'notIn' operator for multiple values
+                    // If safeValue is comma-separated, split it and create a NOT IN clause
+                    if (typeof safeValue === 'string' && safeValue.includes(',')) {
+                      const values = safeValue.split(',').map(v => v.trim());
+                      if (values.length > 0) {
+                        const inValues = values.map(v => `'${v}'`).join(',');
+                        filterConditions.push(`c["${cleanField}"] NOT IN (${inValues})`);
+                      }
+                    } else {
+                      // If it's a single value, just do a not equals check
+                      filterConditions.push(`c["${cleanField}"] != '${safeValue}'`);
+                    }
+                    break;
                   case 'between':
                     if (filter.value2 !== undefined && safeValue2 !== undefined) {
                       filterConditions.push(`c["${cleanField}"] BETWEEN ${isNumericValue ? safeValue : `'${safeValue}'`} AND ${isSecondValueNumeric ? safeValue2 : `'${safeValue2}'`}`);
@@ -512,6 +540,34 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                   case 'contains':
                     // Use LIKE operator for string containment (partial match) - only for string values
                     filterConditions.push(`CONTAINS(c["${cleanField}"], '${safeValue}')`);
+                    break;
+                  case 'in':
+                    // Handle 'in' operator for multiple values
+                    // If safeValue is comma-separated, split it and create an IN clause
+                    if (typeof safeValue === 'string' && safeValue.includes(',')) {
+                      const values = safeValue.split(',').map(v => v.trim());
+                      if (values.length > 0) {
+                        const inValues = values.map(v => `'${v}'`).join(',');
+                        filterConditions.push(`c["${cleanField}"] IN (${inValues})`);
+                      }
+                    } else {
+                      // If it's a single value, just do an equality check
+                      filterConditions.push(`c["${cleanField}"] = '${safeValue}'`);
+                    }
+                    break;
+                  case 'notIn':
+                    // Handle 'notIn' operator for multiple values
+                    // If safeValue is comma-separated, split it and create a NOT IN clause
+                    if (typeof safeValue === 'string' && safeValue.includes(',')) {
+                      const values = safeValue.split(',').map(v => v.trim());
+                      if (values.length > 0) {
+                        const inValues = values.map(v => `'${v}'`).join(',');
+                        filterConditions.push(`c["${cleanField}"] NOT IN (${inValues})`);
+                      }
+                    } else {
+                      // If it's a single value, just do a not equals check
+                      filterConditions.push(`c["${cleanField}"] != '${safeValue}'`);
+                    }
                     break;
                   case 'between':
                     if (filter.value2 !== undefined && safeValue2 !== undefined) {
