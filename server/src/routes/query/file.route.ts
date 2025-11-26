@@ -319,9 +319,18 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log(`File query returned ${items.length} records`);
 
-        // Set cache headers for better performance
-        // Results may change based on filters, but for static data sets we can cache short-term
-        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+        // For dynamic data queries (with filters, limits, etc.), avoid caching to ensure fresh data
+        // Check if there are filters being applied
+        const hasFilters = Object.keys(filterParams).length > 0;
+        if (hasFilters) {
+          // Don't cache filtered responses as data changes frequently
+          res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Prevent caching
+          res.set('Pragma', 'no-cache');
+          res.set('Expires', '0');
+        } else {
+          // For non-filtered queries, we can apply light caching
+          res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+        }
 
         // For backward compatibility, if no limit/offset is specified, return just the array
         // Otherwise, return with pagination metadata
@@ -660,9 +669,18 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log(`File query GET returned ${items.length} records`);
 
-        // Set cache headers for better performance
-        // Results may change based on filters, but for static data sets we can cache short-term
-        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+        // For dynamic data queries (with filters, limits, etc.), avoid caching to ensure fresh data
+        // Check if there are filters being applied
+        const hasFilters = Object.keys(filterParams).length > 0;
+        if (hasFilters) {
+          // Don't cache filtered responses as data changes frequently
+          res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Prevent caching
+          res.set('Pragma', 'no-cache');
+          res.set('Expires', '0');
+        } else {
+          // For non-filtered queries, we can apply light caching
+          res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+        }
 
         // For backward compatibility, if no limit/offset is specified, return just the array
         // Otherwise, return with pagination metadata

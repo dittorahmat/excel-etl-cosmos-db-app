@@ -240,8 +240,10 @@ export class ListImportsHandler extends BaseQueryHandler {
         hasContinuationToken: !!response.pagination.continuationToken
       });
 
-      // Set cache headers for better performance - import lists don't change frequently
-      res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+      // Don't cache this response as import lists change frequently after operations like deletes
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Prevent caching
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
 
       return res.status(200).json(response);
     } catch (error) {

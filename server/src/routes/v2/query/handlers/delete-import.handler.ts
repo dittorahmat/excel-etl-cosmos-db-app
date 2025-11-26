@@ -52,6 +52,11 @@ export class DeleteImportHandler {
         deletedRows: result.deletedRows,
       });
 
+      // Set cache control headers to help with cache invalidation
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Prevent caching
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+
       return res.status(200).json(response);
     } catch (error) {
       logger.error('deleteImport - Error occurred', {
