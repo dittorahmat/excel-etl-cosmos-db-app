@@ -128,6 +128,9 @@ export class GetImportMetadataHandler extends BaseQueryHandler {
         rowCount: safeRowCount,
       });
 
+      // Set cache headers for better performance - import metadata changes infrequently
+      res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+
       return res.status(200).json(response);
     } catch (error) {
       return this.handleError(error, res, logContext);

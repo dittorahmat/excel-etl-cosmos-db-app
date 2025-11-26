@@ -99,9 +99,24 @@ export async function initializeCosmosDB(): Promise<AzureCosmosDB> {
     // Create container if it doesn't exist
     const containerDefinition: ContainerDefinition = {
       id: defaultContainerName,
-      partitionKey: { 
+      partitionKey: {
         paths: [partitionKey],
         version: 2 // Use version 2 of the partition key
+      },
+      // Add indexing policy for better query performance on commonly filtered fields
+      indexingPolicy: {
+        includedPaths: [
+          {
+            path: "/*" // Include all paths by default
+          }
+        ],
+        excludedPaths: [
+          {
+            path: "/\"_etag\"/?" // Exclude system properties that are not needed for queries
+          }
+        ],
+        indexingMode: "consistent", // Consistent indexing for real-time query results
+        automatic: true // Automatically index all properties
       }
     };
     

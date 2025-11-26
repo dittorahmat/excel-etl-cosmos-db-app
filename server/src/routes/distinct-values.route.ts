@@ -155,6 +155,9 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
           }
         }
 
+        // Set cache headers for better performance - distinct values don't change frequently
+        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+
         return res.status(200).json({
           success: true,
           values: distinctValues

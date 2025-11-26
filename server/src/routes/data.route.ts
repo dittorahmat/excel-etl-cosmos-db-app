@@ -258,7 +258,10 @@ router.get(
       pageSize,
       totalPages: Math.ceil(totalCount / pageSize)
     };
-    
+
+    // Set cache headers for better performance
+    res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+
     res.json(response);
   } catch (error) {
     console.error('Error querying Cosmos DB:', error);

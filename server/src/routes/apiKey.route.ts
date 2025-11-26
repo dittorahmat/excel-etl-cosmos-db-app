@@ -113,10 +113,26 @@ export function createApiKeyRouter(azureServices: { cosmosDb: AzureCosmosDB; blo
       }
 
       const { keys } = await apiKeyRepository.listApiKeys(userId);
-      
+
+      // Set cache headers for better performance - API keys list changes infrequently
+      res.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes for the user's own keys
+
+      // Return with pagination metadata
       res.status(200).json({
         success: true,
-        data: keys,
+        data: {
+          items: keys,
+          total: keys.length,
+          page: 1, // Since this is a simple list operation without offset/limit
+          pageSize: keys.length,
+          totalPages: 1
+        },
+        pagination: {
+          total: keys.length,
+          limit: keys.length,
+          offset: 0,
+          hasMoreResults: false
+        }
       });
     } catch (error) {
       next(error);

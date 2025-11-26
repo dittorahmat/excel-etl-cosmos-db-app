@@ -283,6 +283,9 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
             // Get field types from import metadata for files that match the filters
             const fieldTypes = await getFieldTypesFromMetadata(container);
 
+            // Set cache headers for better performance - field lists don't change frequently
+            res.set('Cache-Control', 'public, max-age=900'); // Cache for 15 minutes
+
             return res.status(200).json({
               success: true,
               fields: uniqueHeaders.map(name => ({
@@ -351,6 +354,9 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
 
               // Get field types from import metadata for the specific files
               const fieldTypes = await getFieldTypesFromMetadata(container, fileNames);
+
+              // Set cache headers for better performance - field lists don't change frequently
+              res.set('Cache-Control', 'public, max-age=900'); // Cache for 15 minutes
 
               return res.status(200).json({
                 success: true,
@@ -438,6 +444,9 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
               // Get field types from import metadata (since we don't know specific files, get all)
               const fieldTypes = await getFieldTypesFromMetadata(container);
 
+              // Set cache headers for better performance - field lists don't change frequently
+              res.set('Cache-Control', 'public, max-age=900'); // Cache for 15 minutes
+
               return res.status(200).json({
                 success: true,
                 fields: uniqueHeaders.map(name => ({
@@ -482,6 +491,9 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
 
             // Get field types from import metadata for the common files
             const fieldTypes = await getFieldTypesFromMetadata(container, commonFileNames);
+
+            // Set cache headers for better performance - field lists don't change frequently
+            res.set('Cache-Control', 'public, max-age=900'); // Cache for 15 minutes
 
             return res.status(200).json({
               success: true,
@@ -550,6 +562,9 @@ export function createFieldsRouter(cosmosDb: AzureCosmosDB): Router {
           const fieldTypes = await getFieldTypesFromMetadata(container);
 
           // Return the fields from Cosmos DB with their types from metadata
+          // Set cache headers for better performance - field lists don't change frequently
+          res.set('Cache-Control', 'public, max-age=900'); // Cache for 15 minutes
+
           res.status(200).json({
             success: true,
             fields: uniqueHeaders.map(name => ({

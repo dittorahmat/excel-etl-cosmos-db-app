@@ -306,8 +306,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
               const filteredItem: ExcelRecord = {};
               for (const [key, value] of Object.entries(item)) {
                 // Skip all Cosmos DB system properties and metadata
-                if (!key.startsWith('_') && 
-                    key !== 'id' && 
+                if (!key.startsWith('_') &&
+                    key !== 'id' &&
                     key !== 'documentType') {
                   filteredItem[key] = value as string | number | boolean | null | undefined;
                 }
@@ -319,7 +319,27 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log(`File query returned ${items.length} records`);
 
-        return res.status(200).json(items);
+        // Set cache headers for better performance
+        // Results may change based on filters, but for static data sets we can cache short-term
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        // For backward compatibility, if no limit/offset is specified, return just the array
+        // Otherwise, return with pagination metadata
+        if (!limit && !offset) {
+          // Return just the array for backward compatibility
+          return res.status(200).json(items);
+        } else {
+          // For paginated requests, return with pagination metadata
+          const result = {
+            data: items,
+            pagination: {
+              limit: limit ? parseInt(String(limit), 10) : undefined,
+              offset: offset ? parseInt(String(offset), 10) : undefined,
+              count: items.length
+            }
+          };
+          return res.status(200).json(result);
+        }
       } catch (error) {
         console.error('Error fetching data from Cosmos DB for file query:', error);
         
@@ -640,7 +660,27 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
 
         console.log(`File query GET returned ${items.length} records`);
 
-        return res.status(200).json(items);
+        // Set cache headers for better performance
+        // Results may change based on filters, but for static data sets we can cache short-term
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        // For backward compatibility, if no limit/offset is specified, return just the array
+        // Otherwise, return with pagination metadata
+        if (!limit && !offset) {
+          // Return just the array for backward compatibility
+          return res.status(200).json(items);
+        } else {
+          // For paginated requests, return with pagination metadata
+          const result = {
+            data: items,
+            pagination: {
+              limit: limit ? parseInt(String(limit), 10) : undefined,
+              offset: offset ? parseInt(String(offset), 10) : undefined,
+              count: items.length
+            }
+          };
+          return res.status(200).json(result);
+        }
       } catch (error) {
         console.error('Error fetching data from Cosmos DB for file query GET:', error);
         
@@ -870,6 +910,9 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
           }
         }
 
+        // Set cache headers for better performance - distinct values don't change frequently
+        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+
         return res.status(200).json({
           success: true,
           values: distinctValues
@@ -1098,6 +1141,9 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         const paginatedItems = importItems.slice(startIndex, endIndex);
         const total = importItems.length;
         const totalPages = Math.ceil(total / pageSizeNum);
+
+        // Set cache headers for better performance - file lists don't change frequently
+        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
 
         return res.status(200).json({
           success: true,

@@ -286,6 +286,9 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       
       console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Query results`, { itemsCount: pagedItems.length, total, enableJoin });
 
+      // Set cache headers for better performance
+      res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
       return res.status(200).json(pagedItems);
     } catch (error) {
       return this.handleError(error, res, logContext);

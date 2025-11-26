@@ -178,11 +178,42 @@ export class EnhancedCosmosDBService {
         // Container doesn't exist, so create it
         const containerDefinition: ContainerDefinition = {
           id: containerName,
-          partitionKey: { 
+          partitionKey: {
             paths: [partitionKey],
             version: 2
           }
         };
+
+        // Add specific indexing policy for excel-records container to optimize common queries
+        if (containerName === 'excel-records') {
+          containerDefinition.indexingPolicy = {
+            includedPaths: [
+              {
+                path: "/*" // Include all paths by default
+              },
+              // Add specific paths for the special filter fields to optimize queries
+              {
+                path: "/Source/?"
+              },
+              {
+                path: "/Category/?"
+              },
+              {
+                path: "/\"Sub Category\"/?"
+              },
+              {
+                path: "/Year/?"
+              }
+            ],
+            excludedPaths: [
+              {
+                path: "/\"_etag\"/?" // Exclude system properties that are not needed for queries
+              }
+            ],
+            indexingMode: "consistent", // Consistent indexing for real-time query results
+            automatic: true // Automatically index all properties
+          };
+        }
         
         const { container } = await this.database.containers.createIfNotExists(containerDefinition);
         logger.info(`Successfully created container: ${containerName}`);

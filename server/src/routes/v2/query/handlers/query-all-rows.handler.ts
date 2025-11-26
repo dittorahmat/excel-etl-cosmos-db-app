@@ -122,6 +122,9 @@ export class QueryAllRowsHandler extends BaseQueryHandler {
         totalCount: importsWithRowCounts.length,
       });
 
+      // Set cache headers for better performance
+      res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+
       return res.status(200).json(response);
     } catch (error) {
       return this.handleError(error, res, logContext);

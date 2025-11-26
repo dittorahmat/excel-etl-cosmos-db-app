@@ -246,24 +246,38 @@ export const useDashboardData = () => {
       // Use the new file-based endpoint
       const url = `/api/query/file?${queryParams.toString()}`;
       
-      const response = await api.get<Record<string, unknown>[]>(url);
-      
-      console.log('[useDashboardData] File query response received:', Array.isArray(response) ? response.length : 'non-array');
-      
-      if (Array.isArray(response)) {
+      // The API might return either a direct array or an object with data and pagination
+      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: any }>(url);
+
+      let responseData: Record<string, unknown>[];
+      let responsePagination: any;
+
+      // Check if response has data and pagination properties (for paginated responses)
+      if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
+        responseData = response.data as Record<string, unknown>[];
+        responsePagination = response.pagination;
+        console.log('[useDashboardData] File query response received (paginated):', responseData.length);
+      } else {
+        // Otherwise, response is a direct array
+        responseData = response as Record<string, unknown>[];
+        responsePagination = null;
+        console.log('[useDashboardData] File query response received (direct):', responseData.length);
+      }
+
+      if (Array.isArray(responseData)) {
         // Extract field names from the first item if response is not empty
-        const fields = response.length > 0 
-          ? Object.keys(response[0]) 
+        const fields = responseData.length > 0
+          ? Object.keys(responseData[0])
           : [];
-        
+
         const pageSize = query.limit;
         const page = Math.floor(query.offset / pageSize) + 1;
-        const total = response.length; // Note: this is the total count from the response
+        const total = responseData.length; // Note: this is the total count from the response
         const totalPages = Math.ceil(total / pageSize);
-        
+
         setQueryResult(prev => ({
           ...prev,
-          items: response,
+          items: responseData,
           fields,
           total,
           page,

@@ -46,6 +46,15 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Updated regex in server/src/routes/distinct-values.route.ts from `/[^a-zA-Z0-9 _-]/g` to `/[^a-zA-Z0-9 _/-]/g` to preserve forward slashes in field names like "PLN Operational Unit/Province"
 - **[NEW]** Updated regex in server/src/routes/query/file.route.ts to maintain consistent field sanitization that preserves special characters
 - **[NEW]** Verified that lint, type-check, and build processes pass successfully after field sanitization fixes
+- **[NEW]** Created and executed Cosmos DB migration script to add indexes for Source, Category, Sub Category, and Year fields for improved query performance
+- **[NEW]** Updated cosmos-db service with proper indexing policy for excel-records container
+- **[NEW]** Enhanced /api/query/file endpoint with pagination support and backward compatibility for existing API consumers
+- **[NEW]** Added caching headers to all major API endpoints (data.route.ts, apiKey.route.ts, v2 query handlers) with appropriate cache durations
+- **[NEW]** Updated all v2 query handlers with caching headers and proper response formats
+- **[NEW]** Enhanced API key listing endpoint with pagination metadata for consistency
+- **[NEW]** Updated useDashboardData hook to handle both direct array and paginated responses from /api/query/file endpoint
+- **[NEW]** Updated export functions in DashboardPage to handle both direct array and paginated API responses
+- **[NEW]** Fixed DashboardPage error by making API response format handling backward compatible
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters

@@ -84,9 +84,19 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
       // Use the file-based endpoint to get all data for export
       const url = `/api/query/file?${queryParams.toString()}`;
-      
-      const allData = await api.get<Record<string, unknown>[]>(url);
-      
+
+      // The API might return either a direct array or an object with data and pagination
+      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: any }>(url);
+
+      // Check if response has data and pagination properties (for paginated responses)
+      let allData: Record<string, unknown>[];
+      if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
+        allData = response.data as Record<string, unknown>[];
+      } else {
+        // Otherwise, response is a direct array
+        allData = response as Record<string, unknown>[];
+      }
+
       if (!Array.isArray(allData) || allData.length === 0) {
         console.warn('No data received from export API call');
         return;
@@ -171,9 +181,19 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
       // Use the file-based endpoint to get all data for export
       const url = `/api/query/file?${queryParams.toString()}`;
-      
-      const allData = await api.get<Record<string, unknown>[]>(url);
-      
+
+      // The API might return either a direct array or an object with data and pagination
+      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: any }>(url);
+
+      // Check if response has data and pagination properties (for paginated responses)
+      let allData: Record<string, unknown>[];
+      if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
+        allData = response.data as Record<string, unknown>[];
+      } else {
+        // Otherwise, response is a direct array
+        allData = response as Record<string, unknown>[];
+      }
+
       if (!Array.isArray(allData) || allData.length === 0) {
         console.warn('No data received from export API call');
         return;
