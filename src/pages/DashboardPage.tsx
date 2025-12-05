@@ -17,6 +17,14 @@ import { api } from '../utils/api';
 import * as XLSX from 'xlsx';
 
 // Type definitions for the component props and API responses
+interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+  continuationToken?: string;
+}
 
 interface DashboardPageProps {
   children?: React.ReactNode;
@@ -86,7 +94,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       const url = `/api/query/file?${queryParams.toString()}`;
 
       // The API might return either a direct array or an object with data and pagination
-      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: any }>(url);
+      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: PaginationMeta }>(url);
 
       // Check if response has data and pagination properties (for paginated responses)
       let allData: Record<string, unknown>[];
@@ -113,7 +121,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         return fields.map(field => {
           const value = item[field];
           // Handle special formatting for dates
-          const formattedValue = typeof value === 'string' && isValidDateString(value)
+          const formattedValue = isDateField(field) && typeof value === 'string' && isValidDateString(value)
             ? formatDate(value)
             : String(value || '');
 
@@ -183,7 +191,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       const url = `/api/query/file?${queryParams.toString()}`;
 
       // The API might return either a direct array or an object with data and pagination
-      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: any }>(url);
+      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: PaginationMeta }>(url);
 
       // Check if response has data and pagination properties (for paginated responses)
       let allData: Record<string, unknown>[];
@@ -207,7 +215,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         const formattedItem: Record<string, unknown> = {};
         fields.forEach(field => {
           const value = item[field];
-          formattedItem[field] = typeof value === 'string' && isValidDateString(value)
+          formattedItem[field] = isDateField(field) && typeof value === 'string' && isValidDateString(value)
             ? formatDate(value)
             : value;
         });
@@ -233,6 +241,13 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     navigate('/login');
     return null; // Will redirect to login
   }
+
+  // Helper function to check if a field is of type 'date' based on the field definitions
+  const isDateField = (fieldName: string): boolean => {
+    return fieldDefinitions.some(fieldDef =>
+      fieldDef.name === fieldName && fieldDef.type === 'date'
+    );
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -354,7 +369,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                             <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
                               {queryResult.fields.map((field) => (
                                 <TableCell key={`${index}-${field}`}>
-                                  {typeof item[field] === 'string' && isValidDateString(String(item[field]))
+                                  {isDateField(field) && typeof item[field] === 'string' && isValidDateString(String(item[field]))
                                     ? formatDate(String(item[field]))
                                     : String(item[field] || '')}
                                 </TableCell>

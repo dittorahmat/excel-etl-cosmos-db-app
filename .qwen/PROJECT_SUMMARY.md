@@ -55,6 +55,11 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Updated useDashboardData hook to handle both direct array and paginated responses from /api/query/file endpoint
 - **[NEW]** Updated export functions in DashboardPage to handle both direct array and paginated API responses
 - **[NEW]** Fixed DashboardPage error by making API response format handling backward compatible
+- **[NEW]** Fixed browser caching issues by removing cache headers from dynamic endpoints that change frequently
+- **[NEW]** Updated ListImportsHandler to prevent caching of file lists to avoid stale data after delete operations
+- **[NEW]** Added cache control headers to DeleteImportHandler responses to help with cache invalidation
+- **[NEW]** Made /api/query/file endpoint cache dynamically based on whether filters are applied
+- **[NEW]** Fixed date formatting issue in DashboardPage by implementing field-type-aware formatting that only formats actual date-type fields, preventing non-date fields like "Source" from being incorrectly transformed into date formats
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters

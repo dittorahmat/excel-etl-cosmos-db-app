@@ -35,6 +35,15 @@ interface FilterCondition {
   value2?: string | number | boolean;
 }
 
+interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+  continuationToken?: string;
+}
+
 interface SpecialFilters {
   Source: string;
   Category: string;
@@ -247,20 +256,17 @@ export const useDashboardData = () => {
       const url = `/api/query/file?${queryParams.toString()}`;
       
       // The API might return either a direct array or an object with data and pagination
-      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: any }>(url);
+      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: PaginationMeta }>(url);
 
       let responseData: Record<string, unknown>[];
-      let responsePagination: any;
 
       // Check if response has data and pagination properties (for paginated responses)
       if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
         responseData = response.data as Record<string, unknown>[];
-        responsePagination = response.pagination;
         console.log('[useDashboardData] File query response received (paginated):', responseData.length);
       } else {
         // Otherwise, response is a direct array
         responseData = response as Record<string, unknown>[];
-        responsePagination = null;
         console.log('[useDashboardData] File query response received (direct):', responseData.length);
       }
 
