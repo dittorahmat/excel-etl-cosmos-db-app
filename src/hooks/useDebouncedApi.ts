@@ -135,14 +135,14 @@ export const useDebouncedApi = () => {
         params.append('fields', 'Sub Category');
         params.append('Source', options.source);
         params.append('Category', options.category);
-        
+
         const response = await api.get(`/api/distinct-values?${params.toString()}`, {
           signal: abortController.signal
         });
-        
+
         if (response && typeof response === 'object' && 'success' in response) {
           const data = response as DistinctValuesResult;
-          
+
           if (data.success) {
             newFilteredValues['Sub Category'] = data.values['Sub Category'] || [];
           }
@@ -152,14 +152,31 @@ export const useDebouncedApi = () => {
         const params = new URLSearchParams();
         params.append('fields', 'Sub Category');
         params.append('Source', options.source);
-        
+
         const response = await api.get(`/api/distinct-values?${params.toString()}`, {
           signal: abortController.signal
         });
-        
+
         if (response && typeof response === 'object' && 'success' in response) {
           const data = response as DistinctValuesResult;
-          
+
+          if (data.success) {
+            newFilteredValues['Sub Category'] = data.values['Sub Category'] || [];
+          }
+        }
+      } else if (options.category) {
+        // If only category is selected (without source), filter Sub Category by category
+        const params = new URLSearchParams();
+        params.append('fields', 'Sub Category');
+        params.append('Category', options.category);
+
+        const response = await api.get(`/api/distinct-values?${params.toString()}`, {
+          signal: abortController.signal
+        });
+
+        if (response && typeof response === 'object' && 'success' in response) {
+          const data = response as DistinctValuesResult;
+
           if (data.success) {
             newFilteredValues['Sub Category'] = data.values['Sub Category'] || [];
           }
@@ -280,6 +297,7 @@ export const useDebouncedApi = () => {
     filesAbortControllerRef.current = abortController;
     
     // Skip request if Sub Category is not selected (no point in fetching files without it)
+    // However, we should still allow fetching if only Sub Category is selected (without Source/Category)
     if (!options.subCategory) {
       setFiles([]);
       return;
