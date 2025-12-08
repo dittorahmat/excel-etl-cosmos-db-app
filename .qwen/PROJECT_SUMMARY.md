@@ -60,6 +60,7 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Added cache control headers to DeleteImportHandler responses to help with cache invalidation
 - **[NEW]** Made /api/query/file endpoint cache dynamically based on whether filters are applied
 - **[NEW]** Fixed date formatting issue in DashboardPage by implementing field-type-aware formatting that only formats actual date-type fields, preventing non-date fields like "Source" from being incorrectly transformed into date formats
+- **[NEW]** Implemented search functionality for special filters (Source, Category, Sub Category) in FileSelector component by replacing HTML select elements with Shadcn UI's Command components that include search capabilities
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -73,4 +74,5 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Multi-select checkbox functionality fixed for 'in'/'notIn' operators by replacing CommandItem with regular div elements
 - **[DONE]** Rate limiting successfully disabled with preserved functionality for future re-enablement
 - **[DONE]** Field sanitization fixed to preserve special characters like forward slashes in field names
+- **[DONE]** Search functionality implemented for special filters to improve user experience with large datasets
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering feature)

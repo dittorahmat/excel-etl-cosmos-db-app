@@ -267,49 +267,279 @@ export const FileSelector = ({
             {/* Source Dropdown */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Source</Label>
-              <select
-                value={selectedSpecialFields.Source}
-                onChange={(e) => handleSpecialFieldChange('Source', e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
-                disabled={loading || disabled}
-              >
-                <option value="">All Sources</option>
-                {((filteredValues.Source || distinctValues.Source || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((source, idx) => (
-                  <option key={idx} value={source}>{source}</option>
-                ))}
-              </select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between h-9 bg-background hover:bg-accent/50 text-left"
+                    disabled={loading || disabled}
+                  >
+                    <span className={selectedSpecialFields.Source ? "text-foreground" : "text-muted-foreground"}>
+                      {selectedSpecialFields.Source || "Select source..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-popover border-border" align="start">
+                  <div className="relative">
+                    <Command className="rounded-lg border border-border shadow-md bg-popover">
+                      <div className="px-3 pt-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                          <CommandInput
+                            placeholder="Search sources..."
+                            className="h-9 text-foreground pl-9"
+                            autoFocus={false}
+                          />
+                        </div>
+                      </div>
+                      <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                        No sources found.
+                      </CommandEmpty>
+                      <CommandGroup className="overflow-y-auto max-h-[300px]">
+                        <CommandItem
+                          value=""
+                          onSelect={() => {
+                            handleSpecialFieldChange('Source', '');
+                          }}
+                          className={cn(
+                            "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                            "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                            "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                            "transition-colors duration-200"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex h-4 w-4 items-center justify-center rounded-sm border",
+                              !selectedSpecialFields.Source
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                            )}
+                          >
+                            {!selectedSpecialFields.Source && <Check className="h-3 w-3" />}
+                          </div>
+                          <span className="font-medium">All Sources</span>
+                        </CommandItem>
+                        {((filteredValues.Source || distinctValues.Source || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((source, idx) => (
+                          <CommandItem
+                            key={idx}
+                            value={String(source)}
+                            onSelect={() => {
+                              handleSpecialFieldChange('Source', String(source));
+                            }}
+                            className={cn(
+                              "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                              "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                              "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                              "transition-colors duration-200"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded-sm border",
+                                selectedSpecialFields.Source === String(source)
+                                  ? "bg-primary border-primary text-primary-foreground"
+                                  : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                              )}
+                            >
+                              {selectedSpecialFields.Source === String(source) && <Check className="h-3 w-3" />}
+                            </div>
+                            <span className="font-medium">{String(source)}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Category Dropdown */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Category</Label>
-              <select
-                value={selectedSpecialFields.Category}
-                onChange={(e) => handleSpecialFieldChange('Category', e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
-                disabled={loading || disabled}
-              >
-                <option value="">All Categories</option>
-                {((filteredValues.Category || distinctValues.Category || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((category, idx) => (
-                  <option key={idx} value={category}>{category}</option>
-                ))}
-              </select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between h-9 bg-background hover:bg-accent/50 text-left"
+                    disabled={loading || disabled || !selectedSpecialFields.Source}
+                  >
+                    <span className={selectedSpecialFields.Category ? "text-foreground" : "text-muted-foreground"}>
+                      {selectedSpecialFields.Category || "Select category..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-popover border-border" align="start">
+                  <div className="relative">
+                    <Command className="rounded-lg border border-border shadow-md bg-popover">
+                      <div className="px-3 pt-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                          <CommandInput
+                            placeholder="Search categories..."
+                            className="h-9 text-foreground pl-9"
+                            autoFocus={false}
+                          />
+                        </div>
+                      </div>
+                      <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                        No categories found.
+                      </CommandEmpty>
+                      <CommandGroup className="overflow-y-auto max-h-[300px]">
+                        <CommandItem
+                          value=""
+                          onSelect={() => {
+                            handleSpecialFieldChange('Category', '');
+                          }}
+                          className={cn(
+                            "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                            "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                            "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                            "transition-colors duration-200"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex h-4 w-4 items-center justify-center rounded-sm border",
+                              !selectedSpecialFields.Category
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                            )}
+                          >
+                            {!selectedSpecialFields.Category && <Check className="h-3 w-3" />}
+                          </div>
+                          <span className="font-medium">All Categories</span>
+                        </CommandItem>
+                        {((filteredValues.Category || distinctValues.Category || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((category, idx) => (
+                          <CommandItem
+                            key={idx}
+                            value={String(category)}
+                            onSelect={() => {
+                              handleSpecialFieldChange('Category', String(category));
+                            }}
+                            className={cn(
+                              "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                              "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                              "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                              "transition-colors duration-200"
+                            )}
+                            disabled={!selectedSpecialFields.Source}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded-sm border",
+                                selectedSpecialFields.Category === String(category)
+                                  ? "bg-primary border-primary text-primary-foreground"
+                                  : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                              )}
+                            >
+                              {selectedSpecialFields.Category === String(category) && <Check className="h-3 w-3" />}
+                            </div>
+                            <span className="font-medium">{String(category)}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Sub Category Dropdown */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Sub Category</Label>
-              <select
-                value={selectedSpecialFields['Sub Category']}
-                onChange={(e) => handleSpecialFieldChange('Sub Category', e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-9"
-                disabled={loading || disabled}
-              >
-                <option value="">All Sub Categories</option>
-                {((filteredValues['Sub Category'] || distinctValues['Sub Category'] || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((subCategory, idx) => (
-                  <option key={idx} value={subCategory}>{subCategory}</option>
-                ))}
-              </select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between h-9 bg-background hover:bg-accent/50 text-left"
+                    disabled={loading || disabled || !selectedSpecialFields.Category}
+                  >
+                    <span className={selectedSpecialFields['Sub Category'] ? "text-foreground" : "text-muted-foreground"}>
+                      {selectedSpecialFields['Sub Category'] || "Select sub category..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-popover border-border" align="start">
+                  <div className="relative">
+                    <Command className="rounded-lg border border-border shadow-md bg-popover">
+                      <div className="px-3 pt-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                          <CommandInput
+                            placeholder="Search sub categories..."
+                            className="h-9 text-foreground pl-9"
+                            autoFocus={false}
+                          />
+                        </div>
+                      </div>
+                      <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                        No sub categories found.
+                      </CommandEmpty>
+                      <CommandGroup className="overflow-y-auto max-h-[300px]">
+                        <CommandItem
+                          value=""
+                          onSelect={() => {
+                            handleSpecialFieldChange('Sub Category', '');
+                          }}
+                          className={cn(
+                            "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                            "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                            "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                            "transition-colors duration-200"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex h-4 w-4 items-center justify-center rounded-sm border",
+                              !selectedSpecialFields['Sub Category']
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                            )}
+                          >
+                            {!selectedSpecialFields['Sub Category'] && <Check className="h-3 w-3" />}
+                          </div>
+                          <span className="font-medium">All Sub Categories</span>
+                        </CommandItem>
+                        {((filteredValues['Sub Category'] || distinctValues['Sub Category'] || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((subCategory, idx) => (
+                          <CommandItem
+                            key={idx}
+                            value={String(subCategory)}
+                            onSelect={() => {
+                              handleSpecialFieldChange('Sub Category', String(subCategory));
+                            }}
+                            className={cn(
+                              "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                              "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
+                              "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
+                              "transition-colors duration-200"
+                            )}
+                            disabled={!selectedSpecialFields.Category}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded-sm border",
+                                selectedSpecialFields['Sub Category'] === String(subCategory)
+                                  ? "bg-primary border-primary text-primary-foreground"
+                                  : "border-muted-foreground/30 dark:border-muted-foreground/50"
+                              )}
+                            >
+                              {selectedSpecialFields['Sub Category'] === String(subCategory) && <Check className="h-3 w-3" />}
+                            </div>
+                            <span className="font-medium">{String(subCategory)}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
