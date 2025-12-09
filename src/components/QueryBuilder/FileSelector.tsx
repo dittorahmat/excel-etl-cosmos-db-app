@@ -275,7 +275,7 @@ export const FileSelector = ({
                     className="w-full justify-between h-9 bg-background hover:bg-accent/50 text-left"
                     disabled={loading || disabled}
                   >
-                    <span className={selectedSpecialFields.Source ? "text-foreground" : "text-muted-foreground"}>
+                    <span className={`${selectedSpecialFields.Source ? "text-foreground truncate" : "text-muted-foreground truncate"} min-w-0`}>
                       {selectedSpecialFields.Source || "Select source..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -320,7 +320,7 @@ export const FileSelector = ({
                           >
                             {!selectedSpecialFields.Source && <Check className="h-3 w-3" />}
                           </div>
-                          <span className="font-medium">All Sources</span>
+                          <span className="font-medium" title="All Sources">All Sources</span>
                         </CommandItem>
                         {((filteredValues.Source || distinctValues.Source || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((source, idx) => (
                           <CommandItem
@@ -346,7 +346,7 @@ export const FileSelector = ({
                             >
                               {selectedSpecialFields.Source === String(source) && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="font-medium">{String(source)}</span>
+                            <span className="font-medium" title={String(source)}>{String(source)}</span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -367,7 +367,7 @@ export const FileSelector = ({
                     className="w-full justify-between h-9 bg-background hover:bg-accent/50 text-left"
                     disabled={loading || disabled || !selectedSpecialFields.Source}
                   >
-                    <span className={selectedSpecialFields.Category ? "text-foreground" : "text-muted-foreground"}>
+                    <span className={`${selectedSpecialFields.Category ? "text-foreground truncate" : "text-muted-foreground truncate"} min-w-0`}>
                       {selectedSpecialFields.Category || "Select category..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -412,7 +412,7 @@ export const FileSelector = ({
                           >
                             {!selectedSpecialFields.Category && <Check className="h-3 w-3" />}
                           </div>
-                          <span className="font-medium">All Categories</span>
+                          <span className="font-medium" title="All Categories">All Categories</span>
                         </CommandItem>
                         {((filteredValues.Category || distinctValues.Category || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((category, idx) => (
                           <CommandItem
@@ -439,7 +439,7 @@ export const FileSelector = ({
                             >
                               {selectedSpecialFields.Category === String(category) && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="font-medium">{String(category)}</span>
+                            <span className="font-medium" title={String(category)}>{String(category)}</span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -460,7 +460,7 @@ export const FileSelector = ({
                     className="w-full justify-between h-9 bg-background hover:bg-accent/50 text-left"
                     disabled={loading || disabled || !selectedSpecialFields.Category}
                   >
-                    <span className={selectedSpecialFields['Sub Category'] ? "text-foreground" : "text-muted-foreground"}>
+                    <span className={`${selectedSpecialFields['Sub Category'] ? "text-foreground truncate" : "text-muted-foreground truncate"} min-w-0`}>
                       {selectedSpecialFields['Sub Category'] || "Select sub category..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -505,7 +505,7 @@ export const FileSelector = ({
                           >
                             {!selectedSpecialFields['Sub Category'] && <Check className="h-3 w-3" />}
                           </div>
-                          <span className="font-medium">All Sub Categories</span>
+                          <span className="font-medium" title="All Sub Categories">All Sub Categories</span>
                         </CommandItem>
                         {((filteredValues['Sub Category'] || distinctValues['Sub Category'] || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((subCategory, idx) => (
                           <CommandItem
@@ -532,7 +532,7 @@ export const FileSelector = ({
                             >
                               {selectedSpecialFields['Sub Category'] === String(subCategory) && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="font-medium">{String(subCategory)}</span>
+                            <span className="font-medium" title={String(subCategory)}>{String(subCategory)}</span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -556,7 +556,7 @@ export const FileSelector = ({
                     className="w-full justify-between h-auto min-h-9 py-1.5 bg-background hover:bg-accent/50 text-left"
                     disabled={loading || disabled || !selectedSpecialFields['Sub Category']}
                   >
-                    <span className={selectedFile ? "text-foreground" : "text-muted-foreground"}>
+                    <span className={`${selectedFile ? "text-foreground truncate" : "text-muted-foreground truncate"} min-w-0`}>
                       {selectedFile ? selectedFileLabel : 'Select file...'}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -609,7 +609,7 @@ export const FileSelector = ({
                               >
                                 {isSelected && <Check className="h-3 w-3" />}
                               </div>
-                              <span className="font-medium text-foreground">{file.label}</span>
+                              <span className="font-medium text-foreground" title={file.label}>{file.label}</span>
                             </CommandItem>
                           );
                         })}
