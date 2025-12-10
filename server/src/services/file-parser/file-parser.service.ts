@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
@@ -13,13 +13,13 @@ interface ParseOptions {
    * @default Infinity (process all rows)
    */
   maxRows?: number;
-  
+
   /**
    * Whether to include empty rows in the output
    * @default false
    */
   includeEmptyRows?: boolean;
-  
+
   /**
    * Optional function to transform each row
    * Return null to skip the row
@@ -30,16 +30,16 @@ interface ParseOptions {
 interface ParseResult {
   /** Array of parsed rows */
   rows: Record<string, unknown>[];
-  
+
   /** Array of column headers found in the file */
   headers: string[];
-  
+
   /** Total number of rows processed */
   totalRows: number;
-  
+
   /** Number of rows successfully parsed */
   validRows: number;
-  
+
   /** Any errors encountered during parsing */
   errors: Array<{
     row: number;
@@ -64,27 +64,27 @@ export class FileParserService {
     if (typeof value === 'number') {
       return value;
     }
-    
+
     // For Excel, dates might come through as Date objects
     if (value instanceof Date) {
       return value;
     }
-    
+
     // For strings that might be numbers or dates
     if (typeof value === 'string') {
       // Try to parse as number first
       if (this.isNumericString(value)) {
         return this.parseNumericString(value);
       }
-      
+
       // Try to parse as date
       if (this.isDateString(value)) {
         return this.parseDateString(value);
       }
-      
+
       return value;
     }
-    
+
     return value;
   }
 
@@ -110,24 +110,24 @@ export class FileParserService {
       if (parts.length !== 3) {
         return dateString;
       }
-      
+
       // Check that all parts exist
       if (parts[0] === undefined || parts[1] === undefined || parts[2] === undefined) {
         return dateString;
       }
-      
+
       const day = parseInt(parts[0], 10);
       const month = parseInt(parts[1], 10);
       const year = parseInt(parts[2], 10);
-      
+
       // Check if all parts are valid numbers
       if (isNaN(day) || isNaN(month) || isNaN(year)) {
         return dateString;
       }
-      
+
       // Create date (month is 0-indexed in JavaScript)
       const date = new Date(year, month - 1, day);
-      
+
       // Validate that the date is valid
       if (
         date.getFullYear() === year &&
@@ -136,7 +136,7 @@ export class FileParserService {
       ) {
         return date;
       }
-      
+
       // Return original string if date is invalid
       return dateString;
     } catch {
@@ -164,12 +164,12 @@ export class FileParserService {
   private parseNumericString(numericString: string): number | string {
     try {
       const num = parseFloat(numericString);
-      
+
       // Check if the parsed number is valid and matches the original string
       if (!isNaN(num) && isFinite(num)) {
         return num;
       }
-      
+
       // Return original string if number is invalid
       return numericString;
     } catch {
@@ -208,6 +208,7 @@ export class FileParserService {
         this.logger.error('Error getting file stats:', statsError);
         throw new Error(`File not found or inaccessible: ${filePath}`);
       }
+
       // Read the file as buffer first for debugging
       let fileBuffer: Buffer;
       try {
@@ -221,19 +222,15 @@ export class FileParserService {
         throw new Error(`Failed to read file: ${filePath}`);
       }
 
-      // Parse the Excel file
+      // Parse the Excel file using ExcelJS
       let workbook;
       try {
         this.logger.debug('Attempting to parse Excel file...');
-        workbook = XLSX.read(fileBuffer, {
-          type: 'buffer',
-          cellDates: true,
-          cellNF: false,
-          cellText: false
-        });
+        workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(fileBuffer as any);
         this.logger.debug('Successfully parsed Excel workbook', {
-          sheetCount: workbook.SheetNames?.length || 0,
-          sheetNames: workbook.SheetNames || []
+          sheetCount: workbook.worksheets.length,
+          sheetNames: workbook.worksheets.map(ws => ws.name)
         });
       } catch (error) {
         const parseError = error as Error;
@@ -246,93 +243,60 @@ export class FileParserService {
       }
 
       // Get the first worksheet
-      const firstSheetName = workbook.SheetNames[0];
-      if (!firstSheetName) {
-        const errorMsg = 'No worksheets found in the Excel file';
-        this.logger.error(errorMsg, { sheetNames: workbook.SheetNames });
-        throw new Error(errorMsg);
-      }
-
-      this.logger.debug('Processing worksheet:', { worksheetName: firstSheetName });
-      const worksheet = workbook.Sheets[firstSheetName];
-      
+      const worksheet = workbook.worksheets[0];
       if (!worksheet) {
-        const errorMsg = `Worksheet '${firstSheetName}' not found in workbook`;
-        this.logger.error(errorMsg, { sheetNames: workbook.SheetNames });
+        const errorMsg = 'No worksheets found in the Excel file';
+        this.logger.error(errorMsg);
         throw new Error(errorMsg);
       }
-      
-      // Convert to JSON with header row
-      // Convert worksheet to JSON
-      let jsonData;
-      try {
-        this.logger.debug('Converting worksheet to JSON...');
-        jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-          header: 1, // Get raw data including headers
-          raw: true, // Changed from false to true to preserve data types
-          defval: null, // Use null for empty cells
-          blankrows: false,
-        });
-        this.logger.debug('Successfully converted worksheet to JSON', {
-          rowCount: jsonData.length,
-          firstRow: jsonData[0] ? Object.keys(jsonData[0]) : []
-        });
-      } catch (error) {
-        const conversionError = error as Error;
-        this.logger.error('Error converting worksheet to JSON:', {
-          error: conversionError,
-          errorMessage: conversionError.message,
-          errorStack: conversionError.stack
-        });
-        throw new Error(`Failed to convert worksheet to JSON: ${conversionError.message}`);
-      }
 
-      if (jsonData.length === 0) {
-        return result;
-      }
+      this.logger.debug('Processing worksheet:', { worksheetName: worksheet.name });
 
-      // First row is headers - ensure it's treated as an array of unknown values
-      const firstRow = Array.isArray(jsonData[0]) ? jsonData[0] : Object.values(jsonData[0] || {});
-      const headers = firstRow.map((h, index) => 
-        (h !== null && h !== undefined ? String(h).trim() : '') || `column_${index + 1}`
-      ) as string[];
+      // Get headers from first row
+      const firstRow = worksheet.getRow(1);
+      const headers: string[] = [];
+      firstRow.eachCell((cell, colNumber) => {
+        const header = cell.value !== null && cell.value !== undefined
+          ? String(cell.value).trim()
+          : `column_${colNumber}`;
+        headers.push(header);
+      });
 
       result.headers = headers;
-      result.totalRows = jsonData.length - 1; // Exclude header row
+      result.totalRows = worksheet.rowCount - 1; // Exclude header row
 
-      // Process rows
-      for (let i = 1; i < jsonData.length; i++) {
+      // Process rows (skip header row)
+      worksheet.eachRow((row, rowNumber) => {
+        // Skip header row
+        if (rowNumber === 1) return;
+
         if (options.maxRows && result.rows.length >= options.maxRows) {
-          break;
+          return;
         }
 
-        // Ensure rowData is treated as an array of unknown values
-        const currentRow = jsonData[i];
-        const rowData = Array.isArray(currentRow) 
-          ? currentRow 
-          : Object.values(currentRow || {});
-        const row: Record<string, unknown> = {};
+        const rowData: Record<string, unknown> = {};
         let isEmpty = true;
 
         try {
           // Map each cell to its header
-          for (let j = 0; j < Math.min(headers.length, rowData.length); j++) {
-            const header = headers[j];
-            const value = rowData[j];
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber - 1]; // colNumber is 1-indexed
+            const value = cell.value;
+
             if (header && value !== null && value !== undefined && value !== '') {
-              row[header] = this.processCellValue(value);
+              rowData[header] = this.processCellValue(value);
               isEmpty = false;
             }
-          }
+          });
 
           if (isEmpty && !options.includeEmptyRows) {
-            continue;
+            return;
           }
 
           // Apply custom transformation if provided
-          const transformedRow = options.transformRow 
-            ? options.transformRow(row, i)
-            : row;
+          const transformedRow = options.transformRow
+            ? options.transformRow(rowData, rowNumber)
+            : rowData;
 
           if (transformedRow !== null) {
             result.rows.push(transformedRow);
@@ -340,12 +304,12 @@ export class FileParserService {
           }
         } catch (error) {
           result.errors.push({
-            row: i,
+            row: rowNumber,
             error: error instanceof Error ? error.message : 'Unknown error',
             rawData: rowData,
           });
         }
-      }
+      });
 
       return result;
     } catch (error) {
@@ -382,7 +346,7 @@ export class FileParserService {
             }
 
             // Apply custom transformation if provided
-            const transformedRow = options.transformRow 
+            const transformedRow = options.transformRow
               ? options.transformRow(chunk, result.totalRows)
               : chunk;
 
@@ -422,17 +386,17 @@ export class FileParserService {
             if (value === '') {
               return null;
             }
-            
+
             // Try to parse as number first
             if (this.isNumericString(value)) {
               return this.parseNumericString(value);
             }
-            
+
             // Try to parse as date if it matches our format
             if (this.isDateString(value)) {
               return this.parseDateString(value);
             }
-            
+
             return value;
           },
           skipLines: 0,
@@ -458,22 +422,22 @@ export class FileParserService {
     options: ParseOptions = {}
   ): Promise<ParseResult> {
     const fileExtension = filePath.split('.').pop()?.toLowerCase() || '';
-    
+
     // Log the MIME type and file extension for debugging
     this.logger.debug('Parsing file', { filePath, mimeType, fileExtension });
 
     // Check for Excel files by MIME type or extension
-    const isExcelByMime = mimeType.includes('excel') || 
-                         mimeType.includes('spreadsheet') ||
-                         mimeType === 'application/octet-stream';
-    
+    const isExcelByMime = mimeType.includes('excel') ||
+      mimeType.includes('spreadsheet') ||
+      mimeType === 'application/octet-stream';
+
     const isExcelByExtension = ['xlsx', 'xls', 'xlsm'].includes(fileExtension);
 
     // Check for CSV files by MIME type or extension
-    const isCsvByMime = mimeType.includes('csv') || 
-                       mimeType.includes('text/csv') ||
-                       mimeType === 'text/plain';
-    
+    const isCsvByMime = mimeType.includes('csv') ||
+      mimeType.includes('text/csv') ||
+      mimeType === 'text/plain';
+
     const isCsvByExtension = fileExtension === 'csv';
 
     // Try to parse based on MIME type first, then fall back to file extension
@@ -481,9 +445,9 @@ export class FileParserService {
       try {
         return await this.parseExcel(filePath, options);
       } catch (error) {
-        this.logger.warn('Failed to parse as Excel, trying CSV as fallback', { 
-          filePath, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+        this.logger.warn('Failed to parse as Excel, trying CSV as fallback', {
+          filePath,
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
         if (isCsvByMime || isCsvByExtension) {
           // Detect delimiter for CSV files
@@ -493,8 +457,8 @@ export class FileParserService {
         }
         throw error;
       }
-    } 
-    
+    }
+
     if (isCsvByMime || isCsvByExtension) {
       // Detect delimiter for CSV files
       const delimiter = await detectCsvDelimiter(filePath);

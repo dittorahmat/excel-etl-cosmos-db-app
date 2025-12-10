@@ -8,7 +8,7 @@ import { FileListTable } from '../components/FileListTable';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export function UploadPage() {
   console.log('Rendering UploadPage component');
@@ -25,35 +25,24 @@ export function UploadPage() {
         reader.onload = (e) => {
           try {
             const csvText = e.target?.result as string;
-            const workbook = XLSX.read(csvText, {
-              type: 'string',
-              cellDates: true,
-              dateNF: 'yyyy-mm-dd'
-            });
 
-            const firstSheetName = workbook.SheetNames[0];
-            if (!firstSheetName) {
-              console.error(`No worksheets found in the CSV file: ${file.name}`);
-              resolve({ isValid: false, error: `No worksheets found in the CSV file: ${file.name}` });
-              return;
-            }
-
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-              header: 1,
-              raw: true,
-              defval: '',
-              blankrows: false,
-            });
-
-            if (jsonData.length === 0) {
+            // Simple CSV parsing - just get the first line for headers
+            const lines = csvText.split('\n');
+            if (lines.length === 0) {
               console.error(`No data found in the CSV file: ${file.name}`);
               resolve({ isValid: false, error: `No data found in the CSV file: ${file.name}` });
               return;
             }
 
-            // Extract headers (first row)
-            const headers = jsonData[0] as string[];
+            // Get headers from first line
+            const firstLine = lines[0] || '';
+            const headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+            if (headers.length === 0) {
+              console.error(`No headers found in the CSV file: ${file.name}`);
+              resolve({ isValid: false, error: `No headers found in the CSV file: ${file.name}` });
+              return;
+            }
 
             // Required headers for FileSelector
             const requiredHeaders = ['Source', 'Category', 'Sub Category'];
@@ -83,38 +72,33 @@ export function UploadPage() {
         // For Excel files, use ArrayBuffer reader
         const reader = new FileReader();
 
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           try {
-            const data = new Uint8Array(e.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, {
-              type: 'array',
-              cellDates: true,
-              dateNF: 'yyyy-mm-dd'
-            });
+            const arrayBuffer = e.target?.result as ArrayBuffer;
 
-            const firstSheetName = workbook.SheetNames[0];
-            if (!firstSheetName) {
+            // Use ExcelJS to read Excel file
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) {
               console.error(`No worksheets found in the Excel file: ${file.name}`);
               resolve({ isValid: false, error: `No worksheets found in the Excel file: ${file.name}` });
               return;
             }
 
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-              header: 1,
-              raw: true,
-              defval: '',
-              blankrows: false,
+            // Get headers from first row
+            const firstRow = worksheet.getRow(1);
+            const headers: string[] = [];
+            firstRow.eachCell((cell) => {
+              headers.push(String(cell.value || ''));
             });
 
-            if (jsonData.length === 0) {
+            if (headers.length === 0) {
               console.error(`No data found in the Excel file: ${file.name}`);
               resolve({ isValid: false, error: `No data found in the Excel file: ${file.name}` });
               return;
             }
-
-            // Extract headers (first row)
-            const headers = jsonData[0] as string[];
 
             // Required headers for FileSelector
             const requiredHeaders = ['Source', 'Category', 'Sub Category'];
@@ -367,10 +351,10 @@ export function UploadPage() {
 
       // Show upload error if it's not a validation error (validation errors show their own toast)
       if (!errorMessage.includes('Missing required columns') &&
-          !errorMessage.includes('No worksheets found') &&
-          !errorMessage.includes('No data found') &&
-          !errorMessage.includes('Failed to validate') &&
-          !errorMessage.includes('Failed to read')) {
+        !errorMessage.includes('No worksheets found') &&
+        !errorMessage.includes('No data found') &&
+        !errorMessage.includes('Failed to validate') &&
+        !errorMessage.includes('Failed to read')) {
         setUploadMessage({ message: errorMessage, type: 'error' });
       }
 
@@ -518,12 +502,11 @@ export function UploadPage() {
                 />
                 {/* Display upload messages */}
                 {uploadMessage && (
-                  <div className={`mt-4 p-4 rounded-md ${
-                    uploadMessage.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
+                  <div className={`mt-4 p-4 rounded-md ${uploadMessage.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
                     uploadMessage.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' :
-                    uploadMessage.type === 'warning' ? 'bg-yellow-100 border border-yellow-400 text-yellow-700' :
-                    'bg-blue-100 border border-blue-400 text-blue-700'
-                  }`}>
+                      uploadMessage.type === 'warning' ? 'bg-yellow-100 border border-yellow-400 text-yellow-700' :
+                        'bg-blue-100 border border-blue-400 text-blue-700'
+                    }`}>
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
                         {uploadMessage.type === 'success' && (

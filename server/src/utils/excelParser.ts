@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 /**
  * Process Excel file and upload to Cosmos DB
@@ -27,11 +27,8 @@ export const processExcelFile = async (
     // Parse the Excel file with error handling for invalid formats
     let workbook;
     try {
-      workbook = XLSX.read(fileBuffer, {
-        type: 'buffer',
-        cellDates: true, // Parse dates properly
-        dateNF: 'yyyy-mm-dd', // Format dates consistently
-      });
+      workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(fileBuffer as any);
     } catch (error) {
       console.error('Error parsing Excel file:', error);
       return {
@@ -42,8 +39,8 @@ export const processExcelFile = async (
     }
 
     // Get the first worksheet
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
       return {
         success: false,
         count: 0,
@@ -51,48 +48,46 @@ export const processExcelFile = async (
       };
     }
 
-    const worksheet = workbook.Sheets[firstSheetName];
-
-    // Convert to JSON with headers
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-      header: 1,
-      raw: true,
-      defval: '',
-      blankrows: false,
+    // Extract headers from first row
+    const firstRow = worksheet.getRow(1);
+    const headers: string[] = [];
+    firstRow.eachCell((cell) => {
+      headers.push(String(cell.value || ''));
     });
 
-    // Extract headers (first row)
-    const headers = jsonData[0] as unknown as string[];
-    const dataRows = jsonData.slice(1);
-
-    if (dataRows.length === 0) {
+    if (headers.length === 0) {
       return {
         success: false,
         count: 0,
-        error: 'No data rows found in the Excel file'
+        error: 'No headers found in the Excel file'
       };
     }
 
-    // Process data rows
-    const processedData = dataRows.map((row, index) => {
+    // Process data rows (skip header row)
+    const processedData: Record<string, unknown>[] = [];
+    worksheet.eachRow((row, rowNumber) => {
+      // Skip header row
+      if (rowNumber === 1) return;
+
       const record: Record<string, unknown> = {
         id: uuidv4(),
         _partitionKey: userId,
         fileName,
         containerName,
-        rowNumber: index + 2, // +2 because of 1-based index and header row
+        rowNumber,
         uploadDate: new Date().toISOString(),
         status: 'pending',
       };
 
       // Map each cell to its header
-      headers.forEach((header, colIndex) => {
+      row.eachCell((cell, colNumber) => {
+        const header = headers[colNumber - 1]; // colNumber is 1-indexed
         if (header) {
-          record[header] = row[colIndex] !== undefined ? row[colIndex] : null;
+          record[header] = cell.value !== null && cell.value !== undefined ? cell.value : null;
         }
       });
 
-      return record;
+      processedData.push(record);
     });
 
     return {
@@ -100,7 +95,7 @@ export const processExcelFile = async (
       count: processedData.length,
       data: processedData,
       headers,
-      rowCount: dataRows.length,
+      rowCount: processedData.length,
       columnCount: headers.length,
     };
   } catch (error) {

@@ -14,7 +14,7 @@ import { formatDateAlt as formatDate, isValidDateString } from '../utils/formatt
 import { api } from '../utils/api';
 
 // Import libraries for export functionality
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 // Type definitions for the component props and API responses
 interface PaginationMeta {
@@ -51,7 +51,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     handleFileChange, // Changed from handleFieldsChange to handleFileChange
     handleSort,
   } = useDashboardData();
-  
+
   // Local state for export errors
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -63,24 +63,24 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     try {
       // Build query parameters for export - get all records without pagination
       const queryParams = new URLSearchParams();
-      
+
       // Add the file ID and special filters to query parameters
       if (selectedFile) {
         queryParams.append('fileId', selectedFile);
       }
-      
+
       if (specialFilters?.Source) {
         queryParams.append('Source', specialFilters.Source);
       }
-      
+
       if (specialFilters?.Category) {
         queryParams.append('Category', specialFilters.Category);
       }
-      
+
       if (specialFilters?.['Sub Category']) {
         queryParams.append('Sub Category', specialFilters['Sub Category']);
       }
-      
+
       if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
         queryParams.append('Year', specialFilters.Year.join(','));
       }
@@ -146,7 +146,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Revoke the object URL to free up memory
       URL.revokeObjectURL(urlBlob);
     } catch (error) {
@@ -160,24 +160,24 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     try {
       // Build query parameters for export - get all records without pagination
       const queryParams = new URLSearchParams();
-      
+
       // Add the file ID and special filters to query parameters
       if (selectedFile) {
         queryParams.append('fileId', selectedFile);
       }
-      
+
       if (specialFilters?.Source) {
         queryParams.append('Source', specialFilters.Source);
       }
-      
+
       if (specialFilters?.Category) {
         queryParams.append('Category', specialFilters.Category);
       }
-      
+
       if (specialFilters?.['Sub Category']) {
         queryParams.append('Sub Category', specialFilters['Sub Category']);
       }
-      
+
       if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
         queryParams.append('Year', specialFilters.Year.join(','));
       }
@@ -222,15 +222,33 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         return formattedItem;
       });
 
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      // Create workbook and worksheet using ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Query Results');
 
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
+      // Add headers
+      worksheet.columns = fields.map(field => ({
+        header: field,
+        key: field,
+        width: 15
+      }));
 
-      // Export to file
-      XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      // Add data rows
+      formattedData.forEach(item => {
+        worksheet.addRow(item);
+      });
+
+      // Generate buffer and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const excelUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = excelUrl;
+      link.download = `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(excelUrl);
     } catch (error) {
       console.error('Error during Excel export:', error);
       setExportError('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'));

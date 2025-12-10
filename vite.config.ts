@@ -18,7 +18,7 @@ export default defineConfig({
           // Split large dependencies into separate chunks
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-toast', '@radix-ui/react-label'],
-          'data-vendor': ['recharts', 'xlsx'],
+          'data-vendor': ['recharts', 'exceljs'],
           'auth-vendor': ['@azure/msal-react', '@azure/msal-node', '@azure/identity'],
           'lucide-icons': ['lucide-react'],
           'utils-vendor': ['date-fns', 'clsx', 'tailwind-merge'],
