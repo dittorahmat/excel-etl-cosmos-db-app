@@ -146,17 +146,18 @@ export function createApp(azureServices: {
   // To re-enable rate limiting, uncomment the following code block:
   /*
   const apiRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes in production
-    max: 100, // Limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again after 15 minutes',
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes in production (default 900000ms)
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // Limit each IP to configured requests per windowMs
+    message: 'Too many requests from this IP, please try again after the rate limit window',
     keyGenerator: (req: Request) => req.ip || 'unknown-ip',
     handler: (_req: Request, res: Response) => {
-      res.setHeader('Retry-After', '900'); // 15 minutes
+      const retryAfterSeconds = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000') / 1000;
+      res.setHeader('Retry-After', retryAfterSeconds.toString());
       res.status(429).json({
         success: false,
         error: 'Too many requests',
-        message: 'Too many requests from this IP, please try again after 15 minutes',
-        retryAfter: 900,
+        message: 'Too many requests from this IP, please try again after the rate limit window',
+        retryAfter: retryAfterSeconds,
       });
     },
     // Skip rate limiting for health check endpoints
@@ -166,9 +167,12 @@ export function createApp(azureServices: {
     }
   });
 
-  // Apply rate limiting to all API routes, but skip in development
+  // Apply rate limiting to all API routes, but skip in development or if disabled via environment variable
   app.use('/api', (req, res, next) => {
-    if (process.env.NODE_ENV === 'development') {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isRateLimitingDisabled = process.env.RATE_LIMITING_ENABLED === 'false';
+    
+    if (isDevelopment || isRateLimitingDisabled) {
       return next();
     }
     return apiRateLimit(req, res, next);

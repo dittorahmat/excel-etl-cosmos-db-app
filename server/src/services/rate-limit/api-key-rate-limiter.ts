@@ -5,8 +5,13 @@ import { logger } from '../../utils/logger.js';
  */
 class ApiKeyRateLimiter {
   private requests: Map<string, { count: number; resetTime: number }> = new Map();
-  private windowMs: number = 15 * 60 * 1000; // 15 minutes
-  private maxRequests: number = 1000; // Max requests per window
+  private windowMs: number;
+  private maxRequests: number;
+  
+  constructor() {
+    this.windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'); // Configurable window in milliseconds
+    this.maxRequests = parseInt(process.env.API_KEY_RATE_LIMIT || '1000'); // Configurable max requests per window for API keys
+  }
 
   /**
    * Check if an API key has exceeded its rate limit
@@ -95,6 +100,16 @@ class ApiKeyRateLimiter {
     // Note: This sets the global limits, not per-key limits
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
+  }
+  
+  /**
+   * Get current rate limit configuration
+   */
+  getConfig(): { windowMs: number; maxRequests: number } {
+    return {
+      windowMs: this.windowMs,
+      maxRequests: this.maxRequests
+    };
   }
 
   /**

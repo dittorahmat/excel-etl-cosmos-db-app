@@ -199,9 +199,9 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimitRequest
 
 // Default rate limiter for API endpoints
 export const defaultRateLimiter: RateLimitRequestHandler = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP/API key to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again after 15 minutes.'
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // Configurable window in milliseconds
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // Configurable max requests per window
+  message: 'Too many requests from this IP, please try again after the rate limit window.'
 });
 
 // Stricter rate limiter for authentication endpoints

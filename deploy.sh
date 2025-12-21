@@ -1,57 +1,79 @@
 #!/bin/bash
 
-# Simple deployment script for Excel to Cosmos DB Dashboard
+# Deployment script for Excel ETL Cosmos DB App
+# This script pulls the latest code, rebuilds, and deploys the app
 
-# Exit on any error
-set -e
+set -e  # Exit on any error
 
-echo "=== Excel to Cosmos DB Dashboard Deployment ==="
+# Directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd $SCRIPT_DIR
 
-# Check if Docker is installed
-if ! command -v docker &> /dev/null
-then
-    echo "ERROR: Docker is not installed. Please install Docker first."
-    exit 1
-fi
+# Log file for the deployment
+LOG_FILE="logs/deploy-$(date +%Y%m%d-%H%M%S).log"
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null
-then
-    echo "ERROR: Docker Compose is not installed. Please install Docker Compose first."
-    exit 1
-fi
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a $LOG_FILE
+}
 
-echo "Docker and Docker Compose are installed."
-
-# NOTE: For zero-downtime deployments, use the improved zero-downtime deployment script
-echo "NOTE: For zero-downtime deployments, consider using ./improved-zero-downtime-deploy.sh"
-
-# Create a directory for the application
-APP_DIR="/opt/excel-to-cosmos"
-echo "Creating application directory at $APP_DIR"
-sudo mkdir -p $APP_DIR
-sudo chown $USER:$USER $APP_DIR
-
-# Copy files to the application directory
-echo "Copying application files..."
-cp -r ./* $APP_DIR/
-cp .env $APP_DIR/ 2>/dev/null || echo "No .env file found. Remember to create one with your Azure credentials."
-
-# Navigate to the application directory
-cd $APP_DIR
-
-# Create logs directory
+# Create logs directory if it doesn't exist
 mkdir -p logs
 
-# Build and start the application
-echo "Building and starting the application..."
-docker-compose up -d
+log_message "Starting deployment process..."
 
-# Check if the application is running
-echo "Checking application status..."
-docker-compose ps
+# Pull the latest changes from the remote repository
+log_message "Pulling latest changes from remote repository..."
+if git pull origin main; then
+    log_message "Successfully pulled latest changes"
+else
+    log_message "ERROR: Failed to pull changes"
+    exit 1
+fi
 
-echo "Deployment completed!"
-echo "The application should be accessible at https://iesr.southeastasia.cloudapp.azure.com"
-echo "For zero-downtime deployments, use: ./improved-zero-downtime-deploy.sh"
-echo "Check logs with: docker-compose logs -f"
+# Build the new Docker image
+log_message "Building new Docker image..."
+if docker-compose build excel-to-cosmos; then
+    log_message "Successfully built new Docker image"
+else
+    log_message "ERROR: Failed to build Docker image"
+    exit 1
+fi
+
+# Stop the existing excel-to-cosmos container
+log_message "Stopping existing excel-to-cosmos container..."
+if docker-compose stop excel-to-cosmos; then
+    log_message "Successfully stopped excel-to-cosmos container"
+else
+    log_message "WARNING: Failed to stop excel-to-cosmos container, continuing..."
+fi
+
+# Remove the stopped container
+log_message "Removing stopped container..."
+if docker-compose rm -f excel-to-cosmos; then
+    log_message "Successfully removed stopped container"
+else
+    log_message "WARNING: Failed to remove stopped container, continuing..."
+fi
+
+# Start the new container with the updated image
+log_message "Starting new excel-to-cosmos container with updated image..."
+if docker-compose up -d excel-to-cosmos; then
+    log_message "Successfully started new excel-to-cosmos container"
+else
+    log_message "ERROR: Failed to start new excel-to-cosmos container"
+    exit 1
+fi
+
+# Wait a bit for the container to start and become healthy
+log_message "Waiting for container to become healthy..."
+sleep 30
+
+# Verify that the services are running properly
+if docker-compose ps | grep -q "Up (healthy)"; then
+    log_message "Deployment completed successfully! All services are healthy."
+else
+    log_message "WARNING: Deployment completed but services may not be healthy. Please check docker-compose ps."
+fi
+
+log_message "Deployment process finished at $(date)"
