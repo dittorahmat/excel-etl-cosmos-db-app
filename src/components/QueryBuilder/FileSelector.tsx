@@ -59,6 +59,14 @@ export const FileSelector = ({
     FileId: selectedFile,
   });
 
+  // Helper function to remove file extension from filename
+  const removeFileExtension = (filename: string | undefined | null): string => {
+    if (!filename) return filename || 'Untitled';
+    const lastDotIndex = filename.lastIndexOf('.');
+    if (lastDotIndex === -1) return filename; // No extension found
+    return filename.substring(0, lastDotIndex);
+  };
+
   // Initialize with special fields if they're not already selected
   useEffect(() => {
     setSelectedSpecialFields(prev => ({
@@ -210,13 +218,14 @@ export const FileSelector = ({
   };
 
   // Get selected file label
-  const selectedFileLabel = useMemo(() => {
+  const selectedFileLabel = useMemo((): string => {
     const file = files.find(f => {
       const fileId = f.id || f._importId;
       return fileId === selectedSpecialFields.FileId;
     });
-    return file?.fileName || 'Select a file';
-  }, [files, selectedSpecialFields.FileId]) as string;
+    const fileName = file && typeof file === 'object' && 'fileName' in file ? (file as {fileName?: string}).fileName : undefined;
+    return removeFileExtension(fileName || 'Select a file');
+  }, [files, selectedSpecialFields.FileId, removeFileExtension]);
 
   // Convert files to FileOption format
   const fileOptions = useMemo(() => {
@@ -230,11 +239,11 @@ export const FileSelector = ({
 
     return files.map((item: FileItem) => ({
       value: item.id || item._importId || '',
-      label: item.fileName || 'Untitled',
+      label: removeFileExtension(item.fileName || 'Untitled'),
       fileName: item.fileName || 'Untitled',
       metadata: item
     }));
-  }, [files]);
+  }, [files, removeFileExtension]);
 
   // Filter file options based on search term (frontend search)
   const filteredFileOptions = useMemo(() => {
@@ -304,7 +313,7 @@ export const FileSelector = ({
                             handleSpecialFieldChange('Source', '');
                           }}
                           className={cn(
-                            "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                            "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                             "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                             "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                             "transition-colors duration-200"
@@ -320,7 +329,7 @@ export const FileSelector = ({
                           >
                             {!selectedSpecialFields.Source && <Check className="h-3 w-3" />}
                           </div>
-                          <span className="font-medium" title="All Sources">All Sources</span>
+                          <span className="font-medium text-left" title="All Sources">All Sources</span>
                         </CommandItem>
                         {((filteredValues.Source || distinctValues.Source || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((source, idx) => (
                           <CommandItem
@@ -330,7 +339,7 @@ export const FileSelector = ({
                               handleSpecialFieldChange('Source', String(source));
                             }}
                             className={cn(
-                              "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                              "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                               "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                               "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                               "transition-colors duration-200"
@@ -346,7 +355,7 @@ export const FileSelector = ({
                             >
                               {selectedSpecialFields.Source === String(source) && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="font-medium" title={String(source)}>{String(source)}</span>
+                            <span className="font-medium text-left" title={String(source)}>{String(source)}</span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -396,7 +405,7 @@ export const FileSelector = ({
                             handleSpecialFieldChange('Category', '');
                           }}
                           className={cn(
-                            "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                            "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                             "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                             "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                             "transition-colors duration-200"
@@ -412,7 +421,7 @@ export const FileSelector = ({
                           >
                             {!selectedSpecialFields.Category && <Check className="h-3 w-3" />}
                           </div>
-                          <span className="font-medium" title="All Categories">All Categories</span>
+                          <span className="font-medium text-left" title="All Categories">All Categories</span>
                         </CommandItem>
                         {((filteredValues.Category || distinctValues.Category || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((category, idx) => (
                           <CommandItem
@@ -422,7 +431,7 @@ export const FileSelector = ({
                               handleSpecialFieldChange('Category', String(category));
                             }}
                             className={cn(
-                              "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                              "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                               "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                               "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                               "transition-colors duration-200"
@@ -439,7 +448,7 @@ export const FileSelector = ({
                             >
                               {selectedSpecialFields.Category === String(category) && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="font-medium" title={String(category)}>{String(category)}</span>
+                            <span className="font-medium text-left" title={String(category)}>{String(category)}</span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -489,7 +498,7 @@ export const FileSelector = ({
                             handleSpecialFieldChange('Sub Category', '');
                           }}
                           className={cn(
-                            "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                            "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                             "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                             "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                             "transition-colors duration-200"
@@ -505,7 +514,7 @@ export const FileSelector = ({
                           >
                             {!selectedSpecialFields['Sub Category'] && <Check className="h-3 w-3" />}
                           </div>
-                          <span className="font-medium" title="All Sub Categories">All Sub Categories</span>
+                          <span className="font-medium text-left" title="All Sub Categories">All Sub Categories</span>
                         </CommandItem>
                         {((filteredValues['Sub Category'] || distinctValues['Sub Category'] || []) as (string | number)[]).filter(val => typeof val !== 'boolean').map((subCategory, idx) => (
                           <CommandItem
@@ -515,7 +524,7 @@ export const FileSelector = ({
                               handleSpecialFieldChange('Sub Category', String(subCategory));
                             }}
                             className={cn(
-                              "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                              "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                               "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                               "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                               "transition-colors duration-200"
@@ -532,7 +541,7 @@ export const FileSelector = ({
                             >
                               {selectedSpecialFields['Sub Category'] === String(subCategory) && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="font-medium" title={String(subCategory)}>{String(subCategory)}</span>
+                            <span className="font-medium text-left" title={String(subCategory)}>{String(subCategory)}</span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -593,7 +602,7 @@ export const FileSelector = ({
                                 setIsOpen(false);
                               }}
                               className={cn(
-                                "cursor-pointer px-3 py-2 text-sm flex items-center gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground",
+                                "cursor-pointer px-3 py-2 text-sm flex items-start gap-2 bg-background/95 hover:bg-accent hover:text-accent-foreground justify-start",
                                 "data-[disabled]:opacity-100 data-[disabled]:pointer-events-auto",
                                 "dark:data-[selected]:bg-accent dark:data-[selected]:text-accent-foreground",
                                 "transition-colors duration-200"
@@ -609,7 +618,7 @@ export const FileSelector = ({
                               >
                                 {isSelected && <Check className="h-3 w-3" />}
                               </div>
-                              <span className="font-medium text-foreground" title={file.label}>{file.label}</span>
+                              <span className="font-medium text-foreground text-left" title={file.label}>{file.label}</span>
                             </CommandItem>
                           );
                         })}

@@ -10,8 +10,16 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION: string;
   readonly VITE_ENABLE_ANALYTICS: string;
   readonly VITE_ENABLE_DEBUG: string;
+  readonly VITE_AUTH_ENABLED?: string;
+  readonly AUTH_ENABLED?: string;
+  readonly VITE_AZURE_CLIENT_ID?: string;
+  readonly VITE_AZURE_TENANT_ID?: string;
+  readonly VITE_AZURE_REDIRECT_URI?: string;
+  readonly VITE_API_SCOPE?: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+export {};
