@@ -21,19 +21,19 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<Error | null>(null);
 
   // Check if we should use dummy auth (development, explicitly disabled, or forced)
-  const isDevelopment = import.meta.env.DEV || 
-                      window.location.hostname === 'localhost' || 
+  const isDevelopment = import.meta.env.DEV ||
+                      window.location.hostname === 'localhost' ||
                       window.location.hostname === '127.0.0.1';
-  
+
   // Check if auth is enabled or disabled
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
   const authDisabled = import.meta.env.VITE_AUTH_ENABLED === 'false';
-  
+
   // Use dummy auth only if:
   // 1. Auth is explicitly disabled, OR
   // 2. We're in development and auth is not explicitly enabled
   const useDummyAuth = authDisabled || (!authEnabled && isDevelopment);
-  
+
   // Mock user data for when auth is disabled
   const MOCK_USER = {
     name: isDevelopment ? 'Development User' : 'User',
@@ -116,24 +116,30 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return `mock.${mockToken}.signature`;
     }
 
-    if (accounts.length === 0) {
-      console.warn('No active account found. User needs to log in first.');
+    const currentAccounts = accounts.length > 0 ? accounts : instance.getAllAccounts();
+
+    if (currentAccounts.length === 0) {
+      console.warn('No active account found in accounts hook or instance. User needs to log in first.');
       return null; // Return null instead of throwing to allow graceful degradation
     }
     
-    const account = accounts[0];
+    const account = currentAccounts[0];
     const cachedToken = localStorage.getItem('msalToken');
     const tokenExpiry = localStorage.getItem('msalTokenExpiry');
     
     // Check if we have a valid cached token
-    if (cachedToken && tokenExpiry && !isTokenExpired(parseInt(tokenExpiry, 10))) {
+    const expiryTime = tokenExpiry ? parseInt(tokenExpiry, 10) : 0;
+    const isExpiryValid = !isNaN(expiryTime) && expiryTime > 0;
+    
+    if (cachedToken && isExpiryValid && !isTokenExpired(expiryTime)) {
+      console.debug('Using valid cached token');
       return cachedToken;
     }
     
     try {
       // Get new token silently - use API-specific scope instead of login scopes
       const apiConfig = getSimpleApiConfig();
-      
+
       // Validate that we have proper API scopes before attempting to acquire token
       if (!apiConfig.scopes || apiConfig.scopes.length === 0 || apiConfig.scopes[0] === '') {
         console.warn('API scopes not configured properly. Check VITE_API_SCOPE environment variable.');
@@ -142,7 +148,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           scopes: ['User.Read'], // Basic Microsoft Graph scope as fallback
           account,
         });
-        
+
         if (fallbackResponse?.accessToken) {
           const expiresOn = fallbackResponse.expiresOn?.getTime() || Date.now() + 600000; // 10 minutes
           localStorage.setItem('msalToken', fallbackResponse.accessToken);
@@ -151,7 +157,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         return null;
       }
-      
+
       const response = await instance.acquireTokenSilent({
         scopes: apiConfig.scopes,
         account,
@@ -318,9 +324,11 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle real authentication flow
         if (accounts.length > 0) {
           const account = accounts[0];
+          console.debug('Auth check: User is authenticated', { username: account.username });
           setUser(account);
           setIsAuthenticated(true);
         } else {
+          console.debug('Auth check: No active session found in accounts hook');
           setUser(null);
           setIsAuthenticated(false);
         }
@@ -349,9 +357,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           break;
         }
         case EventType.LOGOUT_SUCCESS:
-        case EventType.ACQUIRE_TOKEN_FAILURE:
           setUser(null);
           setIsAuthenticated(false);
+          break;
+        case EventType.ACQUIRE_TOKEN_FAILURE:
+          console.warn('Silent token acquisition failed. User session may still be valid.');
+          // Do not log out immediately on token failure - let the app retry or prompt user
           break;
         default:
           break;

@@ -25,6 +25,7 @@ The project uses an NPM Workspaces monorepo structure:
 *   **Package Management:** Root `package.json` is correctly configured with `workspaces: ["server"]`.
 *   **Build Process:** Unified build script (`npm run build`) handles both client and server.
 *   **PostCSS:** Configured via `postcss.config.js` using ESM imports to match the project's `"type": "module"` setting.
+*   **Authentication:** MSAL-based session management is robust, with fixes for race conditions and transient token refresh failures.
 *   **Cleanup:** Verbose debug logs have been removed from production code paths. Junk/temporary script files have been purged from the root.
 
 ## 4. Building and Running

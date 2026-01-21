@@ -235,6 +235,8 @@ The application will be accessible via HTTPS with automatic HTTP to HTTPS redire
 
 ### Authentication & Authorization
 - Azure AD integration
+- Improved session stability with race condition handling
+- Robust token refresh logic that prevents unexpected logouts
 - Role-based access control
 - Secure API key management
 - Session management

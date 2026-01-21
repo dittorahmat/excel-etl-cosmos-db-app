@@ -64,6 +64,11 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Fixed unused variable `total` in query-rows-get.handler.ts by properly implementing paginated response with total count
 - **[NEW]** Addressed linting issues with `any` types in file-parser.service.ts and excelParser.ts using appropriate type assertions and ESLint disable directives
 - **[NEW]** Verified that all type-check, lint, and build processes pass successfully after all changes
+- **[NEW]** Improved authentication stability in `AuthProvider.tsx` by fixing a race condition where the `accounts` hook was intermittently empty on page reload
+- **[NEW]** Prevented aggressive logouts by removing the `ACQUIRE_TOKEN_FAILURE` event listener that was prematurely clearing the user session
+- **[NEW]** Fixed token expiry logic to correctly handle invalid or missing expiry timestamps in local storage
+- **[NEW]** Added debug logging to track authentication state transitions and token acquisition flows
+- **[NEW]** Verified that the build process completes successfully with the new authentication changes
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -79,4 +84,5 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Field sanitization fixed to preserve special characters like forward slashes in field names
 - **[DONE]** Search functionality implemented for special filters to improve user experience with large datasets
 - **[DONE]** Unused variable and type issues resolved to maintain code quality standards
-- The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering feature)
+- **[DONE]** Authentication stability improved by fixing race conditions and aggressive logout behaviors
+- The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering or core auth logic)
