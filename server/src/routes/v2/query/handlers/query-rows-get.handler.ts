@@ -22,27 +22,9 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
   public async handle(req: Request, res: Response): Promise<Response | void> {
     const logContext = { requestId: Math.random().toString(36).substring(2, 9) };
     
-    // Log raw request info
-    console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Raw request info:`, {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      query: req.query,
-      queryType: typeof req.query,
-      queryKeys: Object.keys(req.query || {})
-    });
-    
     try {
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Received request`, {
-        method: req.method,
-        url: req.url,
-        headers: req.headers,
-        query: req.query
-      });
-      
       // Only allow GET
       if (req.method !== 'GET') {
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Method not allowed: ${req.method}`);
         return res.status(405).json({ success: false, message: 'Method Not Allowed' });
       }
       
@@ -54,26 +36,15 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         try {
           filters = JSON.parse(decodeURIComponent(req.query.filters as string));
         } catch (e) {
-          console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Error parsing filters`, { error: e, filters: req.query.filters });
+          console.error(`[${new Date().toISOString()}] [${logContext.requestId}] Error parsing filters`, { error: e, filters: req.query.filters });
           return res.status(400).json({ success: false, message: 'Invalid filters parameter' });
         }
       }
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100000;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
       
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Request query parsed`, {
-        fields,
-        enableJoin: true, // JOIN is now mandatory
-        limit,
-        offset,
-        fieldsType: Array.isArray(fields) ? 'array' : typeof fields,
-        fieldsLength: Array.isArray(fields) ? fields.length : 'not an array',
-        queryKeys: Object.keys(req.query)
-      });
-      
       // Validate fields parameter
       if (!Array.isArray(fields)) {
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Fields is not an array`, { fields });
         return res.status(400).json({ 
           success: false, 
           message: 'Fields must be an array of field names',
@@ -83,7 +54,6 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       }
       
       if (fields.length === 0) {
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Empty fields array received`);
         return res.status(400).json({ 
           success: false, 
           message: 'Fields array must contain at least one field' 
@@ -93,7 +63,6 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       // Ensure all fields are valid strings
       const invalidFields = fields.filter(field => typeof field !== 'string' || field.trim().length === 0);
       if (invalidFields.length > 0) {
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Invalid fields found`, { invalidFields });
         return res.status(400).json({ 
           success: false, 
           message: 'All fields must be non-empty strings',
@@ -101,8 +70,6 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         });
       }
 
-      
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Initializing Cosmos DB container`, { containerName: this.containerName, partitionKey: this.partitionKey });
       const container = await this.cosmosDb.container(this.containerName, this.partitionKey);
 
       const fieldsWithNoSanitization = fields; // No sanitization to preserve field names with spaces
@@ -212,17 +179,6 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         ]
       };
 
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Executing Cosmos DB data query`, { 
-        query: joinQuery.query, 
-        parameters: joinQuery.parameters,
-        enableJoin
-      });
-
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Executing Cosmos DB count query`, { 
-        query: countQuery.query,
-        parameters: countQuery.parameters
-      });
-
       // Execute both queries in parallel using iterators to avoid loading all results into memory
       let itemsResponse: { resources?: ExcelRecord[] } | undefined, countResponse: { resources?: ExcelRecord[] } | undefined;
       try {
@@ -243,10 +199,6 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
         const countResult = await countIterator.fetchNext();
         countResponse = { resources: [countResult?.resources?.[0] ?? 0] };
         
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Cosmos DB queries executed successfully`, { 
-        itemsCount: itemsResponse?.resources?.length,
-        totalCount: countResponse?.resources?.[0]
-      });
       } catch (error) {
         const errorInfo = error instanceof Error 
           ? { 
@@ -260,7 +212,7 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
               name: 'UnknownError'
             };
             
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Error executing Cosmos DB queries`, { 
+        console.error(`[${new Date().toISOString()}] [${logContext.requestId}] Error executing Cosmos DB queries`, { 
           error: errorInfo,
           query: joinQuery.query,
           parameters: joinQuery.parameters
@@ -273,23 +225,25 @@ export class QueryRowsGetHandler extends BaseQueryHandler {
       
       // Apply JOIN processing if enabled
       if (enableJoin && items.length > 0) {
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Applying JOIN processing to items`, { originalCount: items.length });
         const specialFilterFields = ['Source', 'Category', 'Sub Category', 'Year'];
         items = JoinProcessor.joinRecords(items, specialFilterFields);
-        console.log(`[${new Date().toISOString()}] [${logContext.requestId}] JOIN processing completed`, { joinedCount: items.length });
       }
 
       // Apply offset and limit to the results after JOIN processing
       const startOffset = Math.min(offset, items.length);
       const endOffset = Math.min(offset + limit, items.length);
       const pagedItems = items.slice(startOffset, endOffset);
-      
-      console.log(`[${new Date().toISOString()}] [${logContext.requestId}] Query results`, { itemsCount: pagedItems.length, total, enableJoin });
 
       // Set cache headers for better performance
       res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
 
-      return res.status(200).json(pagedItems);
+      // Return both the paged items and the total count
+      return res.status(200).json({
+        items: pagedItems,
+        total: total,
+        offset: offset,
+        limit: limit
+      });
     } catch (error) {
       return this.handleError(error, res, logContext);
     }

@@ -1,118 +1,28 @@
+# Progress Status
 
-## What's left to build
--   **Critical Backend Data Retrieval Issue:** The frontend cannot get data from the backend. This needs immediate investigation.
-    -   Verify network requests from the frontend to the backend (check browser developer console for failed requests, status codes, and response bodies).
-    -   Examine backend server logs for incoming requests and any errors during processing.
-    -   Confirm CORS configuration on the backend allows requests from the frontend's origin (`http://localhost:3000`).
-    -   Verify API routes and their implementation on the backend.
--   **Core ETL Logic:**
-    -   Advanced Excel parsing (handling multiple sheets, complex data types, error rows).
-    -   Data validation and transformation engine.
-    -   Robust Cosmos DB insertion logic (batching, error handling, upserts).
--   **File Management:**
-    -   Integration with Azure Blob Storage for secure and scalable temporary file storage.
-    -   Cleanup mechanisms for processed files.
--   **Asynchronous Processing:**
-    -   Queue-based triggering of ETL processes (e.g., Azure Queue Storage or Service Bus).
-    -   Status tracking for long-running ETL jobs.
--   **User Interface:**
-    -   File upload component with progress indication.
-    -   Display of ETL job status and logs.
--   **Security:**
-    -   Full Azure AD integration for authentication and authorization (currently disabled in test).
-    -   Secure handling of sensitive data.
--   **Monitoring & Logging:**
-    -   Comprehensive application insights and logging.
--   **Testing:**
-    -   Unit and integration tests for all ETL components.
+## Overview
+The application is functional with a React frontend and Node.js/Express backend. Core ETL features, authentication, and data visualization are implemented.
 
-## What's left to build
--   **Critical Backend Data Retrieval Issue:** The frontend cannot get data from the backend. This needs immediate investigation.
-    -   Verify network requests from the frontend to the backend (check browser developer console for failed requests, status codes, and response bodies).
-    -   Examine backend server logs for incoming requests and any errors during processing.
-    -   Confirm CORS configuration on the backend allows requests from the frontend's origin (`http://localhost:3000`).
-    -   Verify API routes and their implementation on the backend.
--   **Core ETL Logic:**
-    -   Advanced Excel parsing (handling multiple sheets, complex data types, error rows).
-    -   Data validation and transformation engine.
-    -   Robust Cosmos DB insertion logic (batching, error handling, upserts).
--   **File Management:**
-    -   Integration with Azure Blob Storage for secure and scalable temporary file storage.
-    -   Cleanup mechanisms for processed files.
--   **Asynchronous Processing:**
-    -   Queue-based triggering of ETL processes (e.g., Azure Queue Storage or Service Bus).
-    -   Status tracking for long-running ETL jobs.
--   **User Interface:**
-    -   File upload component with progress indication.
-    -   Display of ETL job status and logs.
--   **Security:**
-    -   Full Azure AD integration for authentication and authorization (currently disabled in test).
-    -   Secure handling of sensitive data.
--   **Monitoring & Logging:**
-    -   Comprehensive application insights and logging.
--   **Testing:**
-    -   Unit and integration tests for all ETL components.
+## Completed Features
+-   **✅ Project Configuration**: Root `package.json` and build scripts restored and working.
+-   **✅ Authentication**: Azure AD via MSAL (Mock/Dev mode available).
+-   **✅ File Upload**: Excel/CSV upload to Azure Blob Storage.
+-   **✅ Data Ingestion**: Parsing and saving data to Azure Cosmos DB.
+-   **✅ Query Builder**: Dynamic field selection and filtering.
+-   **✅ API Key Management**: Generation and management of API keys.
+-   **✅ Frontend-Backend Communication**: Proxy/API routing configured correctly.
 
-## What's left to build
--   **Critical Backend Data Retrieval Issue:** The frontend cannot get data from the backend. This needs immediate investigation.
-    -   Verify network requests from the frontend to the backend (check browser developer console for failed requests, status codes, and response bodies).
-    -   Examine backend server logs for incoming requests and any errors during processing.
-    -   Confirm CORS configuration on the backend allows requests from the frontend's origin (`http://localhost:3000`).
-    -   Verify API routes and their implementation on the backend.
--   **Core ETL Logic:**
-    -   Advanced Excel parsing (handling multiple sheets, complex data types, error rows).
-    -   Data validation and transformation engine.
-    -   Robust Cosmos DB insertion logic (batching, error handling, upserts).
--   **File Management:**
-    -   Integration with Azure Blob Storage for secure and scalable temporary file storage.
-    -   Cleanup mechanisms for processed files.
--   **Asynchronous Processing:**
-    -   Queue-based triggering of ETL processes (e.g., Azure Queue Storage or Service Bus).
-    -   Status tracking for long-running ETL jobs.
--   **User Interface:**
-    -   File upload component with progress indication.
-    -   Display of ETL job status and logs.
--   **Security:**
-    -   Full Azure AD integration for authentication and authorization (currently disabled in test).
-    -   Secure handling of sensitive data.
--   **Monitoring & Logging:**
-    -   Comprehensive application insights and logging.
--   **Testing:**
-    -   Unit and integration tests for all ETL components.
+## Resolved Issues
+-   **Critical Backend Data Retrieval**: Fixed. Frontend can successfully fetch data.
+-   **Build Failures**: Fixed Tailwind/PostCSS and TypeScript errors.
+-   **Package.json Anomaly**: Resolved by restoring the correct dashboard configuration.
+-   **Logging Pollution**: Excessive console logs removed.
 
-## What's left to build
--   **Critical Backend Data Retrieval Issue:** The frontend cannot get data from the backend. This needs immediate investigation.
-    -   Verify network requests from the frontend to the backend (check browser developer console for failed requests, status codes, and response bodies).
-    -   Examine backend server logs for incoming requests and any errors during processing.
-    -   Confirm CORS configuration on the backend allows requests from the frontend's origin (`http://localhost:3000`).
-    -   Verify API routes and their implementation on the backend.
--   **Core ETL Logic:**
-    -   Advanced Excel parsing (handling multiple sheets, complex data types, error rows).
-    -   Data validation and transformation engine.
-    -   Robust Cosmos DB insertion logic (batching, error handling, upserts).
--   **File Management:**
-    -   Integration with Azure Blob Storage for secure and scalable temporary file storage.
-    -   Cleanup mechanisms for processed files.
--   **Asynchronous Processing:**
-    -   Queue-based triggering of ETL processes (e.g., Azure Queue Storage or Service Bus).
-    -   Status tracking for long-running ETL jobs.
--   **User Interface:**
-    -   File upload component with progress indication.
-    -   Display of ETL job status and logs.
--   **Security:**
-    -   Full Azure AD integration for authentication and authorization (currently disabled in test).
-    -   Secure handling of sensitive data.
--   **Monitoring & Logging:**
-    -   Comprehensive application insights and logging.
--   **Testing:**
-    -   Unit and integration tests for all ETL components.
-    -   End-to-end testing of the entire pipeline.
--   **Dependency Updates:** Update all dependencies to their latest stable versions.
+## What's Left to Build (Future/Backlog)
+-   **Advanced Excel Parsing**: Support for multiple sheets or complex cell types (current single-sheet logic is sufficient for now).
+-   **Strict Data Validation**: Zod schemas for row validation before DB insertion.
+-   **Comprehensive Testing**: Increase server-side test coverage.
 
 ## Known Issues
--   Authentication is temporarily disabled due to Azure AD permission issues with personal Microsoft accounts in the test environment.
--   Excel parsing is currently rudimentary and needs significant enhancement.
--   No robust error handling or retry mechanisms-   **UI Improvements**: Refined vertical alignment on landing page (shifted content up by 80px total).
--   **Build Success**: Successfully ran `npm run build` (client and server) with no errors.
--   The Vite build configuration has been corrected to properly bundle vendor dependencies, resolving the `useLayoutEffect` error.
--   **The frontend is currently unable to retrieve data from the backend.**
+-   **Authentication in Test Env**: Disabled for convenience; ensure enabled for Production.
+-   **Large File Performance**: Very large Excel files might still impact memory usage (though streaming CSV is supported).

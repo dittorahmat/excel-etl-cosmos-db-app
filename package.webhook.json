@@ -1,0 +1,19 @@
+{
+  "name": "excel-etl-webhook-server",
+  "version": "1.0.0",
+  "description": "Simple webhook server for automated deployment",
+  "main": "deploy-webhook.js",
+  "scripts": {
+    "start": "node deploy-webhook.js",
+    "dev": "nodemon deploy-webhook.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["webhook", "deployment", "automation"],
+  "author": "Deployment Automation",
+  "license": "MIT"
+}

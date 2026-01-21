@@ -227,6 +227,9 @@ export class FileParserService {
       try {
         this.logger.debug('Attempting to parse Excel file...');
         workbook = new ExcelJS.Workbook();
+        // Using type assertion to any due to type incompatibility between Buffer types
+        // ExcelJS expects Buffer but receives Buffer<ArrayBufferLike> from file processing pipeline
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await workbook.xlsx.load(fileBuffer as any);
         this.logger.debug('Successfully parsed Excel workbook', {
           sheetCount: workbook.worksheets.length,

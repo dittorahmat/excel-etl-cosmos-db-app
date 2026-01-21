@@ -42,7 +42,6 @@ let msalInitialized = false;
 const initializeMsal = async () => {
   // Skip initialization if using dummy auth
   if (useDummyAuth) {
-    console.log('[API] Using dummy auth, skipping MSAL initialization');
     return;
   }
   
@@ -84,7 +83,6 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
   const isAuthEnabled = isViteAuthEnabled && isServerAuthEnabled;
   
   if (!isAuthEnabled) {
-    console.log('[API] Authentication is disabled, returning null token');
     return null;
   }
   
@@ -96,7 +94,6 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
                        (typeof windowEnvViteAuthEnabled === 'boolean' && windowEnvViteAuthEnabled === false);
                        
   if (useDummyAuth) {
-    console.log('[API] Using dummy authentication, returning mock token');
     // Return a mock token for development
     return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
   }
@@ -105,14 +102,12 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
   try {
     // In development, return a mock token
     if (import.meta.env.DEV) {
-      console.log('Using development mock token');
       return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkRldiBVc2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
     }
 
     // Get the real token in production
     const accounts = getMsalInstance().getAllAccounts();
     if (accounts.length === 0) {
-      console.log('No accounts found');
       // Try to initiate login if no accounts found
       try {
         await getMsalInstance().loginRedirect({
@@ -130,7 +125,6 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     
     // Return cached token if it exists and is still valid
     if (!forceRefresh && tokenCache[cacheKey] && tokenCache[cacheKey].expiresAt > now) {
-      console.log('Using cached token');
       return tokenCache[cacheKey].token;
     }
     
@@ -140,11 +134,9 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
       forceRefresh
     };
     
-    console.log(forceRefresh ? 'Force refreshing token...' : 'Acquiring token silently...');
     const response = await getMsalInstance().acquireTokenSilent(silentRequest);
     
     if (response?.accessToken) {
-      console.log('Successfully acquired access token');
       // Cache the token
       tokenCache[cacheKey] = {
         token: response.accessToken,
@@ -161,7 +153,6 @@ export const getAuthToken = async (forceRefresh = false): Promise<string | null>
     // If silent token acquisition fails, try to get a token interactively
     if (error instanceof InteractionRequiredAuthError) {
       try {
-        console.log('Interactive token acquisition required');
         const accounts = getMsalInstance().getAllAccounts();
         if (accounts.length === 0) {
           console.warn('No accounts available for interactive token acquisition');
@@ -329,7 +320,6 @@ export const authFetch = async <T = unknown>(
   
   if (rateLimit && now < rateLimit.lastRequest + rateLimit.retryAfter) {
     const waitTime = rateLimit.lastRequest + rateLimit.retryAfter - now;
-    console.log(`Rate limited on ${endpoint}, waiting ${waitTime}ms before retry`);
     await sleep(waitTime);
   }
 
@@ -368,15 +358,12 @@ export const authFetch = async <T = unknown>(
       const token = await getAuthToken();
       if (token) {
         headers.append('Authorization', `Bearer ${token}`);
-        console.log('[API] Authorization header set with token');
       } else {
         console.warn('[API] No token available for request');
       }
     } catch (error) {
       console.error('Error getting auth token for request:', error);
     }
-  } else {
-    console.log('[API] Authentication is disabled, skipping token acquisition');
   }
 
   // Convert headers to a format that fetch can use
@@ -456,7 +443,6 @@ export const authFetch = async <T = unknown>(
 
         try {
           const data = responseText ? JSON.parse(responseText) : null;
-          console.log('[API] XHR Response data:', data);
           resolve(data as unknown as T);
         } catch (e) {
           console.error('[API] Error parsing XHR JSON response:', e);
@@ -477,7 +463,6 @@ export const authFetch = async <T = unknown>(
   
   for (let attempt = 0; attempt <= _RATE_LIMIT_RETRY_ATTEMPTS; attempt++) {
     try {
-      console.log(`[API] Making request to ${requestUrl} (attempt ${attempt + 1}/${_RATE_LIMIT_RETRY_ATTEMPTS + 1})`);
       
       // Create a properly typed RequestInit object
       const fetchOptions: RequestInit = {
@@ -504,7 +489,6 @@ export const authFetch = async <T = unknown>(
       
       const response = await fetch(requestUrl, fetchOptions);
       
-      console.log(`[API] [${new Date().toISOString()}] Response status:`, response.status, response.statusText);
       
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Failed to read error response');
@@ -521,7 +505,6 @@ export const authFetch = async <T = unknown>(
 
           if (attempt < _RATE_LIMIT_RETRY_ATTEMPTS) {
             const delay = Math.min(retryDelay, maxDelay);
-            console.log(`[API] Rate limited. Retrying in ${delay}ms... (attempt ${attempt + 1}/${_RATE_LIMIT_RETRY_ATTEMPTS})`);
             await sleep(delay);
             continue; // Retry the request
           }
@@ -562,7 +545,6 @@ export const authFetch = async <T = unknown>(
       // Only retry on network errors, not on other types of errors
       if (attempt < _RATE_LIMIT_RETRY_ATTEMPTS) {
         const delay = 1000 * Math.pow(2, attempt); // Exponential backoff
-        console.log(`[API] Retrying in ${delay}ms... (attempt ${attempt + 1}/${_RATE_LIMIT_RETRY_ATTEMPTS})`);
         await sleep(delay);
         continue;
       }

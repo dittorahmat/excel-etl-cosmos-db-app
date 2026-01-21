@@ -1,34 +1,37 @@
 # Tech Context
 
-This file describes the technologies used, the development setup, technical constraints, dependencies, and tool usage patterns.
-
-## Dependencies
+## Technologies
 
 ### Frontend
-
-*   **React**: A JavaScript library for building user interfaces.
-*   **Vite**: A fast build tool for modern web projects.
-*   **Vitest**: A fast unit test framework powered by Vite.
-*   **TypeScript**: A typed superset of JavaScript that compiles to plain JavaScript.
-*   **Tailwind CSS**: A utility-first CSS framework for rapid UI development.
-*   **Radix UI**: A collection of unstyled, accessible UI components.
-*   **shadcn/ui**: A collection of re-usable components built using Radix UI and Tailwind CSS.
-*   **MSAL React**: Microsoft Authentication Library for React.
+-   **Framework**: React 18
+-   **Build Tool**: Vite
+-   **Language**: TypeScript
+-   **Styling**: Tailwind CSS (v3), Shadcn UI, Lucide React
+-   **Auth**: MSAL React (@azure/msal-react)
+-   **HTTP Client**: Native `fetch` wrapper (`api.ts`)
+-   **Charts**: Recharts
 
 ### Backend
+-   **Runtime**: Node.js (v18+)
+-   **Framework**: Express.js
+-   **Language**: TypeScript
+-   **Database SDK**: @azure/cosmos
+-   **Storage SDK**: @azure/storage-blob
+-   **Auth**: MSAL Node, JWT validation
 
-*   **Node.js**: A JavaScript runtime built on Chrome's V8 JavaScript engine.
-*   **Express**: A fast, unopinionated, minimalist web framework for Node.js.
-*   **TypeScript**: A typed superset of JavaScript that compiles to plain JavaScript.
-*   **Vitest**: A fast unit test framework powered by Vite.
-*   **Azure Cosmos DB**: A fully managed NoSQL database for modern app development.
-*   **Azure Storage Blob**: A service for storing large amounts of unstructured data.
-*   **MSAL Node**: Microsoft Authentication Library for Node.js.
+## Development Environment
+-   **Package Manager**: `npm` (v9+)
+-   **Workspaces**: Enabled (`server` workspace).
+-   **Linting**: ESLint
+-   **Formatting**: Prettier
+-   **Testing**: Vitest (Client & Server configs)
 
-## Development Setup
+## Technical Constraints & Setup
+-   **Environment Variables**: Loaded via `.env`. Frontend variables must start with `VITE_`.
+-   **Module System**: Project is configured as ESM (`"type": "module"` in `package.json`).
+-   **PostCSS**: Configured using ESM syntax (`export default`) in `postcss.config.js`.
+-   **Windows Support**: Scripts should be cross-platform or use PowerShell-compatible syntax where necessary (e.g., setting environment variables).
 
-*   The project is a monorepo with a `server` and a `src` directory for the backend and frontend, respectively.
-*   The frontend is built with Vite and the backend is built with `tsc`.
-*   The project uses `npm` for package management.
-*   The project uses `eslint` for linting and `prettier` for formatting.
-*   The project uses `vitest` for testing.
+## Known Configuration details
+-   **Node Env**: `NODE_ENV=production` causes `npm install` to skip `devDependencies`. Use `npm install --include=dev` in development environments if this variable is set globally.
+-   **Tailwind**: Downgraded to v3 to ensure stability with current PostCSS/Vite configuration.

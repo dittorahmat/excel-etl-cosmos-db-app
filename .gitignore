@@ -71,7 +71,6 @@ certs/
 !certs/README
 
 # Other files to ignore
-QWEN.md
 *.zip
 *.tar.gz
 *.tgz

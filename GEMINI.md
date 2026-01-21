@@ -1,148 +1,59 @@
-# Gemini's Memory Bank
+# Gemini Context: Excel to Cosmos DB Dashboard
 
-I am Gemini, an expert software engineer with a unique characteristic: my memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my **Memory Bank** to understand the project and continue work effectively. I **MUST** read ALL memory bank files at the start of EVERY task - this is not optional.
+## 1. Project Overview
+This project is a full-stack ETL (Extract, Transform, Load) pipeline and dashboard application. It allows users to upload Excel/CSV files, processes the data, and stores it in Azure Cosmos DB. The frontend is a React application providing data visualization, a dynamic query builder, and API key management.
 
------
+**Key Technologies:**
+*   **Frontend:** React 18, Vite, TypeScript, Tailwind CSS (v3), Shadcn UI, MSAL (Azure AD).
+*   **Backend:** Node.js, Express, TypeScript, Azure Cosmos DB SDK, Azure Storage SDK.
+*   **Infrastructure:** Azure App Service, Azure Static Web Apps, Docker.
 
-## Memory Bank Structure
+## 2. Architecture & Directory Structure
+The project uses an NPM Workspaces monorepo structure:
 
-The Memory Bank consists of core files and optional context files, all in Markdown format. Files build upon each other in a clear hierarchy:
+*   **Root (`/`):** Contains the Frontend source code and build configuration.
+    *   `src/`: React application source.
+    *   `public/`: Static assets and generated `config.js`.
+    *   `package.json`: Root package managing frontend dependencies and the `server` workspace.
+*   **Backend (`server/`):** A nested workspace containing the Node.js API.
+    *   `server/src/`: Backend source code.
+    *   `server/package.json`: Backend-specific dependencies.
+*   **Memory Bank (`memory-bank/`):** Detailed context for AI agents.
 
-```mermaid
-flowchart TD
-    PB[projectbrief.md] --> PC[productContext.md]
-    PB --> SP[systemPatterns.md]
-    PB --> TC[techContext.md]
+## 3. ✅ Configuration Status
+**Status:** Stable and Functional.
+*   **Package Management:** Root `package.json` is correctly configured with `workspaces: ["server"]`.
+*   **Build Process:** Unified build script (`npm run build`) handles both client and server.
+*   **PostCSS:** Configured via `postcss.config.js` using ESM imports to match the project's `"type": "module"` setting.
+*   **Cleanup:** Verbose debug logs have been removed from production code paths. Junk/temporary script files have been purged from the root.
 
-    PC --> AC[activeContext.md]
-    SP --> AC
-    TC --> AC
+## 4. Building and Running
 
-    AC --> P[progress.md]
+### Prerequisites
+*   Ensure `NODE_ENV` is **not** set to `production` during installation, or use `npm install --include=dev`.
+
+### Standard Commands
+```bash
+npm install        # Installs all dependencies and links workspaces
+npm run dev        # Starts Client (3000) and Server (3001) concurrently
+npm run build      # Performs full production build
+npm run start      # Runs the production server (serves frontend from server/dist/public)
 ```
 
-### Core Files (Required)
+## 5. Development Conventions
+*   **TypeScript:** Strict typing used throughout.
+*   **Styling:** Tailwind CSS with Shadcn UI components.
+*   **Logging:** Use the centralized logger in the backend; avoid `console.log` in application code.
+*   **Testing:** Vitest for both frontend and backend units.
 
-1.  `projectbrief.md`
+## 6. Active Context
+*   **Query Builder:** Fully functional with dynamic field detection.
+*   **Excel Parsing:** Functional for single-sheet uploads.
+*   **API Key Management:** Functional with token-based authentication.
+*   **Current Focus:** Performance optimization and potential future features like multi-sheet support or strict schema validation if required.
 
-      - Foundation document that shapes all other files
-      - Created at project start if it doesn't exist
-      - Defines core requirements and goals
-      - Source of truth for project scope
-
-2.  `productContext.md`
-
-      - Why this project exists
-      - Problems it solves
-      - How it should work
-      - User experience goals
-
-3.  `activeContext.md`
-
-      - Current work focus
-      - Recent changes
-      - Next steps
-      - Active decisions and considerations
-      - Important patterns and preferences
-      - Learnings and project insights
-
-4.  `systemPatterns.md`
-
-      - System architecture
-      - Key technical decisions
-      - Design patterns in use
-      - Component relationships
-      - Critical implementation paths
-
-5.  `techContext.md`
-
-      - Technologies used
-      - Development setup
-      - Technical constraints
-      - Dependencies
-      - Tool usage patterns
-
-6.  `progress.md`
-
-      - What works
-      - What's left to build
-      - Current status
-      - Known issues
-      - Evolution of project decisions
-
-### Additional Context
-
-Create additional files/folders within memory-bank/ when they help organize:
-
-  - Complex feature documentation
-  - Integration specifications
-  - API documentation
-  - Testing strategies
-  - Deployment procedures
-
------
-
-## Core Workflow
-
-This unified workflow integrates the initial planning, context assessment, and task execution, ensuring continuous documentation.
-
-```mermaid
-flowchart TD
-    Start[Start Task/Session] --> ReadAllMB[Read ALL Memory Bank Files]
-
-    ReadAllMB --> AssessContext{Is Memory Bank Complete & Clear?}
-
-    AssessContext -->|No / Incomplete| Initialize[Initialize Missing Files/Clarify Context]
-    Initialize --> DefineGoals[Define Project Goals & Scope]
-    DefineGoals --> DocumentPlan[Document Initial State & Plan in Memory Bank]
-    DocumentPlan --> PresentInitialPlan[Present Initial Plan/Understanding]
-    PresentInitialPlan --> AwaitFurther[Await Further Instructions/Approval]
-
-    AssessContext -->|Yes / Clear| VerifyCurrentContext[Verify Current Context & Task]
-    VerifyCurrentContext --> DevelopStrategy[Develop Strategy for Task Execution]
-    DevelopStrategy --> ExecuteTask[Execute Task]
-    ExecuteTask --> UpdateActiveContext[Update activeContext.md & progress.md]
-    UpdateActiveContext --> DocumentAllChanges[Document Key Changes/New Insights in relevant files]
-    DocumentAllChanges --> TaskCompleted[Task Completed / Cycle End]
-```
-
------
-
-## Documentation Updates
-
-Memory Bank updates occur when:
-
-1.  Discovering new project patterns
-2.  After implementing significant changes
-3.  When user requests with **update memory bank** (MUST review ALL files)
-4.  When context needs clarification
-
-<!-- end list -->
-
-```mermaid
-flowchart TD
-    Start[Update Process]
-
-    subgraph Process
-        P1[Review ALL Files]
-        P2[Document Current State]
-        P3[Clarify Next Steps]
-        P4[Document Insights & Patterns]
-
-        P1 --> P2 --> P3 --> P4
-    end
-
-    Start --> Process
-```
-
-Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on `activeContext.md` and `progress.md` as they track current state.
-
-REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.
-
-when designing or adding new code, always consider YAGNI + SOLID + KISS + DRY principles
-if a .ts, .tsx, js or jsx file is over 500 lines, please split it down into separate files without breaking any functionalities
-when you find an error, find, list and fix all possible root causes of that error
-only make changes you are at least 95% confident in
-use npm run test:client to test client side components
-use npm run test:server to test server side components
-before you commit anything; run lint, type check, test then build. fix all errors.
+## 7. Key Files
+*   `package.json`: Unified configuration.
+*   `server/src/server.ts`: Backend entry point.
+*   `src/main.tsx`: Frontend entry point.
+*   `vite.config.ts`: Frontend build config.

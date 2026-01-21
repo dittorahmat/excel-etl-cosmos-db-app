@@ -28,6 +28,9 @@ export const processExcelFile = async (
     let workbook;
     try {
       workbook = new ExcelJS.Workbook();
+      // Using type assertion to any due to type incompatibility between Buffer types
+      // ExcelJS expects Buffer but receives Buffer<ArrayBufferLike> from file processing pipeline
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await workbook.xlsx.load(fileBuffer as any);
     } catch (error) {
       console.error('Error parsing Excel file:', error);

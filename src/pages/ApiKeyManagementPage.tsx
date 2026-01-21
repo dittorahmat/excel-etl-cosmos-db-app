@@ -23,7 +23,6 @@ interface ApiKey {
 }
 
 const ApiKeyManagementPage: React.FC = () => {
-  console.log("[ApiKeyManagementPage] Render - Start");
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,20 +42,10 @@ const ApiKeyManagementPage: React.FC = () => {
     | ApiKey[];                                           // Direct array of API keys
 
   const fetchApiKeys = async () => {
-    console.log("[ApiKeyManagementPage] fetchApiKeys - Start");
     setLoading(true);
     setError(null);
     
     try {
-      // Log the current state before making the API call
-      console.log("[ApiKeyManagementPage] Current state:", {
-        loading,
-        error,
-        apiKeys: apiKeys ? `Array(${apiKeys.length})` : 'null/undefined',
-      });
-      
-      console.log("[ApiKeyManagementPage] Making API call to /api/v2/keys");
-      
       // Make the API call and handle the response
       const response = await api.get<ApiKeyResponse>('/api/v2/keys')
         .catch(error => {
@@ -67,24 +56,18 @@ const ApiKeyManagementPage: React.FC = () => {
           throw error;
         });
       
-      // Log the raw response for debugging
-      console.log("[ApiKeyManagementPage] Raw API Response:", response);
-      
       // Handle different response formats
       if (Array.isArray(response)) {
         // Case 1: Direct array of API keys
-        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.length} API keys (array format)`);
         setApiKeys(response);
       } 
       else if (response && 'keys' in response && Array.isArray(response.keys)) {
         // Case 2: { keys: ApiKey[], ... } format
-        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (keys object format)`);
         setApiKeys(response.keys);
       }
       // This condition is already covered by the previous condition
       // else if (response && 'success' in response && response.success === true && 'keys' in response && Array.isArray(response.keys)) {
       //   // Case 3: { success: true, keys: ApiKey[], ... } format
-      //   console.log(`[ApiKeyManagementPage] Successfully fetched ${response.keys.length} API keys (success with keys format)`);
       //   setApiKeys(response.keys);
       // }
       else if (response && 'success' in response && response.success === false) {
@@ -96,7 +79,6 @@ const ApiKeyManagementPage: React.FC = () => {
       }
       else if (response && 'data' in response && Array.isArray(response.data)) {
         // Case 5: Legacy format with data array
-        console.log(`[ApiKeyManagementPage] Successfully fetched ${response.data.length} API keys (legacy data format)`);
         setApiKeys(response.data);
       }
       else {
@@ -122,19 +104,16 @@ const ApiKeyManagementPage: React.FC = () => {
       setError(`Failed to fetch API keys: ${errorMessage}${status ? ` (${status})` : ''}`);
       setApiKeys([]);
     } finally {
-      console.log("[ApiKeyManagementPage] fetchApiKeys - Loading complete");
       setLoading(false);
     }
   };
 
   // Memoize the fetchApiKeys function with useCallback to prevent unnecessary re-renders
   const memoizedFetchApiKeys = React.useCallback(async () => {
-    console.log("[ApiKeyManagementPage] memoizedFetchApiKeys - Start");
     setLoading(true);
     setError(null);
     
     try {
-      console.log("[ApiKeyManagementPage] Making API call to /api/v2/keys");
       const response = await api.get<ApiKeyResponse>('/api/v2/keys')
         .catch(error => {
           console.error("[ApiKeyManagementPage] API call failed:", {
@@ -183,7 +162,6 @@ const ApiKeyManagementPage: React.FC = () => {
       setError(`Failed to fetch API keys: ${errorMessage}${status ? ` (${status})` : ''}`);
       setApiKeys([]);
     } finally {
-      console.log("[ApiKeyManagementPage] fetchApiKeys - Loading complete");
       setLoading(false);
     }
   }, []); // No dependencies since we don't use any external values
