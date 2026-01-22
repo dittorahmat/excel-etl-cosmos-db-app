@@ -226,6 +226,7 @@ The application will be accessible via HTTPS with automatic HTTP to HTTPS redire
 - Automatic schema detection
 - Data ingestion to Cosmos DB
 - Import metadata tracking
+- Clean UI presentation by automatically hiding file extensions in listings
 
 ### Data Visualization
 - Interactive charts with Recharts

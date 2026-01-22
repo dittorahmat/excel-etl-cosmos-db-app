@@ -23,10 +23,10 @@ The project uses an NPM Workspaces monorepo structure:
 ## 3. ✅ Configuration Status
 **Status:** Stable and Functional.
 *   **Package Management:** Root `package.json` is correctly configured with `workspaces: ["server"]`.
-*   **Build Process:** Unified build script (`npm run build`) handles both client and server.
+*   **Security:** High-severity vulnerabilities in `hono` and other dependencies have been patched (Jan 2026).
+*   **Build Process:** Unified build script (`npm run build`) handles both client and server, with cross-platform fixes for Windows.
 *   **PostCSS:** Configured via `postcss.config.js` using ESM imports to match the project's `"type": "module"` setting.
 *   **Authentication:** MSAL-based session management is robust, with fixes for race conditions and transient token refresh failures.
-*   **Cleanup:** Verbose debug logs have been removed from production code paths. Junk/temporary script files have been purged from the root.
 
 ## 4. Building and Running
 
@@ -51,7 +51,7 @@ npm run start      # Runs the production server (serves frontend from server/dis
 *   **Query Builder:** Fully functional with dynamic field detection, utilizing fields from the selected file while handling special filters (Source, Category, Sub Category, Year) separately.
 *   **Field Type Detection:** Automated type detection during ingestion ensures the UI displays appropriate operators (e.g., numeric vs. text) for each field.
 *   **Authentication:** Stabilized against race conditions and background token refresh failures.
-*   **Excel Parsing:** Functional for single-sheet uploads.
+*   **UI/UX:** Improved file list display by hiding file extensions (e.g., "Energy.xlsx" displays as "Energy") for a cleaner look.
 *   **Current Focus:** Project is feature-complete and stable. Monitoring performance and maintaining dependencies.
 
 ## 7. Key Files

@@ -157,7 +157,7 @@ export function FileListTable({ refreshTrigger = 0 }: FileListTableProps) {
         // Map API response to component-friendly format
         const mappedFiles: FileData[] = response.data.items.map((item: ImportMetadata) => ({
           id: item.id || item._importId || '',
-          name: item.fileName || 'Untitled',
+          name: item.fileName ? item.fileName.replace(/\.[^/.]+$/, "") : 'Untitled',
           size: item.fileSize || 0,
           mimeType: item.mimeType || 'application/octet-stream',
           uploadedAt: item.processedAt || item.createdAt || new Date().toISOString(),

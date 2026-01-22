@@ -69,6 +69,10 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Fixed token expiry logic to correctly handle invalid or missing expiry timestamps in local storage
 - **[NEW]** Added debug logging to track authentication state transitions and token acquisition flows
 - **[NEW]** Verified that the build process completes successfully with the new authentication changes
+- **[NEW]** Patched high-severity vulnerability in `hono` (upgraded to 4.11.5) and resolved other security alerts in `cookie`, `lodash`, and `postcss`
+- **[NEW]** Improved UI by hiding file extensions in `FileListTable.tsx` for a cleaner presentation (e.g., "Energy.xlsx" displayed as "Energy")
+- **[NEW]** Fixed cross-platform compatibility issues in `package.json` build scripts for Windows by using `npx rimraf`
+- **[NEW]** Verified successful full production build after dependency updates and code changes
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -85,4 +89,5 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Search functionality implemented for special filters to improve user experience with large datasets
 - **[DONE]** Unused variable and type issues resolved to maintain code quality standards
 - **[DONE]** Authentication stability improved by fixing race conditions and aggressive logout behaviors
+- **[DONE]** Security vulnerabilities patched and build scripts optimized for Windows
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering or core auth logic)
