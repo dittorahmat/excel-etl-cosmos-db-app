@@ -7,6 +7,10 @@ import { formatBytes, formatDate } from '../utils/formatters';
 // TYPE DEFINITIONS
 // ========================================================================
 
+interface FileListTableProps {
+  refreshTrigger?: number;
+}
+
 /**
  * Metadata structure for imported files from the backend
  */
@@ -66,7 +70,7 @@ interface FileData {
  * - File deletion with confirmation
  * - Responsive design
  */
-export function FileListTable() {
+export function FileListTable({ refreshTrigger = 0 }: FileListTableProps) {
   // ========================================================================
   // STATE MANAGEMENT
   // ========================================================================
@@ -131,6 +135,8 @@ export function FileListTable() {
       const queryParams = new URLSearchParams();
       queryParams.append('page', page.toString());
       queryParams.append('pageSize', pageSize.toString());
+      // Add timestamp to prevent browser caching
+      queryParams.append('_t', Date.now().toString());
       
       // Add search term if present
       if (debouncedSearchTerm) {
@@ -183,13 +189,13 @@ export function FileListTable() {
     }
   }, [page, pageSize, debouncedSearchTerm]);
 
-  // Fetch files when page or search term changes
+  // Fetch files when page, search term, or refreshTrigger changes
   useEffect(() => {
     fetchFiles();
     return () => {
       isMounted.current = false;
     };
-  }, [page, pageSize, debouncedSearchTerm]);
+  }, [page, pageSize, debouncedSearchTerm, refreshTrigger]);
   
   // Reset to first page when search term changes
   useEffect(() => {

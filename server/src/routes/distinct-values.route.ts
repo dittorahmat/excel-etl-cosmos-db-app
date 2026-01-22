@@ -157,7 +157,7 @@ export function createDistinctValuesRouter(cosmosDb: AzureCosmosDB): Router {
 
         // For distinct values that are used for filtering, we should be careful about caching
         // Since values could change after new imports, use shorter cache time
-        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes (changed to avoid long-term caching issues)
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Disable caching to ensure fresh data
 
         return res.status(200).json({
           success: true,

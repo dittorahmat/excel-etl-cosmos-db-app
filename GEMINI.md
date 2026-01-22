@@ -48,10 +48,11 @@ npm run start      # Runs the production server (serves frontend from server/dis
 *   **Testing:** Vitest for both frontend and backend units.
 
 ## 6. Active Context
-*   **Query Builder:** Fully functional with dynamic field detection.
+*   **Query Builder:** Fully functional with dynamic field detection, utilizing fields from the selected file while handling special filters (Source, Category, Sub Category, Year) separately.
+*   **Field Type Detection:** Automated type detection during ingestion ensures the UI displays appropriate operators (e.g., numeric vs. text) for each field.
+*   **Authentication:** Stabilized against race conditions and background token refresh failures.
 *   **Excel Parsing:** Functional for single-sheet uploads.
-*   **API Key Management:** Functional with token-based authentication.
-*   **Current Focus:** Performance optimization and potential future features like multi-sheet support or strict schema validation if required.
+*   **Current Focus:** Project is feature-complete and stable. Monitoring performance and maintaining dependencies.
 
 ## 7. Key Files
 *   `package.json`: Unified configuration.

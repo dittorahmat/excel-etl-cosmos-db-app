@@ -929,7 +929,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         }
 
         // Set cache headers for better performance - distinct values don't change frequently
-        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Disable caching to ensure fresh data
 
         return res.status(200).json({
           success: true,
@@ -1161,7 +1161,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         const totalPages = Math.ceil(total / pageSizeNum);
 
         // Set cache headers for better performance - file lists don't change frequently
-        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // Disable caching to ensure fresh data
 
         return res.status(200).json({
           success: true,

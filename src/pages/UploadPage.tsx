@@ -136,6 +136,7 @@ export function UploadPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null); // null = not checked yet
   const [error, setError] = useState<string | null>(null);
   const [uploadMessage, setUploadMessage] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+  const [lastUploadTime, setLastUploadTime] = useState<number>(0);
   const navigate = useNavigate();
 
   // Check authorization when user is authenticated
@@ -311,6 +312,8 @@ export function UploadPage() {
           message: `Successfully processed ${responseData.successfulUploads} of ${responseData.totalFiles} files. ${responseData.failedUploads} failed.`,
           type: 'warning'
         });
+        // Refresh file list even on partial success
+        setLastUploadTime(Date.now());
       } else if (responseData.successfulUploads && responseData.successfulUploads > 0) {
         // All files were uploaded successfully
         let message = `${responseData.message || `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`}`;
@@ -321,6 +324,8 @@ export function UploadPage() {
           message: message,
           type: 'success'
         });
+        // Trigger file list refresh
+        setLastUploadTime(Date.now());
       } else {
         // No files were uploaded successfully
         setUploadMessage({
@@ -608,7 +613,7 @@ export function UploadPage() {
 
         <TabsContent value="files" className="space-y-4">
           <Card>
-            <FileListTable />
+            <FileListTable refreshTrigger={lastUploadTime} />
           </Card>
         </TabsContent>
       </Tabs>
