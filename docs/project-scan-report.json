@@ -1,0 +1,23 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-02-03T02:45:00.000Z",
+    "last_updated": "2026-02-03T02:45:00.000Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "D:/development/demo-ai-iesr/excel-etl-cosmos-db-app",
+  "output_folder": "D:/development/demo-ai-iesr/excel-etl-cosmos-db-app/docs",
+  "completed_steps": [
+    {"step": "step_1", "status": "completed", "timestamp": "2026-02-03T02:46:00.000Z", "summary": "Classified as monorepo with web and backend parts"},
+    {"step": "step_2", "status": "completed", "timestamp": "2026-02-03T02:47:00.000Z", "summary": "Found existing docs and gathered context"},
+    {"step": "step_3", "status": "completed", "timestamp": "2026-02-03T02:48:00.000Z", "summary": "Analyzed tech stack (React/Express/Azure)"},
+    {"step": "step_4", "status": "completed", "timestamp": "2026-02-03T02:55:00.000Z", "summary": "Deep scan of routes, services, and pages completed"},
+    {"step": "step_9", "status": "completed", "timestamp": "2026-02-03T03:05:00.000Z", "summary": "Generated all supporting markdown documentation"},
+    {"step": "step_10", "status": "completed", "timestamp": "2026-02-03T03:06:00.000Z", "summary": "Master index created"}
+  ],
+  "current_step": "completed",
+  "findings": {},
+  "outputs_generated": ["project-scan-report.json"],
+  "resume_instructions": "Starting from step 1"
+}
