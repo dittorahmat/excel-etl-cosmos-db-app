@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Database,
+  Sparkles,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -31,6 +32,11 @@ const menuItems: MenuItem[] = [
     title: 'Edit Database',
     path: '/upload',
     icon: Database,
+  },
+  {
+    title: 'AI Builder',
+    path: '/builder',
+    icon: Sparkles,
   },
 ];
 
