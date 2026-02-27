@@ -247,6 +247,7 @@ The application will be accessible via HTTPS with automatic HTTP to HTTPS redire
 - Multiple filter types with proper operators
 - Special handling for common fields (Source, Category, etc.)
 - API generation for programmatic access
+- **Year filter with sorted ascending values and stable checkbox selection (no cascading resets)**
 
 ### Monitoring & Logging
 - Request logging with detailed metrics

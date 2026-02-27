@@ -73,6 +73,9 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Improved UI by hiding file extensions in `FileListTable.tsx` for a cleaner presentation (e.g., "Energy.xlsx" displayed as "Energy")
 - **[NEW]** Fixed cross-platform compatibility issues in `package.json` build scripts for Windows by using `npx rimraf`
 - **[NEW]** Verified successful full production build after dependency updates and code changes
+- **[NEW]** Fixed Year checkbox cascading reset bug (first attempt) by optimizing useEffect dependencies in FileSelector.tsx
+- **[NEW]** Fixed Year checkbox cascading reset bug (root cause) by removing Year from useFilters hook parameters - Year is a data filter, not a schema filter, so it should not trigger field re-fetching
+- **[NEW]** Added ascending sort to Year checkbox values in FileSelector for better user experience (smallest to largest year)
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -90,4 +93,5 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Unused variable and type issues resolved to maintain code quality standards
 - **[DONE]** Authentication stability improved by fixing race conditions and aggressive logout behaviors
 - **[DONE]** Security vulnerabilities patched and build scripts optimized for Windows
+- **[DONE]** Year checkbox cascading reset bug fixed - users can now select any number of Year values without triggering dropdown resets (Root cause: Year was triggering useFields hook re-fetch, which caused state reset)
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering or core auth logic)

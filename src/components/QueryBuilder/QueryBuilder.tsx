@@ -34,11 +34,13 @@ export function QueryBuilder({
   const [showFilters, setShowFilters] = useState(defaultShowFilters);
 
   // Use the useFields hook with special filters to get dynamic fields based on selected file
+  // Note: We only pass Source, Category, and Sub Category to useFields, NOT Year
+  // because Year should not trigger field re-fetching (it's just a data filter, not a schema filter)
   const { fields: dynamicFields, loading: dynamicFieldsLoading, error: fieldsError } = useFields(undefined, {
     Source: specialFilters.Source,
     Category: specialFilters.Category,
-    'Sub Category': specialFilters['Sub Category'],
-    Year: specialFilters.Year
+    'Sub Category': specialFilters['Sub Category']
+    // Year is intentionally excluded to prevent unnecessary re-fetching when Year checkbox changes
   });
 
   // Handle file change

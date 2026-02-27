@@ -99,10 +99,12 @@ export const FileSelector = ({
   }, [selectedSpecialFields.Source, selectedSpecialFields.Category, selectedSpecialFields['Sub Category'], fetchFilesWithDebounce]);
 
   // Fetch filtered values when FileId changes (for Year)
+  // Note: Only depend on specific fields, not the entire selectedSpecialFields object
+  // to avoid unnecessary re-fetching when Year checkbox changes
   useEffect(() => {
-    if (selectedSpecialFields.FileId && 
-        selectedSpecialFields.Source && 
-        selectedSpecialFields.Category && 
+    if (selectedSpecialFields.FileId &&
+        selectedSpecialFields.Source &&
+        selectedSpecialFields.Category &&
         selectedSpecialFields['Sub Category']) {
       fetchFilteredValues({
         source: selectedSpecialFields.Source,
@@ -111,7 +113,13 @@ export const FileSelector = ({
         fileId: selectedSpecialFields.FileId
       });
     }
-  }, [selectedSpecialFields, fetchFilteredValues]);
+  }, [
+    selectedSpecialFields.FileId,
+    selectedSpecialFields.Source,
+    selectedSpecialFields.Category,
+    selectedSpecialFields['Sub Category'],
+    fetchFilteredValues
+  ]);
 
   /**
    * Handles changes to special fields
@@ -131,7 +139,7 @@ export const FileSelector = ({
     } else if (fieldName === 'Year') {
       updatedSpecialFields.Year = value as string[] | number[] | undefined;
     }
-    
+
     // Reset dependent fields based on the hierarchy: Source -> Category -> Sub Category -> File -> Year
     if (fieldName === 'Source') {
       if (!value) {
@@ -186,9 +194,9 @@ export const FileSelector = ({
       updatedSpecialFields.Year = value as string[] | number[] | undefined;
     }
     // Note: When Year changes, we don't reset anything since it's the last in the hierarchy
-    
+
     setSelectedSpecialFields(updatedSpecialFields);
-    
+
     if (onSpecialFiltersChange) {
       onSpecialFiltersChange(updatedSpecialFields);
     }
@@ -649,7 +657,15 @@ export const FileSelector = ({
                 </PopoverTrigger>
                 <PopoverContent className="w-[200px] p-0 bg-popover border-border" align="start">
                   <div className="p-2 max-h-60 overflow-y-auto">
-                    {((filteredValues.Year || []) as (string | number)[]).filter((year): year is string | number => typeof year !== 'boolean').map((year, idx) => (
+                    {((filteredValues.Year || []) as (string | number)[])
+                      .filter((year): year is string | number => typeof year !== 'boolean')
+                      .sort((a, b) => {
+                        // Sort numerically for numbers, lexicographically for strings
+                        const aNum = typeof a === 'string' ? parseFloat(a) : a;
+                        const bNum = typeof b === 'string' ? parseFloat(b) : b;
+                        return aNum - bNum;
+                      })
+                      .map((year, idx) => (
                       <div key={idx} className="flex items-center py-1 space-x-2 hover:bg-accent rounded px-2">
                         <Checkbox
                           id={`year-${year}`}
