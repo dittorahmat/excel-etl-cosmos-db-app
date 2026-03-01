@@ -827,26 +827,19 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                   filterConditions.push(`c["${cleanFilterField}"] IN (${values.map(v => `'${v}'`).join(',')})`);
                 }
               }
-            } else if (typeof filterValue === 'string' && filterValue.includes(',')) {
-              // Handle comma-separated values in a single string
+            } else if (typeof filterValue === 'string' && filterValue.includes(',') && isNumericField) {
+              // ONLY split comma-separated values for numeric fields (like Year)
+              // String fields like Source/Category/Sub Category should NOT be split as they may contain commas
               const values = filterValue.split(',').map(v => v.trim());
-              if (isNumericField) {
-                // For numeric fields, don't wrap values in quotes
-                const numericValues = values.map(v => {
-                  const numValue = Number(v);
-                  return isNaN(numValue) ? `'${v.replace(/'/g, "\\'")}'` : numValue;
-                });
-                if (numericValues.length > 0) {
-                  filterConditions.push(`c["${cleanFilterField}"] IN (${numericValues.join(',')})`);
-                }
-              } else {
-                // For string fields, wrap values in quotes
-                const stringValues = values.map(v => v.replace(/'/g, "\\'"));
-                if (stringValues.length > 0) {
-                  filterConditions.push(`c["${cleanFilterField}"] IN (${stringValues.map(v => `'${v}'`).join(',')})`);
-                }
+              const numericValues = values.map(v => {
+                const numValue = Number(v);
+                return isNaN(numValue) ? `'${v.replace(/'/g, "\\'")}'` : numValue;
+              });
+              if (numericValues.length > 0) {
+                filterConditions.push(`c["${cleanFilterField}"] IN (${numericValues.join(',')})`);
               }
             } else {
+              // For all other cases (including string fields with commas), treat as single literal value
               if (isNumericField) {
                 // For numeric fields, don't wrap the value in quotes
                 const numValue = Number(filterValue);
@@ -858,7 +851,7 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
                   filterConditions.push(`c["${cleanFilterField}"] = '${cleanFilterValue}'`);
                 }
               } else {
-                // For string fields, wrap value in quotes
+                // For string fields (Source, Category, Sub Category, etc.), wrap value in quotes as literal
                 const cleanFilterValue = String(filterValue).replace(/'/g, "\\'");
                 filterConditions.push(`c["${cleanFilterField}"] = '${cleanFilterValue}'`);
               }
