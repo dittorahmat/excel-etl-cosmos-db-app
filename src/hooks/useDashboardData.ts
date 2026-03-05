@@ -219,33 +219,39 @@ export const useDashboardData = () => {
     try {
       // Build query parameters for file-based query
       const queryParams = new URLSearchParams();
-      
+
       // Add the file ID and special filters to query parameters
       if (selectedFile) {
         queryParams.append('fileId', selectedFile);
       }
-      
+
       if (query.specialFilters?.Source) {
         queryParams.append('Source', query.specialFilters.Source);
       }
-      
+
       if (query.specialFilters?.Category) {
         queryParams.append('Category', query.specialFilters.Category);
       }
-      
+
       if (query.specialFilters?.['Sub Category']) {
         queryParams.append('Sub Category', query.specialFilters['Sub Category']);
       }
-      
+
       if (query.specialFilters?.Year && Array.isArray(query.specialFilters.Year) && query.specialFilters.Year.length > 0) {
         queryParams.append('Year', query.specialFilters.Year.join(','));
       }
-      
+
       // Add filters to query parameters
       if (query.filters && query.filters.length > 0) {
         queryParams.append('filters', JSON.stringify(query.filters));
       }
-      
+
+      // Add sort parameters
+      if (sortField) {
+        queryParams.append('sortBy', sortField);
+        queryParams.append('sortOrder', sortDirection);
+      }
+
       // Add pagination
       queryParams.append('limit', query.limit.toString());
       queryParams.append('offset', query.offset.toString());
@@ -353,30 +359,102 @@ export const useDashboardData = () => {
   // Handle sorting
   const handleSort = useCallback((field: string) => {
     setSortField((currentField: string) => {
+      // Calculate new sort direction based on current state
       const newDirection = currentField === field && sortDirection === 'asc' ? 'desc' : 'asc';
-      
+
+      // Update sort direction immediately
       setSortDirection(newDirection);
-      
+
+      // Clear current results to show loading state
       setQueryResult(prev => ({
         ...prev,
         page: 1,
         continuationToken: undefined,
         items: []
       }));
-      
-      // Note: We are not passing filters here, as sorting should re-fetch without filters.
-      // The executeQuery function will use the current selectedFile and filters from its closure.
-      executeQuery({
-        fields: [], // Not used in file-based queries
-        filters: [],
-        specialFilters: { Source: '', Category: '', 'Sub Category': '', Year: undefined, FileId: selectedFile } as SpecialFilters,
-        limit: queryResult.pageSize,
-        offset: (queryResult.page - 1) * queryResult.pageSize
+
+      // Re-execute query with current filters and new sort
+      // Build query parameters with the new sort field and direction
+      const queryParams = new URLSearchParams();
+
+      if (selectedFile) {
+        queryParams.append('fileId', selectedFile);
+      }
+
+      if (specialFilters?.Source) {
+        queryParams.append('Source', specialFilters.Source);
+      }
+
+      if (specialFilters?.Category) {
+        queryParams.append('Category', specialFilters.Category);
+      }
+
+      if (specialFilters?.['Sub Category']) {
+        queryParams.append('Sub Category', specialFilters['Sub Category']);
+      }
+
+      if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
+        queryParams.append('Year', specialFilters.Year.join(','));
+      }
+
+      // Add current filters
+      if (currentFilters && currentFilters.length > 0) {
+        queryParams.append('filters', JSON.stringify(currentFilters));
+      }
+
+      // Add sort parameters with the NEW field and direction
+      queryParams.append('sortBy', field);
+      queryParams.append('sortOrder', newDirection);
+
+      // Add pagination
+      queryParams.append('limit', queryResult.pageSize.toString());
+      queryParams.append('offset', '0'); // Reset to first page on sort
+
+      console.log('[handleSort] Executing sort query with:', {
+        field,
+        direction: newDirection,
+        url: `/api/query/file?${queryParams.toString()}`
       });
-      
+
+      // Execute the query directly here to avoid stale closure issues
+      (async () => {
+        try {
+          const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: PaginationMeta }>(
+            `/api/query/file?${queryParams.toString()}`
+          );
+
+          let responseData: Record<string, unknown>[];
+          if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
+            responseData = response.data as Record<string, unknown>[];
+          } else {
+            responseData = response as Record<string, unknown>[];
+          }
+
+          if (Array.isArray(responseData)) {
+            const fields = responseData.length > 0 ? Object.keys(responseData[0]) : [];
+            const total = responseData.length;
+            const totalPages = Math.ceil(total / queryResult.pageSize);
+
+            setQueryResult(prev => ({
+              ...prev,
+              items: responseData,
+              fields,
+              total,
+              page: 1,
+              pageSize: queryResult.pageSize,
+              totalPages,
+              hasMore: false
+            }));
+          }
+        } catch (err) {
+          console.error('[handleSort] Failed to execute sort query:', err);
+          setError(err instanceof Error ? err.message : 'Failed to sort');
+        }
+      })();
+
       return field;
     });
-  }, [sortDirection, executeQuery, queryResult, selectedFile]);
+  }, [sortDirection, selectedFile, specialFilters, currentFilters, queryResult.pageSize]);
 
   // Load available fields when authenticated
   useEffect(() => {

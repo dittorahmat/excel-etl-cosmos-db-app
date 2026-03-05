@@ -66,11 +66,11 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
    *         description: Server error
    */
   router.get(
-    '/file', 
+    '/file',
     authRequired ? authMiddleware.authenticateToken : (req, res, next) => next(),
     async (req: Request, res: Response) => {
-      const { fileId, limit, offset, ...filterParams } = req.query;
-      
+      const { fileId, limit, offset, sortBy, sortOrder, ...filterParams } = req.query;
+
       if (!fileId) {
         return res.status(400).json({
           success: false,
@@ -83,6 +83,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         console.log('File ID:', fileId);
         console.log('Limit:', limit);
         console.log('Offset:', offset);
+        console.log('Sort by:', sortBy);
+        console.log('Sort order:', sortOrder);
         console.log('Filter parameters:', filterParams);
         
         // Get the container using the container method
@@ -269,22 +271,31 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         // Build the query to get all fields (without specifying particular fields to get all)
         // Adjust the query to incorporate limit and offset as part of the query for server-side pagination
         let query = `SELECT * FROM c WHERE ${baseWhereClause}`;
-        
-        // Add ORDER BY to make pagination consistent
-        query += ' ORDER BY c._ts';
-        
+
+        // Add ORDER BY clause for sorting
+        // If sortBy parameter is provided, use it for sorting; otherwise default to _ts
+        if (sortBy) {
+          // Clean the sort field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+          const cleanSortField = String(sortBy).replace(/[^a-zA-Z0-9 _/-]/g, '');
+          const order = sortOrder === 'desc' ? 'DESC' : 'ASC';
+          query += ` ORDER BY c["${cleanSortField}"] ${order}`;
+        } else {
+          // Default sort by timestamp
+          query += ' ORDER BY c._ts';
+        }
+
         // Add OFFSET and LIMIT to the query for server-side pagination
         if (offset !== undefined) {
           query += ` OFFSET ${parseInt(String(offset), 10)} `;
         }
-        
+
         if (limit !== undefined) {
           query += ` LIMIT ${parseInt(String(limit), 10)} `;
         } else if (offset !== undefined) {
           // If we have an offset but no limit, use a default limit
           query += ' LIMIT 100 ';
         }
-        
+
         console.log(`Executing file query:`, query);
 
         // Use iterator instead of fetchAll to avoid loading all results into memory
@@ -412,8 +423,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
     '/file-get',
     authRequired ? authMiddleware.authenticateTokenFromUrl : (req, res, next) => next(),
     async (req: Request, res: Response) => {
-      const { fileId, limit, offset, ...filterParams } = req.query;
-      
+      const { fileId, limit, offset, sortBy, sortOrder, ...filterParams } = req.query;
+
       if (!fileId) {
         return res.status(400).json({
           success: false,
@@ -426,6 +437,8 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         console.log('File ID:', fileId);
         console.log('Limit:', limit);
         console.log('Offset:', offset);
+        console.log('Sort by:', sortBy);
+        console.log('Sort order:', sortOrder);
         console.log('Filter parameters:', filterParams);
         
         // Get the container using the container method
@@ -612,22 +625,31 @@ export function createFileQueryRouter(cosmosDb: AzureCosmosDB): Router {
         // Build the query to get all fields (without specifying particular fields to get all)
         // Adjust the query to incorporate limit and offset as part of the query for server-side pagination
         let query = `SELECT * FROM c WHERE ${baseWhereClause}`;
-        
-        // Add ORDER BY to make pagination consistent
-        query += ' ORDER BY c._ts';
-        
+
+        // Add ORDER BY clause for sorting
+        // If sortBy parameter is provided, use it for sorting; otherwise default to _ts
+        if (sortBy) {
+          // Clean the sort field name to prevent injection - allow letters, numbers, spaces, underscores, hyphens, and forward slashes
+          const cleanSortField = String(sortBy).replace(/[^a-zA-Z0-9 _/-]/g, '');
+          const order = sortOrder === 'desc' ? 'DESC' : 'ASC';
+          query += ` ORDER BY c["${cleanSortField}"] ${order}`;
+        } else {
+          // Default sort by timestamp
+          query += ' ORDER BY c._ts';
+        }
+
         // Add OFFSET and LIMIT to the query for server-side pagination
         if (offset !== undefined) {
           query += ` OFFSET ${parseInt(String(offset), 10)} `;
         }
-        
+
         if (limit !== undefined) {
           query += ` LIMIT ${parseInt(String(limit), 10)} `;
         } else if (offset !== undefined) {
           // If we have an offset but no limit, use a default limit
           query += ' LIMIT 100 ';
         }
-        
+
         console.log(`Executing file query GET:`, query);
 
         // Use iterator instead of fetchAll to avoid loading all results into memory
