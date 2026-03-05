@@ -12,9 +12,9 @@ export const MainLayout = ({ children }: MainLayoutProps): JSX.Element => {
     <ErrorBoundary>
       <div className="flex h-screen bg-background">
         <Sidebar />
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 min-w-0">
           <Navbar />
-          <main className="flex-1 p-4 overflow-y-auto bg-background">
+          <main className="flex-1 p-4 overflow-y-auto overflow-x-hidden bg-background">
             {children}
           </main>
           <footer className="py-4 px-6 text-center text-sm text-muted-foreground border-t">

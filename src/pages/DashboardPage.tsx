@@ -268,14 +268,14 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   };
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="w-full max-w-full overflow-x-hidden">
 
 
-      <div className="grid gap-4">
+      <div className="w-full max-w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
 
-          <TabsContent value="query" className="space-y-4">
-            <Card>
+          <TabsContent value="query" className="space-y-4 w-full">
+            <Card className="w-full">
               <CardHeader>
                 <CardTitle>Search Database</CardTitle>
               </CardHeader>
@@ -304,7 +304,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="max-w-full">
               <CardHeader>
                 <CardTitle>Query Results</CardTitle>
               </CardHeader>
@@ -361,17 +361,17 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                       </Button>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto max-w-full">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             {queryResult.fields.map((field) => (
                               <TableHead key={field}>
-                                <div className="flex items-center">
-                                  <span>{field}</span>
+                                <div className="flex items-center min-w-fit">
+                                  <span className="whitespace-nowrap">{field}</span>
                                   <button
                                     onClick={() => handleSort(field)}
-                                    className="ml-2 text-gray-400 hover:text-gray-600"
+                                    className="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0"
                                   >
                                     {sortField === field ? (
                                       sortDirection === 'asc' ? '↑' : '↓'
@@ -387,9 +387,11 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                             <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
                               {queryResult.fields.map((field) => (
                                 <TableCell key={`${index}-${field}`}>
-                                  {isDateField(field) && typeof item[field] === 'string' && isValidDateString(String(item[field]))
-                                    ? formatDate(String(item[field]))
-                                    : String(item[field] || '')}
+                                  <span className="whitespace-nowrap">
+                                    {isDateField(field) && typeof item[field] === 'string' && isValidDateString(String(item[field]))
+                                      ? formatDate(String(item[field]))
+                                      : String(item[field] || '')}
+                                  </span>
                                 </TableCell>
                               ))}
                             </TableRow>
