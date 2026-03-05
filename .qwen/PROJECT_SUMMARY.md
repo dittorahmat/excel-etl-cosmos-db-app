@@ -76,6 +76,17 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Fixed Year checkbox cascading reset bug (first attempt) by optimizing useEffect dependencies in FileSelector.tsx
 - **[NEW]** Fixed Year checkbox cascading reset bug (root cause) by removing Year from useFilters hook parameters - Year is a data filter, not a schema filter, so it should not trigger field re-fetching
 - **[NEW]** Added ascending sort to Year checkbox values in FileSelector for better user experience (smallest to largest year)
+- **[NEW]** Fixed Query Results table auto-expand issue by adding width constraints and horizontal scrolling
+- **[NEW]** Updated MainLayout.tsx with `min-w-0` and `overflow-x-hidden` to prevent flex container expansion
+- **[NEW]** Updated DashboardPage.tsx with `max-w-full` and `overflow-x-hidden` for proper width constraints
+- **[NEW]** Updated QueryBuilder.tsx with `max-w-full` and `overflow-x-hidden` to prevent expansion
+- **[NEW]** Added `whitespace-nowrap` to table headers and cells for consistent column widths
+- **[NEW]** Committed and pushed changes: "Fix: Prevent Query Results table from auto-expanding layout"
+- **[NEW]** Implemented sort functionality for Query Results table with backend support
+- **[NEW]** Added sortBy and sortOrder parameters to /api/query/file and /api/query/file-get endpoints
+- **[NEW]** Updated handleSort to preserve all filters when sorting (fixed stale closure issue)
+- **[NEW]** Added dynamic ORDER BY clause in Cosmos DB queries with input sanitization
+- **[NEW]** Sort toggles between ascending/descending with visual indicators (↑/↓/↕)
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -94,4 +105,6 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Authentication stability improved by fixing race conditions and aggressive logout behaviors
 - **[DONE]** Security vulnerabilities patched and build scripts optimized for Windows
 - **[DONE]** Year checkbox cascading reset bug fixed - users can now select any number of Year values without triggering dropdown resets (Root cause: Year was triggering useFields hook re-fetch, which caused state reset)
+- **[DONE]** Query Results table auto-expand issue fixed - tables with many columns now scroll horizontally instead of expanding the layout
+- **[DONE]** Sort functionality implemented for Query Results table - click column headers to sort with preserved filters
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering or core auth logic)

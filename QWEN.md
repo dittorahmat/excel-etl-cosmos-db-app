@@ -248,6 +248,8 @@ The application will be accessible via HTTPS with automatic HTTP to HTTPS redire
 - Special handling for common fields (Source, Category, etc.)
 - API generation for programmatic access
 - **Year filter with sorted ascending values and stable checkbox selection (no cascading resets)**
+- **Responsive table layout with horizontal scrolling for wide datasets (no auto-expand)**
+- **Sort functionality with column header clicks (ascending/descending toggle)**
 
 ### Monitoring & Logging
 - Request logging with detailed metrics
