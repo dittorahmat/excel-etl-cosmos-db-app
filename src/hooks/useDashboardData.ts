@@ -61,7 +61,7 @@ export const useDashboardData = () => {
     fields: [],
     total: 0,
     page: 1,
-    pageSize: 10000,
+    pageSize: 10,
     totalPages: 0,
     hasMore: false,
     continuationToken: undefined

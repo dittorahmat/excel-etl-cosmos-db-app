@@ -399,6 +399,11 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                         </TableBody>
                       </Table>
                     </div>
+
+                    {/* Truncation Notice */}
+                    <div className="text-center text-sm text-muted-foreground py-4 mt-2 border-t">
+                      The data in the preview has been truncated due to size limits
+                    </div>
                   </>
                 ) : (
                   <div className="rounded-md bg-blue-50 p-4">
