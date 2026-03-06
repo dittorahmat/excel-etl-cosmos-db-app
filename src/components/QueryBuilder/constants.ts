@@ -52,4 +52,4 @@ export const OPERATORS_BY_TYPE: Record<string, Operator[]> = {
 };
 
 export const DEFAULT_PAGE = 1;
-export const DEFAULT_PAGE_SIZE = 10;
+export const DEFAULT_PAGE_SIZE = 10000;
