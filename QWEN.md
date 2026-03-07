@@ -227,6 +227,8 @@ The application will be accessible via HTTPS with automatic HTTP to HTTPS redire
 - Data ingestion to Cosmos DB
 - Import metadata tracking
 - Clean UI presentation by automatically hiding file extensions in listings
+- **Optimized ingestion with rate limiting for Cosmos DB Free Tier (1000 RU/s)**
+- **Batch processing with adaptive throttling detection (50 rows/batch + 150ms delay)**
 
 ### Data Visualization
 - Interactive charts with Recharts
@@ -250,6 +252,7 @@ The application will be accessible via HTTPS with automatic HTTP to HTTPS redire
 - **Year filter with sorted ascending values and stable checkbox selection (no cascading resets)**
 - **Responsive table layout with horizontal scrolling for wide datasets (no auto-expand)**
 - **Sort functionality with column header clicks (ascending/descending toggle)**
+- **Default display limit of 10 rows with truncation notice for optimal performance**
 
 ### Monitoring & Logging
 - Request logging with detailed metrics

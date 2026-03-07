@@ -467,16 +467,17 @@ export class IngestionService {
       return;
     }
 
-    const BATCH_SIZE = INGESTION_CONSTANTS.BATCH_SIZE; // Cosmos DB batch limit
-    const MAX_RETRIES = 3; // Maximum number of retries for failed operations
-    const BASE_DELAY = 1000; // Base delay for exponential backoff in milliseconds
+    const BATCH_SIZE = INGESTION_CONSTANTS.BATCH_SIZE; // 50 - optimized for 1000 RU/s
+    const DELAY_BETWEEN_BATCHES = INGESTION_CONSTANTS.DELAY_BETWEEN_BATCHES; // 150ms - rate limiting
+    const MAX_RETRIES = INGESTION_CONSTANTS.MAX_RETRIES;
+    const BASE_RETRY_DELAY = INGESTION_CONSTANTS.BASE_RETRY_DELAY; // 500ms - less aggressive backoff
     const importId = rows[0]?._importId;
 
     if (!importId) {
       const error = new Error('No import ID found in row data');
-      this.logger.error('Missing import ID in row data', { 
+      this.logger.error('Missing import ID in row data', {
         firstRow: JSON.stringify(rows[0], null, 2),
-        error: error.message 
+        error: error.message
       });
       throw error;
     }
@@ -485,131 +486,66 @@ export class IngestionService {
       importId,
       container: this.dataContainerName,
       batchCount: Math.ceil(rows.length / BATCH_SIZE),
-      firstRowKeys: rows[0] ? Object.keys(rows[0]) : []
+      estimatedTime: `${Math.round(rows.length / BATCH_SIZE * DELAY_BETWEEN_BATCHES / 1000)} seconds`
     });
 
     let totalSuccess = 0;
     let totalFailed = 0;
-    const failedRows: { rowIndex: number; row: RowData; error: string }[] = [];
+    let throttleCount = 0;
 
     try {
-      // Process rows in batches
+      // Process rows in batches WITH DELAY for rate limiting
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
         const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
         const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
-        
-        this.logger.info(`Processing batch ${batchNumber} of ${totalBatches}`, {
+
+        const startTime = Date.now();
+
+        this.logger.info(`Processing batch ${batchNumber}/${totalBatches}`, {
           importId,
-          batchNumber,
-          totalBatches,
           batchSize: batch.length,
-          progress: `${((i + BATCH_SIZE) / rows.length * 100).toFixed(1)}%`
+          progress: `${Math.min(100, ((i + BATCH_SIZE) / rows.length * 100)).toFixed(1)}%`,
+          rowsProcessed: i + batch.length,
+          totalRows: rows.length
         });
 
-        // Process each row in the batch with individual retry logic
-        const batchResults = await Promise.all(
-          batch.map(async (row, rowIndexInBatch) => {
-            const globalRowIndex = i + rowIndexInBatch;
-            
-            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-              try {
-                const record = {
-                  ...row,
-                  // Use a composite ID to ensure uniqueness
-                  id: `row_${row._importId}_${row._rowNumber}`,
-                  _partitionKey: `import_${row._importId}`, // Match the import's partition key
-                  _rowId: row._rowNumber, // Store row number for easier querying
-                  documentType: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW, // Add document type for easier querying
-                };
-                
-                // Log the row being processed
-                const rowLogData = {
-                  rowId: record.id,
-                  partitionKey: record._partitionKey,
-                  importId: row._importId,
-                  rowNumber: row._rowNumber,
-                  keys: Object.keys(record)
-                };
-                this.logger.debug(`Upserting row ${row._rowNumber} for import ${row._importId} (attempt ${attempt})`, rowLogData);
-                
-                // Execute the upsert operation using the wrapper
-                const result = await cosmosDbWrapper.upsertRecordWithLogging(
-                  cosmosDb,
-                  record,
-                  this.dataContainerName,
-                  `upsert row ${row._rowNumber} for import ${row._importId}`,
-                  this.logger
-                );
-                
-                this.logger.debug(`Successfully upserted row ${row._rowNumber}`, {
-                  rowId: record.id,
-                  statusCode: result.statusCode,
-                  etag: result.etag
-                });
-                
-                return { success: true, result, rowIndex: globalRowIndex, row };
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                
-                // Log the failure
-                this.logger.warn(`Failed to upsert row ${row._rowNumber} (attempt ${attempt} of ${MAX_RETRIES})`, {
-                  importId,
-                  rowIndex: globalRowIndex,
-                  rowNumber: row._rowNumber,
-                  attempt,
-                  maxRetries: MAX_RETRIES,
-                  error: errorMessage,
-                  stack: error instanceof Error ? error.stack : undefined
-                });
-                
-                // If this is the last attempt, add to failed rows
-                if (attempt === MAX_RETRIES) {
-                  failedRows.push({ 
-                    rowIndex: globalRowIndex, 
-                    row, 
-                    error: errorMessage 
-                  });
-                  return { success: false, error: errorMessage, rowIndex: globalRowIndex, row };
-                }
-                
-                // Exponential backoff before retry
-                const delay = BASE_DELAY * Math.pow(2, attempt - 1) + Math.random() * 1000;
-                this.logger.debug(`Waiting ${delay}ms before retry ${attempt + 1}`, {
-                  importId,
-                  rowIndex: globalRowIndex,
-                  rowNumber: row._rowNumber,
-                  delay,
-                  attempt: attempt + 1
-                });
-                
-                await new Promise(resolve => setTimeout(resolve, delay));
-              }
-            }
-            
-            // This should never be reached, but just in case
-            return { success: false, error: 'Max retries exceeded', rowIndex: globalRowIndex, row };
-          })
+        // Process batch with retry logic
+        const batchResults = await this.executeBatchWithRetry(
+          batch,
+          cosmosDb,
+          MAX_RETRIES,
+          BASE_RETRY_DELAY,
+          importId
         );
 
-        // Count successes and failures in this batch
         const batchSuccess = batchResults.filter(r => r.success).length;
         const batchFailed = batchResults.filter(r => !r.success).length;
-        
+        const batchThrottled = batchResults.filter(r => r.throttled).length;
+
+        throttleCount += batchThrottled;
         totalSuccess += batchSuccess;
         totalFailed += batchFailed;
-        
-        this.logger.info(`Completed batch ${batchNumber} of ${totalBatches}`, {
+
+        const duration = Date.now() - startTime;
+
+        this.logger.info(`Completed batch ${batchNumber}/${totalBatches}`, {
           importId,
           batchNumber,
           totalBatches,
-          batchSize: batch.length,
           success: batchSuccess,
           failed: batchFailed,
+          throttled: batchThrottled,
+          duration: `${duration}ms`,
           totalSuccess,
           totalFailed,
           progress: `${Math.min(100, ((i + BATCH_SIZE) / rows.length * 100)).toFixed(1)}%`
         });
+
+        // Add delay between batches (except for last batch)
+        if (i + BATCH_SIZE < rows.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+        }
 
         // Log memory usage for large imports
         if (rows.length > 1000) {
@@ -630,16 +566,12 @@ export class IngestionService {
         totalRows: rows.length,
         totalSuccess,
         totalFailed,
-        successRate: `${((totalSuccess / rows.length) * 100).toFixed(2)}%`,
-        failedRows: failedRows.length > 0 ? failedRows.map(f => ({
-          rowIndex: f.rowIndex,
-          rowNumber: f.row._rowNumber,
-          error: f.error
-        })).slice(0, 10) : [] // Only show first 10 failed rows to avoid log spam
+        throttleCount,
+        successRate: `${((totalSuccess / rows.length) * 100).toFixed(2)}%`
       });
 
       // If we have too many failures, throw an error
-      if (totalFailed > rows.length * 0.5) { // If more than 50% failed
+      if (totalFailed > rows.length * 0.5) {
         const error = new Error(`Critical failure: ${totalFailed} out of ${rows.length} rows failed to save (${((totalFailed / rows.length) * 100).toFixed(2)}% failure rate)`);
         this.logger.error('High failure rate detected, aborting import', {
           importId,
@@ -662,16 +594,100 @@ export class IngestionService {
       this.logger.error('Failed to save rows to Cosmos DB', {
         importId: rows[0]?._importId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
         totalRows: rows.length,
         totalSuccess,
         totalFailed,
-        failedRowsDetails: failedRows.length > 0 ? failedRows.slice(0, 5) : [] // First 5 failed rows
+        throttleCount
       });
-      
+
       // Re-throw the error to be handled by the caller
       throw new Error(`Failed to save rows: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Execute a batch of row upserts with retry logic and throttling detection
+   */
+  private async executeBatchWithRetry(
+    batch: RowData[],
+    cosmosDb: AzureCosmosDB,
+    maxRetries: number,
+    baseDelay: number,
+    importId: string
+  ): Promise<Array<{
+    success: boolean;
+    throttled: boolean;
+    row: RowData;
+    error?: string;
+    result?: unknown;
+  }>> {
+    return await Promise.all(
+      batch.map(async (row) => {
+        let wasThrottled = false;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const record = {
+              ...row,
+              id: `row_${row._importId}_${row._rowNumber}`,
+              _partitionKey: `import_${row._importId}`,
+              _rowId: row._rowNumber,
+              documentType: INGESTION_CONSTANTS.DOCUMENT_TYPES.ROW,
+            };
+
+            const result = await cosmosDbWrapper.upsertRecordWithLogging(
+              cosmosDb,
+              record,
+              this.dataContainerName,
+              `upsert row ${row._rowNumber} for import ${importId}`,
+              this.logger
+            );
+
+            return {
+              success: true,
+              throttled: false,
+              row,
+              result
+            };
+          } catch (error) {
+            const isThrottled = (error as { code?: number })?.code === 429;
+
+            if (isThrottled) {
+              wasThrottled = true;
+              this.logger.warn(`Throttling detected on row ${row._rowNumber} (attempt ${attempt})`, {
+                importId,
+                rowNumber: row._rowNumber,
+                attempt,
+                maxRetries
+              });
+            } else {
+              this.logger.warn(`Failed to upsert row ${row._rowNumber} (attempt ${attempt})`, {
+                importId,
+                rowNumber: row._rowNumber,
+                attempt,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
+            }
+
+            // If this is the last attempt, return failure
+            if (attempt === maxRetries) {
+              return {
+                success: false,
+                throttled: wasThrottled,
+                row,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              };
+            }
+
+            // Exponential backoff (less aggressive: 500ms, 1s, 2s)
+            const delay = baseDelay * Math.pow(2, attempt - 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+
+        return { success: false, throttled: wasThrottled, row, error: 'Max retries exceeded' };
+      })
+    );
   }
 
   /**

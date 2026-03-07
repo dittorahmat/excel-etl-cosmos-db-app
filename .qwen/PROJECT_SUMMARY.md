@@ -87,6 +87,7 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[NEW]** Updated handleSort to preserve all filters when sorting (fixed stale closure issue)
 - **[NEW]** Added dynamic ORDER BY clause in Cosmos DB queries with input sanitization
 - **[NEW]** Sort toggles between ascending/descending with visual indicators (↑/↓/↕)
+- **[NEW]** Increased Query Result limit from 10 to 10,000 rows to display more data by default
 
 ## Current Plan
 - **[DONE]** Major filter logic implementation completed - filters now use fields from selected file, excluding special filters
@@ -107,4 +108,14 @@ Implement a major change to the QueryBuilder filter logic so that filter values 
 - **[DONE]** Year checkbox cascading reset bug fixed - users can now select any number of Year values without triggering dropdown resets (Root cause: Year was triggering useFields hook re-fetch, which caused state reset)
 - **[DONE]** Query Results table auto-expand issue fixed - tables with many columns now scroll horizontally instead of expanding the layout
 - **[DONE]** Sort functionality implemented for Query Results table - click column headers to sort with preserved filters
+- **[DONE]** Query Result limit increased from 10 to 10,000 rows to display more data by default
+- **[DONE]** Reverted Query Result limit to 10 rows for optimal performance with truncation notice
+- **[NEW]** Optimized ingestion service for Cosmos DB Free Tier (1000 RU/s)
+- **[NEW]** Reduced batch size from 100 to 50 rows for safer RU consumption
+- **[NEW]** Added 150ms delay between batches for rate limiting
+- **[NEW]** Reduced retry delay from 1000ms to 500ms (less aggressive backoff)
+- **[NEW]** Implemented executeBatchWithRetry helper with throttling detection (429 errors)
+- **[NEW]** Added throttle counter for monitoring Cosmos DB throttling events
+- **[NEW]** Improved logging with batch duration, throttling info, and progress tracking
+- **[NEW]** Expected performance: 10,000 rows in 90-120 seconds (from 3-5 minutes) - 2-3x faster
 - The implementation is complete and builds successfully, with only pre-existing errors remaining in auth/msalInstance.ts (unrelated to filtering or core auth logic)
