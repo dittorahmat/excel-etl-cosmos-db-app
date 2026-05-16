@@ -10,21 +10,13 @@ import { ApiGenerationModal } from '../components/ApiGeneration';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { formatDateAlt as formatDate, isValidDateString } from '../utils/formatters';
+import { formatDateAlt as formatDate } from '../utils/formatters';
 import { api } from '../utils/api';
 
 // Import libraries for export functionality
-import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 
 // Type definitions for the component props and API responses
-interface PaginationMeta {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-  continuationToken?: string;
-}
 
 interface DashboardPageProps {
   children?: React.ReactNode;
@@ -51,7 +43,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     handleFileChange, // Changed from handleFieldsChange to handleFileChange
     handleSort,
   } = useDashboardData();
-
+  
   // Local state for export errors
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -63,24 +55,24 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     try {
       // Build query parameters for export - get all records without pagination
       const queryParams = new URLSearchParams();
-
+      
       // Add the file ID and special filters to query parameters
       if (selectedFile) {
         queryParams.append('fileId', selectedFile);
       }
-
+      
       if (specialFilters?.Source) {
         queryParams.append('Source', specialFilters.Source);
       }
-
+      
       if (specialFilters?.Category) {
         queryParams.append('Category', specialFilters.Category);
       }
-
+      
       if (specialFilters?.['Sub Category']) {
         queryParams.append('Sub Category', specialFilters['Sub Category']);
       }
-
+      
       if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
         queryParams.append('Year', specialFilters.Year.join(','));
       }
@@ -92,19 +84,9 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
       // Use the file-based endpoint to get all data for export
       const url = `/api/query/file?${queryParams.toString()}`;
-
-      // The API might return either a direct array or an object with data and pagination
-      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: PaginationMeta }>(url);
-
-      // Check if response has data and pagination properties (for paginated responses)
-      let allData: Record<string, unknown>[];
-      if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
-        allData = response.data as Record<string, unknown>[];
-      } else {
-        // Otherwise, response is a direct array
-        allData = response as Record<string, unknown>[];
-      }
-
+      
+      const allData = await api.get<Record<string, unknown>[]>(url);
+      
       if (!Array.isArray(allData) || allData.length === 0) {
         console.warn('No data received from export API call');
         return;
@@ -121,7 +103,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         return fields.map(field => {
           const value = item[field];
           // Handle special formatting for dates
-          const formattedValue = isDateField(field) && typeof value === 'string' && isValidDateString(value)
+          const formattedValue = typeof value === 'string' && value.includes('T')
             ? formatDate(value)
             : String(value || '');
 
@@ -146,7 +128,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
+      
       // Revoke the object URL to free up memory
       URL.revokeObjectURL(urlBlob);
     } catch (error) {
@@ -160,24 +142,24 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     try {
       // Build query parameters for export - get all records without pagination
       const queryParams = new URLSearchParams();
-
+      
       // Add the file ID and special filters to query parameters
       if (selectedFile) {
         queryParams.append('fileId', selectedFile);
       }
-
+      
       if (specialFilters?.Source) {
         queryParams.append('Source', specialFilters.Source);
       }
-
+      
       if (specialFilters?.Category) {
         queryParams.append('Category', specialFilters.Category);
       }
-
+      
       if (specialFilters?.['Sub Category']) {
         queryParams.append('Sub Category', specialFilters['Sub Category']);
       }
-
+      
       if (specialFilters?.Year && Array.isArray(specialFilters.Year) && specialFilters.Year.length > 0) {
         queryParams.append('Year', specialFilters.Year.join(','));
       }
@@ -189,19 +171,9 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
 
       // Use the file-based endpoint to get all data for export
       const url = `/api/query/file?${queryParams.toString()}`;
-
-      // The API might return either a direct array or an object with data and pagination
-      const response = await api.get<Record<string, unknown>[] | { data: Record<string, unknown>[]; pagination: PaginationMeta }>(url);
-
-      // Check if response has data and pagination properties (for paginated responses)
-      let allData: Record<string, unknown>[];
-      if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
-        allData = response.data as Record<string, unknown>[];
-      } else {
-        // Otherwise, response is a direct array
-        allData = response as Record<string, unknown>[];
-      }
-
+      
+      const allData = await api.get<Record<string, unknown>[]>(url);
+      
       if (!Array.isArray(allData) || allData.length === 0) {
         console.warn('No data received from export API call');
         return;
@@ -215,40 +187,22 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
         const formattedItem: Record<string, unknown> = {};
         fields.forEach(field => {
           const value = item[field];
-          formattedItem[field] = isDateField(field) && typeof value === 'string' && isValidDateString(value)
+          formattedItem[field] = typeof value === 'string' && value.includes('T')
             ? formatDate(value)
             : value;
         });
         return formattedItem;
       });
 
-      // Create workbook and worksheet using ExcelJS
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Query Results');
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
 
-      // Add headers
-      worksheet.columns = fields.map(field => ({
-        header: field,
-        key: field,
-        width: 15
-      }));
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Results');
 
-      // Add data rows
-      formattedData.forEach(item => {
-        worksheet.addRow(item);
-      });
-
-      // Generate buffer and download
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-      const excelUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = excelUrl;
-      link.download = `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(excelUrl);
+      // Export to file
+      XLSX.writeFile(workbook, `query-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (error) {
       console.error('Error during Excel export:', error);
       setExportError('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -260,24 +214,17 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     return null; // Will redirect to login
   }
 
-  // Helper function to check if a field is of type 'date' based on the field definitions
-  const isDateField = (fieldName: string): boolean => {
-    return fieldDefinitions.some(fieldDef =>
-      fieldDef.name === fieldName && fieldDef.type === 'date'
-    );
-  };
-
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
+    <div className="container mx-auto p-4">
 
 
-      <div className="w-full max-w-full">
+      <div className="grid gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
 
-          <TabsContent value="query" className="space-y-4 w-full">
-            <Card className="w-full">
+          <TabsContent value="query" className="space-y-4">
+            <Card>
               <CardHeader>
-                <CardTitle>Search Database</CardTitle>
+                <CardTitle className="text-3xl text-center">Search Database</CardTitle>
               </CardHeader>
               <CardContent>
                 {fieldsLoading ? (
@@ -304,7 +251,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
               </CardContent>
             </Card>
 
-            <Card className="max-w-full">
+            <Card>
               <CardHeader>
                 <CardTitle>Query Results</CardTitle>
               </CardHeader>
@@ -361,17 +308,17 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                       </Button>
                     </div>
 
-                    <div className="overflow-x-auto max-w-full">
+                    <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             {queryResult.fields.map((field) => (
                               <TableHead key={field}>
-                                <div className="flex items-center min-w-fit">
-                                  <span className="whitespace-nowrap">{field}</span>
+                                <div className="flex items-center">
+                                  <span>{field}</span>
                                   <button
                                     onClick={() => handleSort(field)}
-                                    className="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0"
+                                    className="ml-2 text-gray-400 hover:text-gray-600"
                                   >
                                     {sortField === field ? (
                                       sortDirection === 'asc' ? '↑' : '↓'
@@ -387,22 +334,15 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
                             <TableRow key={item.id && typeof item.id === 'string' ? item.id : index}>
                               {queryResult.fields.map((field) => (
                                 <TableCell key={`${index}-${field}`}>
-                                  <span className="whitespace-nowrap">
-                                    {isDateField(field) && typeof item[field] === 'string' && isValidDateString(String(item[field]))
-                                      ? formatDate(String(item[field]))
-                                      : String(item[field] || '')}
-                                  </span>
+                                  {typeof item[field] === 'string' && String(item[field]).includes('T')
+                                    ? formatDate(String(item[field]))
+                                    : String(item[field] || '')}
                                 </TableCell>
                               ))}
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
-
-                    {/* Truncation Notice */}
-                    <div className="text-center text-sm text-muted-foreground py-4 mt-2 border-t">
-                      The data in the preview has been truncated due to size limits
                     </div>
                   </>
                 ) : (

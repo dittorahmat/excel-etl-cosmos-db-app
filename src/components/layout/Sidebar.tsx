@@ -46,15 +46,15 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col">
-      <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-2">
-        <img
-          src="/images/iesr-logo-new.png"
-          alt="IESR Logo"
-          className="h-full w-auto object-contain"
+    <aside className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 flex flex-col">
+      <div className="h-16 flex items-center justify-center p-2">
+        <img 
+          src="/images/iesr-logo-new.png" 
+          alt="IESR Logo" 
+          className="h-20 w-auto object-contain"
         />
       </div>
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex-1 px-2 pt-14 pb-4 space-y-1">
         {menuItems.map((item) =>
           item.subItems ? (
             <div key={item.title}>
@@ -114,7 +114,7 @@ export const Sidebar = () => {
           )
         )}
         {isAuthenticated && (
-          <div className="pt-4 mt-4 border-t dark:border-gray-700">
+          <div className="pt-4 mt-4">
             {adminMenuItems.map((item) => (
               <NavLink
                 key={item.path}

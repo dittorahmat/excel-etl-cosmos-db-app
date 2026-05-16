@@ -34,11 +34,29 @@ export const Navbar = () => {
   return (
     <header className="flex items-center justify-between p-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 w-full">
       <div className="flex-1 h-20 overflow-hidden">
-        <Link to="/" className="h-full flex items-center w-full">
-          <img
-            src="/images/iesr-header-cityscape.jpg"
-            alt="IESR Header"
-            className="h-full w-full max-w-full object-cover"
+        <Link to="/" className="h-full flex items-center w-full flex-row">
+          <img 
+            src="/images/renewable-energy-icons.png" 
+            alt="IESR Header" 
+            className="h-full w-1/4 object-contain"
+            style={{ objectPosition: 'left center' }}
+          />
+          <img 
+            src="/images/renewable-energy-icons.png" 
+            alt="IESR Header" 
+            className="h-full w-1/4 object-contain"
+            style={{ objectPosition: 'left center' }}
+          />
+          <img 
+            src="/images/renewable-energy-icons.png" 
+            alt="IESR Header" 
+            className="h-full w-1/4 object-contain"
+            style={{ objectPosition: 'left center' }}
+          />
+          <img 
+            src="/images/renewable-energy-icons.png" 
+            alt="IESR Header" 
+            className="h-full w-1/4 object-contain"
             style={{ objectPosition: 'left center' }}
           />
         </Link>
